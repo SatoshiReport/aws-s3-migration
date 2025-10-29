@@ -5,6 +5,7 @@ import boto3
 import time
 from typing import List, Callable, Optional
 from migration_state import MigrationState
+import config
 
 
 class S3Scanner:
@@ -30,8 +31,9 @@ class S3Scanner:
             response = self.s3.list_buckets()
             bucket_names = [b['Name'] for b in response['Buckets']]
 
-        # Skip akiaiw6gwdirbsbuzqiq-arq-1 bucket
-        bucket_names = [b for b in bucket_names if b != 'akiaiw6gwdirbsbuzqiq-arq-1']
+        # Apply bucket exclusions from config
+        if config.EXCLUDED_BUCKETS:
+            bucket_names = [b for b in bucket_names if b not in config.EXCLUDED_BUCKETS]
 
         # Check which buckets are already scanned
         already_scanned = [b for b in bucket_names if self.state.is_bucket_scanned(b)]

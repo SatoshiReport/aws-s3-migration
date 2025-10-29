@@ -46,3 +46,7 @@ MULTIPART_THRESHOLD = 8 * 1024 * 1024  # 8MB - files larger than this use multip
 MULTIPART_CHUNKSIZE = 8 * 1024 * 1024  # 8MB - size of each part
 MAX_CONCURRENCY = 10  # Number of threads for multipart transfers
 USE_THREADS = True  # Use threads for S3 transfers
+
+# Bucket exclusions (optional)
+# Add bucket names to skip during scanning (e.g., buckets you don't own or can't access)
+EXCLUDED_BUCKETS = []  # Example: ['bucket-to-skip', 'another-bucket']

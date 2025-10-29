@@ -21,6 +21,10 @@ s3_backup/
 policies/
 *.json
 
+# Local configuration overrides
+config_local.py
+*_local.py
+
 # Python
 __pycache__/
 *.py[cod]
