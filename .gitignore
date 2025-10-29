@@ -1,0 +1,81 @@
+# AWS Credentials - NEVER commit these
+.aws/
+*.pem
+*.key
+credentials
+credentials.json
+config
+
+# AWS State and Data
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+s3_migration_state*
+
+# Local S3 Backup Directory
+s3_backup/
+~/s3_backup/
+
+# Policies - contain AWS account IDs and bucket names
+policies/
+*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+venv/
+ENV/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS specific
+.DS_Store
+Thumbs.db
