@@ -22,7 +22,7 @@ class ProgressTracker:
 
     def display_progress(self):
         """Display current progress with statistics"""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         completed_files, total_files, completed_bytes, total_bytes = self.state.get_progress()
 
@@ -30,17 +30,21 @@ class ProgressTracker:
         file_percent = (completed_files / total_files * 100) if total_files > 0 else 0
         byte_percent = (completed_bytes / total_bytes * 100) if total_bytes > 0 else 0
 
-        # Get overall stats from DB
-        overall = self.state.get_overall_stats()
+        # Get migration runtime info
+        runtime_info = self.state.get_migration_runtime_info()
 
         # Calculate session elapsed time
         session_elapsed = time.time() - self.session_start_time
         session_elapsed_str = self._format_duration(session_elapsed)
 
-        # Calculate total elapsed time from DB
-        if overall['start_time']:
-            start_dt = datetime.fromisoformat(overall['start_time'])
-            now_dt = datetime.utcnow()
+        # Calculate total elapsed time from migration start (not database creation)
+        migration_start_time = runtime_info.get('migration_start_time')
+        if migration_start_time:
+            start_dt = datetime.fromisoformat(migration_start_time)
+            # Make timezone-aware if it's naive
+            if start_dt.tzinfo is None:
+                start_dt = start_dt.replace(tzinfo=timezone.utc)
+            now_dt = datetime.now(timezone.utc)
             total_elapsed = (now_dt - start_dt).total_seconds()
             total_elapsed_str = self._format_duration(total_elapsed)
         else:
@@ -77,18 +81,41 @@ class ProgressTracker:
         print(f"\n{'='*70}")
         print(f"MIGRATION PROGRESS")
         print(f"{'='*70}")
-        print(f"Total Elapsed:   {total_elapsed_str} (since migration started)")
+
+        # Only show total elapsed if migration has started
+        if migration_start_time:
+            print(f"Total Elapsed:   {total_elapsed_str} (since migration started)")
         print(f"Session Time:    {session_elapsed_str} (this run)")
-        print(f"ETA:             {eta_str}")
+
+        if migration_start_time:
+            print(f"ETA:             {eta_str}")
         print(f"")
+
+        # Calculate files/data remaining
+        files_remaining = total_files - completed_files
+        bytes_remaining = total_bytes - completed_bytes
+
         print(f"Files:           {completed_files:,} / {total_files:,} ({file_percent:.1f}%)")
+        print(f"  Completed:     {completed_files:,} files")
+        print(f"  Remaining:     {files_remaining:,} files")
+        print(f"")
         print(f"Data:            {self._format_size(completed_bytes)} / {self._format_size(total_bytes)} ({byte_percent:.1f}%)")
-        print(f"Throughput:      {self._format_size(throughput)}/s (current session)")
+        print(f"  Downloaded:    {self._format_size(completed_bytes)}")
+        print(f"  Remaining:     {self._format_size(bytes_remaining)}")
+
+        if migration_start_time:
+            print(f"")
+            print(f"Throughput:      {self._format_size(throughput)}/s (current session)")
 
         # Show overall average throughput
-        if total_elapsed > 0 and completed_bytes > 0:
+        if migration_start_time and total_elapsed > 0 and completed_bytes > 0:
             overall_throughput = completed_bytes / total_elapsed
             print(f"Overall Avg:     {self._format_size(overall_throughput)}/s (since start)")
+
+            # Calculate files per second
+            if total_elapsed > 0:
+                files_per_sec = completed_files / total_elapsed
+                print(f"File Rate:       {files_per_sec:.2f} files/sec (overall)")
 
         print(f"")
         print(f"Status Breakdown:")
@@ -111,23 +138,48 @@ class ProgressTracker:
                 size = state_info['size']
                 print(f"  {state_name.replace('_', ' ').title():25} {count:6,} files  {self._format_size(size):>12}")
 
+        # Show storage class breakdown for discovered files (fast query)
+        from migration_state import FileState
+        discovered_breakdown = self.state.get_storage_class_breakdown(FileState.DISCOVERED)
+        if discovered_breakdown:
+            print(f"")
+            print(f"  Discovered files by storage class:")
+
+            # Show each storage class with its count
+            for storage_class in sorted(discovered_breakdown.keys()):
+                info = discovered_breakdown[storage_class]
+                count = info['count']
+                size = info['size']
+
+                # Mark Glacier storage classes
+                if storage_class in ['GLACIER', 'DEEP_ARCHIVE']:
+                    marker = " (needs restore)"
+                else:
+                    marker = " (ready)"
+
+                print(f"    {storage_class:25}{marker:20} {count:6,} files  {self._format_size(size):>12}")
+
         print(f"{'='*70}\n")
 
     def display_summary(self):
         """Display final summary"""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         completed_files, total_files, completed_bytes, total_bytes = self.state.get_progress()
         session_elapsed = time.time() - self.session_start_time
         session_elapsed_str = self._format_duration(session_elapsed)
 
-        # Get overall stats from DB
-        overall = self.state.get_overall_stats()
+        # Get migration runtime info
+        runtime_info = self.state.get_migration_runtime_info()
 
-        # Calculate total elapsed time from DB
-        if overall['start_time']:
-            start_dt = datetime.fromisoformat(overall['start_time'])
-            now_dt = datetime.utcnow()
+        # Calculate total elapsed time from migration start (not database creation)
+        migration_start_time = runtime_info.get('migration_start_time')
+        if migration_start_time:
+            start_dt = datetime.fromisoformat(migration_start_time)
+            # Make timezone-aware if it's naive
+            if start_dt.tzinfo is None:
+                start_dt = start_dt.replace(tzinfo=timezone.utc)
+            now_dt = datetime.now(timezone.utc)
             total_elapsed = (now_dt - start_dt).total_seconds()
             total_elapsed_str = self._format_duration(total_elapsed)
         else:
@@ -140,7 +192,7 @@ class ProgressTracker:
         print(f"\n{'='*70}")
         print(f"MIGRATION COMPLETE")
         print(f"{'='*70}")
-        print(f"Total Time:             {total_elapsed_str} (since scan)")
+        print(f"Total Time:             {total_elapsed_str} (since migration started)")
         print(f"Session Time:           {session_elapsed_str} (this run)")
         print(f"Files Migrated:         {completed_files:,} / {total_files:,}")
         print(f"Data Migrated:          {self._format_size(completed_bytes)} / {self._format_size(total_bytes)}")

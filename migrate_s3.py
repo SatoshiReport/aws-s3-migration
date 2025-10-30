@@ -100,7 +100,7 @@ class S3Migration:
 
     def show_status(self):
         """Display current migration status"""
-        from datetime import datetime
+        from datetime import datetime, timezone
 
         stats = self.state.get_statistics()
 
@@ -108,31 +108,45 @@ class S3Migration:
             print("No files in database. Run 'scan' first.")
             return
 
-        # Get overall stats from database
-        overall = self.state.get_overall_stats()
+        # Get database creation time and migration runtime info
+        db_stats = self.state.get_overall_stats()
+        runtime_info = self.state.get_migration_runtime_info()
 
         print("="*70)
         print("OVERALL MIGRATION STATUS")
         print("="*70)
 
-        if overall['start_time']:
-            start_dt = datetime.fromisoformat(overall['start_time'])
-            now_dt = datetime.utcnow()
-            elapsed_seconds = (now_dt - start_dt).total_seconds()
+        # Show database creation time
+        if db_stats['start_time']:
+            db_created_dt = datetime.fromisoformat(db_stats['start_time'])
+            # Make timezone-aware if it's naive (for compatibility with old database entries)
+            if db_created_dt.tzinfo is None:
+                db_created_dt = db_created_dt.replace(tzinfo=timezone.utc)
+            print(f"Database Created:   {db_created_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
-            print(f"Migration Started:  {start_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-            print(f"Total Elapsed Time: {self._format_duration(elapsed_seconds)}")
+        # Show migration timing only if migration has started
+        migration_start_time = runtime_info.get('migration_start_time')
+        if migration_start_time:
+            migration_start_dt = datetime.fromisoformat(migration_start_time)
+            # Make timezone-aware if it's naive
+            if migration_start_dt.tzinfo is None:
+                migration_start_dt = migration_start_dt.replace(tzinfo=timezone.utc)
+            now_dt = datetime.now(timezone.utc)
+            elapsed_seconds = (now_dt - migration_start_dt).total_seconds()
+
+            print(f"Migration Started:  {migration_start_dt.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+            print(f"Migration Runtime:  {self._format_duration(elapsed_seconds)}")
 
             # Calculate overall average throughput
-            if elapsed_seconds > 0 and overall['completed_bytes'] > 0:
-                avg_throughput = overall['completed_bytes'] / elapsed_seconds
+            if elapsed_seconds > 0 and runtime_info['completed_bytes'] > 0:
+                avg_throughput = runtime_info['completed_bytes'] / elapsed_seconds
                 print(f"Average Throughput: {self._format_size(avg_throughput)}/s")
 
-        print(f"\nFiles Completed:    {overall['completed_files']:,} / {overall['total_files']:,} " +
-              f"({overall['completed_files']/overall['total_files']*100:.1f}%)" if overall['total_files'] > 0 else "0.0%)")
-        print(f"Data Completed:     {self._format_size(overall['completed_bytes'])} / " +
-              f"{self._format_size(overall['total_bytes'])} " +
-              f"({overall['completed_bytes']/overall['total_bytes']*100:.1f}%)" if overall['total_bytes'] > 0 else "0.0%)")
+        print(f"\nFiles Completed:    {runtime_info['completed_files']:,} / {runtime_info['total_files']:,} " +
+              f"({runtime_info['completed_files']/runtime_info['total_files']*100:.1f}%)" if runtime_info['total_files'] > 0 else "0.0%)")
+        print(f"Data Completed:     {self._format_size(runtime_info['completed_bytes'])} / " +
+              f"{self._format_size(runtime_info['total_bytes'])} " +
+              f"({runtime_info['completed_bytes']/runtime_info['total_bytes']*100:.1f}%)" if runtime_info['total_bytes'] > 0 else "0.0%)")
 
         print()
 
@@ -194,8 +208,17 @@ class S3Migration:
             self.show_status()
             return
 
+        # Record migration start time (only if not already set)
+        from datetime import datetime, timezone
+        if not self.state.get_metadata('migration_start_time'):
+            self.state.set_metadata('migration_start_time', datetime.now(timezone.utc).isoformat())
+            print("Migration started - start time recorded.\n")
+
         print("Starting migration with parallel downloads...\n")
         print(f"Concurrent workers: {config.MAX_CONCURRENT_DOWNLOADS}\n")
+
+        # Show initial status
+        self.progress.display_progress()
 
         last_progress_update = time.time()
         last_glacier_check = time.time()
@@ -205,6 +228,11 @@ class S3Migration:
         with ThreadPoolExecutor(max_workers=config.MAX_CONCURRENT_DOWNLOADS) as executor:
             while self.state.has_files_to_process():
                 current_time = time.time()
+
+                # Show periodic progress updates (every 5 seconds)
+                if current_time - last_progress_update >= config.PROGRESS_UPDATE_INTERVAL:
+                    self.progress.display_progress()
+                    last_progress_update = current_time
 
                 # Process Glacier files periodically (every 60 seconds)
                 glacier_summary = self.glacier.get_glacier_summary()
@@ -219,16 +247,46 @@ class S3Migration:
                         if glacier_stats['in_progress'] > 0:
                             print(f"  {glacier_stats['in_progress']} Glacier file(s) still restoring...")
                         last_glacier_check = current_time
+                        # Show progress after Glacier check
+                        self.progress.display_progress()
+                        last_progress_update = current_time
 
                 # Get files ready to download (standard storage + restored Glacier)
-                ready_files = self.state.get_files_by_state(FileState.DISCOVERED)
+                # OPTIMIZATION: Only fetch what we need (batch size), not all 3.9M files!
+                discovered_files = self.state.get_files_by_state(FileState.DISCOVERED, limit=config.BATCH_SIZE * 2)
 
-                # Filter out Glacier files that haven't been restored yet
-                ready_files = [
-                    f for f in ready_files
-                    if not self.glacier.is_glacier_storage(f['storage_class'])
-                    or f.get('glacier_restore_requested_at') is not None
-                ]
+                # Separate Glacier files from ready files
+                glacier_needing_restore = []
+                ready_files = []
+
+                for f in discovered_files:
+                    if self.glacier.is_glacier_storage(f['storage_class']):
+                        if f.get('glacier_restore_requested_at') is not None:
+                            # Glacier file with restore requested - might be ready
+                            ready_files.append(f)
+                        else:
+                            # Glacier file needing restore request
+                            glacier_needing_restore.append(f)
+                    else:
+                        # Standard storage - ready to download
+                        ready_files.append(f)
+
+
+                # If we have Glacier files needing restore, trigger Glacier processing
+                if glacier_needing_restore and not ready_files:
+                    print(f"\nFound {len(glacier_needing_restore)} Glacier file(s) needing restore requests...")
+                    print("Processing Glacier files...")
+                    glacier_stats = self.glacier.process_glacier_files()
+                    if glacier_stats['requested'] > 0:
+                        print(f"  Requested restore for {glacier_stats['requested']} Glacier file(s)")
+                    if glacier_stats['available'] > 0:
+                        print(f"  {glacier_stats['available']} Glacier file(s) now available for download")
+                    if glacier_stats['in_progress'] > 0:
+                        print(f"  {glacier_stats['in_progress']} Glacier file(s) still restoring...")
+                    last_glacier_check = time.time()
+                    self.progress.display_progress()
+                    last_progress_update = time.time()
+                    continue
 
                 if not ready_files:
                     # Check if we're just waiting for Glacier
@@ -236,10 +294,10 @@ class S3Migration:
                     if glacier_summary['restoring'] > 0:
                         print(f"\nWaiting for {glacier_summary['restoring']} Glacier file(s) to restore...")
                         print("Checking again in 60 seconds...")
+                        # Show progress while waiting
+                        self.progress.display_progress()
+                        last_progress_update = time.time()
                         time.sleep(60)
-                        continue
-                    elif glacier_summary['discovered'] > 0:
-                        # Glacier files need restore requests but none in progress
                         continue
                     else:
                         # No more files to process
@@ -262,11 +320,12 @@ class S3Migration:
                     except Exception as e:
                         print(f"  ERROR: {file_info['bucket']}/{file_info['key']}: {str(e)}")
 
-                    # Update progress display periodically
+                    # Show progress during batch processing if enough time has passed
                     current_time = time.time()
                     if current_time - last_progress_update >= config.PROGRESS_UPDATE_INTERVAL:
                         self.progress.display_progress()
                         last_progress_update = current_time
+
 
         # Final progress display
         print("\n" + "="*70)

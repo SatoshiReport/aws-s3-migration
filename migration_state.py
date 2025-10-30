@@ -5,7 +5,7 @@ Tracks every file through its lifecycle: discovery, download, verification, dele
 import sqlite3
 import json
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, Dict, List, Tuple
 from contextlib import contextmanager
 
@@ -66,6 +66,15 @@ class MigrationState:
                 )
             """)
 
+            # Track migration metadata (start time, end time, etc.)
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS migration_metadata (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+            """)
+
             # Create indices for performance
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_state
@@ -94,7 +103,7 @@ class MigrationState:
         Add a discovered file to tracking database.
         If file exists, skip (idempotent).
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._get_connection() as conn:
             try:
                 conn.execute("""
@@ -120,7 +129,7 @@ class MigrationState:
         Args:
             batch: If True, queue the update for batch commit. Call flush_batch_updates() to commit.
         """
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
 
         if batch:
             # Queue for batch commit
@@ -205,7 +214,7 @@ class MigrationState:
 
     def mark_glacier_restore_requested(self, bucket: str, key: str):
         """Mark that Glacier restore has been requested"""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._lock:
             with self._get_connection() as conn:
                 conn.execute("""
@@ -226,6 +235,7 @@ class MigrationState:
         with self._get_connection() as conn:
             cursor = conn.execute(query, (state,))
             return [dict(row) for row in cursor.fetchall()]
+
 
     def get_files_by_states(self, states: List[str]) -> List[Dict]:
         """Get all files in any of the specified states"""
@@ -289,6 +299,41 @@ class MigrationState:
             }
 
             return stats
+
+    def get_storage_class_breakdown(self, state: str = None) -> Dict:
+        """
+        Get breakdown by storage class, optionally filtered by state.
+        Fast query that doesn't require sampling.
+        """
+        with self._get_connection() as conn:
+            if state:
+                cursor = conn.execute("""
+                    SELECT
+                        storage_class,
+                        COUNT(*) as count,
+                        SUM(size) as total_size
+                    FROM files
+                    WHERE state = ?
+                    GROUP BY storage_class
+                """, (state,))
+            else:
+                cursor = conn.execute("""
+                    SELECT
+                        storage_class,
+                        COUNT(*) as count,
+                        SUM(size) as total_size
+                    FROM files
+                    GROUP BY storage_class
+                """)
+
+            breakdown = {}
+            for row in cursor.fetchall():
+                breakdown[row['storage_class']] = {
+                    'count': row['count'],
+                    'size': row['total_size'] or 0
+                }
+
+            return breakdown
 
     def get_progress(self) -> Tuple[int, int, int, int]:
         """
@@ -373,7 +418,7 @@ class MigrationState:
 
     def mark_bucket_scanned(self, bucket: str, file_count: int, total_size: int):
         """Mark a bucket as completely scanned"""
-        now = datetime.utcnow().isoformat()
+        now = datetime.now(timezone.utc).isoformat()
         with self._get_connection() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO scanned_buckets
@@ -399,3 +444,50 @@ class MigrationState:
                 ORDER BY bucket
             """)
             return [dict(row) for row in cursor.fetchall()]
+
+    def set_metadata(self, key: str, value: str):
+        """Set a metadata value"""
+        now = datetime.now(timezone.utc).isoformat()
+        with self._get_connection() as conn:
+            conn.execute("""
+                INSERT OR REPLACE INTO migration_metadata
+                (key, value, updated_at)
+                VALUES (?, ?, ?)
+            """, (key, value, now))
+            conn.commit()
+
+    def get_metadata(self, key: str) -> Optional[str]:
+        """Get a metadata value"""
+        with self._get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT value FROM migration_metadata WHERE key = ?
+            """, (key,))
+            row = cursor.fetchone()
+            return row['value'] if row else None
+
+    def get_migration_runtime_info(self) -> Dict:
+        """
+        Get migration runtime information.
+        Returns start time and completion stats for actual migration (not scan).
+        """
+        migration_start = self.get_metadata('migration_start_time')
+
+        with self._get_connection() as conn:
+            cursor = conn.execute("""
+                SELECT
+                    COUNT(*) as total_files,
+                    SUM(size) as total_bytes,
+                    SUM(CASE WHEN state = ? THEN 1 ELSE 0 END) as completed_files,
+                    SUM(CASE WHEN state = ? THEN size ELSE 0 END) as completed_bytes
+                FROM files
+            """, (FileState.DELETED, FileState.DELETED))
+
+            row = cursor.fetchone()
+
+            return {
+                'migration_start_time': migration_start,
+                'total_files': row['total_files'],
+                'total_bytes': row['total_bytes'] or 0,
+                'completed_files': row['completed_files'],
+                'completed_bytes': row['completed_bytes'] or 0
+            }

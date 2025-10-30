@@ -12,7 +12,7 @@ import os
 
 # Local destination directory for all bucket data
 # Set this to your desired local path
-LOCAL_BASE_PATH = os.path.expanduser("~/s3_backup")
+LOCAL_BASE_PATH = "/Volumes/Extreme SSD/s3_backup"
 
 # State database location
 STATE_DB_PATH = "s3_migration_state.db"
@@ -24,9 +24,6 @@ GLACIER_RESTORE_TIER = "Standard"  # Options: Expedited, Standard, Bulk
 # Progress update interval (seconds) - increased for less overhead with parallel processing
 PROGRESS_UPDATE_INTERVAL = 5
 
-# Verification method: 'etag' or 'md5'
-VERIFICATION_METHOD = "etag"
-
 # Maximum concurrent Glacier restore requests
 MAX_GLACIER_RESTORES = 100
 
@@ -34,11 +31,11 @@ MAX_GLACIER_RESTORES = 100
 DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024
 
 # Parallel download settings
-MAX_CONCURRENT_DOWNLOADS = 10  # Number of simultaneous file downloads
+MAX_CONCURRENT_DOWNLOADS = 100  # Number of simultaneous file downloads (optimized for network throughput)
 MAX_CONCURRENT_VERIFICATIONS = 5  # Number of simultaneous file verifications
 
 # Batch processing settings
-BATCH_SIZE = 50  # Number of files to process per batch
+BATCH_SIZE = 200  # Number of files to process per batch (increased for better throughput)
 DB_BATCH_COMMIT_SIZE = 20  # Number of state updates to batch before committing
 
 # S3 Transfer Manager settings (for large file multipart transfers)

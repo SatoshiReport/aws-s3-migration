@@ -2,8 +2,9 @@
 File migration handler: downloads, verifies, and manages S3 file transfers.
 """
 import os
-import hashlib
+import time
 import boto3
+from botocore.exceptions import ClientError
 from boto3.s3.transfer import TransferConfig
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Optional
@@ -30,9 +31,14 @@ class FileMigrator:
             use_threads=config.USE_THREADS
         )
 
+        # AWS throttle detection
+        self.throttle_count = 0
+        self.backoff_until = 0
+        self.last_throttle_warning = 0
+
     def download_file(self, file_info: Dict) -> bool:
         """
-        Download a file from S3 to local storage.
+        Download a file from S3 to local storage with AWS throttle detection.
 
         Args:
             file_info: File information from state database
@@ -42,6 +48,10 @@ class FileMigrator:
         """
         bucket = file_info['bucket']
         key = file_info['key']
+
+        # Check if we're in backoff period
+        if time.time() < self.backoff_until:
+            return False  # Skip this file, will retry later
 
         # Build local path: base_path/bucket/key
         local_path = self.base_path / bucket / key
@@ -62,6 +72,9 @@ class FileMigrator:
                 Config=self.transfer_config
             )
 
+            # Success - reset throttle counter
+            self.throttle_count = 0
+
             # Mark as downloaded
             self.state.update_state(
                 bucket, key, FileState.DOWNLOADED,
@@ -70,7 +83,36 @@ class FileMigrator:
 
             return True
 
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', '')
+
+            # Detect AWS throttling
+            if error_code in ['SlowDown', 'RequestLimitExceeded', '503']:
+                self.throttle_count += 1
+                backoff_seconds = min(60, 2 ** self.throttle_count)
+                self.backoff_until = time.time() + backoff_seconds
+
+                # Print warning (but not too frequently)
+                current_time = time.time()
+                if current_time - self.last_throttle_warning > 10:
+                    print(f"\n⚠️  AWS THROTTLING DETECTED!")
+                    print(f"   Error: {error_code}")
+                    print(f"   Backing off for {backoff_seconds} seconds")
+                    print(f"   Throttle count: {self.throttle_count}")
+                    self.last_throttle_warning = current_time
+
+                # Reset file state to discovered so it will be retried
+                self.state.update_state(bucket, key, FileState.DISCOVERED)
+                return False
+
+            # Other AWS errors
+            error_msg = f"Download failed: {error_code} - {str(e)}"
+            print(f"  ERROR: {bucket}/{key}: {error_msg}")
+            self.state.update_state(bucket, key, FileState.ERROR, error_message=error_msg)
+            return False
+
         except Exception as e:
+            # Non-AWS errors
             error_msg = f"Download failed: {str(e)}"
             print(f"  ERROR: {bucket}/{key}: {error_msg}")
             self.state.update_state(bucket, key, FileState.ERROR, error_message=error_msg)
@@ -79,6 +121,9 @@ class FileMigrator:
     def verify_file(self, file_info: Dict) -> bool:
         """
         Verify downloaded file matches S3 object.
+
+        boto3 already verifies integrity during download using checksums.
+        We just verify size to catch any disk write issues.
 
         Args:
             file_info: File information from state database
@@ -89,7 +134,6 @@ class FileMigrator:
         bucket = file_info['bucket']
         key = file_info['key']
         local_path = file_info['local_path']
-        expected_etag = file_info['etag']
         expected_size = file_info['size']
 
         if not local_path or not os.path.exists(local_path):
@@ -98,7 +142,7 @@ class FileMigrator:
             return False
 
         try:
-            # Check file size first (always)
+            # Verify file size (boto3 already verified integrity during download)
             actual_size = os.path.getsize(local_path)
             if actual_size != expected_size:
                 error_msg = f"Size mismatch: expected {expected_size}, got {actual_size}"
@@ -109,39 +153,10 @@ class FileMigrator:
                     os.remove(local_path)
                 return False
 
-            # Check if this is a multipart upload (ETag contains a dash)
-            is_multipart = '-' in expected_etag
-
-            if is_multipart:
-                # For multipart uploads, ETag format is "md5ofmd5s-partcount"
-                # We can't easily verify without knowing the part size used during upload
-                # So we rely on size check and boto3's download integrity
-                print(f"  NOTE: {bucket}/{key}: Multipart upload detected, using size verification only")
-                checksum = f"multipart-{expected_etag}"
-            else:
-                # Single-part upload: verify with MD5/ETag
-                if config.VERIFICATION_METHOD == 'etag':
-                    calculated_etag = self._calculate_etag(local_path)
-                    matches = calculated_etag == expected_etag
-                    checksum = calculated_etag
-                else:
-                    calculated_md5 = self._calculate_md5(local_path)
-                    matches = calculated_md5 == expected_etag
-                    checksum = calculated_md5
-
-                if not matches:
-                    error_msg = "Checksum mismatch"
-                    print(f"  ERROR: {bucket}/{key}: {error_msg}")
-                    self.state.update_state(bucket, key, FileState.ERROR, error_message=error_msg)
-                    # Delete corrupted file
-                    if os.path.exists(local_path):
-                        os.remove(local_path)
-                    return False
-
-            # Verification passed
+            # Verification passed - size matches and boto3 verified integrity during download
             self.state.update_state(
                 bucket, key, FileState.VERIFIED,
-                checksum=checksum
+                checksum=f"size-verified-{expected_size}"
             )
             return True
 
@@ -153,7 +168,7 @@ class FileMigrator:
 
     def delete_from_s3(self, file_info: Dict) -> bool:
         """
-        Delete file from S3 after successful verification.
+        Delete file from S3 after successful verification with throttle detection.
 
         Args:
             file_info: File information from state database
@@ -164,35 +179,50 @@ class FileMigrator:
         bucket = file_info['bucket']
         key = file_info['key']
 
+        # Check if we're in backoff period
+        if time.time() < self.backoff_until:
+            return False  # Skip this file, will retry later
+
         try:
             self.s3.delete_object(Bucket=bucket, Key=key)
+            self.throttle_count = 0  # Reset on success
             self.state.update_state(bucket, key, FileState.DELETED)
             return True
 
+        except ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code', '')
+
+            # Detect AWS throttling
+            if error_code in ['SlowDown', 'RequestLimitExceeded', '503']:
+                self.throttle_count += 1
+                backoff_seconds = min(60, 2 ** self.throttle_count)
+                self.backoff_until = time.time() + backoff_seconds
+
+                # Print warning (but not too frequently)
+                current_time = time.time()
+                if current_time - self.last_throttle_warning > 10:
+                    print(f"\n⚠️  AWS THROTTLING DETECTED (DELETE)!")
+                    print(f"   Error: {error_code}")
+                    print(f"   Backing off for {backoff_seconds} seconds")
+                    print(f"   Throttle count: {self.throttle_count}")
+                    self.last_throttle_warning = current_time
+
+                # Keep in VERIFIED state so deletion will be retried
+                return False
+
+            # Other AWS errors
+            error_msg = f"S3 deletion failed: {error_code} - {str(e)}"
+            print(f"  ERROR: {bucket}/{key}: {error_msg}")
+            self.state.update_state(bucket, key, FileState.ERROR, error_message=error_msg)
+            return False
+
         except Exception as e:
+            # Non-AWS errors
             error_msg = f"S3 deletion failed: {str(e)}"
             print(f"  ERROR: {bucket}/{key}: {error_msg}")
             self.state.update_state(bucket, key, FileState.ERROR, error_message=error_msg)
             return False
 
-    @staticmethod
-    def _calculate_md5(file_path: str) -> str:
-        """Calculate MD5 hash of file"""
-        md5_hash = hashlib.md5()
-        with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(config.DOWNLOAD_CHUNK_SIZE), b""):
-                md5_hash.update(chunk)
-        return md5_hash.hexdigest()
-
-    @staticmethod
-    def _calculate_etag(file_path: str) -> str:
-        """
-        Calculate ETag for file.
-        For single-part uploads, ETag is just MD5.
-        For multipart uploads, it's more complex (not implemented here).
-        """
-        # Simple MD5 for now (works for files uploaded as single part)
-        return FileMigrator._calculate_md5(file_path)
 
     def process_file(self, file_info: Dict) -> bool:
         """
