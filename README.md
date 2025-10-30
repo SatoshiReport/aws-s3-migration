@@ -2,6 +2,8 @@
 
 A clean, organized collection of Python scripts for managing AWS S3 buckets, including policy management and complete bucket migration to local storage.
 
+For comprehensive operator and development guidance, see the full documentation in `docs/README.md`.
+
 ## Prerequisites
 
 - Python 3.6+
