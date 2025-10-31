@@ -670,14 +670,14 @@ class TestBucketDeleter:
         mock_state = mock.Mock()
         mock_state.get_bucket_info.return_value = {"file_count": 3}
 
-        # Mock paginator with single page
+        # Mock paginator with single page (list_object_versions format)
         mock_paginator = mock.Mock()
         mock_paginator.paginate.return_value = [
             {
-                "Contents": [
-                    {"Key": "file1.txt"},
-                    {"Key": "file2.txt"},
-                    {"Key": "file3.txt"},
+                "Versions": [
+                    {"Key": "file1.txt", "VersionId": "v1"},
+                    {"Key": "file2.txt", "VersionId": "v2"},
+                    {"Key": "file3.txt", "VersionId": "v3"},
                 ]
             }
         ]
@@ -691,6 +691,8 @@ class TestBucketDeleter:
         call_args = mock_s3.delete_objects.call_args
         assert call_args[1]["Bucket"] == "test-bucket"
         assert len(call_args[1]["Delete"]["Objects"]) == 3
+        # Verify VersionId is included
+        assert all("VersionId" in obj for obj in call_args[1]["Delete"]["Objects"])
 
     def test_delete_bucket_multiple_pages(self):
         """Test deleting bucket with multiple pages of objects"""
@@ -698,12 +700,27 @@ class TestBucketDeleter:
         mock_state = mock.Mock()
         mock_state.get_bucket_info.return_value = {"file_count": 6}
 
-        # Mock paginator with two pages
+        # Mock paginator with multiple pages (list_object_versions format)
         mock_paginator = mock.Mock()
         mock_paginator.paginate.return_value = [
-            {"Contents": [{"Key": "file1.txt"}, {"Key": "file2.txt"}]},
-            {"Contents": [{"Key": "file3.txt"}, {"Key": "file4.txt"}]},
-            {"Contents": [{"Key": "file5.txt"}, {"Key": "file6.txt"}]},
+            {
+                "Versions": [
+                    {"Key": "file1.txt", "VersionId": "v1"},
+                    {"Key": "file2.txt", "VersionId": "v2"},
+                ]
+            },
+            {
+                "Versions": [
+                    {"Key": "file3.txt", "VersionId": "v3"},
+                    {"Key": "file4.txt", "VersionId": "v4"},
+                ]
+            },
+            {
+                "Versions": [
+                    {"Key": "file5.txt", "VersionId": "v5"},
+                    {"Key": "file6.txt", "VersionId": "v6"},
+                ]
+            },
         ]
         mock_s3.get_paginator.return_value = mock_paginator
 
@@ -714,17 +731,17 @@ class TestBucketDeleter:
         assert mock_s3.delete_objects.call_count == 3
 
     def test_delete_bucket_handles_empty_pages(self):
-        """Test deleting bucket handles pages with no Contents"""
+        """Test deleting bucket handles pages with no Versions"""
         mock_s3 = mock.Mock()
         mock_state = mock.Mock()
         mock_state.get_bucket_info.return_value = {"file_count": 2}
 
-        # Mock paginator with mixed pages
+        # Mock paginator with mixed pages (list_object_versions format)
         mock_paginator = mock.Mock()
         mock_paginator.paginate.return_value = [
-            {"Contents": [{"Key": "file1.txt"}]},
-            {},  # Empty page (no Contents key)
-            {"Contents": [{"Key": "file2.txt"}]},
+            {"Versions": [{"Key": "file1.txt", "VersionId": "v1"}]},
+            {},  # Empty page (no Versions key)
+            {"Versions": [{"Key": "file2.txt", "VersionId": "v2"}]},
         ]
         mock_s3.get_paginator.return_value = mock_paginator
 
@@ -741,7 +758,9 @@ class TestBucketDeleter:
         mock_state.get_bucket_info.return_value = {"file_count": 1}
 
         mock_paginator = mock.Mock()
-        mock_paginator.paginate.return_value = [{"Contents": [{"Key": "file1.txt"}]}]
+        mock_paginator.paginate.return_value = [
+            {"Versions": [{"Key": "file1.txt", "VersionId": "v1"}]}
+        ]
         mock_s3.get_paginator.return_value = mock_paginator
 
         deleter = BucketDeleter(mock_s3, mock_state)
@@ -758,18 +777,25 @@ class TestBucketDeleter:
 
         mock_paginator = mock.Mock()
         mock_paginator.paginate.return_value = [
-            {"Contents": [{"Key": "path/to/file1.txt"}, {"Key": "path/to/file2.txt"}]}
+            {
+                "Versions": [
+                    {"Key": "path/to/file1.txt", "VersionId": "v1"},
+                    {"Key": "path/to/file2.txt", "VersionId": "v2"},
+                ]
+            }
         ]
         mock_s3.get_paginator.return_value = mock_paginator
 
         deleter = BucketDeleter(mock_s3, mock_state)
         deleter.delete_bucket("test-bucket")
 
-        # Verify keys are in correct format
+        # Verify keys and version IDs are in correct format
         call_args = mock_s3.delete_objects.call_args
         objects = call_args[1]["Delete"]["Objects"]
         assert objects[0]["Key"] == "path/to/file1.txt"
+        assert objects[0]["VersionId"] == "v1"
         assert objects[1]["Key"] == "path/to/file2.txt"
+        assert objects[1]["VersionId"] == "v2"
 
     def test_delete_bucket_large_batch(self):
         """Test deleting bucket with large batch of objects"""
@@ -777,8 +803,10 @@ class TestBucketDeleter:
         mock_state = mock.Mock()
         mock_state.get_bucket_info.return_value = {"file_count": 1500}
 
-        # Create mock paginator with large batch
-        large_batch = {"Contents": [{"Key": f"file{i}.txt"} for i in range(1500)]}
+        # Create mock paginator with large batch (list_object_versions format)
+        large_batch = {
+            "Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(1500)]
+        }
         mock_paginator = mock.Mock()
         mock_paginator.paginate.return_value = [large_batch]
         mock_s3.get_paginator.return_value = mock_paginator
@@ -796,10 +824,15 @@ class TestBucketDeleter:
         mock_state = mock.Mock()
         mock_state.get_bucket_info.return_value = {"file_count": 5}
 
-        # Create multiple pages to trigger progress updates
+        # Create multiple pages to trigger progress updates (list_object_versions format)
         mock_paginator = mock.Mock()
         pages = [
-            {"Contents": [{"Key": f"file{i}.txt"} for i in range(j * 1000, (j + 1) * 1000)]}
+            {
+                "Versions": [
+                    {"Key": f"file{i}.txt", "VersionId": f"v{i}"}
+                    for i in range(j * 1000, (j + 1) * 1000)
+                ]
+            }
             for j in range(5)
         ]
         mock_paginator.paginate.return_value = pages
@@ -1048,12 +1081,20 @@ class TestEdgeCases:
         mock_state = mock.Mock()
         mock_state.get_bucket_info.return_value = {"file_count": 2500}
 
-        # Create 3 pages with 1000, 1000, 500 objects
+        # Create 3 pages with 1000, 1000, 500 objects (list_object_versions format)
         mock_paginator = mock.Mock()
         mock_paginator.paginate.return_value = [
-            {"Contents": [{"Key": f"file{i}.txt"} for i in range(1000)]},
-            {"Contents": [{"Key": f"file{i}.txt"} for i in range(1000, 2000)]},
-            {"Contents": [{"Key": f"file{i}.txt"} for i in range(2000, 2500)]},
+            {"Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(1000)]},
+            {
+                "Versions": [
+                    {"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(1000, 2000)
+                ]
+            },
+            {
+                "Versions": [
+                    {"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(2000, 2500)
+                ]
+            },
         ]
         mock_s3.get_paginator.return_value = mock_paginator
 

@@ -296,48 +296,62 @@ class BucketDeleter:  # pylint: disable=too-few-public-methods
         self.s3 = s3
         self.state = state
 
+    def _collect_objects_to_delete(self, page):
+        """Collect all object versions and delete markers from a page"""
+        objects_to_delete = []
+
+        # Add regular versions
+        if "Versions" in page:
+            for version in page["Versions"]:
+                objects_to_delete.append({"Key": version["Key"], "VersionId": version["VersionId"]})
+
+        # Add delete markers
+        if "DeleteMarkers" in page:
+            for marker in page["DeleteMarkers"]:
+                objects_to_delete.append({"Key": marker["Key"], "VersionId": marker["VersionId"]})
+
+        return objects_to_delete
+
+    def _calculate_eta(self, deleted_count, total_objects, elapsed):
+        """Calculate ETA for deletion progress"""
+        if deleted_count > 0 and elapsed > 0:
+            rate = deleted_count / elapsed
+            remaining = max(0, total_objects - deleted_count)
+            if remaining > 0:
+                return format_duration(remaining / rate)
+            return "complete"
+        return "calculating..."
+
     def delete_bucket(self, bucket: str):  # pylint: disable=too-many-locals
-        """Delete a bucket and all its contents from S3"""
+        """Delete a bucket and all its contents from S3 (including all versions)"""
         bucket_info = self.state.get_bucket_info(bucket)
         total_objects = bucket_info["file_count"]
-        print(f"  Deleting {total_objects:,} objects from S3...")
+        print(f"  Deleting {total_objects:,} objects from S3 (including all versions)...")
         print()
-        paginator = self.s3.get_paginator("list_objects_v2")
+
+        paginator = self.s3.get_paginator("list_object_versions")
         deleted_count = 0
         start_time = time.time()
         last_update = start_time
+
         for page in paginator.paginate(Bucket=bucket):
-            if "Contents" not in page:
-                continue
-            objects = [{"Key": obj["Key"]} for obj in page["Contents"]]
-            if objects:
-                self.s3.delete_objects(Bucket=bucket, Delete={"Objects": objects})
-                deleted_count += len(objects)
+            objects_to_delete = self._collect_objects_to_delete(page)
+
+            if objects_to_delete:
+                self.s3.delete_objects(Bucket=bucket, Delete={"Objects": objects_to_delete})
+                deleted_count += len(objects_to_delete)
                 current_time = time.time()
                 if current_time - last_update >= 2 or deleted_count % 1000 == 0:
                     elapsed = current_time - start_time
                     pct = (deleted_count / total_objects * 100) if total_objects > 0 else 0
-                    if deleted_count > 0 and elapsed > 0:
-                        rate = deleted_count / elapsed
-                        remaining = total_objects - deleted_count
-                        eta_seconds = remaining / rate
-                        eta_str = format_duration(eta_seconds)
-                    else:
-                        eta_str = "calculating..."
-                    progress = (
-                        f"Progress: {deleted_count:,}/{total_objects:,} "
-                        f"({pct:.1f}%), ETA: {eta_str}  "
-                    )
-                    print(
-                        f"\r  {progress}",
-                        end="",
-                        flush=True,
-                    )
+                    eta_str = self._calculate_eta(deleted_count, total_objects, elapsed)
+                    progress = f"Progress: {deleted_count:,} deleted ({pct:.1f}%), ETA: {eta_str}  "
+                    print(f"\r  {progress}", end="", flush=True)
                     last_update = current_time
+
         print()
-        print(
-            f"  ✓ Deleted {deleted_count:,} objects in {format_duration(time.time() - start_time)}"
-        )
+        duration = format_duration(time.time() - start_time)
+        print(f"  ✓ Deleted {deleted_count:,} objects/versions in {duration}")
         print()
         print("  Deleting empty bucket...")
         self.s3.delete_bucket(Bucket=bucket)
