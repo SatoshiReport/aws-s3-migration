@@ -7,30 +7,24 @@ Usage:
     python block_s3.py --all                   # Generate policies for all buckets
     python block_s3.py                         # Interactive mode
 """
-import sys
-import os
 import argparse
+import os
+import sys
+
 from aws_utils import (
+    generate_restrictive_bucket_policy,
     get_aws_identity,
     list_s3_buckets,
-    generate_restrictive_bucket_policy,
-    save_policy_to_file
+    save_policy_to_file,
 )
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Generate restrictive S3 bucket policies"
-    )
+    """Main entry point for generating restrictive S3 bucket policies"""
+    parser = argparse.ArgumentParser(description="Generate restrictive S3 bucket policies")
+    parser.add_argument("buckets", nargs="*", help="Bucket names to generate policies for")
     parser.add_argument(
-        "buckets",
-        nargs="*",
-        help="Bucket names to generate policies for"
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Generate policies for all buckets in the account"
+        "--all", action="store_true", help="Generate policies for all buckets in the account"
     )
 
     args = parser.parse_args()

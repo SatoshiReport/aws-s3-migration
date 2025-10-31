@@ -6,6 +6,7 @@ from aws_utils import get_aws_identity, list_s3_buckets
 
 
 def main():
+    """Main entry point for displaying AWS account information"""
     # Get AWS identity information
     identity = get_aws_identity()
 

@@ -8,7 +8,6 @@ Performance Optimizations:
 - Thread-safe database operations with proper locking
 - Reduced progress update frequency to minimize overhead
 """
-import os
 
 # Local destination directory for all bucket data
 # Set this to your desired local path
@@ -31,7 +30,9 @@ MAX_GLACIER_RESTORES = 100
 DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024
 
 # Parallel download settings
-MAX_CONCURRENT_DOWNLOADS = 100  # Number of simultaneous file downloads (optimized for network throughput)
+MAX_CONCURRENT_DOWNLOADS = (
+    100  # Number of simultaneous file downloads (optimized for network throughput)
+)
 MAX_CONCURRENT_VERIFICATIONS = 5  # Number of simultaneous file verifications
 
 # Batch processing settings
@@ -46,4 +47,8 @@ USE_THREADS = True  # Use threads for S3 transfers
 
 # Bucket exclusions (optional)
 # Add bucket names to skip during scanning (e.g., buckets you don't own or can't access)
-EXCLUDED_BUCKETS = []  # Example: ['bucket-to-skip', 'another-bucket']
+EXCLUDED_BUCKETS = [
+    "akiaiw6gwdirbsbuzqiq-arq-1",
+    "mufasa-s3",
+    "aws-cost-analysis-results",  # Bucket no longer exists
+]

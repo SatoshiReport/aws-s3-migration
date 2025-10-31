@@ -14,32 +14,31 @@ All scripts use shared utility functions and support command-line arguments for 
 
 ### S3 Migration System
 
-The migration system is designed for resilience and safety:
+The migration system uses AWS CLI for optimized downloads:
 
-**migrate_s3.py** - Main orchestrator with commands:
-- `scan` - Build inventory of all S3 files
-- `migrate` - Execute migration (resumable)
-- `glacier` - Process Glacier restore requests
-- `status` - Display current progress
+**migrate_v2.py** - Main orchestrator using AWS CLI `aws s3 sync`:
+- Scans all buckets and builds inventory
+- Handles Glacier restores automatically
+- Downloads using AWS CLI (faster than boto3)
+- Verifies locally and deletes after confirmation
+- Processes one bucket fully before moving to next
 
-**State Management (migration_state.py)**:
-- SQLite database tracks every file through its lifecycle
-- States: discovered → downloading → downloaded → verified → deleted
-- Glacier files have additional states: glacier_restore_requested → glacier_restoring
+**State Management (migration_state_v2.py)**:
+- SQLite database tracks migration phases
+- Phases: scanning → glacier_restore → glacier_wait → migrate_buckets → complete
+- Each bucket tracked: pending → syncing → verifying → deleting → completed
 - Enables instant resumption after interruption
 
 **Core Components**:
-- `s3_scanner.py` - Discovers all files across all buckets
-- `file_migrator.py` - Downloads, verifies (ETag/MD5), and deletes files
-- `glacier_handler.py` - Manages Glacier restore requests and status checks
-- `progress_tracker.py` - Live progress display with ETA calculations
+- `migrate_v2.py` - All-in-one orchestrator (scan, restore, download, verify)
+- `migration_state_v2.py` - Phase and bucket state management
 - `config.py` - Configuration (LOCAL_BASE_PATH, Glacier settings, etc.)
 
 **Key Design Principles**:
 1. Safety first: Only delete from S3 after verified local copy
 2. Resilience: Can stop/resume at any time via state DB
-3. Simplicity: No complex fallback logic, straightforward state machine
-4. Transparency: Live progress with elapsed time and ETA
+3. Simplicity: No complex fallback logic, straightforward phases
+4. Performance: AWS CLI sync for optimized downloads
 
 ### Policy Management System
 
@@ -78,43 +77,34 @@ The migration system is designed for resilience and safety:
 ```bash
 # Configure destination path in config.py first
 
-# Scan all buckets and build inventory
-python migrate_s3.py scan
+# Run/resume migration (handles everything automatically)
+python migrate_v2.py
 
 # Show current status and progress
-python migrate_s3.py status
-
-# Start/resume migration (handles Glacier automatically)
-python migrate_s3.py migrate
-
-# View files that encountered errors
-python migrate_s3.py errors
-
-# Retry failed files
-python migrate_s3.py retry-errors
+python migrate_v2.py status
 
 # Reset database to start fresh (requires confirmation)
-python migrate_s3.py reset
+python migrate_v2.py reset
 ```
 
 **Migration workflow:**
 1. Edit `config.py` to set `LOCAL_BASE_PATH`
-2. Run `scan` to build inventory
-3. Run `migrate` - it handles everything automatically:
-   - Automatically detects and resets stuck files from interrupted runs
-   - Downloads standard files with size and checksum verification
-   - Detects and requests Glacier restores (GLACIER, DEEP_ARCHIVE)
-   - Waits for restores to complete (checking every 60s)
-   - Downloads and verifies all files (including multipart uploads)
-   - Deletes from S3 only after successful verification
-4. If errors occur, use `errors` to view them and `retry-errors` to retry
+2. Run `python migrate_v2.py` - it handles everything automatically in phases:
+   - **Phase 1 (Scanning)**: Discovers all files across all buckets
+   - **Phase 2 (Glacier Restore)**: Requests restores for GLACIER/DEEP_ARCHIVE files
+   - **Phase 3 (Glacier Wait)**: Waits for all restores to complete
+   - **Phase 4 (Migrate Buckets)**: For each bucket:
+     - Downloads using AWS CLI `aws s3 sync`
+     - Verifies all files (size + integrity checks)
+     - Deletes from S3 after manual confirmation
+     - Moves to next bucket only after current bucket is complete
 
 **Storage Classes:**
-- `STANDARD`, `GLACIER_IR`: Downloaded immediately
-- `GLACIER`, `DEEP_ARCHIVE`: Automatically restored, then downloaded
+- `STANDARD`, `GLACIER_IR`: Downloaded immediately in Phase 4
+- `GLACIER`, `DEEP_ARCHIVE`: Restored in Phases 2-3, downloaded in Phase 4
 - Multipart uploads verified by size (ETag verification not possible)
 
-**Note:** The migrate command runs continuously until complete. It automatically handles Glacier files without separate commands. You can interrupt anytime (Ctrl+C) and resume later. Interrupted downloads are automatically detected and reset on next run.
+**Note:** The migration runs continuously through all phases. You can interrupt anytime (Ctrl+C) and resume later. State is saved after each phase and after each bucket completion.
 
 ### Policy Management
 

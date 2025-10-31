@@ -1,0 +1,52 @@
+[project]
+name = "aws-s3-migration"
+version = "1.0.0"
+description = "AWS S3 bucket migration and policy management tools"
+requires-python = ">=3.10"
+dependencies = [
+    "boto3>=1.28.0",
+    "botocore>=1.31.0"
+]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+skip = ["ci_shared"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["ci_shared", "docs", "scripts", "tests/__pycache__"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --disable-warnings"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["."]
+omit = ["tests/*", "ci_shared/*", "scripts/*"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if __name__ == .__main__.:",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = []
+
+[tool.vulture]
+exclude = ["ci_shared/", "scripts/", "docs/", ".venv/"]
+
+[tool.deptry]
+extend_exclude = ["ci_shared", "tests", "scripts"]
+pep621_dev_dependency_groups = []
+requirements_files_dev = ["scripts/requirements.txt"]
+per_rule_ignores = { DEP002 = ["boto3"], DEP003 = ["ci_tools"] }

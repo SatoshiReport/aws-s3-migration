@@ -20,53 +20,48 @@ LOCAL_BASE_PATH = os.path.expanduser("~/s3_backup")
 
 ## Scripts
 
-### S3 Migration Tool (NEW)
+### S3 Migration Tool
 
-**migrate_s3.py** - Complete S3 bucket migration to local storage with resilience and verification.
+**migrate_v2.py** - Optimized S3 bucket migration to local storage using AWS CLI.
 
 **Features:**
 - Scans all S3 buckets and builds inventory
 - Handles Glacier/Deep Archive with restore requests
-- Downloads files with verification (ETag/MD5)
-- Only deletes from S3 after successful verification
+- Fast downloads using AWS CLI `aws s3 sync`
+- Verifies files locally (size + integrity checks)
+- Only deletes from S3 after manual confirmation per bucket
 - Resilient state tracking - can stop/resume anytime
-- Live progress display with ETA
+- Processes one bucket fully before moving to next
 - Simple, no complex fallback logic
 
 **Usage:**
 ```bash
 # 1. Configure destination in config.py
 
-# 2. Scan all buckets to build inventory
-python migrate_s3.py scan
-
-# 3. Check status
-python migrate_s3.py status
-
-# 4. Start migration (can stop/resume anytime)
-# Automatically handles Glacier files!
-python migrate_s3.py migrate
-
-# Optional: Reset database to start fresh
-python migrate_s3.py reset
+# 2. Run migration (or check status)
+python migrate_v2.py           # Run/resume migration
+python migrate_v2.py status    # Show current status
+python migrate_v2.py reset     # Reset and start over
 ```
 
-**That's it!** The migrate command automatically:
-- Downloads standard storage files
-- Detects Glacier files and requests restores
-- Waits for Glacier restores to complete
-- Downloads and verifies everything
-- Deletes from S3 only after verification
+**Migration automatically:**
+1. Scans all buckets and detects Glacier files
+2. Requests Glacier restores (90 days)
+3. Waits for all Glacier restores to complete
+4. For each bucket (one at a time):
+   - Downloads using AWS CLI
+   - Verifies files locally
+   - Deletes from S3 after manual confirmation
 
 **State Tracking:**
 - All progress stored in SQLite (`s3_migration_state.db`)
 - Can interrupt and resume anytime
-- Each file tracked through: discovered → downloading → downloaded → verified → deleted
-- Glacier files: discovered → glacier_restore_requested → glacier_restoring → downloaded → verified → deleted
+- Tracks phases: scanning → glacier_restore → glacier_wait → migrate_buckets → complete
+- Each bucket fully completed before moving to next
 
 **Safety:**
 - Files only deleted from S3 after local verification
-- Corrupted downloads detected and retried
+- Manual confirmation required before deletion
 - No data loss if interrupted
 
 ### Policy Management Tools
@@ -125,14 +120,11 @@ python apply_block.py
 
 ```bash
 # 1. Configure destination in config.py
-# 2. Scan buckets
-python migrate_s3.py scan
-
-# 3. Start migration (handles everything automatically)
-python migrate_s3.py migrate
+# 2. Run migration
+python migrate_v2.py
 ```
 
-The migrate command runs continuously, handling Glacier restores automatically. You can interrupt anytime with Ctrl+C and resume later.
+The migration runs in phases, handling Glacier restores automatically. You can interrupt anytime with Ctrl+C and resume later.
 
 ### Policy Management Workflow
 
@@ -159,13 +151,9 @@ The migrate command runs continuously, handling Glacier restores automatically. 
 
 ```
 aws/
-├── migrate_s3.py              # Main migration orchestrator
+├── migrate_v2.py              # Main migration orchestrator (uses AWS CLI)
+├── migration_state_v2.py      # SQLite state management
 ├── config.py                  # Configuration (set LOCAL_BASE_PATH here)
-├── migration_state.py         # SQLite state management
-├── s3_scanner.py              # S3 bucket scanner
-├── file_migrator.py           # Download/verify/delete handler
-├── glacier_handler.py         # Glacier restore management
-├── progress_tracker.py        # Progress display with ETA
 ├── aws_info.py                # Display AWS account info
 ├── block_s3.py                # Generate bucket policies
 ├── apply_block.py             # Apply policies to S3

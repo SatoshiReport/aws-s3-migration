@@ -1,8 +1,10 @@
 """
 Shared AWS utility functions for S3 bucket management.
 """
-import boto3
+
 import json
+
+import boto3
 
 
 def get_boto3_clients():
@@ -12,9 +14,9 @@ def get_boto3_clients():
     Returns:
         tuple: (s3_client, sts_client, iam_client)
     """
-    s3 = boto3.client('s3')
-    sts = boto3.client('sts')
-    iam = boto3.client('iam')
+    s3 = boto3.client("s3")
+    sts = boto3.client("sts")
+    iam = boto3.client("iam")
     return s3, sts, iam
 
 
@@ -32,11 +34,7 @@ def get_aws_identity():
     username = user["User"]["UserName"]
     user_arn = user["User"]["Arn"]
 
-    return {
-        "account_id": account_id,
-        "username": username,
-        "user_arn": user_arn
-    }
+    return {"account_id": account_id, "username": username, "user_arn": user_arn}
 
 
 def list_s3_buckets():
@@ -47,7 +45,7 @@ def list_s3_buckets():
         list: List of bucket names
     """
     s3, _, _ = get_boto3_clients()
-    return [b['Name'] for b in s3.list_buckets()['Buckets']]
+    return [b["Name"] for b in s3.list_buckets()["Buckets"]]
 
 
 def generate_restrictive_bucket_policy(user_arn, bucket_name):
@@ -67,16 +65,11 @@ def generate_restrictive_bucket_policy(user_arn, bucket_name):
             {
                 "Sid": "AllowOnlyMeFullAccess",
                 "Effect": "Allow",
-                "Principal": {
-                    "AWS": user_arn
-                },
+                "Principal": {"AWS": user_arn},
                 "Action": "s3:*",
-                "Resource": [
-                    f"arn:aws:s3:::{bucket_name}",
-                    f"arn:aws:s3:::{bucket_name}/*"
-                ]
+                "Resource": [f"arn:aws:s3:::{bucket_name}", f"arn:aws:s3:::{bucket_name}/*"],
             }
-        ]
+        ],
     }
 
 
@@ -88,7 +81,7 @@ def save_policy_to_file(policy, filename):
         policy (dict): Policy document
         filename (str): Output filename
     """
-    with open(filename, "w") as f:
+    with open(filename, "w", encoding="utf-8") as f:
         json.dump(policy, f, indent=2)
 
 
@@ -102,7 +95,7 @@ def load_policy_from_file(filename):
     Returns:
         str: Policy document as JSON string
     """
-    with open(filename) as f:
+    with open(filename, encoding="utf-8") as f:
         return f.read()
 
 

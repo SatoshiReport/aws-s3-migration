@@ -26,50 +26,51 @@ aws configure
 
 ## Migration Steps
 
-### Step 1: Scan Buckets
+### Step 1: Run Migration
 
-Build an inventory of all files across all buckets:
-
-```bash
-python migrate_s3.py scan
-```
-
-This creates a SQLite database (`s3_migration_state.db`) tracking every file.
-
-### Step 2: Check Status
-
-View what will be migrated:
+Start the migration process:
 
 ```bash
-python migrate_s3.py status
+python migrate_v2.py
 ```
 
-Shows:
-- Total files and size
-- Files in each state
-- Glacier files that need restore
+**That's it!** The migration handles everything automatically in phases:
 
-### Step 3: Start Migration
+**Phase 1 - Scanning:**
+- Discovers all files across all buckets
+- Identifies Glacier/Deep Archive files
 
-Begin the migration process:
+**Phase 2 - Glacier Restore:**
+- Requests restores for all Glacier files
 
-```bash
-python migrate_s3.py migrate
-```
-
-**That's it!** The migrate command handles everything automatically:
-- Downloads standard storage files immediately
-- Detects Glacier/Deep Archive files
-- Requests restores for Glacier files (up to 100 at a time)
+**Phase 3 - Glacier Wait:**
 - Checks restore status every 60 seconds
-- Downloads files as they become available
-- Verifies each file using ETag/MD5
-- Only deletes from S3 after successful verification
-- Shows progress every 2 seconds with elapsed time and ETA
+- Waits for all restores to complete
+
+**Phase 4 - Migrate Buckets:**
+- For each bucket (one at a time):
+  - Downloads using AWS CLI `aws s3 sync` (fast!)
+  - Verifies all files (size + integrity checks)
+  - Deletes from S3 after manual confirmation
+  - Marks bucket complete before moving to next
 
 **You can interrupt this at any time (Ctrl+C) and resume later!**
 
-The script runs continuously until all files are migrated, automatically handling the Glacier restore waiting period.
+The script runs continuously through all phases, automatically handling Glacier restores.
+
+### Check Status
+
+View current progress:
+
+```bash
+python migrate_v2.py status
+```
+
+Shows:
+- Current phase
+- Completed buckets
+- Total files and size
+- Glacier restore progress
 
 ### Glacier Restore Times
 
@@ -85,48 +86,47 @@ The script checks every 60 seconds for completed restores and downloads them as 
 The migration is fully resumable. Just run:
 
 ```bash
-python migrate_s3.py migrate
+python migrate_v2.py
 ```
 
-It will pick up exactly where it left off. State is saved after every file.
+It will pick up exactly where it left off. State is saved after each phase and after each bucket completion.
 
 ## Progress Display
 
-While migrating, you'll see:
+While migrating, you'll see phase-specific progress:
 
+**Phase 1-3 (Scanning & Glacier):**
 ```
-======================================================================
-MIGRATION PROGRESS
-======================================================================
-Elapsed Time:    2h 15m
-ETA:             45m 30s
-
-Files:           1,234 / 5,678 (21.7%)
-Data:            156.78 GB / 723.45 GB (21.7%)
-Throughput:      19.45 MB/s
-
-Status Breakdown:
-  Discovered                    3,210 files    421.34 GB
-  Downloading                       1 files      0.15 GB
-  Downloaded                       12 files      1.23 GB
-  Verified                        221 files     45.67 GB
-  Deleted                       1,234 files    156.78 GB
-======================================================================
+Phase: scanning
+Buckets scanned: 5/10
+Files discovered: 1,234
+Glacier files: 234
 ```
 
-## File States
+**Phase 4 (Migrating Buckets):**
+```
+Phase: migrate_buckets
+Current bucket: my-bucket-name
+Status: syncing (downloading files via AWS CLI)
+Completed buckets: 3/10
+```
 
-Each file goes through these states:
+## Migration Phases
 
-1. **discovered** - Found during scan, ready to process
-2. **downloading** - Currently being downloaded
-3. **downloaded** - Download complete, awaiting verification
-4. **verified** - Local copy verified, ready to delete from S3
-5. **deleted** - Successfully deleted from S3 (migration complete!)
+The migration progresses through these phases:
 
-For Glacier files, additional states:
-- **glacier_restore_requested** - Restore requested from Glacier
-- **glacier_restoring** - Waiting for restore to complete
+1. **scanning** - Discovering all files across all buckets
+2. **glacier_restore** - Requesting Glacier restores
+3. **glacier_wait** - Waiting for all restores to complete
+4. **migrate_buckets** - Downloading, verifying, and deleting bucket-by-bucket
+5. **complete** - All buckets migrated successfully
+
+Each bucket in Phase 4 goes through:
+- **pending** - Waiting to be processed
+- **syncing** - Downloading via AWS CLI
+- **verifying** - Checking file integrity
+- **deleting** - Removing from S3 (after confirmation)
+- **completed** - Bucket fully migrated
 
 ## Safety Features
 
@@ -167,34 +167,20 @@ Each bucket becomes a directory, preserving the S3 key structure.
 
 ### Check Status Anytime
 ```bash
-python migrate_s3.py status
+python migrate_v2.py status
 ```
 
 ### View State Database
 ```bash
 sqlite3 s3_migration_state.db
-sqlite> SELECT state, COUNT(*) FROM files GROUP BY state;
-sqlite> SELECT * FROM files WHERE state = 'error';
+sqlite> SELECT phase FROM migration_state;
+sqlite> SELECT bucket_name, status FROM bucket_states;
 ```
 
-### Rescan a Bucket
-If new files were added during migration:
-```python
-from migration_state import MigrationState
-from s3_scanner import S3Scanner
-
-state = MigrationState('s3_migration_state.db')
-scanner = S3Scanner(state)
-scanner.rescan_bucket('bucket-name')
-```
-
-### Reset a Failed File
-If a file is stuck in 'error' state and you want to retry:
-```python
-from migration_state import MigrationState, FileState
-
-state = MigrationState('s3_migration_state.db')
-state.update_state('bucket-name', 'file-key', FileState.DISCOVERED)
+### Reset Migration
+To start completely over:
+```bash
+python migrate_v2.py reset
 ```
 
 ## Configuration Options
@@ -236,21 +222,20 @@ DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024  # 8MB
 Typical timeline for migration with Glacier files:
 
 **Day 1:**
-- Run `scan` (minutes)
-- Run `migrate` - it will:
-  - Download standard files immediately
-  - Request Glacier restores automatically
-  - Continue downloading as restores complete
+- Phase 1: Scanning (minutes)
+- Phase 2: Request Glacier restores (minutes)
+- Phase 3: Wait for restores (begins)
 
 **Day 2-3:**
-- Standard tier Glacier restores complete
-- The migrate command (still running or resumed) downloads them automatically
+- Phase 3: Standard tier Glacier restores complete
+- Phase 4: Migrate buckets (begins)
 
 **Day 4+:**
-- All files migrated
+- Phase 4: All buckets migrated
 - S3 buckets empty (files deleted after verification)
+- Migration complete!
 
-**Note:** You don't need to babysit the migration. Run `migrate` once and it handles everything. You can interrupt and resume anytime.
+**Note:** You don't need to babysit the migration. Run `python migrate_v2.py` once and it handles everything. You can interrupt and resume anytime.
 
 ## Performance
 

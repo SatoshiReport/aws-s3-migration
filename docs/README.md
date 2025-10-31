@@ -6,31 +6,27 @@ This repository provides a hardened toolkit for discovering, migrating, and secu
 
 ## 1. Getting Started
 - **Python version**: 3.8+ (tested on macOS with Python 3.11)
-- **Core dependencies**: `boto3`, `botocore`, `psutil` (install via `pip install boto3 psutil`)
+- **Core dependencies**: `boto3`, `botocore` (install via `pip install boto3`)
 - **AWS credentials**: Exported environment variables, AWS CLI profile, or an attached IAM role with S3/STS/IAM privileges
 - **Local storage**: Ensure the destination path specified in `config.py` has enough space for a full copy of every source bucket
-- **Optional tools**: AWS CLI (for `migrate_v2.py`), SQLite CLI (`sqlite3`) for ad-hoc inspections
+- **Required tools**: AWS CLI (for fast downloads), SQLite CLI (`sqlite3`) for ad-hoc inspections
 
 ### Quick Start Workflow
 ```bash
 # 1. Install dependencies (inside a virtual environment if desired)
 python -m venv .venv
 source .venv/bin/activate
-pip install --upgrade pip boto3 psutil
+pip install --upgrade pip boto3
 
 # 2. Configure destination paths and runtime settings
 cp config.py config.local.py  # optional safeguard
-# edit config.py → LOCAL_BASE_PATH, STATE_DB_PATH, concurrency limits, exclusions
+# edit config.py → LOCAL_BASE_PATH, STATE_DB_PATH, Glacier settings
 
-# 3. Build the migration inventory
-python migrate_s3.py scan
+# 3. Run the migration (handles scanning, Glacier restores, downloads automatically)
+python migrate_v2.py
 
-# 4. Run the resilient migration loop
-python migrate_s3.py migrate
-
-# 5. Monitor status or inspect errors as needed
-python migrate_s3.py status
-python migrate_s3.py errors
+# 4. Monitor status as needed
+python migrate_v2.py status
 ```
 
 ---
@@ -41,22 +37,13 @@ python migrate_s3.py errors
 | --- | --- |
 | `README.md` | High-level overview and quick usage summary |
 | `config.py` | Centralized runtime configuration options |
-| `migrate_s3.py` | Primary migration orchestrator (stateful, resumable, verification-aware) |
-| `migrate_v2.py` | Alternate migration flow that hands bulk transfer to the AWS CLI |
-| `migration_state.py` | SQLite-backed state tracking for the default migration engine |
-| `migration_state_v2.py` | Phase-aware SQLite state layer used by the V2 workflow |
-| `file_migrator.py` | Parallel downloader, verifier, and S3 deleter with throttle handling |
-| `s3_scanner.py` | Bucket discovery and inventory builder |
-| `glacier_handler.py` | Glacier/Deep Archive restore orchestration |
-| `progress_tracker.py` | Runs and renders progress metrics and throughput statistics |
+| `migrate_v2.py` | Primary migration orchestrator using AWS CLI for fast downloads |
+| `migration_state_v2.py` | Phase-aware SQLite state tracking |
 | `aws_utils.py` | Shared AWS helpers (STS/IAM identity, policy generation, S3 helpers) |
 | `aws_info.py` | Convenience CLI for showing account metadata and bucket list |
 | `block_s3.py` | Generates restrictive bucket policies per bucket or fleet-wide |
 | `apply_block.py` | Applies locally generated policies back to S3 buckets |
-| `check_state.py` | Quick summary reports from the SQLite state database |
-| `diagnose_speed.py` | Throughput and environment diagnostics (network, system, file sizes) |
-| `migrate_database.py` | One-time database migration helper to upgrade schema to V2 |
-| `BUGFIXES.md`, `MIGRATION_GUIDE.md`, `SECURITY.md` | Supporting notes and historical context |
+| `MIGRATION_GUIDE.md`, `SECURITY.md` | Supporting notes and operational guidance |
 | `policies/`, `policy_template.json` | Policy output directory and template |
 | `s3_migration_state.db` | SQLite database (generated on demand; not tracked in git) |
 
@@ -72,7 +59,7 @@ python migrate_s3.py errors
 | `GLACIER_RESTORE_TIER` | Restore tier (`Expedited`, `Standard`, or `Bulk`; auto-adjusted for Deep Archive) |
 | `MAX_GLACIER_RESTORES` | Concurrency cap for restore submissions per batch |
 | `DOWNLOAD_CHUNK_SIZE` | Streaming chunk size for downloads (bytes) |
-| `MAX_CONCURRENT_DOWNLOADS` | Thread count for simultaneous downloads (migrate_s3) |
+| `MAX_CONCURRENT_DOWNLOADS` | (Legacy - not used by migrate_v2.py which uses AWS CLI) |
 | `MAX_CONCURRENT_VERIFICATIONS` | Parallel verification workers |
 | `BATCH_SIZE`, `DB_BATCH_COMMIT_SIZE` | Batch sizing for work distribution and DB commits |
 | `MULTIPART_THRESHOLD`, `MULTIPART_CHUNKSIZE`, `MAX_CONCURRENCY`, `USE_THREADS` | Transfer manager tuning parameters |
@@ -153,11 +140,8 @@ Each phase can be resumed independently; bucket-level completion markers protect
 
 ## 7. Diagnostics & Operational Helpers
 
-- **`check_state.py`**: Summarizes counts/size by state from `files` table to verify migration health.
-- **`diagnose_speed.py`**: Measures S3 download speed, system resources, file size distribution, and outstanding connections. Useful when tuning concurrency or investigating throttling.
-- **`progress_tracker.ProgressTracker`**: Provides metrics used by `status` and completion reports, including session vs. overall throughput, ETA, and storage class breakdowns.
-- **`glacier_handler.GlacierHandler`**: Handles restore requests, status polling, and ensures Glacier objects re-enter the main download queue when ready.
-- **`file_migrator.FileMigrator`**: Centralized downloader/verifier/deleter with exponential backoff and checksum recording.
+- **`migration_state_v2.py`**: SQLite-backed phase and bucket state tracking for the migration workflow.
+- **AWS CLI**: `migrate_v2.py` leverages `aws s3 sync` for optimized bulk transfers.
 
 ---
 
@@ -166,9 +150,9 @@ Each phase can be resumed independently; bucket-level completion markers protect
 - **Credentials**: Run with an IAM principal that has explicit S3 and Glacier privileges, plus `iam:GetUser` (for policy generation) and `sts:GetCallerIdentity`.
 - **Backups & verification**: Keep local copies until confidence is established; `deleted` state indicates an S3 delete has occurred.
 - **Glacier restores**: Expect up to several hours for `DEEP_ARCHIVE` restores. The tooling limits outstanding restore submissions via `MAX_GLACIER_RESTORES`.
-- **Throttling**: Increase `MAX_CONCURRENT_DOWNLOADS` gradually and monitor `diagnose_speed.py` output. AWS throttling sends `SlowDown`—the migrator backs off automatically.
-- **Interruptions**: It is safe to stop processes mid-run; rerun the same command to resume. For long pauses, re-run `glacier` to refresh restore status before `migrate`.
-- **State reset**: Use `migrate_s3.py reset` only when you intentionally want to rebuild the inventory; deleting the DB requires a fresh scan.
+- **Throttling**: AWS CLI handles throttling automatically with built-in retry logic.
+- **Interruptions**: It is safe to stop processes mid-run; rerun `python migrate_v2.py` to resume.
+- **State reset**: Use `python migrate_v2.py reset` only when you intentionally want to rebuild the inventory; deleting the DB requires a fresh scan.
 
 ---
 
@@ -176,8 +160,8 @@ Each phase can be resumed independently; bucket-level completion markers protect
 
 - **Environment**: Use a virtual environment; consider creating a `requirements.txt` derived from `pip freeze` for reproducibility.
 - **Linting/formatting**: The codebase favors readable, comment-light Python. Align with existing style (PEP 8 spacing, docstrings on modules/classes).
-- **Extending commands**: Add argparse subcommands within `migrate_s3.py` or `migrate_v2.py` when introducing new workflows. Keep docstrings up to date.
-- **Database migrations**: If schema changes are required, follow the pattern in `migrate_database.py` and preserve existing data. Document upgrades here.
+- **Extending commands**: Add argparse subcommands within `migrate_v2.py` when introducing new workflows. Keep docstrings up to date.
+- **Database migrations**: If schema changes are required, preserve existing data and document upgrades.
 - **Testing ideas**: Stand up a test account with disposable buckets; seed sample objects (STANDARD + GLACIER). Validate both migration engines end-to-end before production use.
 
 ---
@@ -187,9 +171,8 @@ Each phase can be resumed independently; bucket-level completion markers protect
 | Symptom | Probable Cause | Suggested Action |
 | --- | --- | --- |
 | `botocore.exceptions.NoCredentialsError` | AWS credentials unavailable | Export `AWS_PROFILE`, set env vars, or attach IAM role |
-| Files stuck in `downloading`/`downloaded` | Interrupted session | Run `python migrate_s3.py migrate`; the migrator resumes in-place |
-| Files stuck in `error` | Verification failures, missing local files, AWS throttling | Inspect via `python migrate_s3.py errors`, then `retry-errors` after fixing |
-| Glacier backlog never clears | Restore requests throttled or expired | Manually run `python migrate_s3.py glacier` or check AWS console for job status |
+| Bucket stuck in syncing/verifying | Interrupted session | Run `python migrate_v2.py`; the migrator resumes from last phase |
+| Glacier files not downloading | Restores still in progress | Wait for Phase 3 to complete; check AWS console for restore job status |
 | SQLite locked errors | Multiple processes writing simultaneously | Avoid running multiple migrations at once; allow current job to flush batch updates |
 | Local disk fills up | Underestimated storage footprint | Expand `LOCAL_BASE_PATH` capacity or migrate buckets individually |
 
@@ -208,8 +191,8 @@ Each phase can be resumed independently; bucket-level completion markers protect
 ## 12. Support Checklist
 
 Before declaring a migration complete:
-1. `python migrate_s3.py status` shows 100% for files and data, with no pending Glacier items
-2. `python migrate_s3.py errors` returns no entries, or retries succeed
+1. `python migrate_v2.py status` shows phase=complete and all buckets marked completed
+2. All local directories match S3 bucket structure
 3. Verify local data integrity (spot-check large files, confirm directory structure)
 4. Archive the `s3_migration_state.db` snapshot for provenance
 5. If using V2, confirm manual delete confirmations have been executed bucket by bucket
