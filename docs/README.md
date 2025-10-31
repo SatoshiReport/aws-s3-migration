@@ -19,8 +19,11 @@ source .venv/bin/activate
 pip install --upgrade pip boto3
 
 # 2. Configure destination paths and runtime settings
-cp config.py config.local.py  # optional safeguard
-# edit config.py → LOCAL_BASE_PATH, STATE_DB_PATH, Glacier settings
+# Create config_local.py with your personal settings
+cat > config_local.py << 'EOF'
+LOCAL_BASE_PATH = "/path/to/your/backup/directory"
+EXCLUDED_BUCKETS = []  # Add bucket names to skip
+EOF
 
 # 3. Run the migration (handles scanning, Glacier restores, downloads automatically)
 python migrate_v2.py
@@ -36,7 +39,8 @@ python migrate_v2.py status
 | Path | Purpose |
 | --- | --- |
 | `README.md` | High-level overview and quick usage summary |
-| `config.py` | Centralized runtime configuration options |
+| `config.py` | Default configuration settings (committed to git) |
+| `config_local.py` | Personal settings override (NOT in git - create this file) |
 | `migrate_v2.py` | Primary migration orchestrator using AWS CLI for fast downloads |
 | `migration_state_v2.py` | Phase-aware SQLite state tracking |
 | `aws_utils.py` | Shared AWS helpers (STS/IAM identity, policy generation, S3 helpers) |
@@ -49,11 +53,19 @@ python migrate_v2.py status
 
 ---
 
-## 3. Configuration Reference (`config.py`)
+## 3. Configuration Reference
+
+### Personal Settings (`config_local.py` - not in git)
 
 | Setting | Description |
 | --- | --- |
 | `LOCAL_BASE_PATH` | Root directory where each S3 bucket is mirrored locally (`bucket/key` layout) |
+| `EXCLUDED_BUCKETS` | List of bucket names to skip during scanning/migration |
+
+### System Settings (`config.py`)
+
+| Setting | Description |
+| --- | --- |
 | `STATE_DB_PATH` | Path to the SQLite database tracking every object and migration state |
 | `GLACIER_RESTORE_DAYS` | Number of days to keep restored Glacier objects available |
 | `GLACIER_RESTORE_TIER` | Restore tier (`Expedited`, `Standard`, or `Bulk`; auto-adjusted for Deep Archive) |
@@ -63,9 +75,8 @@ python migrate_v2.py status
 | `MAX_CONCURRENT_VERIFICATIONS` | Parallel verification workers |
 | `BATCH_SIZE`, `DB_BATCH_COMMIT_SIZE` | Batch sizing for work distribution and DB commits |
 | `MULTIPART_THRESHOLD`, `MULTIPART_CHUNKSIZE`, `MAX_CONCURRENCY`, `USE_THREADS` | Transfer manager tuning parameters |
-| `EXCLUDED_BUCKETS` | Optional list of buckets to skip during scans/migration |
 
-**Tip:** Check `config.py` into version control as ground truth, but keep sensitive overrides (e.g., alternative paths) in a private copy and load via environment variables inside a wrapper if needed.
+**Security Note:** `config_local.py` is in `.gitignore` and contains your sensitive settings (paths, bucket names). Never commit this file.
 
 ---
 
