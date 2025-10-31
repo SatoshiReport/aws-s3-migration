@@ -10,8 +10,11 @@ Performance Optimizations:
 """
 
 # Local destination directory for all bucket data
-# Set this to your desired local path
-LOCAL_BASE_PATH = "/Volumes/Extreme SSD/s3_backup"
+# Set this in config_local.py (not committed to git)
+try:
+    from config_local import LOCAL_BASE_PATH  # pylint: disable=unused-import
+except ImportError:
+    LOCAL_BASE_PATH = "/path/to/your/backup/directory"  # Default - override in config_local.py
 
 # State database location
 STATE_DB_PATH = "s3_migration_state.db"
@@ -46,9 +49,9 @@ MAX_CONCURRENCY = 10  # Number of threads for multipart transfers
 USE_THREADS = True  # Use threads for S3 transfers
 
 # Bucket exclusions (optional)
+# Set this in config_local.py (not committed to git)
 # Add bucket names to skip during scanning (e.g., buckets you don't own or can't access)
-EXCLUDED_BUCKETS = [
-    "akiaiw6gwdirbsbuzqiq-arq-1",
-    "mufasa-s3",
-    "aws-cost-analysis-results",  # Bucket no longer exists
-]
+try:
+    from config_local import EXCLUDED_BUCKETS  # pylint: disable=unused-import
+except ImportError:
+    EXCLUDED_BUCKETS = []  # Default - override in config_local.py

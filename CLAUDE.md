@@ -70,12 +70,35 @@ The migration system uses AWS CLI for optimized downloads:
 - Interactive mode shows available policy files
 - Reads policies from `policies/` directory
 
+## Configuration
+
+**Sensitive values are stored in `config_local.py` (not committed to git):**
+
+1. Create `config_local.py` with your personal settings:
+```python
+# Local destination directory for all bucket data
+LOCAL_BASE_PATH = "/Volumes/Extreme SSD/s3_backup"
+
+# Bucket exclusions (optional)
+EXCLUDED_BUCKETS = [
+    "bucket-to-skip-1",
+    "bucket-to-skip-2",
+]
+```
+
+2. Other settings (non-sensitive) are in `config.py`:
+   - Glacier restore settings
+   - Performance tuning (parallel downloads, batch sizes)
+   - S3 Transfer Manager settings
+
+**Note:** `config_local.py` is in `.gitignore` to prevent accidental commits of sensitive data.
+
 ## Common Commands
 
 ### S3 Migration
 
 ```bash
-# Configure destination path in config.py first
+# Configure destination path in config_local.py first
 
 # Run/resume migration (handles everything automatically)
 python migrate_v2.py
