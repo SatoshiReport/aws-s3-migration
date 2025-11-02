@@ -1,8 +1,9 @@
 """State manager classes for file, bucket, and phase operations"""
 
 import sqlite3
-from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Dict, List
+
+from migration_utils import get_utc_now
 
 if TYPE_CHECKING:
     from migration_state_v2 import DatabaseConnection, Phase
@@ -18,7 +19,7 @@ class FileStateManager:
         self, bucket: str, key: str, size: int, etag: str, storage_class: str, last_modified: str
     ):
         """Add a discovered file to tracking database (idempotent)"""
-        now = datetime.now(timezone.utc).isoformat()
+        now = get_utc_now()
         with self.db_conn.get_connection() as conn:
             try:
                 conn.execute(
@@ -36,7 +37,7 @@ class FileStateManager:
 
     def mark_glacier_restore_requested(self, bucket: str, key: str):
         """Mark that Glacier restore has been requested"""
-        now = datetime.now(timezone.utc).isoformat()
+        now = get_utc_now()
         with self.db_conn.get_connection() as conn:
             conn.execute(
                 """UPDATE files SET glacier_restore_requested_at = ?,
@@ -47,7 +48,7 @@ class FileStateManager:
 
     def mark_glacier_restored(self, bucket: str, key: str):
         """Mark that Glacier restore is complete"""
-        now = datetime.now(timezone.utc).isoformat()
+        now = get_utc_now()
         with self.db_conn.get_connection() as conn:
             conn.execute(
                 """UPDATE files SET glacier_restored_at = ?,
@@ -93,7 +94,7 @@ class BucketStateManager:
         """Save or update bucket status"""
         import json  # pylint: disable=import-outside-toplevel
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = get_utc_now()
         storage_json = json.dumps(storage_classes)
         with self.db_conn.get_connection() as conn:
             conn.execute(
@@ -120,7 +121,7 @@ class BucketStateManager:
         local_file_count: int = None,
     ):
         """Mark bucket as verified and store verification results"""
-        now = datetime.now(timezone.utc).isoformat()
+        now = get_utc_now()
         with self.db_conn.get_connection() as conn:
             conn.execute(
                 """UPDATE bucket_status SET verify_complete = 1, verified_file_count = ?,
@@ -144,7 +145,7 @@ class BucketStateManager:
 
     def _update_bucket_flag(self, bucket: str, flag_name: str):
         """Helper to update a boolean flag"""
-        now = datetime.now(timezone.utc).isoformat()
+        now = get_utc_now()
         with self.db_conn.get_connection() as conn:
             conn.execute(
                 f"UPDATE bucket_status SET {flag_name} = 1, updated_at = ? WHERE bucket = ?",
@@ -229,7 +230,7 @@ class PhaseManager:
 
     def set_phase(self, phase: "Phase"):
         """Set current migration phase"""
-        now = datetime.now(timezone.utc).isoformat()
+        now = get_utc_now()
         with self.db_conn.get_connection() as conn:
             conn.execute(
                 """INSERT OR REPLACE INTO migration_metadata

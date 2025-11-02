@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 from migration_state_v2 import MigrationStateV2
-from migration_utils import format_duration, format_size
+from migration_utils import ProgressTracker, format_duration, format_size
 
 
 class BucketSyncer:  # pylint: disable=too-few-public-methods
@@ -42,7 +42,7 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
 
     def _monitor_sync_progress(self, process, start_time):
         """Monitor AWS CLI sync progress and return stats"""
-        last_update = time.time()
+        progress = ProgressTracker(update_interval=1.0)
         files_done = 0
         bytes_done = 0
         while True:
@@ -57,7 +57,8 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
                 if file_bytes:
                     bytes_done += file_bytes
                     files_done += 1
-                last_update = self._update_progress(start_time, last_update, files_done, bytes_done)
+                if progress.should_update():
+                    self._display_progress(start_time, files_done, bytes_done)
         return files_done, bytes_done
 
     def _parse_aws_size(self, line: str):
@@ -77,20 +78,16 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
         except (ValueError, IndexError, AttributeError):
             return None
 
-    def _update_progress(self, start_time, last_update, files_done, bytes_done):
-        """Update progress display if enough time has elapsed"""
-        current_time = time.time()
-        if current_time - last_update >= 1:
-            elapsed = current_time - start_time
-            if elapsed > 0 and bytes_done > 0:
-                throughput = bytes_done / elapsed
-                progress = (
-                    f"Progress: {files_done:,} files, {format_size(bytes_done)} "
-                    f"({format_size(throughput)}/s)  "
-                )
-                print(f"\r  {progress}", end="", flush=True)
-            return current_time
-        return last_update
+    def _display_progress(self, start_time, files_done, bytes_done):
+        """Display progress"""
+        elapsed = time.time() - start_time
+        if elapsed > 0 and bytes_done > 0:
+            throughput = bytes_done / elapsed
+            progress = (
+                f"Progress: {files_done:,} files, {format_size(bytes_done)} "
+                f"({format_size(throughput)}/s)  "
+            )
+            print(f"\r  {progress}", end="", flush=True)
 
     def _check_sync_errors(self, process):
         """Check for sync errors in stderr"""

@@ -6,7 +6,15 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from migration_state_v2 import MigrationStateV2
-from migration_utils import format_duration, format_size, print_verification_success_messages
+from migration_utils import (
+    ProgressTracker,
+    calculate_eta_bytes,
+    calculate_eta_items,
+    format_duration,
+    format_size,
+    hash_file_in_chunks,
+    print_verification_success_messages,
+)
 
 
 class FileInventoryChecker:  # pylint: disable=too-few-public-methods
@@ -35,19 +43,17 @@ class FileInventoryChecker:  # pylint: disable=too-few-public-methods
         local_path = self.base_path / bucket
         local_files = {}
         scan_count = 0
-        last_update = time.time()
+        progress = ProgressTracker(update_interval=2.0)
         for file_path in local_path.rglob("*"):
             if file_path.is_file():
                 relative_path = file_path.relative_to(local_path)
                 s3_key = str(relative_path).replace("\\", "/")
                 local_files[s3_key] = file_path
                 scan_count += 1
-                current_time = time.time()
-                if current_time - last_update >= 2 or scan_count % 10000 == 0:
+                if progress.should_update() or scan_count % 10000 == 0:
                     pct = (scan_count / expected_files * 100) if expected_files > 0 else 0
                     status = f"Scanned: {scan_count:,} files ({pct:.1f}%)  "
                     print(f"\r  {status}", end="", flush=True)
-                    last_update = current_time
         print(f"\r  Found {len(local_files):,} local files" + " " * 30)
         print()
         return local_files
@@ -84,43 +90,33 @@ class FileInventoryChecker:  # pylint: disable=too-few-public-methods
 class VerificationProgressTracker:  # pylint: disable=too-few-public-methods
     """Tracks and displays verification progress"""
 
+    def __init__(self):
+        self.progress = ProgressTracker(update_interval=2.0)
+
     def update_progress(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         start_time,
-        last_update,
         verified_count,
         total_bytes_verified,
         expected_files,
         expected_size,
     ):
         """Update progress display if enough time has elapsed"""
-        current_time = time.time()
-        if current_time - last_update >= 2 or verified_count % 100 == 0:
-            elapsed = current_time - start_time
+        if self.progress.should_update() or verified_count % 100 == 0:
+            elapsed = time.time() - start_time
             file_pct = (verified_count / expected_files * 100) if expected_files > 0 else 0
             byte_pct = (total_bytes_verified / expected_size * 100) if expected_size > 0 else 0
-            eta_str = self._calculate_eta(elapsed, total_bytes_verified, expected_size)
-            progress = (
+            eta_str = calculate_eta_bytes(elapsed, total_bytes_verified, expected_size)
+            progress_str = (
                 f"Progress: {verified_count:,}/{expected_files:,} files ({file_pct:.1f}%), "
                 f"{format_size(total_bytes_verified)}/{format_size(expected_size)} "
                 f"({byte_pct:.1f}%), ETA: {eta_str}  "
             )
             print(
-                f"\r  {progress}",
+                f"\r  {progress_str}",
                 end="",
                 flush=True,
             )
-            return current_time
-        return last_update
-
-    def _calculate_eta(self, elapsed, total_bytes_verified, expected_size):
-        """Calculate ETA string"""
-        if total_bytes_verified > 0 and elapsed > 0:
-            throughput = total_bytes_verified / elapsed
-            remaining_bytes = expected_size - total_bytes_verified
-            eta_seconds = remaining_bytes / throughput
-            return format_duration(eta_seconds)
-        return "calculating..."
 
 
 class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
@@ -143,13 +139,11 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
             "verification_errors": [],
         }
         start_time = time.time()
-        last_update = start_time
         expected_keys = set(expected_file_map.keys())
         for s3_key in sorted(expected_keys):
             self._verify_single_file(s3_key, local_files, expected_file_map, stats)
-            last_update = self.progress.update_progress(
+            self.progress.update_progress(
                 start_time,
-                last_update,
                 stats["verified_count"],
                 stats["total_bytes_verified"],
                 expected_files,
@@ -186,9 +180,7 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
         """Verify multipart file with SHA256"""
         try:
             sha256_hash = hashlib.sha256()
-            with open(file_path, "rb") as f:
-                for chunk in iter(lambda: f.read(8 * 1024 * 1024), b""):
-                    sha256_hash.update(chunk)
+            hash_file_in_chunks(file_path, sha256_hash)
             sha256_hash.hexdigest()
             stats["checksum_verified"] += 1
             stats["verified_count"] += 1
@@ -226,9 +218,7 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
         """Compute ETag for a single-part upload (simple MD5 hash)"""
         s3_etag = s3_etag.strip('"')
         md5_hash = hashlib.md5()
-        with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(8 * 1024 * 1024), b""):
-                md5_hash.update(chunk)
+        hash_file_in_chunks(file_path, md5_hash)
         computed_etag = md5_hash.hexdigest()
         return computed_etag, computed_etag == s3_etag
 
@@ -312,16 +302,6 @@ class BucketDeleter:  # pylint: disable=too-few-public-methods
 
         return objects_to_delete
 
-    def _calculate_eta(self, deleted_count, total_objects, elapsed):
-        """Calculate ETA for deletion progress"""
-        if deleted_count > 0 and elapsed > 0:
-            rate = deleted_count / elapsed
-            remaining = max(0, total_objects - deleted_count)
-            if remaining > 0:
-                return format_duration(remaining / rate)
-            return "complete"
-        return "calculating..."
-
     def delete_bucket(self, bucket: str):  # pylint: disable=too-many-locals
         """Delete a bucket and all its contents from S3 (including all versions)"""
         bucket_info = self.state.get_bucket_info(bucket)
@@ -332,7 +312,7 @@ class BucketDeleter:  # pylint: disable=too-few-public-methods
         paginator = self.s3.get_paginator("list_object_versions")
         deleted_count = 0
         start_time = time.time()
-        last_update = start_time
+        progress = ProgressTracker(update_interval=2.0)
 
         for page in paginator.paginate(Bucket=bucket):
             objects_to_delete = self._collect_objects_to_delete(page)
@@ -340,14 +320,14 @@ class BucketDeleter:  # pylint: disable=too-few-public-methods
             if objects_to_delete:
                 self.s3.delete_objects(Bucket=bucket, Delete={"Objects": objects_to_delete})
                 deleted_count += len(objects_to_delete)
-                current_time = time.time()
-                if current_time - last_update >= 2 or deleted_count % 1000 == 0:
-                    elapsed = current_time - start_time
+                if progress.should_update() or deleted_count % 1000 == 0:
+                    elapsed = time.time() - start_time
                     pct = (deleted_count / total_objects * 100) if total_objects > 0 else 0
-                    eta_str = self._calculate_eta(deleted_count, total_objects, elapsed)
-                    progress = f"Progress: {deleted_count:,} deleted ({pct:.1f}%), ETA: {eta_str}  "
-                    print(f"\r  {progress}", end="", flush=True)
-                    last_update = current_time
+                    eta_str = calculate_eta_items(elapsed, deleted_count, total_objects)
+                    progress_str = (
+                        f"Progress: {deleted_count:,} deleted ({pct:.1f}%), ETA: {eta_str}  "
+                    )
+                    print(f"\r  {progress_str}", end="", flush=True)
 
         print()
         duration = format_duration(time.time() - start_time)

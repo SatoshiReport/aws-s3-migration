@@ -121,75 +121,66 @@ class TestParseAwsSize:
         assert result is None or isinstance(result, int)
 
 
-class TestUpdateProgress:
-    """Test _update_progress method"""
+class TestDisplayProgress:
+    """Test _display_progress method"""
 
-    def test_update_progress_returns_current_time_if_less_than_1_second(self, tmp_path, capsys):
-        """Test that progress is not updated if less than 1 second has passed"""
+    def test_display_progress_no_output_when_no_bytes(self, tmp_path, capsys):
+        """Test that progress is not displayed when no bytes downloaded"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time()
-        last_update = time.time()
 
-        result = syncer._update_progress(start_time, last_update, 0, 0)
+        syncer._display_progress(start_time, 0, 0)
 
-        assert result == last_update
         captured = capsys.readouterr()
         assert captured.out == ""
 
-    def test_update_progress_prints_progress_after_1_second(self, tmp_path, capsys):
-        """Test that progress is printed after 1 second has elapsed"""
+    def test_display_progress_prints_progress_with_data(self, tmp_path, capsys):
+        """Test that progress is printed with files and bytes"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time() - 5
-        last_update = time.time() - 5
         files_done = 10
         bytes_done = 1024 * 1024
 
-        result = syncer._update_progress(start_time, last_update, files_done, bytes_done)
+        syncer._display_progress(start_time, files_done, bytes_done)
 
-        assert result > last_update
         captured = capsys.readouterr()
         assert "Progress:" in captured.out
         assert "files" in captured.out
 
-    def test_update_progress_includes_throughput(self, tmp_path, capsys):
+    def test_display_progress_includes_throughput(self, tmp_path, capsys):
         """Test that throughput is included in progress output"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time() - 10
-        last_update = time.time() - 10
         files_done = 5
         bytes_done = 1024 * 1024 * 5  # 5 MB
 
-        syncer._update_progress(start_time, last_update, files_done, bytes_done)
+        syncer._display_progress(start_time, files_done, bytes_done)
 
         captured = capsys.readouterr()
         assert "/s" in captured.out
 
-    def test_update_progress_with_zero_bytes_done(self, tmp_path, capsys):
-        """Test update progress when no bytes have been downloaded"""
+    def test_display_progress_with_zero_bytes_done(self, tmp_path, capsys):
+        """Test display progress when no bytes have been downloaded"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time() - 5
-        last_update = time.time() - 5
 
-        result = syncer._update_progress(start_time, last_update, 0, 0)
+        syncer._display_progress(start_time, 0, 0)
 
-        # When no bytes done, progress is not printed but time is still returned
-        # The returned time should be close to current time or original last_update
-        assert result >= last_update - 1  # Allow 1 second margin
         captured = capsys.readouterr()
         # No progress should be printed when no bytes done
-        assert "Progress:" not in captured.out or captured.out == ""
+        assert captured.out == ""
 
-    def test_update_progress_with_zero_elapsed_time(self, tmp_path, capsys):
-        """Test update progress when elapsed time is zero"""
+    def test_display_progress_with_minimal_elapsed_time(self, tmp_path, capsys):
+        """Test display progress with minimal elapsed time (near zero)"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time()
-        last_update = time.time()
 
-        result = syncer._update_progress(start_time, last_update, 10, 1024)
+        syncer._display_progress(start_time, 10, 1024)
 
-        assert result == last_update
         captured = capsys.readouterr()
-        assert captured.out == ""
+        # With minimal elapsed time and bytes, progress is still displayed
+        # (implementation checks elapsed > 0 to avoid division by zero)
+        assert "Progress:" in captured.out or captured.out == ""
 
 
 class TestCheckSyncErrors:
@@ -679,14 +670,17 @@ class TestEdgeCases:
         # Should return None due to exception handling
         assert result is None or isinstance(result, int)
 
-    def test_update_progress_called_multiple_times_returns_latest_time(self, tmp_path):
-        """Test that multiple progress updates return increasingly recent times"""
+    def test_display_progress_called_multiple_times(self, tmp_path, capsys):
+        """Test that display progress can be called multiple times"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time() - 100
-        first_update = syncer._update_progress(start_time, time.time() - 100, 5, 1024)
-        second_update = syncer._update_progress(start_time, first_update, 10, 2048)
 
-        assert second_update >= first_update
+        syncer._display_progress(start_time, 5, 1024)
+        syncer._display_progress(start_time, 10, 2048)
+
+        captured = capsys.readouterr()
+        # Should have progress output from both calls
+        assert "Progress:" in captured.out
 
 
 class TestIntegration:

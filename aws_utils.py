@@ -109,3 +109,23 @@ def apply_bucket_policy(bucket_name, policy_json):
     """
     s3, _, _ = get_boto3_clients()
     s3.put_bucket_policy(Bucket=bucket_name, Policy=policy_json)
+
+
+def print_interactive_help(script_name: str, available_items: list, item_type: str = "buckets"):
+    """
+    Print interactive help message showing available options.
+
+    Args:
+        script_name (str): Name of the script (e.g., "block_s3.py")
+        available_items (list): List of available items to show
+        item_type (str): Type of items being shown (default: "buckets")
+    """
+    print("No buckets specified. Available options:")
+    print(f"  - Run with bucket names: python {script_name} bucket1 bucket2")
+    print(f"  - Run with --all flag: python {script_name} --all")
+    print(f"\nAvailable {item_type}:")
+    if available_items:
+        for item in available_items:
+            print(f"  - {item}")
+    else:
+        print("  (none found)")

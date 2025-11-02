@@ -10,7 +10,7 @@ import argparse
 import os
 import sys
 
-from aws_utils import apply_bucket_policy, load_policy_from_file
+from aws_utils import apply_bucket_policy, load_policy_from_file, print_interactive_help
 
 
 def get_buckets_with_policy_files():
@@ -44,16 +44,8 @@ def _determine_buckets(args):
 
 def _show_interactive_help():
     """Show interactive mode help and available policies"""
-    print("No buckets specified. Available options:")
-    print("  - Run with bucket names: python apply_block.py bucket1 bucket2")
-    print("  - Run with --all flag: python apply_block.py --all")
-    print("\nAvailable policy files:")
     available = get_buckets_with_policy_files()
-    if available:
-        for bucket in available:
-            print(f"  - {bucket}")
-    else:
-        print("  (none found)")
+    print_interactive_help("apply_block.py", available, "policy files")
 
 
 def _apply_policy_to_bucket(bucket, dry_run):

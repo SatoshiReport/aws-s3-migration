@@ -177,87 +177,56 @@ class TestFileInventoryChecker:
 class TestVerificationProgressTracker:
     """Tests for VerificationProgressTracker class"""
 
-    def test_update_progress_displays_on_time_interval(self):
-        """Test progress update displays after time interval"""
+    def test_update_progress_displays_on_file_milestone(self, capsys):
+        """Test progress update displays at file count milestone"""
         tracker = VerificationProgressTracker()
         start_time = time.time() - 10  # Started 10 seconds ago
 
-        last_update = tracker.update_progress(
+        tracker.update_progress(
             start_time=start_time,
-            last_update=start_time,
-            verified_count=50,
+            verified_count=100,  # Divisible by 100 triggers display
             total_bytes_verified=1024 * 1024,  # 1 MB
-            expected_files=100,
+            expected_files=200,
             expected_size=10 * 1024 * 1024,  # 10 MB
         )
 
-        # Should return updated time since >2 seconds elapsed
-        assert last_update > start_time
+        captured = capsys.readouterr()
+        # Should display progress at 100-file milestone
+        assert "Progress:" in captured.out
 
-    def test_update_progress_no_update_when_too_soon(self):
+    def test_update_progress_no_update_when_too_soon(self, capsys):
         """Test progress update doesn't display when too soon"""
         tracker = VerificationProgressTracker()
-        current_time = time.time()
-        start_time = current_time - 1  # Started 1 second ago
+        start_time = time.time()
 
-        last_update = tracker.update_progress(
+        tracker.update_progress(
             start_time=start_time,
-            last_update=current_time,
             verified_count=50,
             total_bytes_verified=1024 * 1024,
             expected_files=100,
             expected_size=10 * 1024 * 1024,
         )
 
-        # Should return original last_update since <2 seconds elapsed
-        assert last_update == current_time
+        captured = capsys.readouterr()
+        # Should not display since <2 seconds elapsed
+        assert captured.out == ""
 
-    def test_update_progress_updates_on_file_count_milestone(self):
+    def test_update_progress_updates_on_file_count_milestone(self, capsys):
         """Test progress update displays on file count milestone (every 100 files)"""
         tracker = VerificationProgressTracker()
         start_time = time.time()
-        current_time = time.time()
 
-        last_update = tracker.update_progress(
+        tracker.update_progress(
             start_time=start_time,
-            last_update=current_time,
             verified_count=100,  # Exactly 100 files (divisible by 100)
             total_bytes_verified=1024 * 1024,
             expected_files=200,
             expected_size=20 * 1024 * 1024,
         )
 
-        # Should return updated time due to file count milestone
-        assert last_update >= current_time
-
-    def test_calculate_eta_returns_calculating_when_no_progress(self):
-        """Test ETA calculation when no progress"""
-        tracker = VerificationProgressTracker()
-
-        eta_str = tracker._calculate_eta(elapsed=0, total_bytes_verified=0, expected_size=1000)
-
-        assert eta_str == "calculating..."
-
-    def test_calculate_eta_returns_calculating_when_zero_throughput(self):
-        """Test ETA calculation when zero elapsed time"""
-        tracker = VerificationProgressTracker()
-
-        eta_str = tracker._calculate_eta(elapsed=0.001, total_bytes_verified=1, expected_size=1000)
-
-        # Should calculate ETA even with very small elapsed time
-        assert isinstance(eta_str, str)
-
-    def test_calculate_eta_calculates_remaining_time(self):
-        """Test ETA calculation with real progress"""
-        tracker = VerificationProgressTracker()
-
-        # 10 seconds elapsed, 100 bytes processed, 1000 bytes total
-        # Throughput: 10 bytes/second, Remaining: 900 bytes = 90 seconds
-        eta_str = tracker._calculate_eta(elapsed=10, total_bytes_verified=100, expected_size=1000)
-
-        # Should contain time units (s, m, h, d)
-        assert any(unit in eta_str for unit in ["s", "m", "h", "d"])
-        assert eta_str != "calculating..."
+        captured = capsys.readouterr()
+        # Should display due to file count milestone
+        assert "Progress:" in captured.out
 
 
 class TestFileChecksumVerifier:
@@ -914,36 +883,23 @@ class TestEdgeCases:
 
         assert len(local_files) == 5
 
-    def test_update_progress_with_large_file_counts(self):
+    def test_update_progress_with_large_file_counts(self, capsys):
         """Test progress update with large file counts"""
         tracker = VerificationProgressTracker()
         start_time = time.time() - 10
 
         # Test with 1 million files
-        last_update = tracker.update_progress(
+        tracker.update_progress(
             start_time=start_time,
-            last_update=start_time,
             verified_count=500000,
             total_bytes_verified=1024 * 1024 * 1024,  # 1 GB
             expected_files=1000000,
             expected_size=2048 * 1024 * 1024,  # 2 GB
         )
 
-        assert last_update > start_time
-
-    def test_calculate_eta_with_very_fast_throughput(self):
-        """Test ETA calculation with very high throughput"""
-        tracker = VerificationProgressTracker()
-
-        # 1 second elapsed, 1 GB processed, 10 GB total
-        # Throughput: 1 GB/s, Remaining: 9 GB = 9 seconds
-        eta_str = tracker._calculate_eta(
-            elapsed=1,
-            total_bytes_verified=1024 * 1024 * 1024,
-            expected_size=10 * 1024 * 1024 * 1024,
-        )
-
-        assert "s" in eta_str or "m" in eta_str
+        captured = capsys.readouterr()
+        # Should display progress with large counts
+        assert "Progress:" in captured.out
 
     def test_verify_files_count_mismatch_in_verify_bucket(self, tmp_path):
         """Test that BucketVerifier detects verified count mismatch"""
@@ -1121,23 +1077,23 @@ class TestEdgeCases:
 
         assert len(local_files) == 100
 
-    def test_verify_files_all_file_count_milestone_updates(self):
+    def test_verify_files_all_file_count_milestone_updates(self, capsys):
         """Test progress updates at every 100-file milestone"""
         tracker = VerificationProgressTracker()
         current_time = time.time()
 
         # Verify that exactly 100 files triggers an update
-        last_update = tracker.update_progress(
+        tracker.update_progress(
             start_time=current_time,
-            last_update=current_time,
             verified_count=100,
             total_bytes_verified=1024,
             expected_files=1000,
             expected_size=10240,
         )
 
-        # Should have updated
-        assert last_update >= current_time
+        captured = capsys.readouterr()
+        # Should have updated due to file count milestone
+        assert "Progress:" in captured.out
 
 
 class TestIntegration:

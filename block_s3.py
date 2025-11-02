@@ -15,6 +15,7 @@ from aws_utils import (
     generate_restrictive_bucket_policy,
     get_aws_identity,
     list_s3_buckets,
+    print_interactive_help,
     save_policy_to_file,
 )
 
@@ -42,13 +43,8 @@ def main():
         print(f"Generating policies for {len(buckets)} specified bucket(s)...")
     else:
         # Interactive mode
-        print("No buckets specified. Available options:")
-        print("  - Run with bucket names: python block_s3.py bucket1 bucket2")
-        print("  - Run with --all flag: python block_s3.py --all")
-        print("\nAvailable buckets:")
         available_buckets = list_s3_buckets()
-        for bucket in available_buckets:
-            print(f"  - {bucket}")
+        print_interactive_help("block_s3.py", available_buckets, "buckets")
         sys.exit(0)
 
     # Ensure policies directory exists
