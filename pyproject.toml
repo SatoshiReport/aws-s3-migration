@@ -8,6 +8,12 @@ dependencies = [
     "botocore>=1.31.0"
 ]
 
+# =============================================================================
+# Repository-Specific Tool Configurations
+# =============================================================================
+# These are repo-specific and not standardized across repositories
+# =============================================================================
+
 [tool.black]
 line-length = 100
 target-version = ["py311"]
@@ -17,19 +23,59 @@ profile = "black"
 line_length = 100
 skip = ["ci_shared"]
 
-[tool.ruff]
-line-length = 100
-target-version = "py311"
-extend-exclude = ["ci_shared", "docs", "scripts", "tests/__pycache__"]
+# =============================================================================
+# Standardized Tool Configurations
+# =============================================================================
+# These [tool.*] sections are standardized across all repositories (zeus,
+# kalshi, aws, ci_shared) to ensure consistent CI behavior.
+#
+# Source of truth: ci_shared/shared-tool-config.toml
+#
+# To validate: python -m ci_tools.scripts.tool_config_guard
+# To sync: python -m ci_tools.scripts.tool_config_guard --sync
+# =============================================================================
 
 [tool.pytest.ini_options]
-minversion = "8.0"
-addopts = "-ra --disable-warnings"
-testpaths = ["tests"]
+pythonpath = ["."]
+addopts = [
+    "--tb=short",  # Shorter tracebacks
+    "-q",          # Quiet mode (less output)
+]
 
 [tool.coverage.run]
-source = ["."]
-omit = ["tests/*", "ci_shared/*", "scripts/*"]
+omit = [
+    "*/vendor/*",
+    "*/__main__.py",
+]
+
+[tool.bandit]
+# Skip checks that are expected/acceptable in our codebase
+skips = [
+    "B101",  # assert_used - used appropriately in tests
+    "B404",  # import_subprocess - required for CI automation
+    "B603",  # subprocess_without_shell_equals_true - our subprocess calls are safe
+    "B607",  # start_process_with_partial_path - standard system commands (git, etc.)
+]
+exclude_dirs = ["/vendor/", "/.venv/", "/venv/"]
+
+[tool.ruff.lint]
+select = ["TRY", "C90", "PLR"]  # C90=McCabe complexity, PLR=Pylint refactor
+ignore = []
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 7
+max-branches = 10
+max-statements = 50
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["TRY002", "TRY003", "TRY203"]
+
+# =============================================================================
+# Repository-Specific Tool Configurations (continued)
+# =============================================================================
 
 [tool.coverage.report]
 exclude_also = [
@@ -50,3 +96,4 @@ extend_exclude = ["ci_shared", "tests", "scripts"]
 pep621_dev_dependency_groups = []
 requirements_files_dev = ["scripts/requirements.txt"]
 per_rule_ignores = { DEP002 = ["boto3"], DEP003 = ["ci_tools"] }
+
