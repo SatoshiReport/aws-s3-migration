@@ -16,6 +16,9 @@ from migration_utils import (
     print_verification_success_messages,
 )
 
+# Constants
+MAX_ERROR_DISPLAY = 10  # Maximum number of errors to display before truncating
+
 
 class FileInventoryChecker:  # pylint: disable=too-few-public-methods
     """Checks local file inventory against expected files"""
@@ -65,15 +68,17 @@ class FileInventoryChecker:  # pylint: disable=too-few-public-methods
         extra_files = local_keys - expected_keys
         errors = []
         if missing_files:
-            for key in list(missing_files)[:10]:
+            for key in list(missing_files)[:MAX_ERROR_DISPLAY]:
                 errors.append(f"Missing file: {key}")
-            if len(missing_files) > 10:
-                errors.append(f"... and {len(missing_files) - 10} more missing files")
+            if len(missing_files) > MAX_ERROR_DISPLAY:
+                errors.append(
+                    f"... and {len(missing_files) - MAX_ERROR_DISPLAY} more missing files"
+                )
         if extra_files:
-            for key in list(extra_files)[:10]:
+            for key in list(extra_files)[:MAX_ERROR_DISPLAY]:
                 errors.append(f"Extra file (not in S3): {key}")
-            if len(extra_files) > 10:
-                errors.append(f"... and {len(extra_files) - 10} more extra files")
+            if len(extra_files) > MAX_ERROR_DISPLAY:
+                errors.append(f"... and {len(extra_files) - MAX_ERROR_DISPLAY} more extra files")
         if errors:
             print("  ✗ File inventory mismatch:")
             for error in errors:
@@ -207,12 +212,14 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
         """Check and report verification errors"""
         if verification_errors:
             print("  ✗ VERIFICATION FAILED:")
-            for error in verification_errors[:10]:
+            for error in verification_errors[:MAX_ERROR_DISPLAY]:
                 print(f"    - {error}")
-            if len(verification_errors) > 10:
-                print(f"    ... and {len(verification_errors) - 10} more errors")
+            if len(verification_errors) > MAX_ERROR_DISPLAY:
+                print(f"    ... and {len(verification_errors) - MAX_ERROR_DISPLAY} more errors")
             print()
-            raise ValueError(f"Verification failed: {len(verification_errors)} file(s) with issues")
+            raise ValueError(  # noqa: TRY003
+                f"Verification failed: {len(verification_errors)} file(s) with issues"
+            )
 
     def _compute_etag(self, file_path: Path, s3_etag: str) -> Tuple[str, bool]:
         """Compute ETag for a single-part upload (simple MD5 hash)"""
@@ -239,7 +246,7 @@ class BucketVerifier:  # pylint: disable=too-few-public-methods
         expected_size = bucket_info["total_size"]
         local_path = self.base_path / bucket
         if not local_path.exists():
-            raise FileNotFoundError("Local path does not exist")
+            raise FileNotFoundError("Local path does not exist")  # noqa: TRY003
         print(f"  Expected: {expected_files:,} files, {format_size(expected_size)}")
         print()
         expected_file_map = self.inventory_checker.load_expected_files(bucket)
@@ -263,7 +270,7 @@ class BucketVerifier:  # pylint: disable=too-few-public-methods
         print(f"  Total verified:       {verified_count:,} files")
         print()
         if verified_count != expected_files:
-            raise ValueError(
+            raise ValueError(  # noqa: TRY003
                 f"File count mismatch: {verified_count} verified vs {expected_files} expected"
             )
         print(f"  ✓ File count matches: {verified_count:,} files")

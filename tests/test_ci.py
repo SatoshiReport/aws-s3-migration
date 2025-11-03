@@ -189,7 +189,7 @@ class TestReturnValuePropagation:
         """Verify run() handles various positive error codes."""
         mock_ci_main.return_value = 42
         result = ci.run()
-        assert result == 42
+        assert result == 42  # noqa: PLR2004
 
     @patch("ci.ci_main")
     def test_run_return_value_matches_ci_main_exactly(self, mock_ci_main):
@@ -239,7 +239,7 @@ class TestMainBlock:
         with patch("ci.run", mock_run):
             # Execute the if __name__ == "__main__" block logic
             try:
-                raise SystemExit(ci.run())
+                raise SystemExit(ci.run())  # noqa: TRY301
             except SystemExit as e:
                 assert e.code == 0
         mock_run.assert_called_once()
@@ -263,8 +263,8 @@ class TestMainBlock:
         """Verify __main__ block uses run's return value for SystemExit."""
         mock_run.return_value = 42
         with pytest.raises(SystemExit) as exc_info:
-            raise SystemExit(ci.run())
-        assert exc_info.value.code == 42
+            raise SystemExit(ci.run())  # noqa: TRY301
+        assert exc_info.value.code == 42  # noqa: PLR2004
 
 
 class TestIntegrationScenarios:
@@ -318,7 +318,7 @@ class TestIntegrationScenarios:
         assert result3 == 0
 
         # Verify all three calls were made
-        assert mock_ci_main.call_count == 3
+        assert mock_ci_main.call_count == 3  # noqa: PLR2004
 
 
 class TestEdgeCases:
@@ -360,7 +360,7 @@ class TestEdgeCases:
             ci.run()
         argv = mock_ci_main.call_args[0][0]
         # Should have base 3 args + 100 additional args
-        assert len(argv) == 103
+        assert len(argv) == 103  # noqa: PLR2004
 
     @patch("ci.ci_main")
     def test_run_argv_is_list_not_tuple(self, mock_ci_main):

@@ -78,8 +78,8 @@ class TestBucketStatus:
         status = BucketStatus(row)
 
         assert status.bucket == "test-bucket"
-        assert status.file_count == 100
-        assert status.total_size == 5000
+        assert status.file_count == 100  # noqa: PLR2004
+        assert status.total_size == 5000  # noqa: PLR2004
         assert status.scan_complete is True
         assert status.sync_complete is False
         assert status.verify_complete is False
@@ -340,7 +340,7 @@ class TestMigrationStateV2:
             )
             row = cursor.fetchone()
             assert row is not None
-            assert row["size"] == 1024
+            assert row["size"] == 1024  # noqa: PLR2004
             assert row["storage_class"] == "STANDARD"
 
     def test_migration_state_v2_add_file_idempotent(self, tmp_path: Path):
@@ -485,8 +485,8 @@ class TestMigrationStateV2:
             cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", ("test-bucket",))
             row = cursor.fetchone()
             assert row is not None
-            assert row["file_count"] == 50
-            assert row["total_size"] == 5000
+            assert row["file_count"] == 50  # noqa: PLR2004
+            assert row["total_size"] == 5000  # noqa: PLR2004
             assert row["scan_complete"] == 1
 
     def test_migration_state_v2_mark_bucket_sync_complete(self, tmp_path: Path):
@@ -523,8 +523,8 @@ class TestMigrationStateV2:
             cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", ("bucket1",))
             row = cursor.fetchone()
             assert row["verify_complete"] == 1
-            assert row["verified_file_count"] == 10
-            assert row["checksum_verified_count"] == 5
+            assert row["verified_file_count"] == 10  # noqa: PLR2004
+            assert row["checksum_verified_count"] == 5  # noqa: PLR2004
 
     def test_migration_state_v2_mark_bucket_delete_complete(self, tmp_path: Path):
         """MigrationStateV2.mark_bucket_delete_complete updates bucket status."""
@@ -583,8 +583,8 @@ class TestMigrationStateV2:
         info = state.get_bucket_info("test-bucket")
 
         assert info["bucket"] == "test-bucket"
-        assert info["file_count"] == 25
-        assert info["total_size"] == 2500
+        assert info["file_count"] == 25  # noqa: PLR2004
+        assert info["total_size"] == 2500  # noqa: PLR2004
         assert info["scan_complete"] == 1
         storage_classes = json.loads(info["storage_class_counts"])
         assert storage_classes == {"STANDARD": 20, "GLACIER": 5}
@@ -614,10 +614,10 @@ class TestMigrationStateV2:
 
         summary = state.get_scan_summary()
 
-        assert summary["bucket_count"] == 2
-        assert summary["total_files"] == 3
-        assert summary["total_size"] == 300
-        assert summary["storage_classes"]["STANDARD"] == 2
+        assert summary["bucket_count"] == 2  # noqa: PLR2004
+        assert summary["total_files"] == 3  # noqa: PLR2004
+        assert summary["total_size"] == 300  # noqa: PLR2004
+        assert summary["storage_classes"]["STANDARD"] == 2  # noqa: PLR2004
         assert summary["storage_classes"]["GLACIER"] == 1
 
     def test_migration_state_v2_get_current_phase_default(self, tmp_path: Path):
@@ -708,8 +708,8 @@ class TestMigrationStateV2Integration:
 
         summary = state.get_scan_summary()
         assert summary["bucket_count"] == 1
-        assert summary["total_files"] == 2
-        assert summary["total_size"] == 300
+        assert summary["total_files"] == 2  # noqa: PLR2004
+        assert summary["total_size"] == 300  # noqa: PLR2004
 
     def test_multiple_buckets_independent_status(self, tmp_path: Path):
         """Test multiple buckets can have independent status."""
@@ -747,7 +747,7 @@ class TestMigrationStateV2Integration:
         summary = state.get_scan_summary()
 
         assert summary["storage_classes"]["STANDARD"] == 1
-        assert summary["storage_classes"]["GLACIER"] == 2
+        assert summary["storage_classes"]["GLACIER"] == 2  # noqa: PLR2004
         assert summary["storage_classes"]["DEEP_ARCHIVE"] == 1
         assert summary["storage_classes"]["GLACIER_IR"] == 1
 
@@ -760,13 +760,13 @@ class TestMigrationStateV2Integration:
         state.add_file("b1", "glacier2", 200, "e2", "DEEP_ARCHIVE", "2025-10-31T00:00:00Z")
 
         needing_restore = state.get_glacier_files_needing_restore()
-        assert len(needing_restore) == 2
+        assert len(needing_restore) == 2  # noqa: PLR2004
 
         state.mark_glacier_restore_requested("b1", "glacier1")
         state.mark_glacier_restore_requested("b1", "glacier2")
 
         restoring = state.get_files_restoring()
-        assert len(restoring) == 2
+        assert len(restoring) == 2  # noqa: PLR2004
 
         state.mark_glacier_restored("b1", "glacier1")
 

@@ -61,10 +61,10 @@ def _apply_policy_to_bucket(bucket, dry_run):
         else:
             apply_bucket_policy(bucket, policy_json)
             print(f"✓ Applied policy to {bucket}")
-        return True
     except (OSError, IOError, ValueError) as e:
         print(f"✗ Failed to apply policy to {bucket}: {str(e)}")
         return False
+    return True
 
 
 def main():

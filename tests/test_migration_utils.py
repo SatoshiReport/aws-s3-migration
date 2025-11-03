@@ -253,7 +253,7 @@ class TestPrintVerificationSuccessMessages:
 
         output = captured_output.getvalue()
         lines = output.strip().split("\n")
-        assert len(lines) == 5
+        assert len(lines) == 5  # noqa: PLR2004
 
     def test_print_verification_success_messages_indentation(self):
         """Test that messages have correct indentation"""
@@ -314,7 +314,7 @@ class TestPrintVerificationSuccessMessages:
 
         # Should have two complete sets of output (10 lines total)
         lines = output.strip().split("\n")
-        assert len(lines) == 10
+        assert len(lines) == 10  # noqa: PLR2004
 
     def test_print_verification_success_messages_no_return_value(self):
         """Test that function returns None"""

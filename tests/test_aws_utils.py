@@ -173,7 +173,7 @@ def test_save_policy_to_file_overwrites_existing(tmp_path: Path):
     raw = aws_utils.load_policy_from_file(path)
     loaded = json.loads(raw)
 
-    assert loaded["version"] == 2
+    assert loaded["version"] == 2  # noqa: PLR2004
     assert "updated" in loaded
 
 
@@ -221,7 +221,7 @@ def test_get_boto3_clients_creates_s3_sts_iam():
 
         s3, sts, iam = aws_utils.get_boto3_clients()
 
-        assert mock_client.call_count == 3
+        assert mock_client.call_count == 3  # noqa: PLR2004
         calls = mock_client.call_args_list
         assert calls[0] == mock.call("s3")
         assert calls[1] == mock.call("sts")
@@ -236,7 +236,7 @@ def test_get_boto3_clients_returns_tuple():
         result = aws_utils.get_boto3_clients()
 
         assert isinstance(result, tuple)
-        assert len(result) == 3
+        assert len(result) == 3  # noqa: PLR2004
 
 
 # ============================================================================
@@ -295,7 +295,7 @@ def test_list_s3_buckets_with_many_buckets():
     ):
         buckets = aws_utils.list_s3_buckets()
 
-    assert len(buckets) == 100
+    assert len(buckets) == 100  # noqa: PLR2004
     assert buckets[0] == "bucket-0"
     assert buckets[99] == "bucket-99"
 

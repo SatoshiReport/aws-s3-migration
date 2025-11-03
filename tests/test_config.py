@@ -69,7 +69,7 @@ class TestGlacierRestoreSettings:
 
     def test_glacier_restore_days_reasonable_range(self):
         """Verify GLACIER_RESTORE_DAYS is within reasonable range (1-30 days)."""
-        assert 1 <= config.GLACIER_RESTORE_DAYS <= 30
+        assert 1 <= config.GLACIER_RESTORE_DAYS <= 30  # noqa: PLR2004
 
     def test_glacier_restore_tier_exists(self):
         """Verify GLACIER_RESTORE_TIER constant exists."""
@@ -102,7 +102,7 @@ class TestProgressUpdateInterval:
 
     def test_progress_update_interval_reasonable_range(self):
         """Verify PROGRESS_UPDATE_INTERVAL is within reasonable range (1-60 seconds)."""
-        assert 1 <= config.PROGRESS_UPDATE_INTERVAL <= 60
+        assert 1 <= config.PROGRESS_UPDATE_INTERVAL <= 60  # noqa: PLR2004
 
 
 class TestMaxGlacierRestores:
@@ -122,7 +122,7 @@ class TestMaxGlacierRestores:
 
     def test_max_glacier_restores_reasonable_range(self):
         """Verify MAX_GLACIER_RESTORES is within reasonable range (1-1000)."""
-        assert 1 <= config.MAX_GLACIER_RESTORES <= 1000
+        assert 1 <= config.MAX_GLACIER_RESTORES <= 1000  # noqa: PLR2004
 
 
 class TestDownloadChunkSize:
@@ -169,7 +169,7 @@ class TestParallelDownloadSettings:
 
     def test_max_concurrent_downloads_reasonable_range(self):
         """Verify MAX_CONCURRENT_DOWNLOADS is within reasonable range (1-500)."""
-        assert 1 <= config.MAX_CONCURRENT_DOWNLOADS <= 500
+        assert 1 <= config.MAX_CONCURRENT_DOWNLOADS <= 500  # noqa: PLR2004
 
     def test_max_concurrent_verifications_exists(self):
         """Verify MAX_CONCURRENT_VERIFICATIONS constant exists."""
@@ -185,7 +185,7 @@ class TestParallelDownloadSettings:
 
     def test_max_concurrent_verifications_reasonable_range(self):
         """Verify MAX_CONCURRENT_VERIFICATIONS is within reasonable range (1-50)."""
-        assert 1 <= config.MAX_CONCURRENT_VERIFICATIONS <= 50
+        assert 1 <= config.MAX_CONCURRENT_VERIFICATIONS <= 50  # noqa: PLR2004
 
     def test_downloads_exceeds_verifications(self):
         """Verify MAX_CONCURRENT_DOWNLOADS is >= MAX_CONCURRENT_VERIFICATIONS."""
@@ -209,7 +209,7 @@ class TestBatchProcessingSettings:
 
     def test_batch_size_reasonable_range(self):
         """Verify BATCH_SIZE is within reasonable range (10-1000)."""
-        assert 10 <= config.BATCH_SIZE <= 1000
+        assert 10 <= config.BATCH_SIZE <= 1000  # noqa: PLR2004
 
     def test_db_batch_commit_size_exists(self):
         """Verify DB_BATCH_COMMIT_SIZE constant exists."""
@@ -225,7 +225,7 @@ class TestBatchProcessingSettings:
 
     def test_db_batch_commit_size_reasonable_range(self):
         """Verify DB_BATCH_COMMIT_SIZE is within reasonable range (1-100)."""
-        assert 1 <= config.DB_BATCH_COMMIT_SIZE <= 100
+        assert 1 <= config.DB_BATCH_COMMIT_SIZE <= 100  # noqa: PLR2004
 
     def test_db_batch_commit_smaller_than_batch_size(self):
         """Verify DB_BATCH_COMMIT_SIZE <= BATCH_SIZE."""
@@ -290,7 +290,7 @@ class TestMultipartTransferSettings:
 
     def test_max_concurrency_reasonable_range(self):
         """Verify MAX_CONCURRENCY is within reasonable range (1-50)."""
-        assert 1 <= config.MAX_CONCURRENCY <= 50
+        assert 1 <= config.MAX_CONCURRENCY <= 50  # noqa: PLR2004
 
     def test_use_threads_exists(self):
         """Verify USE_THREADS constant exists."""

@@ -52,7 +52,7 @@ class TestFileStateManager:
         assert row is not None
         assert row["bucket"] == "test-bucket"
         assert row["key"] == "path/to/file.txt"
-        assert row["size"] == 1024
+        assert row["size"] == 1024  # noqa: PLR2004
         assert row["etag"] == "abc123"
         assert row["storage_class"] == "STANDARD"
         assert row["state"] == "discovered"
@@ -204,7 +204,7 @@ class TestFileStateManager:
         assert "archive1.txt" in keys
         assert "glacier2.txt" not in keys
         assert "standard.txt" not in keys
-        assert len(files) == 2
+        assert len(files) == 2  # noqa: PLR2004
 
     def test_get_files_restoring(self, file_manager, db_conn):
         """Test retrieving files currently being restored"""
@@ -288,8 +288,8 @@ class TestFileStateManager:
                 "SELECT size FROM files WHERE bucket = ? AND key = ?", ("bucket-b", "file.txt")
             ).fetchone()
 
-        assert row_a["size"] == 100
-        assert row_b["size"] == 200
+        assert row_a["size"] == 100  # noqa: PLR2004
+        assert row_b["size"] == 200  # noqa: PLR2004
 
 
 class TestBucketStateManager:
@@ -330,8 +330,8 @@ class TestBucketStateManager:
 
         assert row is not None
         assert row["bucket"] == "test-bucket"
-        assert row["file_count"] == 100
-        assert row["total_size"] == 5000000
+        assert row["file_count"] == 100  # noqa: PLR2004
+        assert row["total_size"] == 5000000  # noqa: PLR2004
         assert row["scan_complete"] == 1
         storage_classes = json.loads(row["storage_class_counts"])
         assert storage_classes == {"STANDARD": 80, "GLACIER": 20}
@@ -360,8 +360,8 @@ class TestBucketStateManager:
                 "SELECT * FROM bucket_status WHERE bucket = ?", ("test-bucket",)
             ).fetchone()
 
-        assert row["file_count"] == 150
-        assert row["total_size"] == 7000000
+        assert row["file_count"] == 150  # noqa: PLR2004
+        assert row["total_size"] == 7000000  # noqa: PLR2004
         assert row["scan_complete"] == 1
 
     def test_save_bucket_status_preserves_created_at(self, bucket_manager, db_conn):
@@ -436,11 +436,11 @@ class TestBucketStateManager:
             ).fetchone()
 
         assert row["verify_complete"] == 1
-        assert row["verified_file_count"] == 100
-        assert row["size_verified_count"] == 100
-        assert row["checksum_verified_count"] == 95
-        assert row["total_bytes_verified"] == 5000000
-        assert row["local_file_count"] == 100
+        assert row["verified_file_count"] == 100  # noqa: PLR2004
+        assert row["size_verified_count"] == 100  # noqa: PLR2004
+        assert row["checksum_verified_count"] == 95  # noqa: PLR2004
+        assert row["total_bytes_verified"] == 5000000  # noqa: PLR2004
+        assert row["local_file_count"] == 100  # noqa: PLR2004
 
     def test_mark_bucket_verify_complete_with_partial_data(self, bucket_manager, db_conn):
         """Test marking bucket verified with only some verification fields"""
@@ -463,8 +463,8 @@ class TestBucketStateManager:
             ).fetchone()
 
         assert row["verify_complete"] == 1
-        assert row["verified_file_count"] == 100
-        assert row["size_verified_count"] == 100
+        assert row["verified_file_count"] == 100  # noqa: PLR2004
+        assert row["size_verified_count"] == 100  # noqa: PLR2004
         assert row["checksum_verified_count"] is None
 
     def test_mark_bucket_delete_complete(self, bucket_manager, db_conn):
@@ -559,8 +559,8 @@ class TestBucketStateManager:
         info = bucket_manager.get_bucket_info("test-bucket")
 
         assert info["bucket"] == "test-bucket"
-        assert info["file_count"] == 100
-        assert info["total_size"] == 5000000
+        assert info["file_count"] == 100  # noqa: PLR2004
+        assert info["total_size"] == 5000000  # noqa: PLR2004
         assert info["scan_complete"] == 1
 
     def test_get_bucket_info_nonexistent(self, bucket_manager):
@@ -616,11 +616,11 @@ class TestBucketStateManager:
 
         summary = bucket_manager.get_scan_summary()
 
-        assert summary["bucket_count"] == 2
-        assert summary["total_files"] == 3
-        assert summary["total_size"] == 6000
-        assert summary["storage_classes"]["STANDARD"] == 2
-        assert summary["storage_classes"]["GLACIER"] == 1
+        assert summary["bucket_count"] == 2  # noqa: PLR2004
+        assert summary["total_files"] == 3  # noqa: PLR2004
+        assert summary["total_size"] == 6000  # noqa: PLR2004
+        assert summary["storage_classes"]["STANDARD"] == 2  # noqa: PLR2004
+        assert summary["storage_classes"]["GLACIER"] == 1  # noqa: PLR2004
 
     def test_get_scan_summary_excludes_incomplete_scans(self, bucket_manager, db_conn):
         """Test that scan summary only includes complete scans"""
@@ -645,8 +645,8 @@ class TestBucketStateManager:
         summary = bucket_manager.get_scan_summary()
 
         assert summary["bucket_count"] == 1
-        assert summary["total_files"] == 5
-        assert summary["total_size"] == 50000
+        assert summary["total_files"] == 5  # noqa: PLR2004
+        assert summary["total_size"] == 50000  # noqa: PLR2004
 
 
 class TestPhaseManager:
@@ -864,8 +864,8 @@ class TestIntegration:
 
         summary = state.get_scan_summary()
 
-        assert summary["bucket_count"] == 2
-        assert summary["total_files"] == 3
-        assert summary["total_size"] == 6000
-        assert summary["storage_classes"]["STANDARD"] == 2
+        assert summary["bucket_count"] == 2  # noqa: PLR2004
+        assert summary["total_files"] == 3  # noqa: PLR2004
+        assert summary["total_size"] == 6000  # noqa: PLR2004
+        assert summary["storage_classes"]["STANDARD"] == 2  # noqa: PLR2004
         assert summary["storage_classes"]["GLACIER"] == 1

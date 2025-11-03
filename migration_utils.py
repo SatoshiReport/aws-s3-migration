@@ -3,30 +3,36 @@
 import time
 from datetime import datetime, timezone
 
+# Constants for size and time conversions
+BYTES_PER_KB = 1024.0
+SECONDS_PER_MINUTE = 60
+SECONDS_PER_HOUR = 3600
+SECONDS_PER_DAY = 86400
+
 
 def format_size(bytes_size: int) -> str:
     """Format bytes to human readable size"""
     for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if bytes_size < 1024.0:
+        if bytes_size < BYTES_PER_KB:
             return f"{bytes_size:.2f} {unit}"
-        bytes_size /= 1024.0
+        bytes_size /= BYTES_PER_KB
     return f"{bytes_size:.2f} PB"
 
 
 def format_duration(seconds: float) -> str:
     """Format seconds to human readable duration"""
-    if seconds < 60:
+    if seconds < SECONDS_PER_MINUTE:
         return f"{int(seconds)}s"
-    if seconds < 3600:
-        minutes = int(seconds / 60)
-        secs = int(seconds % 60)
+    if seconds < SECONDS_PER_HOUR:
+        minutes = int(seconds / SECONDS_PER_MINUTE)
+        secs = int(seconds % SECONDS_PER_MINUTE)
         return f"{minutes}m {secs}s"
-    if seconds < 86400:
-        hours = int(seconds / 3600)
-        minutes = int((seconds % 3600) / 60)
+    if seconds < SECONDS_PER_DAY:
+        hours = int(seconds / SECONDS_PER_HOUR)
+        minutes = int((seconds % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE)
         return f"{hours}h {minutes}m"
-    days = int(seconds / 86400)
-    hours = int((seconds % 86400) / 3600)
+    days = int(seconds / SECONDS_PER_DAY)
+    hours = int((seconds % SECONDS_PER_DAY) / SECONDS_PER_HOUR)
     return f"{days}d {hours}h"
 
 

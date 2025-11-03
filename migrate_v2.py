@@ -27,7 +27,11 @@ from pathlib import Path
 import boto3
 
 import config
-from migration_orchestrator import BucketMigrationOrchestrator, BucketMigrator, StatusReporter
+from migration_orchestrator import (
+    BucketMigrationOrchestrator,
+    BucketMigrator,
+    StatusReporter,
+)
 from migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
 from migration_state_v2 import MigrationStateV2, Phase
 
@@ -75,7 +79,7 @@ class DriveChecker:  # pylint: disable=too-few-public-methods
 class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
     """Main orchestrator for S3 to local migration using AWS CLI"""
 
-    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments  # noqa: PLR0913
         self,
         state: MigrationStateV2,
         drive_checker: DriveChecker,

@@ -145,7 +145,11 @@ class MigrationStateV2:
 
     def __init__(self, db_path: str):
         # pylint: disable=import-outside-toplevel
-        from migration_state_managers import BucketStateManager, FileStateManager, PhaseManager
+        from migration_state_managers import (
+            BucketStateManager,
+            FileStateManager,
+            PhaseManager,
+        )
 
         self.db_conn = DatabaseConnection(db_path)
         self.files = FileStateManager(self.db_conn)

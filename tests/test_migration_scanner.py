@@ -126,7 +126,7 @@ class TestBucketScanner:
 
         scanner.scan_all_buckets()
 
-        assert mock_state.add_file.call_count == 2
+        assert mock_state.add_file.call_count == 2  # noqa: PLR2004
 
     def test_scan_all_buckets_respects_interrupt_signal(self, scanner, mock_s3, mock_state):
         """Test that scan_all_buckets stops on interrupt"""
@@ -208,7 +208,7 @@ class TestBucketScanner:
 
         # Total size should be 3000
         call_args = mock_state.save_bucket_status.call_args
-        assert call_args[0][2] == 3000
+        assert call_args[0][2] == 3000  # noqa: PLR2004
 
     def test_scan_bucket_handles_missing_storage_class(self, scanner, mock_s3, mock_state):
         """Test handling of objects without StorageClass field"""
@@ -483,7 +483,7 @@ class TestGlacierRestorer:
 
                 call_args = mock_s3.restore_object.call_args
                 restore_request = call_args[1]["RestoreRequest"]
-                assert restore_request["Days"] == 5
+                assert restore_request["Days"] == 5  # noqa: PLR2004
                 assert restore_request["GlacierJobParameters"]["Tier"] == "Expedited"
 
     def test_request_all_restores_multiple_files(self, restorer, mock_s3, mock_state):
@@ -496,8 +496,8 @@ class TestGlacierRestorer:
 
         restorer.request_all_restores()
 
-        assert mock_s3.restore_object.call_count == 3
-        assert mock_state.mark_glacier_restore_requested.call_count == 3
+        assert mock_s3.restore_object.call_count == 3  # noqa: PLR2004
+        assert mock_state.mark_glacier_restore_requested.call_count == 3  # noqa: PLR2004
 
 
 class TestGlacierWaiter:
@@ -661,7 +661,7 @@ class TestGlacierWaiter:
             waiter.wait_for_restores()
 
         # Should call get_files_restoring 3 times
-        assert mock_state.get_files_restoring.call_count == 3
+        assert mock_state.get_files_restoring.call_count == 3  # noqa: PLR2004
 
     def test_check_restore_status_partial_restore_string(self, waiter, mock_s3, mock_state):
         """Test restore status with various Restore header formats"""
@@ -920,7 +920,7 @@ class TestEdgeCases:
         scanner.scan_all_buckets()
 
         # Should have added all files
-        assert mock_state.add_file.call_count == 50000
+        assert mock_state.add_file.call_count == 50000  # noqa: PLR2004
 
     def test_glacier_restorer_handles_restore_string_variations(self):
         """Test various restore string formats"""

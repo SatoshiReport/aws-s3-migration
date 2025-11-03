@@ -41,10 +41,10 @@ class TestFileInventoryChecker:
         checker = FileInventoryChecker(mock_state, tmp_path)
         result = checker.load_expected_files("test-bucket")
 
-        assert len(result) == 2
-        assert result["file1.txt"]["size"] == 100
+        assert len(result) == 2  # noqa: PLR2004
+        assert result["file1.txt"]["size"] == 100  # noqa: PLR2004
         assert result["file1.txt"]["etag"] == "abc123"
-        assert result["dir/file2.txt"]["size"] == 200
+        assert result["dir/file2.txt"]["size"] == 200  # noqa: PLR2004
 
     def test_load_expected_files_normalizes_windows_paths(self, tmp_path):
         """Test that Windows path separators are normalized"""
@@ -85,7 +85,7 @@ class TestFileInventoryChecker:
 
         local_files = checker.scan_local_files("test-bucket", 2)
 
-        assert len(local_files) == 2
+        assert len(local_files) == 2  # noqa: PLR2004
         assert "file1.txt" in local_files
         assert "subdir/file2.txt" in local_files
 
@@ -258,10 +258,10 @@ class TestFileChecksumVerifier:
             expected_size=28,
         )
 
-        assert results["verified_count"] == 2
-        assert results["size_verified"] == 2
-        assert results["checksum_verified"] == 2
-        assert results["total_bytes_verified"] == 28
+        assert results["verified_count"] == 2  # noqa: PLR2004
+        assert results["size_verified"] == 2  # noqa: PLR2004
+        assert results["checksum_verified"] == 2  # noqa: PLR2004
+        assert results["total_bytes_verified"] == 28  # noqa: PLR2004
 
     def test_verify_single_file_with_size_mismatch(self, tmp_path):
         """Test verification fails on size mismatch"""
@@ -659,7 +659,7 @@ class TestBucketDeleter:
         mock_s3.delete_objects.assert_called_once()
         call_args = mock_s3.delete_objects.call_args
         assert call_args[1]["Bucket"] == "test-bucket"
-        assert len(call_args[1]["Delete"]["Objects"]) == 3
+        assert len(call_args[1]["Delete"]["Objects"]) == 3  # noqa: PLR2004
         # Verify VersionId is included
         assert all("VersionId" in obj for obj in call_args[1]["Delete"]["Objects"])
 
@@ -697,7 +697,7 @@ class TestBucketDeleter:
         deleter.delete_bucket("test-bucket")
 
         # Verify delete_objects was called 3 times (once per page)
-        assert mock_s3.delete_objects.call_count == 3
+        assert mock_s3.delete_objects.call_count == 3  # noqa: PLR2004
 
     def test_delete_bucket_handles_empty_pages(self):
         """Test deleting bucket handles pages with no Versions"""
@@ -718,7 +718,7 @@ class TestBucketDeleter:
         deleter.delete_bucket("test-bucket")
 
         # Should only call delete_objects twice (skipping empty page)
-        assert mock_s3.delete_objects.call_count == 2
+        assert mock_s3.delete_objects.call_count == 2  # noqa: PLR2004
 
     def test_delete_bucket_calls_delete_bucket_method(self):
         """Test that delete_bucket is called to remove empty bucket"""
@@ -785,7 +785,7 @@ class TestBucketDeleter:
 
         # Verify delete_objects was called with all objects
         call_args = mock_s3.delete_objects.call_args
-        assert len(call_args[1]["Delete"]["Objects"]) == 1500
+        assert len(call_args[1]["Delete"]["Objects"]) == 1500  # noqa: PLR2004
 
     def test_delete_bucket_updates_progress(self):
         """Test that delete progress is displayed"""
@@ -813,7 +813,7 @@ class TestBucketDeleter:
         deleter.delete_bucket("test-bucket")
 
         # Should have called delete_objects for each page
-        assert mock_s3.delete_objects.call_count == 5
+        assert mock_s3.delete_objects.call_count == 5  # noqa: PLR2004
 
 
 class TestEdgeCases:
@@ -881,7 +881,7 @@ class TestEdgeCases:
 
         local_files = checker.scan_local_files("test-bucket", 5)
 
-        assert len(local_files) == 5
+        assert len(local_files) == 5  # noqa: PLR2004
 
     def test_update_progress_with_large_file_counts(self, capsys):
         """Test progress update with large file counts"""
@@ -1010,8 +1010,8 @@ class TestEdgeCases:
             expected_size=15,
         )
 
-        assert results["verified_count"] == 2
-        assert results["checksum_verified"] == 2
+        assert results["verified_count"] == 2  # noqa: PLR2004
+        assert results["checksum_verified"] == 2  # noqa: PLR2004
 
     def test_scan_large_number_of_files_with_progress_output(self, tmp_path):
         """Test scanning with many files to trigger progress output"""
@@ -1029,7 +1029,7 @@ class TestEdgeCases:
 
         local_files = checker.scan_local_files("test-bucket", 10100)
 
-        assert len(local_files) == 10100
+        assert len(local_files) == 10100  # noqa: PLR2004
 
     def test_delete_bucket_with_pagination_triggers_progress(self):
         """Test delete progress update at 1000 object intervals"""
@@ -1058,7 +1058,7 @@ class TestEdgeCases:
         deleter.delete_bucket("test-bucket")
 
         # Should be called 3 times (one per page)
-        assert mock_s3.delete_objects.call_count == 3
+        assert mock_s3.delete_objects.call_count == 3  # noqa: PLR2004
 
     def test_scan_files_with_equal_expected_files(self, tmp_path):
         """Test scanning when actual files equal expected files"""
@@ -1075,7 +1075,7 @@ class TestEdgeCases:
         # Tell it to expect exactly 100 files
         local_files = checker.scan_local_files("test-bucket", 100)
 
-        assert len(local_files) == 100
+        assert len(local_files) == 100  # noqa: PLR2004
 
     def test_verify_files_all_file_count_milestone_updates(self, capsys):
         """Test progress updates at every 100-file milestone"""
@@ -1132,9 +1132,9 @@ class TestIntegration:
         verifier = BucketVerifier(mock_state, tmp_path)
         results = verifier.verify_bucket("test-bucket")
 
-        assert results["verified_count"] == 2
-        assert results["checksum_verified"] == 2
-        assert results["local_file_count"] == 2
+        assert results["verified_count"] == 2  # noqa: PLR2004
+        assert results["checksum_verified"] == 2  # noqa: PLR2004
+        assert results["local_file_count"] == 2  # noqa: PLR2004
 
     def test_error_handling_across_components(self, tmp_path):
         """Test error handling flows through components"""

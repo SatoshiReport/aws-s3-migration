@@ -521,7 +521,7 @@ class TestBucketMigrationOrchestrator:
         with mock.patch("builtins.print"):
             orchestrator.migrate_all_buckets()
 
-        assert mock_dependencies["bucket_migrator"].process_bucket.call_count == 3
+        assert mock_dependencies["bucket_migrator"].process_bucket.call_count == 3  # noqa: PLR2004
         calls = [
             mock.call("bucket-1"),
             mock.call("bucket-2"),
