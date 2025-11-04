@@ -10,8 +10,12 @@ if TYPE_CHECKING:
 
 
 def save_bucket_status_to_db(
-    conn, bucket: str, file_count: int, total_size: int,
-    storage_classes: Dict[str, int], scan_complete: bool
+    conn,
+    bucket: str,
+    file_count: int,
+    total_size: int,
+    storage_classes: Dict[str, int],
+    scan_complete: bool,
 ):
     """Helper to save bucket status to database"""
     import json  # pylint: disable=import-outside-toplevel
@@ -30,8 +34,13 @@ def save_bucket_status_to_db(
 
 
 def update_bucket_verification(
-    conn, bucket: str, verified_file_count, size_verified_count,
-    checksum_verified_count, total_bytes_verified, local_file_count
+    conn,
+    bucket: str,
+    verified_file_count,
+    size_verified_count,
+    checksum_verified_count,
+    total_bytes_verified,
+    local_file_count,
 ):
     """Helper to update bucket verification status"""
     now = get_utc_now()
@@ -50,6 +59,63 @@ def update_bucket_verification(
         ),
     )
     conn.commit()
+
+
+def update_bucket_flag(conn, bucket: str, flag_name: str):
+    """Helper to update a boolean flag"""
+    now = get_utc_now()
+    conn.execute(
+        f"UPDATE bucket_status SET {flag_name} = 1, updated_at = ? WHERE bucket = ?",
+        (now, bucket),
+    )
+    conn.commit()
+
+
+def get_all_buckets_from_db(conn) -> List[str]:
+    """Get list of all buckets"""
+    return [r["bucket"] for r in conn.execute("SELECT bucket FROM bucket_status ORDER BY bucket")]
+
+
+def get_completed_buckets_for_phase_from_db(conn, phase_field: str) -> List[str]:
+    """Get buckets that completed a specific phase"""
+    return [
+        r["bucket"]
+        for r in conn.execute(
+            f"SELECT bucket FROM bucket_status WHERE {phase_field} = 1 ORDER BY bucket"
+        )
+    ]
+
+
+def get_bucket_info_from_db(conn, bucket: str) -> Dict:
+    """Get bucket information"""
+    row = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (bucket,)).fetchone()
+    return dict(row) if row else {}
+
+
+def get_storage_class_counts(conn) -> Dict[str, int]:
+    """Get storage class counts from database"""
+    cursor = conn.execute(
+        "SELECT storage_class, COUNT(*) as count FROM files GROUP BY storage_class"
+    )
+    return {r["storage_class"]: r["count"] for r in cursor.fetchall()}
+
+
+def get_scan_summary_from_db(conn) -> Dict:
+    """Get summary of scanned buckets"""
+    cursor = conn.execute(
+        """SELECT COUNT(*) as bucket_count,
+        COALESCE(SUM(file_count), 0) as total_files,
+        COALESCE(SUM(total_size), 0) as total_size
+        FROM bucket_status WHERE scan_complete = 1"""
+    )
+    row = cursor.fetchone()
+    storage_classes = get_storage_class_counts(conn)
+    return {
+        "bucket_count": row["bucket_count"],
+        "total_files": row["total_files"],
+        "total_size": row["total_size"],
+        "storage_classes": storage_classes,
+    }
 
 
 class FileStateManager:
@@ -136,11 +202,14 @@ class BucketStateManager:
     ):
         """Save or update bucket status"""
         with self.db_conn.get_connection() as conn:
-            save_bucket_status_to_db(conn, bucket, file_count, total_size, storage_classes, scan_complete)
+            save_bucket_status_to_db(
+                conn, bucket, file_count, total_size, storage_classes, scan_complete
+            )
 
     def mark_bucket_sync_complete(self, bucket: str):
         """Mark bucket as synced"""
-        self._update_bucket_flag(bucket, "sync_complete")
+        with self.db_conn.get_connection() as conn:
+            update_bucket_flag(conn, bucket, "sync_complete")
 
     def mark_bucket_verify_complete(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
@@ -154,72 +223,39 @@ class BucketStateManager:
         """Mark bucket as verified and store verification results"""
         with self.db_conn.get_connection() as conn:
             update_bucket_verification(
-                conn, bucket, verified_file_count, size_verified_count,
-                checksum_verified_count, total_bytes_verified, local_file_count
+                conn,
+                bucket,
+                verified_file_count,
+                size_verified_count,
+                checksum_verified_count,
+                total_bytes_verified,
+                local_file_count,
             )
 
     def mark_bucket_delete_complete(self, bucket: str):
         """Mark bucket as deleted from S3"""
-        self._update_bucket_flag(bucket, "delete_complete")
-
-    def _update_bucket_flag(self, bucket: str, flag_name: str):
-        """Helper to update a boolean flag"""
-        now = get_utc_now()
         with self.db_conn.get_connection() as conn:
-            conn.execute(
-                f"UPDATE bucket_status SET {flag_name} = 1, updated_at = ? WHERE bucket = ?",
-                (now, bucket),
-            )
-            conn.commit()
+            update_bucket_flag(conn, bucket, "delete_complete")
 
     def get_all_buckets(self) -> List[str]:
         """Get list of all buckets"""
         with self.db_conn.get_connection() as conn:
-            return [
-                r["bucket"]
-                for r in conn.execute("SELECT bucket FROM bucket_status ORDER BY bucket")
-            ]
+            return get_all_buckets_from_db(conn)
 
     def get_completed_buckets_for_phase(self, phase_field: str) -> List[str]:
         """Get buckets that completed a specific phase"""
         with self.db_conn.get_connection() as conn:
-            return [
-                r["bucket"]
-                for r in conn.execute(
-                    f"SELECT bucket FROM bucket_status WHERE {phase_field} = 1 ORDER BY bucket"
-                )
-            ]
+            return get_completed_buckets_for_phase_from_db(conn, phase_field)
 
     def get_bucket_info(self, bucket: str) -> Dict:
         """Get bucket information"""
         with self.db_conn.get_connection() as conn:
-            row = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (bucket,)).fetchone()
-            return dict(row) if row else {}
-
-    def _get_storage_class_counts(self, conn) -> Dict[str, int]:
-        """Get storage class counts from database"""
-        cursor = conn.execute(
-            "SELECT storage_class, COUNT(*) as count FROM files GROUP BY storage_class"
-        )
-        return {r["storage_class"]: r["count"] for r in cursor.fetchall()}
+            return get_bucket_info_from_db(conn, bucket)
 
     def get_scan_summary(self) -> Dict:
         """Get summary of scanned buckets"""
         with self.db_conn.get_connection() as conn:
-            cursor = conn.execute(
-                """SELECT COUNT(*) as bucket_count,
-                COALESCE(SUM(file_count), 0) as total_files,
-                COALESCE(SUM(total_size), 0) as total_size
-                FROM bucket_status WHERE scan_complete = 1"""
-            )
-            row = cursor.fetchone()
-            storage_classes = self._get_storage_class_counts(conn)
-            return {
-                "bucket_count": row["bucket_count"],
-                "total_files": row["total_files"],
-                "total_size": row["total_size"],
-                "storage_classes": storage_classes,
-            }
+            return get_scan_summary_from_db(conn)
 
 
 class PhaseManager:

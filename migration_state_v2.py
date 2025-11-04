@@ -138,14 +138,10 @@ class DatabaseConnection:  # pylint: disable=too-few-public-methods
 
 
 class MigrationStateV2:
-    """
-    Enhanced migration state management with bucket-level tracking.
-    Thin coordinator delegating to specialized managers.
-    """
+    """Migration state management delegating to specialized managers"""
 
     def __init__(self, db_path: str):
-        # pylint: disable=import-outside-toplevel
-        from migration_state_managers import (
+        from migration_state_managers import (  # pylint: disable=import-outside-toplevel
             BucketStateManager,
             FileStateManager,
             PhaseManager,
@@ -156,77 +152,76 @@ class MigrationStateV2:
         self.buckets = BucketStateManager(self.db_conn)
         self.phases = PhaseManager(self.db_conn)
 
-    # File operations
-    def add_file(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    # File operations - delegate to FileStateManager
+    def add_file(
         self, bucket: str, key: str, size: int, etag: str, storage_class: str, last_modified: str
-    ):
-        """Add a discovered file"""
-        self.files.add_file(bucket, key, size, etag, storage_class, last_modified)
+    ):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        return self.files.add_file(bucket, key, size, etag, storage_class, last_modified)
 
     def mark_glacier_restore_requested(self, bucket: str, key: str):
-        """Mark Glacier restore requested"""
-        self.files.mark_glacier_restore_requested(bucket, key)
+        return self.files.mark_glacier_restore_requested(bucket, key)
 
     def mark_glacier_restored(self, bucket: str, key: str):
-        """Mark Glacier restore complete"""
-        self.files.mark_glacier_restored(bucket, key)
+        return self.files.mark_glacier_restored(bucket, key)
 
     def get_glacier_files_needing_restore(self) -> List[Dict]:
-        """Get Glacier files needing restore"""
         return self.files.get_glacier_files_needing_restore()
 
     def get_files_restoring(self) -> List[Dict]:
-        """Get files currently restoring"""
         return self.files.get_files_restoring()
 
-    # Bucket operations
-    def save_bucket_status(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-        self, bucket: str, file_count: int, total_size: int,
-        storage_classes: Dict[str, int], scan_complete: bool = False
-    ):
-        """Save bucket status"""
-        self.buckets.save_bucket_status(bucket, file_count, total_size, storage_classes, scan_complete)
+    # Bucket operations - delegate to BucketStateManager
+    def save_bucket_status(
+        self,
+        bucket: str,
+        file_count: int,
+        total_size: int,
+        storage_classes: Dict[str, int],
+        scan_complete: bool = False,
+    ):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        return self.buckets.save_bucket_status(
+            bucket, file_count, total_size, storage_classes, scan_complete
+        )
 
     def mark_bucket_sync_complete(self, bucket: str):
-        """Mark bucket synced"""
-        self.buckets.mark_bucket_sync_complete(bucket)
+        return self.buckets.mark_bucket_sync_complete(bucket)
 
-    def mark_bucket_verify_complete(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-        self, bucket: str, verified_file_count: int = None, size_verified_count: int = None,
-        checksum_verified_count: int = None, total_bytes_verified: int = None,
-        local_file_count: int = None
-    ):
-        """Mark bucket verified"""
-        self.buckets.mark_bucket_verify_complete(
-            bucket, verified_file_count, size_verified_count,
-            checksum_verified_count, total_bytes_verified, local_file_count
+    def mark_bucket_verify_complete(
+        self,
+        bucket: str,
+        verified_file_count: int = None,
+        size_verified_count: int = None,
+        checksum_verified_count: int = None,
+        total_bytes_verified: int = None,
+        local_file_count: int = None,
+    ):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+        return self.buckets.mark_bucket_verify_complete(
+            bucket,
+            verified_file_count,
+            size_verified_count,
+            checksum_verified_count,
+            total_bytes_verified,
+            local_file_count,
         )
 
     def mark_bucket_delete_complete(self, bucket: str):
-        """Mark bucket deleted"""
-        self.buckets.mark_bucket_delete_complete(bucket)
+        return self.buckets.mark_bucket_delete_complete(bucket)
 
     def get_all_buckets(self) -> List[str]:
-        """Get all buckets"""
         return self.buckets.get_all_buckets()
 
     def get_completed_buckets_for_phase(self, phase_field: str) -> List[str]:
-        """Get completed buckets for phase"""
         return self.buckets.get_completed_buckets_for_phase(phase_field)
 
     def get_bucket_info(self, bucket: str) -> Dict:
-        """Get bucket info"""
         return self.buckets.get_bucket_info(bucket)
 
     def get_scan_summary(self) -> Dict:
-        """Get scan summary"""
         return self.buckets.get_scan_summary()
 
-    # Phase operations
+    # Phase operations - delegate to PhaseManager
     def get_current_phase(self) -> Phase:
-        """Get current phase"""
         return self.phases.get_phase()
 
     def set_current_phase(self, phase: Phase):
-        """Set current phase"""
-        self.phases.set_phase(phase)
+        return self.phases.set_phase(phase)

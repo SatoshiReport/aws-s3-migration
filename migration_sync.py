@@ -13,8 +13,7 @@ def check_sync_process_errors(process):
     stderr_output = process.stderr.read()
     if stderr_output:
         error_lines = [
-            line for line in stderr_output.split("\n")
-            if line.strip() and "Completed" not in line
+            line for line in stderr_output.split("\n") if line.strip() and "Completed" not in line
         ]
     else:
         error_lines = []
