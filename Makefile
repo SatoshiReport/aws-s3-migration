@@ -21,6 +21,9 @@ DEPENDENCY_GUARD_EXCLUDES := ci_shared docs scripts tests .venv
 PYTEST_TARGET := tests
 PYTEST_NODES := 1
 COMPILE_TARGETS := $(PYTHON_SOURCES) $(TEST_DIRS)
+COMPLEXITY_GUARD_PATH := ci_shared/scripts/complexity_guard.py
+SHARED_SOURCE_ROOT := .
+COMPLEXITY_GUARD_ARGS := --root $(SHARED_SOURCE_ROOT) --max-cyclomatic 10 --max-cognitive 15 $(foreach dir,$(COMPLEXITY_EXCLUDES),--exclude $(dir))
 
 include ci_shared/ci_shared.mk
 

@@ -31,6 +31,20 @@ IGNORED_FILE_PATTERNS = [
 ]
 
 
+def check_verification_errors(verification_errors):
+    """Check and report verification errors"""
+    if verification_errors:
+        print("  ✗ VERIFICATION FAILED:")
+        for error in verification_errors[:MAX_ERROR_DISPLAY]:
+            print(f"    - {error}")
+        if len(verification_errors) > MAX_ERROR_DISPLAY:
+            print(f"    ... and {len(verification_errors) - MAX_ERROR_DISPLAY} more errors")
+        print()
+        raise ValueError(  # noqa: TRY003
+            f"Verification failed: {len(verification_errors)} file(s) with issues"
+        )
+
+
 class FileInventoryChecker:  # pylint: disable=too-few-public-methods
     """Checks local file inventory against expected files"""
 
@@ -80,6 +94,29 @@ class FileInventoryChecker:  # pylint: disable=too-few-public-methods
         print()
         return local_files
 
+    def _add_missing_file_errors(self, missing_files: set, errors: List[str]):
+        """Add missing file errors to the error list"""
+        for key in list(missing_files)[:MAX_ERROR_DISPLAY]:
+            errors.append(f"Missing file: {key}")
+        if len(missing_files) > MAX_ERROR_DISPLAY:
+            errors.append(f"... and {len(missing_files) - MAX_ERROR_DISPLAY} more missing files")
+
+    def _add_extra_file_errors(self, extra_files: set, errors: List[str]):
+        """Add extra file errors to the error list"""
+        for key in list(extra_files)[:MAX_ERROR_DISPLAY]:
+            errors.append(f"Extra file (not in S3): {key}")
+        if len(extra_files) > MAX_ERROR_DISPLAY:
+            errors.append(f"... and {len(extra_files) - MAX_ERROR_DISPLAY} more extra files")
+
+    def _report_inventory_errors(self, errors: List[str], missing_count: int, extra_count: int):
+        """Report inventory errors and raise exception"""
+        print("  ✗ File inventory mismatch:")
+        for error in errors:
+            print(f"    - {error}")
+        print()
+        msg = f"File inventory check failed: {missing_count} missing, {extra_count} extra"
+        raise ValueError(msg)
+
     def check_inventory(self, expected_keys: set, local_keys: set) -> List[str]:
         """Check for missing or extra files"""
         print("  Checking file inventory...")
@@ -97,27 +134,11 @@ class FileInventoryChecker:  # pylint: disable=too-few-public-methods
 
         errors = []
         if missing_files:
-            for key in list(missing_files)[:MAX_ERROR_DISPLAY]:
-                errors.append(f"Missing file: {key}")
-            if len(missing_files) > MAX_ERROR_DISPLAY:
-                errors.append(
-                    f"... and {len(missing_files) - MAX_ERROR_DISPLAY} more missing files"
-                )
+            self._add_missing_file_errors(missing_files, errors)
         if extra_files:
-            for key in list(extra_files)[:MAX_ERROR_DISPLAY]:
-                errors.append(f"Extra file (not in S3): {key}")
-            if len(extra_files) > MAX_ERROR_DISPLAY:
-                errors.append(f"... and {len(extra_files) - MAX_ERROR_DISPLAY} more extra files")
+            self._add_extra_file_errors(extra_files, errors)
         if errors:
-            print("  ✗ File inventory mismatch:")
-            for error in errors:
-                print(f"    - {error}")
-            print()
-            msg = (
-                f"File inventory check failed: "
-                f"{len(missing_files)} missing, {len(extra_files)} extra"
-            )
-            raise ValueError(msg)
+            self._report_inventory_errors(errors, len(missing_files), len(extra_files))
         return errors
 
 
@@ -184,7 +205,7 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
                 expected_size,
             )
         print("\n")
-        self._check_verification_errors(stats["verification_errors"])
+        check_verification_errors(stats["verification_errors"])
         return {k: v for k, v in stats.items() if k != "verification_errors"}
 
     def _verify_single_file(
@@ -237,19 +258,6 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
         except (OSError, IOError) as e:
             stats["verification_errors"].append(f"{s3_key}: checksum computation failed: {e}")
 
-    def _check_verification_errors(self, verification_errors):
-        """Check and report verification errors"""
-        if verification_errors:
-            print("  ✗ VERIFICATION FAILED:")
-            for error in verification_errors[:MAX_ERROR_DISPLAY]:
-                print(f"    - {error}")
-            if len(verification_errors) > MAX_ERROR_DISPLAY:
-                print(f"    ... and {len(verification_errors) - MAX_ERROR_DISPLAY} more errors")
-            print()
-            raise ValueError(  # noqa: TRY003
-                f"Verification failed: {len(verification_errors)} file(s) with issues"
-            )
-
     def _compute_etag(self, file_path: Path, s3_etag: str) -> Tuple[str, bool]:
         """Compute ETag for a single-part upload (simple MD5 hash)"""
         s3_etag = s3_etag.strip('"')
@@ -292,17 +300,23 @@ class BucketVerifier:  # pylint: disable=too-few-public-methods
         size_verified = verify_results["size_verified"]
         checksum_verified = verify_results["checksum_verified"]
         total_bytes_verified = verify_results["total_bytes_verified"]
-        print(f"  Files in S3:          {expected_files:,}")
-        print(f"  Files found locally:  {len(local_files):,}")
-        print(f"  Size verified:        {size_verified:,} files")
-        print(f"  Checksum verified:    {checksum_verified:,} files")
-        print(f"  Total verified:       {verified_count:,} files")
+
+        # Calculate ignored system files
+        ignored_count = len(local_files) - expected_files
+
+        print(f"  S3 files:             {expected_files:,}")
+        print(f"  Verified files:       {verified_count:,}")
+        print(f"  - Size verified:      {size_verified:,}")
+        print(f"  - Checksum verified:  {checksum_verified:,}")
+        if ignored_count > 0:
+            print()
+            print(f"  (Ignored {ignored_count:,} system metadata files: .DS_Store, etc.)")
         print()
         if verified_count != expected_files:
             raise ValueError(  # noqa: TRY003
                 f"File count mismatch: {verified_count} verified vs {expected_files} expected"
             )
-        print(f"  ✓ File count matches: {verified_count:,} files")
+        print(f"  ✓ All {verified_count:,} files verified successfully")
         print_verification_success_messages()
         print(f"  ✓ Total size: {format_size(bucket_info['total_size'])}")
         print()

@@ -36,6 +36,32 @@ from migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
 from migration_state_v2 import MigrationStateV2, Phase
 
 
+def reset_migration_state():
+    """Reset all state and start from beginning"""
+    import os  # pylint: disable=import-outside-toplevel
+
+    print("\n" + "=" * 70)
+    print("RESET MIGRATION")
+    print("=" * 70)
+    print()
+    print("This will delete all migration state and start over.")
+    print("Local files will NOT be deleted.")
+    print()
+    response = input("Are you sure? (yes/no): ")
+    if response.lower() == "yes":
+        if os.path.exists(config.STATE_DB_PATH):
+            os.remove(config.STATE_DB_PATH)
+            print()
+            print("✓ State database deleted")
+            print("Run 'python migrate_v2.py' to start fresh")
+        else:
+            print()
+            print("No state database found")
+    else:
+        print()
+        print("Reset cancelled")
+
+
 class DriveChecker:  # pylint: disable=too-few-public-methods
     """Handles checking if destination drive is available and writable"""
 
@@ -101,8 +127,8 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         self.interrupted = False
         signal.signal(signal.SIGINT, self._signal_handler)
 
-    def _signal_handler(self, _signum, _frame):
-        """Handle Ctrl+C gracefully"""
+    def _set_interrupted_flags(self):
+        """Set interrupted flags on all components"""
         self.interrupted = True
         self.scanner.interrupted = True
         self.glacier_restorer.interrupted = True
@@ -110,8 +136,11 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         self.bucket_migrator.interrupted = True
         self.bucket_migrator.syncer.interrupted = True
         self.migration_orchestrator.interrupted = True
-        print("\n")
-        print("=" * 70)
+
+    def _signal_handler(self, _signum, _frame):
+        """Handle Ctrl+C gracefully"""
+        self._set_interrupted_flags()
+        print("\n" + "=" * 70)
         print("MIGRATION INTERRUPTED")
         print("=" * 70)
         print("State has been saved.")
@@ -148,13 +177,17 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
             self.migration_orchestrator.migrate_all_buckets()
             current_phase = self.state.get_current_phase()
         if current_phase == Phase.COMPLETE:
-            self.state.set_current_phase(Phase.COMPLETE)
-            print("\n" + "=" * 70)
-            print("✓ MIGRATION COMPLETE!")
-            print("=" * 70)
-            print("All files have been migrated and verified.")
-            print("All S3 buckets have been deleted.")
-            print("=" * 70)
+            self._print_completion_message()
+
+    def _print_completion_message(self):
+        """Print migration completion message"""
+        self.state.set_current_phase(Phase.COMPLETE)
+        print("\n" + "=" * 70)
+        print("✓ MIGRATION COMPLETE!")
+        print("=" * 70)
+        print("All files have been migrated and verified.")
+        print("All S3 buckets have been deleted.")
+        print("=" * 70)
 
     def show_status(self):
         """Display current migration status"""
@@ -162,28 +195,7 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
 
     def reset(self):
         """Reset all state and start from beginning"""
-        import os  # pylint: disable=import-outside-toplevel
-
-        print("\n" + "=" * 70)
-        print("RESET MIGRATION")
-        print("=" * 70)
-        print()
-        print("This will delete all migration state and start over.")
-        print("Local files will NOT be deleted.")
-        print()
-        response = input("Are you sure? (yes/no): ")
-        if response.lower() == "yes":
-            if os.path.exists(config.STATE_DB_PATH):
-                os.remove(config.STATE_DB_PATH)
-                print()
-                print("✓ State database deleted")
-                print("Run 'python migrate_v2.py' to start fresh")
-            else:
-                print()
-                print("No state database found")
-        else:
-            print()
-            print("Reset cancelled")
+        reset_migration_state()
 
 
 def create_migrator() -> S3MigrationV2:

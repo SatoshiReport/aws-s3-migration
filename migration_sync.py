@@ -8,6 +8,23 @@ from migration_state_v2 import MigrationStateV2
 from migration_utils import ProgressTracker, format_duration, format_size
 
 
+def check_sync_process_errors(process):
+    """Check for sync errors in stderr"""
+    stderr_output = process.stderr.read()
+    if stderr_output:
+        error_lines = [
+            line for line in stderr_output.split("\n")
+            if line.strip() and "Completed" not in line
+        ]
+    else:
+        error_lines = []
+    if process.returncode != 0:
+        error_msg = f"aws s3 sync failed with return code {process.returncode}"
+        if error_lines:
+            error_msg += "\n\nError details:\n" + "\n".join(error_lines)
+        raise RuntimeError(error_msg)
+
+
 class BucketSyncer:  # pylint: disable=too-few-public-methods
     """Handles syncing a bucket using AWS CLI"""
 
@@ -61,6 +78,10 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
                     self._display_progress(start_time, files_done, bytes_done)
         return files_done, bytes_done
 
+    def _check_sync_errors(self, process):
+        """Check for sync errors"""
+        check_sync_process_errors(process)
+
     def _parse_aws_size(self, line: str):
         """Parse byte size from AWS CLI output line"""
         try:
@@ -88,23 +109,6 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
                 f"({format_size(throughput)}/s)  "
             )
             print(f"\r  {progress}", end="", flush=True)
-
-    def _check_sync_errors(self, process):
-        """Check for sync errors in stderr"""
-        stderr_output = process.stderr.read()
-        if stderr_output:
-            error_lines = [
-                line
-                for line in stderr_output.split("\n")
-                if line.strip() and "Completed" not in line
-            ]
-        else:
-            error_lines = []
-        if process.returncode != 0:
-            error_msg = f"aws s3 sync failed with return code {process.returncode}"
-            if error_lines:
-                error_msg += "\n\nError details:\n" + "\n".join(error_lines)
-            raise RuntimeError(error_msg)
 
     def _print_sync_summary(self, start_time, files_done, bytes_done):
         """Print sync completion summary"""

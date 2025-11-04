@@ -9,6 +9,31 @@ from migration_utils import format_size, print_verification_success_messages
 from migration_verify import BucketDeleter, BucketVerifier
 
 
+def show_verification_summary(bucket_info: dict):
+    """Show detailed verification summary from stored results"""
+    local_file_count = bucket_info["local_file_count"]
+    size_verified_count = bucket_info["size_verified_count"]
+    checksum_verified_count = bucket_info["checksum_verified_count"]
+    verified_file_count = bucket_info["verified_file_count"]
+    total_bytes_verified = bucket_info["total_bytes_verified"]
+    print("  " + "=" * 66)
+    print("  VERIFICATION SUMMARY (Real Computed Values)")
+    print("  " + "=" * 66)
+    print()
+    print(f"  Files in S3:          {bucket_info['file_count']:,}")
+    print(f"  Files found locally:  {local_file_count:,}")
+    print(f"  Size verified:        {size_verified_count:,} files")
+    print(f"  Checksum verified:    {checksum_verified_count:,} files")
+    print(f"  Total verified:       {verified_file_count:,} files")
+    print()
+    print(f"  ✓ File count matches: {verified_file_count:,} files")
+    print_verification_success_messages()
+    print(f"  ✓ Total size: {format_size(total_bytes_verified)}")
+    print()
+    print("  ✓ Verification complete")
+    print("  " + "=" * 66)
+
+
 class BucketMigrator:  # pylint: disable=too-few-public-methods
     """Handles migrating a single bucket through sync → verify → delete pipeline"""
 
@@ -72,7 +97,7 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
 
     def _delete_with_confirmation(self, bucket: str, bucket_info: dict):
         """Delete bucket from S3 with user confirmation"""
-        self._show_verification_summary(bucket, bucket_info)
+        show_verification_summary(bucket_info)
         print()
         print("╔" + "=" * 68 + "╗")
         print("║" + " " * 20 + "READY TO DELETE BUCKET" + " " * 26 + "║")
@@ -96,29 +121,38 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
             print("  Skipped - bucket NOT deleted")
             print("  (You can delete it later manually)")
 
-    def _show_verification_summary(self, _bucket: str, bucket_info: dict):
-        """Show detailed verification summary from stored results"""
-        local_file_count = bucket_info["local_file_count"]
-        size_verified_count = bucket_info["size_verified_count"]
-        checksum_verified_count = bucket_info["checksum_verified_count"]
-        verified_file_count = bucket_info["verified_file_count"]
-        total_bytes_verified = bucket_info["total_bytes_verified"]
-        print("  " + "=" * 66)
-        print("  VERIFICATION SUMMARY (Real Computed Values)")
-        print("  " + "=" * 66)
-        print()
-        print(f"  Files in S3:          {bucket_info['file_count']:,}")
-        print(f"  Files found locally:  {local_file_count:,}")
-        print(f"  Size verified:        {size_verified_count:,} files")
-        print(f"  Checksum verified:    {checksum_verified_count:,} files")
-        print(f"  Total verified:       {verified_file_count:,} files")
-        print()
-        print(f"  ✓ File count matches: {verified_file_count:,} files")
-        print_verification_success_messages()
-        print(f"  ✓ Total size: {format_size(total_bytes_verified)}")
-        print()
-        print("  ✓ Verification complete")
-        print("  " + "=" * 66)
+
+def handle_drive_error(error):
+    """Handle drive disconnection errors"""
+    print()
+    print(f"✗ Drive error: {error}")
+    print()
+    print("=" * 70)
+    print("MIGRATION INTERRUPTED - DRIVE ERROR")
+    print("=" * 70)
+    print("The destination drive appears to be disconnected or inaccessible.")
+    print()
+    print("State has been saved. When you reconnect the drive,")
+    print("run 'python migrate_v2.py' to resume.")
+    print("=" * 70)
+    sys.exit(1)
+
+
+def handle_migration_error(bucket, error):
+    """Handle general migration errors"""
+    print()
+    print(f"✗ Error: {error}")
+    print()
+    print("=" * 70)
+    print("MIGRATION STOPPED - ERROR ENCOUNTERED")
+    print("=" * 70)
+    print(f"Bucket: {bucket}")
+    print(f"Error: {error}")
+    print()
+    print("State has been saved.")
+    print("Fix the issue and run 'python migrate_v2.py' to resume.")
+    print("=" * 70)
+    sys.exit(1)
 
 
 class StatusReporter:  # pylint: disable=too-few-public-methods
@@ -212,40 +246,9 @@ class BucketMigrationOrchestrator:  # pylint: disable=too-few-public-methods
             print(f"✓ Bucket {idx}/{total} complete: {bucket}")
             print()
         except (FileNotFoundError, PermissionError, OSError) as e:
-            self._handle_drive_error(e)
+            handle_drive_error(e)
         except (RuntimeError, ValueError) as e:
-            self._handle_migration_error(bucket, e)
-
-    def _handle_drive_error(self, error):
-        """Handle drive disconnection errors"""
-        print()
-        print(f"✗ Drive error: {error}")
-        print()
-        print("=" * 70)
-        print("MIGRATION INTERRUPTED - DRIVE ERROR")
-        print("=" * 70)
-        print("The destination drive appears to be disconnected or inaccessible.")
-        print()
-        print("State has been saved. When you reconnect the drive,")
-        print("run 'python migrate_v2.py' to resume.")
-        print("=" * 70)
-        sys.exit(1)
-
-    def _handle_migration_error(self, bucket, error):
-        """Handle general migration errors"""
-        print()
-        print(f"✗ Error: {error}")
-        print()
-        print("=" * 70)
-        print("MIGRATION STOPPED - ERROR ENCOUNTERED")
-        print("=" * 70)
-        print(f"Bucket: {bucket}")
-        print(f"Error: {error}")
-        print()
-        print("State has been saved.")
-        print("Fix the issue and run 'python migrate_v2.py' to resume.")
-        print("=" * 70)
-        sys.exit(1)
+            handle_migration_error(bucket, e)
 
     def _print_completion_status(self, all_buckets):
         """Print completion or paused status"""

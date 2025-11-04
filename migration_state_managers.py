@@ -9,6 +9,49 @@ if TYPE_CHECKING:
     from migration_state_v2 import DatabaseConnection, Phase
 
 
+def save_bucket_status_to_db(
+    conn, bucket: str, file_count: int, total_size: int,
+    storage_classes: Dict[str, int], scan_complete: bool
+):
+    """Helper to save bucket status to database"""
+    import json  # pylint: disable=import-outside-toplevel
+
+    now = get_utc_now()
+    storage_json = json.dumps(storage_classes)
+    conn.execute(
+        """INSERT OR REPLACE INTO bucket_status
+        (bucket, file_count, total_size, storage_class_counts,
+        scan_complete, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?,
+        COALESCE((SELECT created_at FROM bucket_status WHERE bucket = ?), ?), ?)""",
+        (bucket, file_count, total_size, storage_json, scan_complete, bucket, now, now),
+    )
+    conn.commit()
+
+
+def update_bucket_verification(
+    conn, bucket: str, verified_file_count, size_verified_count,
+    checksum_verified_count, total_bytes_verified, local_file_count
+):
+    """Helper to update bucket verification status"""
+    now = get_utc_now()
+    conn.execute(
+        """UPDATE bucket_status SET verify_complete = 1, verified_file_count = ?,
+        size_verified_count = ?, checksum_verified_count = ?, total_bytes_verified = ?,
+        local_file_count = ?, updated_at = ? WHERE bucket = ?""",
+        (
+            verified_file_count,
+            size_verified_count,
+            checksum_verified_count,
+            total_bytes_verified,
+            local_file_count,
+            now,
+            bucket,
+        ),
+    )
+    conn.commit()
+
+
 class FileStateManager:
     """Manages file-level state operations"""
 
@@ -92,20 +135,8 @@ class BucketStateManager:
         scan_complete: bool = False,
     ):
         """Save or update bucket status"""
-        import json  # pylint: disable=import-outside-toplevel
-
-        now = get_utc_now()
-        storage_json = json.dumps(storage_classes)
         with self.db_conn.get_connection() as conn:
-            conn.execute(
-                """INSERT OR REPLACE INTO bucket_status
-                (bucket, file_count, total_size, storage_class_counts,
-                scan_complete, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?,
-                COALESCE((SELECT created_at FROM bucket_status WHERE bucket = ?), ?), ?)""",
-                (bucket, file_count, total_size, storage_json, scan_complete, bucket, now, now),
-            )
-            conn.commit()
+            save_bucket_status_to_db(conn, bucket, file_count, total_size, storage_classes, scan_complete)
 
     def mark_bucket_sync_complete(self, bucket: str):
         """Mark bucket as synced"""
@@ -121,23 +152,11 @@ class BucketStateManager:
         local_file_count: int = None,
     ):
         """Mark bucket as verified and store verification results"""
-        now = get_utc_now()
         with self.db_conn.get_connection() as conn:
-            conn.execute(
-                """UPDATE bucket_status SET verify_complete = 1, verified_file_count = ?,
-                size_verified_count = ?, checksum_verified_count = ?, total_bytes_verified = ?,
-                local_file_count = ?, updated_at = ? WHERE bucket = ?""",
-                (
-                    verified_file_count,
-                    size_verified_count,
-                    checksum_verified_count,
-                    total_bytes_verified,
-                    local_file_count,
-                    now,
-                    bucket,
-                ),
+            update_bucket_verification(
+                conn, bucket, verified_file_count, size_verified_count,
+                checksum_verified_count, total_bytes_verified, local_file_count
             )
-            conn.commit()
 
     def mark_bucket_delete_complete(self, bucket: str):
         """Mark bucket as deleted from S3"""
@@ -177,6 +196,13 @@ class BucketStateManager:
             row = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (bucket,)).fetchone()
             return dict(row) if row else {}
 
+    def _get_storage_class_counts(self, conn) -> Dict[str, int]:
+        """Get storage class counts from database"""
+        cursor = conn.execute(
+            "SELECT storage_class, COUNT(*) as count FROM files GROUP BY storage_class"
+        )
+        return {r["storage_class"]: r["count"] for r in cursor.fetchall()}
+
     def get_scan_summary(self) -> Dict:
         """Get summary of scanned buckets"""
         with self.db_conn.get_connection() as conn:
@@ -187,10 +213,7 @@ class BucketStateManager:
                 FROM bucket_status WHERE scan_complete = 1"""
             )
             row = cursor.fetchone()
-            cursor = conn.execute(
-                "SELECT storage_class, COUNT(*) as count FROM files GROUP BY storage_class"
-            )
-            storage_classes = {r["storage_class"]: r["count"] for r in cursor.fetchall()}
+            storage_classes = self._get_storage_class_counts(conn)
             return {
                 "bucket_count": row["bucket_count"],
                 "total_files": row["total_files"],

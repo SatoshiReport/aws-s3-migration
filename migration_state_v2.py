@@ -181,39 +181,25 @@ class MigrationStateV2:
 
     # Bucket operations
     def save_bucket_status(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-        self,
-        bucket: str,
-        file_count: int,
-        total_size: int,
-        storage_classes: Dict[str, int],
-        scan_complete: bool = False,
+        self, bucket: str, file_count: int, total_size: int,
+        storage_classes: Dict[str, int], scan_complete: bool = False
     ):
         """Save bucket status"""
-        self.buckets.save_bucket_status(
-            bucket, file_count, total_size, storage_classes, scan_complete
-        )
+        self.buckets.save_bucket_status(bucket, file_count, total_size, storage_classes, scan_complete)
 
     def mark_bucket_sync_complete(self, bucket: str):
         """Mark bucket synced"""
         self.buckets.mark_bucket_sync_complete(bucket)
 
     def mark_bucket_verify_complete(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-        self,
-        bucket: str,
-        verified_file_count: int = None,
-        size_verified_count: int = None,
-        checksum_verified_count: int = None,
-        total_bytes_verified: int = None,
-        local_file_count: int = None,
+        self, bucket: str, verified_file_count: int = None, size_verified_count: int = None,
+        checksum_verified_count: int = None, total_bytes_verified: int = None,
+        local_file_count: int = None
     ):
         """Mark bucket verified"""
         self.buckets.mark_bucket_verify_complete(
-            bucket,
-            verified_file_count,
-            size_verified_count,
-            checksum_verified_count,
-            total_bytes_verified,
-            local_file_count,
+            bucket, verified_file_count, size_verified_count,
+            checksum_verified_count, total_bytes_verified, local_file_count
         )
 
     def mark_bucket_delete_complete(self, bucket: str):
