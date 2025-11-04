@@ -241,8 +241,8 @@ class TestFileChecksumVerifier:
         file2.write_bytes(b"test content 2")
 
         # Calculate MD5 hashes
-        md5_1 = hashlib.md5(b"test content 1").hexdigest()
-        md5_2 = hashlib.md5(b"test content 2").hexdigest()
+        md5_1 = hashlib.md5(b"test content 1", usedforsecurity=False).hexdigest()
+        md5_2 = hashlib.md5(b"test content 2", usedforsecurity=False).hexdigest()
 
         local_files = {"file1.txt": file1, "file2.txt": file2}
         expected_file_map = {
@@ -339,7 +339,7 @@ class TestFileChecksumVerifier:
         file1 = tmp_path / "file1.txt"
         file1.write_bytes(b"test")
 
-        md5_hash = hashlib.md5(b"test").hexdigest()
+        md5_hash = hashlib.md5(b"test", usedforsecurity=False).hexdigest()
         stats = {
             "verified_count": 0,
             "size_verified": 0,
@@ -430,7 +430,7 @@ class TestFileChecksumVerifier:
         file1 = tmp_path / "file1.txt"
         file1.write_bytes(b"test content")
 
-        md5_hash = hashlib.md5(b"test content").hexdigest()
+        md5_hash = hashlib.md5(b"test content", usedforsecurity=False).hexdigest()
 
         verifier = FileChecksumVerifier()
         computed, is_match = verifier._compute_etag(file1, md5_hash)
@@ -456,7 +456,7 @@ class TestFileChecksumVerifier:
         file1 = tmp_path / "file1.txt"
         file1.write_bytes(b"test")
 
-        md5_hash = hashlib.md5(b"test").hexdigest()
+        md5_hash = hashlib.md5(b"test", usedforsecurity=False).hexdigest()
         quoted_etag = f'"{md5_hash}"'
 
         verifier = FileChecksumVerifier()
@@ -491,7 +491,7 @@ class TestFileChecksumVerifier:
         chunk_size = 8 * 1024 * 1024
         file1.write_bytes(b"x" * (chunk_size * 2 + 1000))
 
-        md5_hash = hashlib.md5()
+        md5_hash = hashlib.md5(usedforsecurity=False)
         with open(file1, "rb") as f:
             for chunk in iter(lambda: f.read(chunk_size), b""):
                 md5_hash.update(chunk)
@@ -524,7 +524,7 @@ class TestBucketVerifier:
         bucket_path.mkdir()
         (bucket_path / "file1.txt").write_bytes(b"content1")
 
-        md5_1 = hashlib.md5(b"content1").hexdigest()
+        md5_1 = hashlib.md5(b"content1", usedforsecurity=False).hexdigest()
 
         # Mock state
         mock_state = mock.Mock()
@@ -907,7 +907,7 @@ class TestEdgeCases:
         bucket_path.mkdir()
         (bucket_path / "file1.txt").write_bytes(b"content1")
 
-        md5_1 = hashlib.md5(b"content1").hexdigest()
+        md5_1 = hashlib.md5(b"content1", usedforsecurity=False).hexdigest()
 
         mock_state = mock.Mock()
         mock_state.get_bucket_info.return_value = {
@@ -973,7 +973,7 @@ class TestEdgeCases:
         file1 = tmp_path / "empty.txt"
         file1.write_bytes(b"")
 
-        md5_hash = hashlib.md5(b"").hexdigest()
+        md5_hash = hashlib.md5(b"", usedforsecurity=False).hexdigest()
 
         verifier = FileChecksumVerifier()
         computed, is_match = verifier._compute_etag(file1, md5_hash)
@@ -991,7 +991,7 @@ class TestEdgeCases:
         file2 = tmp_path / "multipart.txt"
         file2.write_bytes(b"multipart")
 
-        md5_1 = hashlib.md5(b"single").hexdigest()
+        md5_1 = hashlib.md5(b"single", usedforsecurity=False).hexdigest()
 
         local_files = {
             "singlepart.txt": file1,
@@ -1107,8 +1107,8 @@ class TestIntegration:
         (bucket_path / "file1.txt").write_bytes(b"content")
         (bucket_path / "file2.txt").write_bytes(b"data")
 
-        md5_1 = hashlib.md5(b"content").hexdigest()
-        md5_2 = hashlib.md5(b"data").hexdigest()
+        md5_1 = hashlib.md5(b"content", usedforsecurity=False).hexdigest()
+        md5_2 = hashlib.md5(b"data", usedforsecurity=False).hexdigest()
 
         mock_state = mock.Mock()
         mock_state.get_bucket_info.return_value = {

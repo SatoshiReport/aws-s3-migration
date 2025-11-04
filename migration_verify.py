@@ -253,7 +253,7 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
     def _compute_etag(self, file_path: Path, s3_etag: str) -> Tuple[str, bool]:
         """Compute ETag for a single-part upload (simple MD5 hash)"""
         s3_etag = s3_etag.strip('"')
-        md5_hash = hashlib.md5()
+        md5_hash = hashlib.md5(usedforsecurity=False)
         hash_file_in_chunks(file_path, md5_hash)
         computed_etag = md5_hash.hexdigest()
         return computed_etag, computed_etag == s3_etag
