@@ -21,13 +21,13 @@ MAX_ERROR_DISPLAY = 10  # Maximum number of errors to display before truncating
 
 # System files to ignore during verification (not stored in S3, created by OS)
 IGNORED_FILE_PATTERNS = [
-    ".DS_Store",           # macOS Finder metadata
-    "._.DS_Store",         # macOS resource fork for .DS_Store
-    "Thumbs.db",           # Windows thumbnail cache
-    "desktop.ini",         # Windows folder settings
-    ".Spotlight-V100",     # macOS Spotlight index (should be caught by directory filter)
-    ".TemporaryItems",     # macOS temporary items
-    ".Trashes",            # macOS trash
+    ".DS_Store",  # macOS Finder metadata
+    "._.DS_Store",  # macOS resource fork for .DS_Store
+    "Thumbs.db",  # Windows thumbnail cache
+    "desktop.ini",  # Windows folder settings
+    ".Spotlight-V100",  # macOS Spotlight index (should be caught by directory filter)
+    ".TemporaryItems",  # macOS temporary items
+    ".Trashes",  # macOS trash
 ]
 
 
@@ -91,7 +91,9 @@ class FileInventoryChecker:  # pylint: disable=too-few-public-methods
         ignored_count = len(extra_files_raw) - len(extra_files)
 
         if ignored_count > 0:
-            print(f"  ℹ Ignoring {ignored_count} system metadata file(s) (.DS_Store, Thumbs.db, etc.)")
+            print(
+                f"  ℹ Ignoring {ignored_count} system metadata file(s) (.DS_Store, Thumbs.db, etc.)"
+            )
 
         errors = []
         if missing_files:
