@@ -1,85 +1,22 @@
-"""Comprehensive unit tests for migrate_v2.py with 80%+ coverage.
+"""Unit tests for S3MigrationV2 core functionality in migrate_v2.py.
 
 Tests cover:
-- DriveChecker: check_available with various error scenarios
-- S3MigrationV2: Initialization, signal handler, run() method for all phases
+- S3MigrationV2 initialization
+- Signal handler
+- run() method for all phases
 - Phase transitions and state management
 - Reset confirmation handling (yes/no)
-- create_migrator factory function
-- main entry point with argparse handling
+- Error handling
 """
 
 import signal
-import sys
 from pathlib import Path
 from unittest import mock
 
 import pytest
 
-from migrate_v2 import DriveChecker, S3MigrationV2, create_migrator, main
+from migrate_v2 import S3MigrationV2
 from migration_state_v2 import Phase
-
-
-class TestDriveChecker:
-    """Tests for DriveChecker class."""
-
-    def test_initialization(self, tmp_path):
-        """DriveChecker initializes with base path."""
-        base_path = tmp_path / "s3_backup"
-        checker = DriveChecker(base_path)
-        assert checker.base_path == base_path
-
-    def test_check_available_parent_does_not_exist(self, tmp_path, capsys):
-        """check_available exits when parent directory does not exist."""
-        # Create a path whose parent doesn't exist
-        base_path = tmp_path / "nonexistent" / "s3_backup"
-        checker = DriveChecker(base_path)
-
-        with pytest.raises(SystemExit) as exc_info:
-            checker.check_available()
-
-        assert exc_info.value.code == 1
-        captured = capsys.readouterr()
-        assert "DRIVE NOT AVAILABLE" in captured.out
-        assert "Expected:" in captured.out
-
-    def test_check_available_parent_exists_creates_directory(self, tmp_path):
-        """check_available creates base directory when parent exists."""
-        base_path = tmp_path / "s3_backup"
-        checker = DriveChecker(base_path)
-
-        # Should not raise
-        checker.check_available()
-
-        # Directory should be created
-        assert base_path.exists()
-        assert base_path.is_dir()
-
-    def test_check_available_directory_already_exists(self, tmp_path):
-        """check_available succeeds if directory already exists."""
-        base_path = tmp_path / "s3_backup"
-        base_path.mkdir(parents=True)
-
-        checker = DriveChecker(base_path)
-
-        # Should not raise
-        checker.check_available()
-        assert base_path.exists()
-
-    def test_check_available_permission_denied(self, tmp_path, capsys, monkeypatch):
-        """check_available exits when directory creation raises PermissionError."""
-        base_path = tmp_path / "s3_backup"
-        checker = DriveChecker(base_path)
-
-        # Mock mkdir to raise PermissionError
-        with mock.patch.object(Path, "mkdir", side_effect=PermissionError()):
-            with pytest.raises(SystemExit) as exc_info:
-                checker.check_available()
-
-        assert exc_info.value.code == 1
-        captured = capsys.readouterr()
-        assert "PERMISSION DENIED" in captured.out
-        assert "Cannot write to destination:" in captured.out
 
 
 class TestS3MigrationV2:
@@ -358,137 +295,22 @@ class TestS3MigrationV2:
         mock_dependencies["migration_orchestrator"].migrate_all_buckets.assert_called_once()
 
 
-class TestCreateMigrator:
-    """Tests for create_migrator factory function."""
-
-    @pytest.fixture
-    def mock_config(self):
-        """Mock config module."""
-        with mock.patch("migrate_v2.config") as mock_cfg:
-            mock_cfg.STATE_DB_PATH = "/tmp/state.db"
-            mock_cfg.LOCAL_BASE_PATH = "/tmp/s3_backup"
-            yield mock_cfg
-
-    def test_create_migrator_returns_s3_migration_v2(self, mock_config):
-        """create_migrator returns S3MigrationV2 instance."""
-        with (
-            mock.patch("migrate_v2.MigrationStateV2"),
-            mock.patch("migrate_v2.boto3.client"),
-            mock.patch("migrate_v2.Path"),
-            mock.patch("migrate_v2.DriveChecker"),
-            mock.patch("migrate_v2.BucketScanner"),
-            mock.patch("migrate_v2.GlacierRestorer"),
-            mock.patch("migrate_v2.GlacierWaiter"),
-            mock.patch("migrate_v2.BucketMigrator"),
-            mock.patch("migrate_v2.BucketMigrationOrchestrator"),
-            mock.patch("migrate_v2.StatusReporter"),
-        ):
-            migrator = create_migrator()
-
-            assert isinstance(migrator, S3MigrationV2)
-            assert migrator.state is not None
-            assert migrator.drive_checker is not None
-            assert migrator.scanner is not None
-            assert migrator.glacier_restorer is not None
-            assert migrator.glacier_waiter is not None
-            assert migrator.bucket_migrator is not None
-            assert migrator.migration_orchestrator is not None
-            assert migrator.status_reporter is not None
-
-    def test_create_migrator_instantiates_all_dependencies(self, mock_config):
-        """create_migrator creates all required dependencies."""
-        with (
-            mock.patch("migrate_v2.MigrationStateV2") as mock_state_class,
-            mock.patch("migrate_v2.boto3.client") as mock_boto3,
-            mock.patch("migrate_v2.Path"),
-            mock.patch("migrate_v2.DriveChecker") as mock_drive_checker_class,
-            mock.patch("migrate_v2.BucketScanner") as mock_scanner_class,
-            mock.patch("migrate_v2.GlacierRestorer") as mock_restorer_class,
-            mock.patch("migrate_v2.GlacierWaiter") as mock_waiter_class,
-            mock.patch("migrate_v2.BucketMigrator") as mock_migrator_class,
-            mock.patch("migrate_v2.BucketMigrationOrchestrator") as mock_orchestrator_class,
-            mock.patch("migrate_v2.StatusReporter") as mock_reporter_class,
-        ):
-
-            create_migrator()
-
-            # Verify all classes were instantiated
-            mock_state_class.assert_called_once_with(mock_config.STATE_DB_PATH)
-            mock_boto3.assert_called_once_with("s3")
-            mock_drive_checker_class.assert_called_once()
-            mock_scanner_class.assert_called_once()
-            mock_restorer_class.assert_called_once()
-            mock_waiter_class.assert_called_once()
-            mock_migrator_class.assert_called_once()
-            mock_orchestrator_class.assert_called_once()
-            mock_reporter_class.assert_called_once()
-
-
-class TestMain:
-    """Tests for main entry point."""
-
-    @pytest.fixture
-    def mock_migrator(self):
-        """Mock migrator instance."""
-        with mock.patch("migrate_v2.create_migrator") as mock_create:
-            mock_migrator_instance = mock.Mock(spec=S3MigrationV2)
-            mock_create.return_value = mock_migrator_instance
-            yield mock_migrator_instance
-
-    def test_main_no_command_runs_migration(self, mock_migrator, monkeypatch):
-        """main() runs migration when no command provided."""
-        monkeypatch.setattr(sys, "argv", ["migrate_v2.py"])
-
-        main()
-
-        mock_migrator.run.assert_called_once()
-        mock_migrator.show_status.assert_not_called()
-        mock_migrator.reset.assert_not_called()
-
-    def test_main_status_command_shows_status(self, mock_migrator, monkeypatch):
-        """main() shows status when 'status' command provided."""
-        monkeypatch.setattr(sys, "argv", ["migrate_v2.py", "status"])
-
-        main()
-
-        mock_migrator.show_status.assert_called_once()
-        mock_migrator.run.assert_not_called()
-        mock_migrator.reset.assert_not_called()
-
-    def test_main_reset_command_resets_state(self, mock_migrator, monkeypatch):
-        """main() resets state when 'reset' command provided."""
-        monkeypatch.setattr(sys, "argv", ["migrate_v2.py", "reset"])
-
-        main()
-
-        mock_migrator.reset.assert_called_once()
-        mock_migrator.run.assert_not_called()
-        mock_migrator.show_status.assert_not_called()
-
-    def test_main_creates_migrator(self, monkeypatch):
-        """main() creates migrator instance."""
-        monkeypatch.setattr(sys, "argv", ["migrate_v2.py"])
-
-        with mock.patch("migrate_v2.create_migrator") as mock_create:
-            mock_create.return_value = mock.Mock(spec=S3MigrationV2)
-            main()
-
-            mock_create.assert_called_once()
-
-    def test_main_help_text(self, capsys, monkeypatch):
-        """main() displays help with -h flag."""
-        monkeypatch.setattr(sys, "argv", ["migrate_v2.py", "-h"])
-
-        with pytest.raises(SystemExit) as exc_info:
-            main()
-
-        assert exc_info.value.code == 0
-        captured = capsys.readouterr()
-        assert "S3 Bucket Migration Tool V2" in captured.out
-
-
 class TestSignalHandlerIntegration:
     """Integration tests for signal handler."""
+
+    @pytest.fixture
+    def mock_dependencies(self):
+        """Create mock dependencies for S3MigrationV2."""
+        return {
+            "state": mock.Mock(),
+            "drive_checker": mock.Mock(),
+            "scanner": mock.Mock(),
+            "glacier_restorer": mock.Mock(),
+            "glacier_waiter": mock.Mock(),
+            "migration_orchestrator": mock.Mock(),
+            "bucket_migrator": mock.Mock(),
+            "status_reporter": mock.Mock(),
+        }
 
     def test_signal_handler_propagates_to_all_components(self, mock_dependencies):
         """Signal handler properly propagates interrupted flag to all components."""
@@ -635,62 +457,6 @@ class TestRunPhaseEdgeCases:
         assert mock_migration_orchestrator.migrate_all_buckets.called
 
 
-class TestDriveCheckerEdgeCases:
-    """Tests for edge cases in DriveChecker."""
-
-    def test_check_available_creates_single_subdirectory(self, tmp_path):
-        """check_available creates single subdirectory under existing parent."""
-        nested_path = tmp_path / "s3_backup"
-        checker = DriveChecker(nested_path)
-
-        checker.check_available()
-
-        # Directory should be created
-        assert nested_path.exists()
-        # Parent must already exist (requirement of check_available)
-        assert nested_path.parent.exists()
-
-    def test_check_available_idempotent(self, tmp_path):
-        """check_available can be called multiple times safely."""
-        base_path = tmp_path / "s3_backup"
-        checker = DriveChecker(base_path)
-
-        # Call twice
-        checker.check_available()
-        checker.check_available()
-
-        # Should still exist
-        assert base_path.exists()
-
-
-class TestMainEdgeCases:
-    """Tests for edge cases in main entry point."""
-
-    def test_main_with_empty_args(self, monkeypatch):
-        """main() runs migration with no command specified."""
-        monkeypatch.setattr(sys, "argv", ["migrate_v2.py"])
-
-        with mock.patch("migrate_v2.create_migrator") as mock_create:
-            mock_migrator_instance = mock.Mock(spec=S3MigrationV2)
-            mock_create.return_value = mock_migrator_instance
-
-            main()
-
-            mock_migrator_instance.run.assert_called_once()
-
-    def test_main_parser_accepts_valid_commands(self, monkeypatch):
-        """main() parser accepts status and reset commands."""
-        for command in ["status", "reset"]:
-            monkeypatch.setattr(sys, "argv", ["migrate_v2.py", command])
-
-            with mock.patch("migrate_v2.create_migrator") as mock_create:
-                mock_migrator_instance = mock.Mock(spec=S3MigrationV2)
-                mock_create.return_value = mock_migrator_instance
-
-                # Should not raise
-                main()
-
-
 class TestS3MigrationV2ErrorHandling:
     """Tests for error handling in S3MigrationV2."""
 
@@ -721,18 +487,3 @@ class TestS3MigrationV2ErrorHandling:
 
         with pytest.raises(SystemExit):
             migrator.run()
-
-
-@pytest.fixture
-def mock_dependencies():
-    """Fixture for mock dependencies used across tests."""
-    return {
-        "state": mock.Mock(),
-        "drive_checker": mock.Mock(),
-        "scanner": mock.Mock(),
-        "glacier_restorer": mock.Mock(),
-        "glacier_waiter": mock.Mock(),
-        "migration_orchestrator": mock.Mock(),
-        "bucket_migrator": mock.Mock(),
-        "status_reporter": mock.Mock(),
-    }
