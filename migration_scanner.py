@@ -56,6 +56,9 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
                 continue
             for obj in page["Contents"]:
                 key = obj["Key"]
+                # Skip S3 directory markers (empty objects with keys ending in '/')
+                if key.endswith("/"):
+                    continue
                 size = obj["Size"]
                 etag = obj.get("ETag", "").strip('"')
                 storage_class = obj.get("StorageClass", "STANDARD")

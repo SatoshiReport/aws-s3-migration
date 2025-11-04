@@ -19,6 +19,17 @@ from migration_utils import (
 # Constants
 MAX_ERROR_DISPLAY = 10  # Maximum number of errors to display before truncating
 
+# System files to ignore during verification (not stored in S3, created by OS)
+IGNORED_FILE_PATTERNS = [
+    ".DS_Store",           # macOS Finder metadata
+    "._.DS_Store",         # macOS resource fork for .DS_Store
+    "Thumbs.db",           # Windows thumbnail cache
+    "desktop.ini",         # Windows folder settings
+    ".Spotlight-V100",     # macOS Spotlight index (should be caught by directory filter)
+    ".TemporaryItems",     # macOS temporary items
+    ".Trashes",            # macOS trash
+]
+
 
 class FileInventoryChecker:  # pylint: disable=too-few-public-methods
     """Checks local file inventory against expected files"""
@@ -26,6 +37,14 @@ class FileInventoryChecker:  # pylint: disable=too-few-public-methods
     def __init__(self, state: MigrationStateV2, base_path: Path):
         self.state = state
         self.base_path = base_path
+
+    def _should_ignore_key(self, key: str) -> bool:
+        """Check if S3 key should be ignored (for extra local files only)"""
+        file_name = key.split("/")[-1]  # Get filename from key
+        for pattern in IGNORED_FILE_PATTERNS:
+            if file_name == pattern or file_name.endswith(pattern):
+                return True
+        return False
 
     def load_expected_files(self, bucket: str) -> Dict[str, Dict]:
         """Load file metadata from database"""
@@ -65,7 +84,15 @@ class FileInventoryChecker:  # pylint: disable=too-few-public-methods
         """Check for missing or extra files"""
         print("  Checking file inventory...")
         missing_files = expected_keys - local_keys
-        extra_files = local_keys - expected_keys
+        extra_files_raw = local_keys - expected_keys
+
+        # Filter out system files from extra files (these are created locally by OS)
+        extra_files = {key for key in extra_files_raw if not self._should_ignore_key(key)}
+        ignored_count = len(extra_files_raw) - len(extra_files)
+
+        if ignored_count > 0:
+            print(f"  ℹ Ignoring {ignored_count} system metadata file(s) (.DS_Store, Thumbs.db, etc.)")
+
         errors = []
         if missing_files:
             for key in list(missing_files)[:MAX_ERROR_DISPLAY]:
