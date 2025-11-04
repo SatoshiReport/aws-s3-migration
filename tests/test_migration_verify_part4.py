@@ -14,8 +14,8 @@ from migration_verify import (
 )
 
 
-class TestEdgeCases:
-    """Tests for edge cases and error path coverage"""
+class TestInventoryEdgeCasesManyFiles:
+    """Tests for inventory checker with many missing/extra files"""
 
     def test_check_inventory_shows_many_missing_files(self):
         """Test inventory check shows summary when >10 missing files"""
@@ -43,6 +43,10 @@ class TestEdgeCases:
 
         assert "18 extra" in str(exc_info.value)
 
+
+class TestVerificationEdgeCasesManyErrors:
+    """Tests for file verification with many errors"""
+
     def test_verify_files_shows_many_verification_errors(self, tmp_path):
         """Test verify_files shows summary when >10 verification errors"""
         # Create files with size mismatches
@@ -66,6 +70,10 @@ class TestEdgeCases:
 
         assert "15 file(s) with issues" in str(exc_info.value)
 
+
+class TestScanningEdgeCases:
+    """Tests for file scanning edge cases"""
+
     def test_scan_local_files_with_no_progress_needed(self, tmp_path):
         """Test scanning <10000 files doesn't show progress"""
         bucket_path = tmp_path / "test-bucket"
@@ -80,6 +88,27 @@ class TestEdgeCases:
         local_files = checker.scan_local_files("test-bucket", 5)
 
         assert len(local_files) == 5  # noqa: PLR2004
+
+    def test_scan_files_with_equal_expected_files(self, tmp_path):
+        """Test scanning when actual files equal expected files"""
+        bucket_path = tmp_path / "test-bucket"
+        bucket_path.mkdir()
+
+        # Create exactly 100 files
+        for i in range(100):
+            (bucket_path / f"file{i}.txt").write_text(f"content{i}")
+
+        mock_state = mock.Mock()
+        checker = FileInventoryChecker(mock_state, tmp_path)
+
+        # Tell it to expect exactly 100 files
+        local_files = checker.scan_local_files("test-bucket", 100)
+
+        assert len(local_files) == 100  # noqa: PLR2004
+
+
+class TestBucketVerificationEdgeCases:
+    """Tests for bucket verification edge cases"""
 
     def test_verify_files_count_mismatch_in_verify_bucket(self, tmp_path):
         """Test that BucketVerifier detects verified count mismatch"""
@@ -113,6 +142,10 @@ class TestEdgeCases:
         with pytest.raises(ValueError):
             verifier.verify_bucket("test-bucket")
 
+
+class TestMultipartFileEdgeCases:
+    """Tests for multipart file verification edge cases"""
+
     def test_verify_multipart_file_verifies_checksum(self, tmp_path):
         """Test multipart file verification updates stats correctly"""
         file1 = tmp_path / "file1.txt"
@@ -132,6 +165,10 @@ class TestEdgeCases:
         assert stats["verified_count"] == 1
         assert stats["checksum_verified"] == 1
 
+
+class TestEtagComputationEdgeCases:
+    """Tests for ETag computation edge cases"""
+
     def test_compute_etag_with_empty_file(self, tmp_path):
         """Test ETag computation for empty file"""
         file1 = tmp_path / "empty.txt"
@@ -144,6 +181,10 @@ class TestEdgeCases:
 
         assert is_match is True
         assert computed == md5_hash
+
+
+class TestMixedFileTypeVerification:
+    """Tests for verification with mixed single-part and multipart files"""
 
     def test_verify_files_with_mixed_single_and_multipart(self, tmp_path):
         """Test verification of files with mixed part types"""
@@ -177,22 +218,9 @@ class TestEdgeCases:
         assert results["verified_count"] == 2  # noqa: PLR2004
         assert results["checksum_verified"] == 2  # noqa: PLR2004
 
-    def test_scan_files_with_equal_expected_files(self, tmp_path):
-        """Test scanning when actual files equal expected files"""
-        bucket_path = tmp_path / "test-bucket"
-        bucket_path.mkdir()
 
-        # Create exactly 100 files
-        for i in range(100):
-            (bucket_path / f"file{i}.txt").write_text(f"content{i}")
-
-        mock_state = mock.Mock()
-        checker = FileInventoryChecker(mock_state, tmp_path)
-
-        # Tell it to expect exactly 100 files
-        local_files = checker.scan_local_files("test-bucket", 100)
-
-        assert len(local_files) == 100  # noqa: PLR2004
+class TestBucketDeletionLargeBatch:
+    """Tests for bucket deletion with large batches"""
 
     def test_delete_bucket_large_batch(self):
         """Test deleting bucket with large batch of objects"""
@@ -214,6 +242,10 @@ class TestEdgeCases:
         # Verify delete_objects was called with all objects
         call_args = mock_s3.delete_objects.call_args
         assert len(call_args[1]["Delete"]["Objects"]) == 1500  # noqa: PLR2004
+
+
+class TestBucketDeletionProgressDisplay:
+    """Tests for bucket deletion progress display"""
 
     def test_delete_bucket_updates_progress(self):
         """Test that delete progress is displayed"""

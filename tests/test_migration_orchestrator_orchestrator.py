@@ -14,37 +14,39 @@ from migration_orchestrator import BucketMigrationOrchestrator
 from migration_state_v2 import Phase
 
 
-class TestBucketMigrationOrchestrator:
-    """Tests for BucketMigrationOrchestrator class"""
+@pytest.fixture
+def mock_dependencies(tmp_path):
+    """Create mock dependencies"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock()
+    mock_drive_checker = mock.Mock()
+    mock_bucket_migrator = mock.Mock()
+    base_path = tmp_path / "migration"
+    base_path.mkdir()
 
-    @pytest.fixture
-    def mock_dependencies(self, tmp_path):
-        """Create mock dependencies"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock()
-        mock_drive_checker = mock.Mock()
-        mock_bucket_migrator = mock.Mock()
-        base_path = tmp_path / "migration"
-        base_path.mkdir()
+    return {
+        "s3": mock_s3,
+        "state": mock_state,
+        "base_path": base_path,
+        "drive_checker": mock_drive_checker,
+        "bucket_migrator": mock_bucket_migrator,
+    }
 
-        return {
-            "s3": mock_s3,
-            "state": mock_state,
-            "base_path": base_path,
-            "drive_checker": mock_drive_checker,
-            "bucket_migrator": mock_bucket_migrator,
-        }
 
-    @pytest.fixture
-    def orchestrator(self, mock_dependencies):
-        """Create BucketMigrationOrchestrator instance"""
-        return BucketMigrationOrchestrator(
-            mock_dependencies["s3"],
-            mock_dependencies["state"],
-            mock_dependencies["base_path"],
-            mock_dependencies["drive_checker"],
-            mock_dependencies["bucket_migrator"],
-        )
+@pytest.fixture
+def orchestrator(mock_dependencies):
+    """Create BucketMigrationOrchestrator instance"""
+    return BucketMigrationOrchestrator(
+        mock_dependencies["s3"],
+        mock_dependencies["state"],
+        mock_dependencies["base_path"],
+        mock_dependencies["drive_checker"],
+        mock_dependencies["bucket_migrator"],
+    )
+
+
+class TestOrchestratorBasicMigration:
+    """Tests for basic multi-bucket migration orchestration"""
 
     def test_migrate_all_buckets_single_bucket(self, orchestrator, mock_dependencies):
         """Test migrate_all_buckets with single bucket"""
@@ -74,6 +76,10 @@ class TestBucketMigrationOrchestrator:
         ]
         mock_dependencies["bucket_migrator"].process_bucket.assert_has_calls(calls)
 
+
+class TestOrchestratorCompletedBuckets:
+    """Tests for orchestrator handling of already-completed buckets"""
+
     def test_migrate_all_buckets_skips_already_completed(self, orchestrator, mock_dependencies):
         """Test migrate_all_buckets skips already completed buckets"""
         all_buckets = ["bucket-1", "bucket-2"]
@@ -99,6 +105,10 @@ class TestBucketMigrationOrchestrator:
         printed_text = " ".join([str(call) for call in mock_print.call_args_list])
         assert "already migrated" in printed_text
 
+
+class TestOrchestratorInterruption:
+    """Tests for orchestrator interruption handling"""
+
     def test_migrate_all_buckets_respects_interrupted_flag(self, orchestrator, mock_dependencies):
         """Test migrate_all_buckets stops when interrupted"""
         all_buckets = ["bucket-1", "bucket-2", "bucket-3"]
@@ -117,6 +127,10 @@ class TestBucketMigrationOrchestrator:
         # Only first bucket should be processed before interruption
         assert mock_dependencies["bucket_migrator"].process_bucket.call_count == 1
 
+
+class TestSingleBucketMigration:
+    """Tests for single bucket migration operations"""
+
     def test_migrate_single_bucket_success(self, orchestrator, mock_dependencies):
         """Test _migrate_single_bucket successful processing"""
         with mock.patch("builtins.print"):
@@ -124,6 +138,10 @@ class TestBucketMigrationOrchestrator:
 
         mock_dependencies["drive_checker"].check_available.assert_called_once()
         mock_dependencies["bucket_migrator"].process_bucket.assert_called_once_with("bucket-1")
+
+
+class TestSingleBucketDriveErrors:
+    """Tests for single bucket migration drive error handling"""
 
     def test_migrate_single_bucket_handles_file_not_found_error(
         self, orchestrator, mock_dependencies
@@ -163,6 +181,10 @@ class TestBucketMigrationOrchestrator:
 
         assert exc_info.value.code == 1
 
+
+class TestSingleBucketMigrationErrors:
+    """Tests for single bucket migration error handling"""
+
     def test_migrate_single_bucket_handles_runtime_error(self, orchestrator, mock_dependencies):
         """Test _migrate_single_bucket handles RuntimeError from migration"""
         mock_dependencies["bucket_migrator"].process_bucket.side_effect = RuntimeError(
@@ -186,6 +208,10 @@ class TestBucketMigrationOrchestrator:
                 orchestrator._migrate_single_bucket(1, "bucket-1", 1)
 
         assert exc_info.value.code == 1
+
+
+class TestErrorHandlers:
+    """Tests for global error handler functions"""
 
     def test_handle_drive_error_prints_error_message(self, mock_dependencies):
         """Test handle_drive_error prints proper error message"""
@@ -217,6 +243,10 @@ class TestBucketMigrationOrchestrator:
         printed_text = " ".join([str(call) for call in mock_print.call_args_list])
         assert "MIGRATION STOPPED" in printed_text
         assert "test-bucket" in printed_text
+
+
+class TestCompletionStatusReporting:
+    """Tests for completion status reporting"""
 
     def test_print_completion_status_all_complete(self, orchestrator, mock_dependencies):
         """Test _print_completion_status when all buckets complete"""

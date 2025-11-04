@@ -14,8 +14,8 @@ import pytest
 import block_s3
 
 
-class TestMainWithSpecificBuckets:
-    """Tests for main() function with specific bucket names as arguments"""
+class TestMainWithSingleBucket:
+    """Tests for main() function with a single bucket name"""
 
     def test_main_with_single_bucket(self, tmp_path, monkeypatch):
         """Test main() with a single bucket name"""
@@ -50,6 +50,10 @@ class TestMainWithSpecificBuckets:
                         assert args[0] == mock_policy
                         assert "test-bucket_policy.json" in args[1]
 
+
+class TestMainWithMultipleBuckets:
+    """Tests for main() function with multiple bucket names"""
+
     def test_main_with_multiple_buckets(self, tmp_path, monkeypatch, capsys):
         """Test main() with multiple bucket names"""
         monkeypatch.chdir(tmp_path)
@@ -83,6 +87,10 @@ class TestMainWithSpecificBuckets:
                         # Verify output mentions both buckets
                         captured = capsys.readouterr()
                         assert "Generating policies for 2 specified bucket(s)" in captured.out
+
+
+class TestMainPoliciesDirectory:
+    """Tests for policies directory creation"""
 
     def test_main_creates_policies_directory(self, tmp_path, monkeypatch, capsys):
         """Test that main() creates the policies directory"""
@@ -119,6 +127,10 @@ class TestMainWithSpecificBuckets:
                         assert policies_dir.exists()
                         assert policies_dir.is_dir()
 
+
+class TestMainPolicyFilenames:
+    """Tests for policy filename generation"""
+
     def test_main_saves_policy_with_correct_filename(self, tmp_path, monkeypatch):
         """Test that policy files are saved with correct bucket names"""
         monkeypatch.chdir(tmp_path)
@@ -153,8 +165,8 @@ class TestMainWithSpecificBuckets:
                         assert filename.startswith("policies/")
 
 
-class TestMainWithAllFlag:
-    """Tests for main() function with --all flag"""
+class TestMainWithAllFlagProcessing:
+    """Tests for main() with --all flag bucket processing"""
 
     def test_main_with_all_flag(self, tmp_path, monkeypatch, capsys):
         """Test main() with --all flag processes all buckets"""
@@ -195,6 +207,10 @@ class TestMainWithAllFlag:
                                 in captured.out
                             )
 
+
+class TestMainWithAllFlagEmptyAccount:
+    """Tests for main() with --all flag on empty account"""
+
     def test_main_with_all_flag_empty_account(self, tmp_path, monkeypatch, capsys):
         """Test main() with --all flag when account has no buckets"""
         monkeypatch.chdir(tmp_path)
@@ -216,6 +232,10 @@ class TestMainWithAllFlag:
                             # Verify output message
                             captured = capsys.readouterr()
                             assert "Generating policies for all 0 buckets" in captured.out
+
+
+class TestMainWithAllFlagAWSRetrieval:
+    """Tests for main() with --all flag AWS bucket retrieval"""
 
     def test_main_with_all_flag_retrieves_buckets_from_aws(self, tmp_path, monkeypatch):
         """Test that --all flag calls list_s3_buckets() to get all buckets"""

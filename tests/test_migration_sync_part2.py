@@ -9,8 +9,8 @@ import pytest
 from migration_sync import BucketSyncer
 
 
-class TestMonitorSyncProgress:
-    """Test _monitor_sync_progress method"""
+class TestMonitorSyncProgressCompletedLines:
+    """Test _monitor_sync_progress completed line parsing"""
 
     def test_monitor_sync_progress_parses_completed_lines(self, tmp_path):
         """Test that completed lines are parsed and counted"""
@@ -37,6 +37,10 @@ class TestMonitorSyncProgress:
         assert files_done == 0
         assert bytes_done == 0
 
+
+class TestMonitorSyncProgressNonCompletedLines:
+    """Test _monitor_sync_progress non-completed line handling"""
+
     def test_monitor_sync_progress_ignores_non_completed_lines(self, tmp_path):
         """Test that non-completed lines are ignored"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
@@ -61,6 +65,38 @@ class TestMonitorSyncProgress:
         # Non-completed lines are not counted
         assert files_done == 0
 
+
+class TestMonitorSyncProgressMalformed:
+    """Test _monitor_sync_progress malformed line handling"""
+
+    def test_monitor_sync_progress_handles_malformed_completed_lines(self, tmp_path):
+        """Test that malformed completed lines don't cause crashes"""
+        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
+        mock_process = mock.Mock()
+
+        readline_calls = [
+            "Completed s3://bucket/file1.txt  invalid\n",
+            "Completed s3://bucket/file2.txt  1.0 MiB\n",
+            "",
+        ]
+        readline_iter = iter(readline_calls)
+        mock_process.stdout.readline = lambda: next(readline_iter, "")
+
+        poll_calls = [None, None, 0]
+        poll_iter = iter(poll_calls)
+        mock_process.poll = lambda: next(poll_iter, 0)
+
+        start_time = time.time()
+        # Should not crash
+        files_done, bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
+
+        assert isinstance(files_done, int)
+        assert isinstance(bytes_done, int)
+
+
+class TestMonitorSyncProgressEdgeCases:
+    """Test _monitor_sync_progress edge cases"""
+
     def test_monitor_sync_progress_returns_zero_on_empty_output(self, tmp_path):
         """Test that empty output returns zero counts"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
@@ -77,20 +113,6 @@ class TestMonitorSyncProgress:
         start_time = time.time()
         files_done, bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
 
-        assert files_done == 0
-        assert bytes_done == 0
-
-    def test_monitor_sync_progress_terminates_on_interrupted(self, tmp_path):
-        """Test that process is terminated when interrupted flag is set"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
-        syncer.interrupted = True
-        mock_process = mock.Mock()
-        mock_process.stdout.readline.return_value = ""
-
-        start_time = time.time()
-        files_done, bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
-
-        mock_process.terminate.assert_called_once()
         assert files_done == 0
         assert bytes_done == 0
 
@@ -118,33 +140,27 @@ class TestMonitorSyncProgress:
         # All lines contain "Completed" but parse_aws_size returns None
         assert files_done == 0
 
-    def test_monitor_sync_progress_handles_malformed_completed_lines(self, tmp_path):
-        """Test that malformed completed lines don't cause crashes"""
+
+class TestMonitorSyncProgressInterruption:
+    """Test _monitor_sync_progress interruption handling"""
+
+    def test_monitor_sync_progress_terminates_on_interrupted(self, tmp_path):
+        """Test that process is terminated when interrupted flag is set"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
+        syncer.interrupted = True
         mock_process = mock.Mock()
-
-        readline_calls = [
-            "Completed s3://bucket/file1.txt  invalid\n",
-            "Completed s3://bucket/file2.txt  1.0 MiB\n",
-            "",
-        ]
-        readline_iter = iter(readline_calls)
-        mock_process.stdout.readline = lambda: next(readline_iter, "")
-
-        poll_calls = [None, None, 0]
-        poll_iter = iter(poll_calls)
-        mock_process.poll = lambda: next(poll_iter, 0)
+        mock_process.stdout.readline.return_value = ""
 
         start_time = time.time()
-        # Should not crash
         files_done, bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
 
-        assert isinstance(files_done, int)
-        assert isinstance(bytes_done, int)
+        mock_process.terminate.assert_called_once()
+        assert files_done == 0
+        assert bytes_done == 0
 
 
-class TestSyncBucket:
-    """Test sync_bucket method"""
+class TestSyncBucketHelpers:
+    """Helper methods for sync_bucket tests"""
 
     def _create_mock_process(self, readline_lines=None, poll_returns=None, stderr_output=""):
         """Helper to create mock process with proper readline behavior"""
@@ -162,6 +178,10 @@ class TestSyncBucket:
         mock_process.returncode = 0  # Set returncode to success
         mock_process.stderr.read.return_value = stderr_output
         return mock_process
+
+
+class TestSyncBucketBasics(TestSyncBucketHelpers):
+    """Test basic sync_bucket functionality"""
 
     def test_sync_bucket_creates_local_directory(self, tmp_path):
         """Test that local directory is created for bucket"""
@@ -195,6 +215,23 @@ class TestSyncBucket:
         assert f"s3://{bucket_name}/" in cmd
         assert "--no-progress" in cmd
 
+    def test_sync_bucket_prints_command_being_executed(self, tmp_path, capsys):
+        """Test that running command is printed"""
+        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
+
+        with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
+            mock_popen.return_value = self._create_mock_process([""], [None, 0])
+
+            syncer.sync_bucket("test-bucket")
+
+        captured = capsys.readouterr()
+        assert "aws s3 sync" in captured.out
+        assert "s3://test-bucket/" in captured.out
+
+
+class TestSyncBucketProcessConfig(TestSyncBucketHelpers):
+    """Test sync_bucket process configuration"""
+
     def test_sync_bucket_uses_text_mode_for_process(self, tmp_path):
         """Test that process is created with text mode"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
@@ -209,18 +246,22 @@ class TestSyncBucket:
         assert kwargs["universal_newlines"] is True
         assert kwargs["bufsize"] == 1
 
-    def test_sync_bucket_prints_command_being_executed(self, tmp_path, capsys):
-        """Test that running command is printed"""
+    def test_sync_bucket_sets_pipes_for_stdout_stderr(self, tmp_path):
+        """Test that pipes are set for stdout and stderr"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
             mock_popen.return_value = self._create_mock_process([""], [None, 0])
 
-            syncer.sync_bucket("test-bucket")
+            syncer.sync_bucket("bucket")
 
-        captured = capsys.readouterr()
-        assert "aws s3 sync" in captured.out
-        assert "s3://test-bucket/" in captured.out
+        args, kwargs = mock_popen.call_args
+        assert kwargs["stdout"] == subprocess.PIPE
+        assert kwargs["stderr"] == subprocess.PIPE
+
+
+class TestSyncBucketErrorHandling(TestSyncBucketHelpers):
+    """Test sync_bucket error handling"""
 
     def test_sync_bucket_propagates_subprocess_errors(self, tmp_path):
         """Test that subprocess errors are propagated"""
@@ -246,19 +287,6 @@ class TestSyncBucket:
             )
 
             syncer.sync_bucket("bucket")
-
-    def test_sync_bucket_sets_pipes_for_stdout_stderr(self, tmp_path):
-        """Test that pipes are set for stdout and stderr"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
-
-        with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process([""], [None, 0])
-
-            syncer.sync_bucket("bucket")
-
-        args, kwargs = mock_popen.call_args
-        assert kwargs["stdout"] == subprocess.PIPE
-        assert kwargs["stderr"] == subprocess.PIPE
 
 
 class TestMonitorSyncProgressInterruptHandling:

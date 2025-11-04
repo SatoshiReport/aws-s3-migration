@@ -14,8 +14,8 @@ from migration_verify import (
 )
 
 
-class TestEdgeCasesPartTwo:
-    """Tests for edge cases and error path coverage - Part 2"""
+class TestProgressTrackerLargeNumbers:
+    """Tests for VerificationProgressTracker with large numbers"""
 
     def test_update_progress_with_large_file_counts(self, capsys):
         """Test progress update with large file counts"""
@@ -35,6 +35,28 @@ class TestEdgeCasesPartTwo:
         # Should display progress with large counts
         assert "Progress:" in captured.out
 
+    def test_verify_files_all_file_count_milestone_updates(self, capsys):
+        """Test progress updates at every 100-file milestone"""
+        tracker = VerificationProgressTracker()
+        current_time = time.time()
+
+        # Verify that exactly 100 files triggers an update
+        tracker.update_progress(
+            start_time=current_time,
+            verified_count=100,
+            total_bytes_verified=1024,
+            expected_files=1000,
+            expected_size=10240,
+        )
+
+        captured = capsys.readouterr()
+        # Should have updated due to file count milestone
+        assert "Progress:" in captured.out
+
+
+class TestBucketDeleterEmptyBuckets:
+    """Tests for BucketDeleter with empty buckets"""
+
     def test_delete_bucket_with_zero_objects(self):
         """Test deleting bucket with no objects"""
         mock_s3 = mock.Mock()
@@ -50,6 +72,10 @@ class TestEdgeCasesPartTwo:
 
         # Should still call delete_bucket to remove the empty bucket
         mock_s3.delete_bucket.assert_called_once_with(Bucket="empty-bucket")
+
+
+class TestFileInventoryScanningLargeNumbers:
+    """Tests for FileInventoryChecker with large file counts"""
 
     def test_scan_large_number_of_files_with_progress_output(self, tmp_path):
         """Test scanning with many files to trigger progress output"""
@@ -68,6 +94,10 @@ class TestEdgeCasesPartTwo:
         local_files = checker.scan_local_files("test-bucket", 10100)
 
         assert len(local_files) == 10100  # noqa: PLR2004
+
+
+class TestBucketDeleterProgressUpdates:
+    """Tests for BucketDeleter progress update functionality"""
 
     def test_delete_bucket_with_pagination_triggers_progress(self):
         """Test delete progress update at 1000 object intervals"""
@@ -98,27 +128,9 @@ class TestEdgeCasesPartTwo:
         # Should be called 3 times (one per page)
         assert mock_s3.delete_objects.call_count == 3  # noqa: PLR2004
 
-    def test_verify_files_all_file_count_milestone_updates(self, capsys):
-        """Test progress updates at every 100-file milestone"""
-        tracker = VerificationProgressTracker()
-        current_time = time.time()
 
-        # Verify that exactly 100 files triggers an update
-        tracker.update_progress(
-            start_time=current_time,
-            verified_count=100,
-            total_bytes_verified=1024,
-            expected_files=1000,
-            expected_size=10240,
-        )
-
-        captured = capsys.readouterr()
-        # Should have updated due to file count milestone
-        assert "Progress:" in captured.out
-
-
-class TestIntegration:
-    """Integration tests combining multiple components"""
+class TestIntegrationSuccess:
+    """Integration tests for successful verification workflows"""
 
     def test_full_verification_workflow(self, tmp_path):
         """Test complete verification workflow from inventory to checksums"""
@@ -156,6 +168,10 @@ class TestIntegration:
         assert results["verified_count"] == 2  # noqa: PLR2004
         assert results["checksum_verified"] == 2  # noqa: PLR2004
         assert results["local_file_count"] == 2  # noqa: PLR2004
+
+
+class TestIntegrationErrors:
+    """Integration tests for error handling across components"""
 
     def test_error_handling_across_components(self, tmp_path):
         """Test error handling flows through components"""

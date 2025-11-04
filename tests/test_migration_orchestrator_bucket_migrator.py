@@ -14,40 +14,42 @@ import pytest
 from migration_orchestrator import BucketMigrator
 
 
-class TestBucketMigrator:
-    """Tests for BucketMigrator class"""
+@pytest.fixture
+def mock_dependencies(tmp_path):
+    """Create mock dependencies for BucketMigrator"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock()
+    base_path = tmp_path / "migration"
+    base_path.mkdir()
 
-    @pytest.fixture
-    def mock_dependencies(self, tmp_path):
-        """Create mock dependencies for BucketMigrator"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock()
-        base_path = tmp_path / "migration"
-        base_path.mkdir()
+    return {
+        "s3": mock_s3,
+        "state": mock_state,
+        "base_path": base_path,
+    }
 
-        return {
-            "s3": mock_s3,
-            "state": mock_state,
-            "base_path": base_path,
-        }
 
-    @pytest.fixture
-    def migrator(self, mock_dependencies):
-        """Create BucketMigrator instance with mocked dependencies"""
-        with (
-            mock.patch("migration_orchestrator.BucketSyncer"),
-            mock.patch("migration_orchestrator.BucketVerifier"),
-            mock.patch("migration_orchestrator.BucketDeleter"),
-        ):
-            migrator = BucketMigrator(
-                mock_dependencies["s3"],
-                mock_dependencies["state"],
-                mock_dependencies["base_path"],
-            )
-            migrator.syncer = mock.Mock()
-            migrator.verifier = mock.Mock()
-            migrator.deleter = mock.Mock()
-        return migrator
+@pytest.fixture
+def migrator(mock_dependencies):
+    """Create BucketMigrator instance with mocked dependencies"""
+    with (
+        mock.patch("migration_orchestrator.BucketSyncer"),
+        mock.patch("migration_orchestrator.BucketVerifier"),
+        mock.patch("migration_orchestrator.BucketDeleter"),
+    ):
+        migrator = BucketMigrator(
+            mock_dependencies["s3"],
+            mock_dependencies["state"],
+            mock_dependencies["base_path"],
+        )
+        migrator.syncer = mock.Mock()
+        migrator.verifier = mock.Mock()
+        migrator.deleter = mock.Mock()
+    return migrator
+
+
+class TestBucketMigratorFullPipeline:
+    """Tests for BucketMigrator full sync → verify → delete pipeline"""
 
     def test_process_bucket_first_time_sync_verify_delete(self, migrator, mock_dependencies):
         """Test process_bucket for first time: sync → verify → delete pipeline"""
@@ -90,6 +92,10 @@ class TestBucketMigrator:
         migrator.deleter.delete_bucket.assert_called_once_with(bucket)
         mock_dependencies["state"].mark_bucket_delete_complete.assert_called_once_with(bucket)
 
+
+class TestBucketMigratorSkipSync:
+    """Tests for BucketMigrator skip logic for already-synced buckets"""
+
     def test_process_bucket_already_synced_skips_sync(self, migrator, mock_dependencies):
         """Test process_bucket skips sync if already complete"""
         bucket = "test-bucket"
@@ -121,6 +127,37 @@ class TestBucketMigrator:
 
         # Verify sync was NOT called
         migrator.syncer.sync_bucket.assert_not_called()
+
+
+class TestBucketMigratorSkipDelete:
+    """Tests for BucketMigrator skip logic for already-deleted buckets"""
+
+    def test_process_bucket_already_deleted_skips_delete(self, migrator, mock_dependencies):
+        """Test process_bucket skips delete if already complete"""
+        bucket = "test-bucket"
+        bucket_info = {
+            "sync_complete": True,
+            "verify_complete": True,
+            "delete_complete": True,
+            "file_count": 10,
+            "total_size": 102400,
+            "verified_file_count": 10,
+            "local_file_count": 10,
+            "size_verified_count": 10,
+            "checksum_verified_count": 10,
+            "total_bytes_verified": 102400,
+        }
+        mock_dependencies["state"].get_bucket_info.return_value = bucket_info
+
+        migrator.process_bucket(bucket)
+
+        # Verify sync and delete were NOT called
+        migrator.syncer.sync_bucket.assert_not_called()
+        migrator.deleter.delete_bucket.assert_not_called()
+
+
+class TestBucketMigratorVerificationRecompute:
+    """Tests for BucketMigrator verification stats recomputation"""
 
     def test_process_bucket_already_verified_recomputes_stats(self, migrator, mock_dependencies):
         """Test process_bucket re-verifies when verify_complete but missing stats"""
@@ -163,28 +200,9 @@ class TestBucketMigrator:
         migrator.syncer.sync_bucket.assert_not_called()
         migrator.verifier.verify_bucket.assert_called_once()
 
-    def test_process_bucket_already_deleted_skips_delete(self, migrator, mock_dependencies):
-        """Test process_bucket skips delete if already complete"""
-        bucket = "test-bucket"
-        bucket_info = {
-            "sync_complete": True,
-            "verify_complete": True,
-            "delete_complete": True,
-            "file_count": 10,
-            "total_size": 102400,
-            "verified_file_count": 10,
-            "local_file_count": 10,
-            "size_verified_count": 10,
-            "checksum_verified_count": 10,
-            "total_bytes_verified": 102400,
-        }
-        mock_dependencies["state"].get_bucket_info.return_value = bucket_info
 
-        migrator.process_bucket(bucket)
-
-        # Verify sync and delete were NOT called
-        migrator.syncer.sync_bucket.assert_not_called()
-        migrator.deleter.delete_bucket.assert_not_called()
+class TestBucketMigratorDeleteConfirmYes:
+    """Tests for BucketMigrator deletion confirmation with 'yes' input"""
 
     def test_delete_with_confirmation_user_confirms_yes(self, migrator, mock_dependencies):
         """Test _delete_with_confirmation when user inputs 'yes'"""
@@ -204,6 +222,10 @@ class TestBucketMigrator:
 
         migrator.deleter.delete_bucket.assert_called_once_with(bucket)
         mock_dependencies["state"].mark_bucket_delete_complete.assert_called_once_with(bucket)
+
+
+class TestBucketMigratorDeleteConfirmNo:
+    """Tests for BucketMigrator deletion confirmation with 'no' or other input"""
 
     def test_delete_with_confirmation_user_confirms_no(self, migrator, mock_dependencies):
         """Test _delete_with_confirmation when user inputs 'no'"""
@@ -243,6 +265,10 @@ class TestBucketMigrator:
 
         # Verify deletion was NOT called for non-yes input
         migrator.deleter.delete_bucket.assert_not_called()
+
+
+class TestVerificationSummaryFormatting:
+    """Tests for verification summary formatting"""
 
     def test_show_verification_summary_formats_output(self, mock_dependencies):
         """Test show_verification_summary displays all stats correctly"""

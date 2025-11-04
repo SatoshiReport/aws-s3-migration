@@ -8,8 +8,8 @@ import pytest
 from migration_state_v2 import DatabaseConnection
 
 
-class TestDatabaseConnection:
-    """Test DatabaseConnection initialization and operations."""
+class TestDatabaseInitialization:
+    """Test database initialization"""
 
     def test_database_connection_initialization(self, tmp_path: Path):
         """DatabaseConnection initializes with database path."""
@@ -19,6 +19,10 @@ class TestDatabaseConnection:
         assert db_conn.db_path == str(db_path)
         assert db_path.exists()
 
+
+class TestDatabaseContextManager:
+    """Test database context manager operations"""
+
     def test_database_connection_context_manager(self, tmp_path: Path):
         """DatabaseConnection.get_connection works as context manager."""
         db_path = tmp_path / "test.db"
@@ -27,6 +31,10 @@ class TestDatabaseConnection:
         with db_conn.get_connection() as conn:
             assert isinstance(conn, sqlite3.Connection)
             assert conn.row_factory == sqlite3.Row
+
+
+class TestDatabaseConnectionLifecycle:
+    """Test database connection lifecycle"""
 
     def test_database_connection_closes_properly(self, tmp_path: Path):
         """DatabaseConnection properly closes connections."""
@@ -38,6 +46,10 @@ class TestDatabaseConnection:
 
         with pytest.raises(sqlite3.ProgrammingError):
             conn.execute("SELECT 1")
+
+
+class TestSchemaTablesCreation:
+    """Test schema table creation"""
 
     def test_schema_files_table_created(self, tmp_path: Path):
         """DatabaseConnection creates files table."""
@@ -72,6 +84,10 @@ class TestDatabaseConnection:
             )
             assert cursor.fetchone() is not None
 
+
+class TestSchemaIndicesCreation:
+    """Test schema indices creation"""
+
     def test_schema_indices_created(self, tmp_path: Path):
         """DatabaseConnection creates required indices."""
         db_path = tmp_path / "test.db"
@@ -85,6 +101,10 @@ class TestDatabaseConnection:
             assert "idx_files_storage_class" in indices
             assert "idx_files_bucket" in indices
 
+
+class TestSchemaIdempotency:
+    """Test schema migration idempotency"""
+
     def test_database_schema_migration_idempotent(self, tmp_path: Path):
         """DatabaseConnection schema migration is idempotent."""
         db_path = tmp_path / "test.db"
@@ -96,6 +116,10 @@ class TestDatabaseConnection:
             cursor = conn.execute("PRAGMA table_info(bucket_status)")
             columns = {row[1] for row in cursor.fetchall()}
             assert "verified_file_count" in columns
+
+
+class TestFilesTableSchema:
+    """Test files table schema"""
 
     def test_files_table_columns(self, tmp_path: Path):
         """Files table has all expected columns."""
@@ -123,6 +147,10 @@ class TestDatabaseConnection:
                 "updated_at",
             }
             assert expected_columns.issubset(columns)
+
+
+class TestBucketStatusTableSchema:
+    """Test bucket_status table schema"""
 
     def test_bucket_status_table_columns(self, tmp_path: Path):
         """Bucket_status table has all expected columns."""
@@ -152,6 +180,10 @@ class TestDatabaseConnection:
                 "updated_at",
             }
             assert expected_columns.issubset(columns)
+
+
+class TestMigrationMetadataTableSchema:
+    """Test migration_metadata table schema"""
 
     def test_migration_metadata_table_columns(self, tmp_path: Path):
         """Migration_metadata table has expected columns."""

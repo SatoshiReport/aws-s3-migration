@@ -12,8 +12,8 @@ from migration_verify import (
 )
 
 
-class TestFileInventoryChecker:
-    """Tests for FileInventoryChecker class"""
+class TestFileInventoryCheckerLoadFiles:
+    """Tests for FileInventoryChecker.load_expected_files() basic functionality"""
 
     def test_load_expected_files_returns_file_map(self, tmp_path):
         """Test loading expected files from database"""
@@ -42,6 +42,10 @@ class TestFileInventoryChecker:
         assert result["file1.txt"]["etag"] == "abc123"
         assert result["dir/file2.txt"]["size"] == 200  # noqa: PLR2004
 
+
+class TestFileInventoryCheckerPathNormalization:
+    """Tests for FileInventoryChecker path normalization"""
+
     def test_load_expected_files_normalizes_windows_paths(self, tmp_path):
         """Test that Windows path separators are normalized"""
         mock_state = mock.Mock()
@@ -67,6 +71,10 @@ class TestFileInventoryChecker:
         assert "dir/file.txt" in result
         assert "dir\\file.txt" not in result
 
+
+class TestFileInventoryCheckerScanFiles:
+    """Tests for FileInventoryChecker.scan_local_files() basic functionality"""
+
     def test_scan_local_files_finds_files(self, tmp_path):
         """Test scanning local files"""
         # Create test directory structure
@@ -85,6 +93,23 @@ class TestFileInventoryChecker:
         assert "file1.txt" in local_files
         assert "subdir/file2.txt" in local_files
 
+    def test_scan_local_files_handles_missing_directory(self, tmp_path):
+        """Test scanning when directory doesn't exist"""
+        # Create bucket path but leave it empty for rglob
+        bucket_path = tmp_path / "test-bucket"
+        bucket_path.mkdir()
+
+        mock_state = mock.Mock()
+        checker = FileInventoryChecker(mock_state, tmp_path)
+
+        local_files = checker.scan_local_files("test-bucket", 0)
+
+        assert local_files == {}
+
+
+class TestFileInventoryCheckerScanPathNormalization:
+    """Tests for FileInventoryChecker path normalization during scanning"""
+
     def test_scan_local_files_normalizes_windows_paths(self, tmp_path):
         """Test that scanned files use forward slashes"""
         bucket_path = tmp_path / "test-bucket"
@@ -101,18 +126,9 @@ class TestFileInventoryChecker:
         assert "subdir/file.txt" in local_files
         assert "subdir\\file.txt" not in local_files
 
-    def test_scan_local_files_handles_missing_directory(self, tmp_path):
-        """Test scanning when directory doesn't exist"""
-        # Create bucket path but leave it empty for rglob
-        bucket_path = tmp_path / "test-bucket"
-        bucket_path.mkdir()
 
-        mock_state = mock.Mock()
-        checker = FileInventoryChecker(mock_state, tmp_path)
-
-        local_files = checker.scan_local_files("test-bucket", 0)
-
-        assert local_files == {}
+class TestFileInventoryCheckerCheckSuccess:
+    """Tests for FileInventoryChecker.check_inventory() success cases"""
 
     def test_check_inventory_success_when_files_match(self):
         """Test inventory check succeeds when files match"""
@@ -125,6 +141,10 @@ class TestFileInventoryChecker:
         errors = checker.check_inventory(expected_keys, local_keys)
 
         assert errors == []
+
+
+class TestFileInventoryCheckerCheckMissingFiles:
+    """Tests for FileInventoryChecker.check_inventory() missing file cases"""
 
     def test_check_inventory_fails_on_missing_files(self):
         """Test inventory check fails when files are missing"""
@@ -139,6 +159,10 @@ class TestFileInventoryChecker:
 
         assert "File inventory check failed" in str(exc_info.value)
         assert "2 missing" in str(exc_info.value)
+
+
+class TestFileInventoryCheckerCheckExtraFiles:
+    """Tests for FileInventoryChecker.check_inventory() extra file cases"""
 
     def test_check_inventory_fails_on_extra_files(self):
         """Test inventory check fails when extra files exist"""
@@ -170,8 +194,8 @@ class TestFileInventoryChecker:
         assert "2 extra" in str(exc_info.value)
 
 
-class TestVerificationProgressTracker:
-    """Tests for VerificationProgressTracker class"""
+class TestVerificationProgressTrackerMilestones:
+    """Tests for VerificationProgressTracker milestone displays"""
 
     def test_update_progress_displays_on_file_milestone(self, capsys):
         """Test progress update displays at file count milestone"""
@@ -190,23 +214,6 @@ class TestVerificationProgressTracker:
         # Should display progress at 100-file milestone
         assert "Progress:" in captured.out
 
-    def test_update_progress_no_update_when_too_soon(self, capsys):
-        """Test progress update doesn't display when too soon"""
-        tracker = VerificationProgressTracker()
-        start_time = time.time()
-
-        tracker.update_progress(
-            start_time=start_time,
-            verified_count=50,
-            total_bytes_verified=1024 * 1024,
-            expected_files=100,
-            expected_size=10 * 1024 * 1024,
-        )
-
-        captured = capsys.readouterr()
-        # Should not display since <2 seconds elapsed
-        assert captured.out == ""
-
     def test_update_progress_updates_on_file_count_milestone(self, capsys):
         """Test progress update displays on file count milestone (every 100 files)"""
         tracker = VerificationProgressTracker()
@@ -223,3 +230,24 @@ class TestVerificationProgressTracker:
         captured = capsys.readouterr()
         # Should display due to file count milestone
         assert "Progress:" in captured.out
+
+
+class TestVerificationProgressTrackerNoUpdate:
+    """Tests for VerificationProgressTracker when updates are suppressed"""
+
+    def test_update_progress_no_update_when_too_soon(self, capsys):
+        """Test progress update doesn't display when too soon"""
+        tracker = VerificationProgressTracker()
+        start_time = time.time()
+
+        tracker.update_progress(
+            start_time=start_time,
+            verified_count=50,
+            total_bytes_verified=1024 * 1024,
+            expected_files=100,
+            expected_size=10 * 1024 * 1024,
+        )
+
+        captured = capsys.readouterr()
+        # Should not display since <2 seconds elapsed
+        assert captured.out == ""

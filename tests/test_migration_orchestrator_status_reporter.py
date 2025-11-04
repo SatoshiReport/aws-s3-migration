@@ -14,18 +14,20 @@ from migration_orchestrator import StatusReporter
 from migration_state_v2 import Phase
 
 
-class TestStatusReporter:
-    """Tests for StatusReporter class"""
+@pytest.fixture
+def mock_state():
+    """Create mock MigrationStateV2"""
+    return mock.Mock()
 
-    @pytest.fixture
-    def mock_state(self):
-        """Create mock MigrationStateV2"""
-        return mock.Mock()
 
-    @pytest.fixture
-    def reporter(self, mock_state):
-        """Create StatusReporter instance"""
-        return StatusReporter(mock_state)
+@pytest.fixture
+def reporter(mock_state):
+    """Create StatusReporter instance"""
+    return StatusReporter(mock_state)
+
+
+class TestStatusReporterScanningPhase:
+    """Tests for StatusReporter in SCANNING phase"""
 
     def test_show_status_scanning_phase(self, reporter, mock_state):
         """Test show_status for SCANNING phase"""
@@ -43,6 +45,26 @@ class TestStatusReporter:
         printed_text = " ".join([str(call) for call in mock_print.call_args_list])
         assert "MIGRATION STATUS" in printed_text
         assert "scanning" in printed_text.lower()
+
+    def test_show_status_no_buckets(self, reporter, mock_state):
+        """Test show_status when no buckets exist"""
+        mock_state.get_current_phase.return_value = Phase.SCANNING
+        mock_state.get_all_buckets.return_value = []
+        mock_state.get_scan_summary.return_value = {
+            "bucket_count": 0,
+            "total_files": 0,
+            "total_size": 0,
+        }
+
+        with mock.patch("builtins.print") as mock_print:
+            reporter.show_status()
+
+        printed_text = " ".join([str(call) for call in mock_print.call_args_list])
+        assert "MIGRATION STATUS" in printed_text
+
+
+class TestStatusReporterGlacierRestorePhase:
+    """Tests for StatusReporter in GLACIER_RESTORE phase"""
 
     def test_show_status_glacier_restore_phase_shows_summary(self, reporter, mock_state):
         """Test show_status for GLACIER_RESTORE phase shows scan summary"""
@@ -80,6 +102,10 @@ class TestStatusReporter:
         assert "Overall Summary" in printed_text
         assert "Total Buckets: 2" in printed_text
         assert "Total Files: 1,000" in printed_text
+
+
+class TestStatusReporterBucketProgress:
+    """Tests for StatusReporter bucket progress display"""
 
     def test_show_status_shows_bucket_progress(self, reporter, mock_state):
         """Test show_status displays bucket progress"""
@@ -124,6 +150,10 @@ class TestStatusReporter:
         assert "Bucket Progress" in printed_text
         assert "Completed: 1/3" in printed_text
 
+
+class TestStatusReporterBucketDetails:
+    """Tests for StatusReporter individual bucket details display"""
+
     def test_show_status_displays_bucket_details(self, reporter, mock_state):
         """Test show_status shows individual bucket details"""
         mock_state.get_current_phase.return_value = Phase.SYNCING
@@ -150,21 +180,9 @@ class TestStatusReporter:
         assert "bucket-1" in printed_text
         assert "100" in printed_text
 
-    def test_show_status_no_buckets(self, reporter, mock_state):
-        """Test show_status when no buckets exist"""
-        mock_state.get_current_phase.return_value = Phase.SCANNING
-        mock_state.get_all_buckets.return_value = []
-        mock_state.get_scan_summary.return_value = {
-            "bucket_count": 0,
-            "total_files": 0,
-            "total_size": 0,
-        }
 
-        with mock.patch("builtins.print") as mock_print:
-            reporter.show_status()
-
-        printed_text = " ".join([str(call) for call in mock_print.call_args_list])
-        assert "MIGRATION STATUS" in printed_text
+class TestStatusReporterCompletePhase:
+    """Tests for StatusReporter in COMPLETE phase"""
 
     def test_show_status_complete_phase(self, reporter, mock_state):
         """Test show_status for COMPLETE phase"""

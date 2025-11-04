@@ -16,24 +16,25 @@ from migration_orchestrator import (
 )
 
 
-class TestIntegrationScenarios:
-    """Integration tests for complex scenarios"""
+@pytest.fixture
+def mock_dependencies(tmp_path):
+    """Create mock dependencies for integration tests"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock()
+    mock_drive_checker = mock.Mock()
+    base_path = tmp_path / "migration"
+    base_path.mkdir()
 
-    @pytest.fixture
-    def mock_dependencies(self, tmp_path):
-        """Create mock dependencies for integration tests"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock()
-        mock_drive_checker = mock.Mock()
-        base_path = tmp_path / "migration"
-        base_path.mkdir()
+    return {
+        "s3": mock_s3,
+        "state": mock_state,
+        "base_path": base_path,
+        "drive_checker": mock_drive_checker,
+    }
 
-        return {
-            "s3": mock_s3,
-            "state": mock_state,
-            "base_path": base_path,
-            "drive_checker": mock_drive_checker,
-        }
+
+class TestCompleteMigrationPipeline:
+    """Integration tests for complete migration pipeline"""
 
     def test_full_bucket_migration_pipeline(self, mock_dependencies):
         """Test complete migration pipeline: sync → verify → delete"""
@@ -83,6 +84,10 @@ class TestIntegrationScenarios:
         migrator.verifier.verify_bucket.assert_called_once()
         migrator.deleter.delete_bucket.assert_called_once()
 
+
+class TestMultiBucketOrchestrationErrors:
+    """Integration tests for multi-bucket orchestration with errors"""
+
     def test_multi_bucket_orchestration_with_one_error(self, mock_dependencies):
         """Test orchestration continues despite error in one bucket"""
         mock_bucket_migrator = mock.Mock()
@@ -106,6 +111,10 @@ class TestIntegrationScenarios:
                 orchestrator.migrate_all_buckets()
 
         assert exc_info.value.code == 1
+
+
+class TestResumableMigrationState:
+    """Integration tests for resumable migration state preservation"""
 
     def test_resumable_migration_state_preserved(self, mock_dependencies):
         """Test that migration state is preserved for resumption"""

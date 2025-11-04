@@ -4,8 +4,8 @@ from unittest import mock
 import migration_utils
 
 
-class TestFormatSize:
-    """Tests for format_size function"""
+class TestFormatSizeBytes:
+    """Tests for format_size function - bytes and kilobytes"""
 
     def test_format_size_zero_bytes(self):
         """Test formatting 0 bytes"""
@@ -33,6 +33,10 @@ class TestFormatSize:
         assert migration_utils.format_size(1536) == "1.50 KB"
         assert migration_utils.format_size(1843) == "1.80 KB"
 
+
+class TestFormatSizeMegabytes:
+    """Tests for format_size function - megabytes"""
+
     def test_format_size_exact_1mb(self):
         """Test formatting exactly 1 MB"""
         assert migration_utils.format_size(1024 * 1024) == "1.00 MB"
@@ -45,6 +49,10 @@ class TestFormatSize:
     def test_format_size_megabytes_fractional(self):
         """Test formatting fractional megabytes"""
         assert migration_utils.format_size(1536 * 1024) == "1.50 MB"
+
+
+class TestFormatSizeGigabytes:
+    """Tests for format_size function - gigabytes"""
 
     def test_format_size_exact_1gb(self):
         """Test formatting exactly 1 GB"""
@@ -59,6 +67,10 @@ class TestFormatSize:
         """Test formatting fractional gigabytes"""
         assert migration_utils.format_size(1536 * 1024 * 1024) == "1.50 GB"
 
+
+class TestFormatSizeTerabytes:
+    """Tests for format_size function - terabytes"""
+
     def test_format_size_exact_1tb(self):
         """Test formatting exactly 1 TB"""
         assert migration_utils.format_size(1024 * 1024 * 1024 * 1024) == "1.00 TB"
@@ -71,6 +83,10 @@ class TestFormatSize:
     def test_format_size_terabytes_fractional(self):
         """Test formatting fractional terabytes"""
         assert migration_utils.format_size(1536 * 1024 * 1024 * 1024) == "1.50 TB"
+
+
+class TestFormatSizePetabytes:
+    """Tests for format_size function - petabytes and beyond"""
 
     def test_format_size_petabytes(self):
         """Test formatting petabytes (PB)"""
@@ -87,6 +103,10 @@ class TestFormatSize:
         huge_value = 1000 * 1024 * 1024 * 1024 * 1024 * 1024
         result = migration_utils.format_size(huge_value)
         assert "PB" in result
+
+
+class TestFormatSizeBoundaries:
+    """Tests for format_size function - unit boundaries"""
 
     def test_format_size_boundary_kb_to_mb(self):
         """Test boundary between KB and MB"""
@@ -117,8 +137,8 @@ class TestFormatSize:
         assert migration_utils.format_size(1024 * 1024 * 1024 * 1024 * 1024) == "1.00 PB"
 
 
-class TestFormatDuration:
-    """Tests for format_duration function"""
+class TestFormatDurationSeconds:
+    """Tests for format_duration function - seconds and minutes"""
 
     def test_format_duration_zero_seconds(self):
         """Test formatting 0 seconds"""
@@ -147,6 +167,10 @@ class TestFormatDuration:
         assert migration_utils.format_duration(125) == "2m 5s"
         assert migration_utils.format_duration(3599) == "59m 59s"
 
+
+class TestFormatDurationHours:
+    """Tests for format_duration function - hours"""
+
     def test_format_duration_exact_one_hour(self):
         """Test formatting exactly one hour"""
         assert migration_utils.format_duration(3600) == "1h 0m"
@@ -170,6 +194,10 @@ class TestFormatDuration:
         assert migration_utils.format_duration(7380) == "2h 3m"
         assert migration_utils.format_duration(12600) == "3h 30m"
 
+
+class TestFormatDurationDays:
+    """Tests for format_duration function - days"""
+
     def test_format_duration_exact_one_day(self):
         """Test formatting exactly one day"""
         assert migration_utils.format_duration(86400) == "1d 0h"
@@ -192,6 +220,10 @@ class TestFormatDuration:
         assert migration_utils.format_duration(86400 * 2 + 7200) == "2d 2h"
         assert migration_utils.format_duration(86400 * 5 + 43200) == "5d 12h"
 
+
+class TestFormatDurationBoundaries:
+    """Tests for format_duration function - unit boundaries"""
+
     def test_format_duration_boundary_minute_to_hour(self):
         """Test boundary between minutes and hours"""
         # Just below 1 hour
@@ -205,6 +237,10 @@ class TestFormatDuration:
         assert migration_utils.format_duration(86399) == "23h 59m"
         # Just at 1 day
         assert migration_utils.format_duration(86400) == "1d 0h"
+
+
+class TestFormatDurationFractional:
+    """Tests for format_duration function - fractional values"""
 
     def test_format_duration_fractional_seconds(self):
         """Test formatting fractional seconds (should truncate)"""
@@ -227,8 +263,8 @@ class TestFormatDuration:
         assert migration_utils.format_duration(1000 * 86400) == "1000d 0h"
 
 
-class TestPrintVerificationSuccessMessages:
-    """Tests for print_verification_success_messages function"""
+class TestPrintVerificationSuccessMessagesOutput:
+    """Tests for print_verification_success_messages output content"""
 
     def test_print_verification_success_messages_output(self):
         """Test that the function prints expected messages"""
@@ -255,6 +291,23 @@ class TestPrintVerificationSuccessMessages:
         lines = output.strip().split("\n")
         assert len(lines) == 5  # noqa: PLR2004
 
+    def test_print_verification_success_messages_checkmarks(self):
+        """Test that all top-level messages have checkmarks"""
+        captured_output = StringIO()
+        with mock.patch("sys.stdout", captured_output):
+            migration_utils.print_verification_success_messages()
+
+        output = captured_output.getvalue()
+        lines = output.strip().split("\n")
+
+        # First two lines should have checkmarks
+        assert "✓" in lines[0]
+        assert "✓" in lines[1]
+
+
+class TestPrintVerificationSuccessMessagesFormatting:
+    """Tests for print_verification_success_messages formatting"""
+
     def test_print_verification_success_messages_indentation(self):
         """Test that messages have correct indentation"""
         captured_output = StringIO()
@@ -273,19 +326,6 @@ class TestPrintVerificationSuccessMessages:
         assert lines[3].startswith("    -")
         assert lines[4].startswith("    -")
 
-    def test_print_verification_success_messages_checkmarks(self):
-        """Test that all top-level messages have checkmarks"""
-        captured_output = StringIO()
-        with mock.patch("sys.stdout", captured_output):
-            migration_utils.print_verification_success_messages()
-
-        output = captured_output.getvalue()
-        lines = output.strip().split("\n")
-
-        # First two lines should have checkmarks
-        assert "✓" in lines[0]
-        assert "✓" in lines[1]
-
     def test_print_verification_success_messages_all_details_present(self):
         """Test that all verification details are present"""
         captured_output = StringIO()
@@ -300,6 +340,10 @@ class TestPrintVerificationSuccessMessages:
         assert "S3 ETag" in output
         assert "file integrity" in output
         assert "byte" in output.lower()
+
+
+class TestPrintVerificationSuccessMessagesBehavior:
+    """Tests for print_verification_success_messages behavior"""
 
     def test_print_verification_success_messages_called_multiple_times(self):
         """Test that function can be called multiple times without issues"""

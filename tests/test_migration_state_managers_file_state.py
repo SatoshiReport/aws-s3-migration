@@ -10,8 +10,8 @@ from migration_state_managers import FileStateManager
 from migration_state_v2 import DatabaseConnection
 
 
-class TestFileStateManager:
-    """Test FileStateManager class"""
+class TestFileStateManagerFixtures:
+    """Shared fixtures for FileStateManager tests"""
 
     @pytest.fixture
     def temp_db(self):
@@ -30,6 +30,10 @@ class TestFileStateManager:
     def file_manager(self, db_conn):
         """Create FileStateManager instance"""
         return FileStateManager(db_conn)
+
+
+class TestFileAddition(TestFileStateManagerFixtures):
+    """Test add_file operations"""
 
     def test_add_file_inserts_file_record(self, file_manager, db_conn):
         """Test adding a file to the database"""
@@ -56,6 +60,10 @@ class TestFileStateManager:
         assert row["storage_class"] == "STANDARD"
         assert row["state"] == "discovered"
 
+
+class TestFileIdempotency(TestFileStateManagerFixtures):
+    """Test file addition idempotency"""
+
     def test_add_file_is_idempotent(self, file_manager, db_conn):
         """Test that adding the same file twice doesn't raise an error"""
         file_manager.add_file(
@@ -67,7 +75,6 @@ class TestFileStateManager:
             last_modified="2024-01-01T00:00:00Z",
         )
 
-        # Add the same file again - should not raise an error
         file_manager.add_file(
             bucket="test-bucket",
             key="path/to/file.txt",
@@ -77,7 +84,6 @@ class TestFileStateManager:
             last_modified="2024-01-01T00:00:00Z",
         )
 
-        # Verify only one record exists
         with db_conn.get_connection() as conn:
             count = conn.execute(
                 "SELECT COUNT(*) as cnt FROM files WHERE bucket = ? AND key = ?",
@@ -85,6 +91,10 @@ class TestFileStateManager:
             ).fetchone()
 
         assert count["cnt"] == 1
+
+
+class TestFileTimestamps(TestFileStateManagerFixtures):
+    """Test file timestamp handling"""
 
     def test_add_file_sets_timestamps(self, file_manager, db_conn):
         """Test that created_at and updated_at are set"""
@@ -107,8 +117,11 @@ class TestFileStateManager:
 
         assert row["created_at"] is not None
         assert row["updated_at"] is not None
-        # Timestamps should be between before and after
         assert before_time <= row["created_at"] <= after_time
+
+
+class TestGlacierRestoreRequest(TestFileStateManagerFixtures):
+    """Test glacier restore request marking"""
 
     def test_mark_glacier_restore_requested(self, file_manager, db_conn):
         """Test marking a file for glacier restore"""
@@ -130,6 +143,10 @@ class TestFileStateManager:
             ).fetchone()
 
         assert row["glacier_restore_requested_at"] is not None
+
+
+class TestGlacierRestoreCompletion(TestFileStateManagerFixtures):
+    """Test glacier restore completion marking"""
 
     def test_mark_glacier_restored(self, file_manager, db_conn):
         """Test marking a file as restored from glacier"""
@@ -153,9 +170,12 @@ class TestFileStateManager:
 
         assert row["glacier_restored_at"] is not None
 
+
+class TestGlacierFilesNeedingRestore(TestFileStateManagerFixtures):
+    """Test get_glacier_files_needing_restore query"""
+
     def test_get_glacier_files_needing_restore(self, file_manager, db_conn):
         """Test retrieving Glacier files that need restore"""
-        # Add standard file
         file_manager.add_file(
             bucket="test-bucket",
             key="standard.txt",
@@ -165,7 +185,6 @@ class TestFileStateManager:
             last_modified="2024-01-01T00:00:00Z",
         )
 
-        # Add glacier file without restore request
         file_manager.add_file(
             bucket="test-bucket",
             key="glacier1.txt",
@@ -175,7 +194,6 @@ class TestFileStateManager:
             last_modified="2024-01-01T00:00:00Z",
         )
 
-        # Add deep archive file without restore request
         file_manager.add_file(
             bucket="test-bucket",
             key="archive1.txt",
@@ -185,7 +203,6 @@ class TestFileStateManager:
             last_modified="2024-01-01T00:00:00Z",
         )
 
-        # Add glacier file with restore request (should not appear)
         file_manager.add_file(
             bucket="test-bucket",
             key="glacier2.txt",
@@ -205,9 +222,12 @@ class TestFileStateManager:
         assert "standard.txt" not in keys
         assert len(files) == 2  # noqa: PLR2004
 
+
+class TestFilesRestoring(TestFileStateManagerFixtures):
+    """Test get_files_restoring query"""
+
     def test_get_files_restoring(self, file_manager, db_conn):
         """Test retrieving files currently being restored"""
-        # Add standard file
         file_manager.add_file(
             bucket="test-bucket",
             key="standard.txt",
@@ -217,7 +237,6 @@ class TestFileStateManager:
             last_modified="2024-01-01T00:00:00Z",
         )
 
-        # Add glacier file without restore request
         file_manager.add_file(
             bucket="test-bucket",
             key="glacier1.txt",
@@ -227,7 +246,6 @@ class TestFileStateManager:
             last_modified="2024-01-01T00:00:00Z",
         )
 
-        # Add glacier file with restore request (currently restoring)
         file_manager.add_file(
             bucket="test-bucket",
             key="glacier2.txt",
@@ -238,7 +256,6 @@ class TestFileStateManager:
         )
         file_manager.mark_glacier_restore_requested("test-bucket", "glacier2.txt")
 
-        # Add glacier file that is already restored
         file_manager.add_file(
             bucket="test-bucket",
             key="glacier3.txt",
@@ -258,6 +275,10 @@ class TestFileStateManager:
         assert "glacier1.txt" not in keys
         assert "standard.txt" not in keys
         assert len(files) == 1
+
+
+class TestMultiBucketTracking(TestFileStateManagerFixtures):
+    """Test multi-bucket file tracking"""
 
     def test_multiple_buckets_tracked_separately(self, file_manager, db_conn):
         """Test that files from different buckets are tracked separately"""

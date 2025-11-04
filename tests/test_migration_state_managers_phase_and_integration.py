@@ -9,8 +9,8 @@ from migration_state_managers import PhaseManager
 from migration_state_v2 import DatabaseConnection, MigrationStateV2, Phase
 
 
-class TestPhaseManager:
-    """Test PhaseManager class"""
+class TestPhaseManagerFixtures:
+    """Shared fixtures for PhaseManager tests"""
 
     @pytest.fixture
     def temp_db(self):
@@ -30,12 +30,20 @@ class TestPhaseManager:
         """Create PhaseManager instance"""
         return PhaseManager(db_conn)
 
+
+class TestPhaseManagerInitialization(TestPhaseManagerFixtures):
+    """Test PhaseManager initialization"""
+
     def test_phase_manager_initialization_sets_scanning(self, db_conn):
         """Test that new PhaseManager initializes to SCANNING phase"""
         phase_manager = PhaseManager(db_conn)
         phase = phase_manager.get_phase()
 
         assert phase == Phase.SCANNING
+
+
+class TestPhaseSetAndGet(TestPhaseManagerFixtures):
+    """Test setting and getting phases"""
 
     def test_set_phase_and_get_phase(self, phase_manager):
         """Test setting and getting phases"""
@@ -57,12 +65,15 @@ class TestPhaseManager:
         phase_manager.set_phase(Phase.COMPLETE)
         assert phase_manager.get_phase() == Phase.COMPLETE
 
+
+class TestPhasePersistence(TestPhaseManagerFixtures):
+    """Test phase persistence"""
+
     def test_phase_persistence_across_instances(self, db_conn):
         """Test that phase is persisted and can be retrieved by new instance"""
         phase_manager1 = PhaseManager(db_conn)
         phase_manager1.set_phase(Phase.GLACIER_RESTORE)
 
-        # Create new instance
         phase_manager2 = PhaseManager(db_conn)
         assert phase_manager2.get_phase() == Phase.GLACIER_RESTORE
 
@@ -77,12 +88,20 @@ class TestPhaseManager:
 
         assert row["value"] == Phase.SYNCING.value
 
+
+class TestPhaseEnumType(TestPhaseManagerFixtures):
+    """Test phase enum type"""
+
     def test_get_phase_returns_phase_enum(self, phase_manager):
         """Test that get_phase returns Phase enum type"""
         phase = phase_manager.get_phase()
 
         assert isinstance(phase, Phase)
         assert phase in Phase
+
+
+class TestPhaseMultipleOperations(TestPhaseManagerFixtures):
+    """Test multiple phase operations"""
 
     def test_phase_manager_multiple_set_operations(self, phase_manager):
         """Test multiple consecutive set operations"""
@@ -101,8 +120,8 @@ class TestPhaseManager:
             assert phase_manager.get_phase() == phase
 
 
-class TestIntegration:
-    """Integration tests for all state managers working together"""
+class TestIntegrationFixtures:
+    """Shared fixtures for integration tests"""
 
     @pytest.fixture
     def temp_db(self):
@@ -122,9 +141,12 @@ class TestIntegration:
         """Create MigrationStateV2 instance"""
         return MigrationStateV2(temp_db)
 
+
+class TestFullMigrationWorkflow(TestIntegrationFixtures):
+    """Test complete migration workflow"""
+
     def test_full_migration_workflow(self, state):
         """Test a complete migration workflow"""
-        # Add files
         state.add_file(
             "test-bucket",
             "file1.txt",
@@ -142,34 +164,52 @@ class TestIntegration:
             "2024-01-01T00:00:00Z",
         )
 
-        # Save bucket status
         state.save_bucket_status(
             "test-bucket", 2, 3000, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True
         )
 
-        # Verify scanning phase
         assert state.get_current_phase() == Phase.SCANNING
 
-        # Progress to glacier restore
         state.set_current_phase(Phase.GLACIER_RESTORE)
         glacier_files = state.get_glacier_files_needing_restore()
         assert len(glacier_files) == 1
 
-        # Mark glacier restore requested
+
+class TestGlacierRestoreWorkflow(TestIntegrationFixtures):
+    """Test glacier restore workflow integration"""
+
+    def test_glacier_restore_workflow(self, state):
+        """Test complete glacier restore workflow"""
+        state.add_file(
+            "test-bucket",
+            "file2.txt",
+            2000,
+            "abc2",
+            "GLACIER",
+            "2024-01-01T00:00:00Z",
+        )
+
         state.mark_glacier_restore_requested("test-bucket", "file2.txt")
         glacier_files = state.get_glacier_files_needing_restore()
         assert len(glacier_files) == 0
 
-        # Check files restoring
         restoring_files = state.get_files_restoring()
         assert len(restoring_files) == 1
 
-        # Mark glacier restore complete
         state.mark_glacier_restored("test-bucket", "file2.txt")
         restoring_files = state.get_files_restoring()
         assert len(restoring_files) == 0
 
-        # Progress through phases
+
+class TestPhaseProgression(TestIntegrationFixtures):
+    """Test phase progression workflow"""
+
+    def test_phase_progression(self, state):
+        """Test progressing through migration phases"""
+        state.save_bucket_status(
+            "test-bucket", 2, 3000, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True
+        )
+
         state.set_current_phase(Phase.GLACIER_WAIT)
         assert state.get_current_phase() == Phase.GLACIER_WAIT
 
@@ -194,24 +234,28 @@ class TestIntegration:
         state.set_current_phase(Phase.COMPLETE)
         assert state.get_current_phase() == Phase.COMPLETE
 
+
+class TestMultipleBucketsIndependence(TestIntegrationFixtures):
+    """Test multiple buckets with independent states"""
+
     def test_multiple_buckets_independent_states(self, state):
         """Test that multiple buckets maintain independent states"""
-        # Add files to bucket A
         state.add_file("bucket-a", "file1.txt", 1000, "abc1", "STANDARD", "2024-01-01T00:00:00Z")
 
-        # Add files to bucket B
         state.add_file("bucket-b", "file2.txt", 2000, "def1", "STANDARD", "2024-01-01T00:00:00Z")
 
-        # Save bucket statuses
         state.save_bucket_status("bucket-a", 1, 1000, {"STANDARD": 1}, scan_complete=True)
         state.save_bucket_status("bucket-b", 1, 2000, {"STANDARD": 1}, scan_complete=True)
 
-        # Mark only bucket-a as synced
         state.mark_bucket_sync_complete("bucket-a")
 
         synced_buckets = state.get_completed_buckets_for_phase("sync_complete")
         assert "bucket-a" in synced_buckets
         assert "bucket-b" not in synced_buckets
+
+
+class TestScanSummaryIntegration(TestIntegrationFixtures):
+    """Test scan summary integration"""
 
     def test_get_scan_summary_integration(self, state):
         """Test getting scan summary through integrated managers"""

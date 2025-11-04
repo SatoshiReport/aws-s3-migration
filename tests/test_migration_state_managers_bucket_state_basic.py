@@ -10,8 +10,8 @@ from migration_state_managers import BucketStateManager
 from migration_state_v2 import DatabaseConnection
 
 
-class TestBucketStateManagerBasic:
-    """Test BucketStateManager basic operations"""
+class TestBucketStateManagerFixtures:
+    """Shared fixtures for BucketStateManager tests"""
 
     @pytest.fixture
     def temp_db(self):
@@ -30,6 +30,10 @@ class TestBucketStateManagerBasic:
     def bucket_manager(self, db_conn):
         """Create BucketStateManager instance"""
         return BucketStateManager(db_conn)
+
+
+class TestBucketStatusSave(TestBucketStateManagerFixtures):
+    """Test save_bucket_status operations"""
 
     def test_save_bucket_status_inserts_record(self, bucket_manager, db_conn):
         """Test saving bucket status"""
@@ -54,6 +58,10 @@ class TestBucketStateManagerBasic:
         storage_classes = json.loads(row["storage_class_counts"])
         assert storage_classes == {"STANDARD": 80, "GLACIER": 20}
 
+
+class TestBucketStatusUpdate(TestBucketStateManagerFixtures):
+    """Test bucket status update operations"""
+
     def test_save_bucket_status_updates_existing(self, bucket_manager, db_conn):
         """Test that saving bucket status updates existing record"""
         bucket_manager.save_bucket_status(
@@ -64,7 +72,6 @@ class TestBucketStateManagerBasic:
             scan_complete=False,
         )
 
-        # Update with new values
         bucket_manager.save_bucket_status(
             bucket="test-bucket",
             file_count=150,
@@ -82,6 +89,10 @@ class TestBucketStateManagerBasic:
         assert row["total_size"] == 7000000  # noqa: PLR2004
         assert row["scan_complete"] == 1
 
+
+class TestBucketStatusTimestamps(TestBucketStateManagerFixtures):
+    """Test bucket status timestamp preservation"""
+
     def test_save_bucket_status_preserves_created_at(self, bucket_manager, db_conn):
         """Test that created_at timestamp is preserved on update"""
         bucket_manager.save_bucket_status(
@@ -97,7 +108,6 @@ class TestBucketStateManagerBasic:
             ).fetchone()
             original_time = original["created_at"]
 
-        # Update the record
         bucket_manager.save_bucket_status(
             bucket="test-bucket",
             file_count=200,
@@ -111,6 +121,10 @@ class TestBucketStateManagerBasic:
             ).fetchone()
 
         assert updated["created_at"] == original_time
+
+
+class TestBucketSyncCompletion(TestBucketStateManagerFixtures):
+    """Test bucket sync completion marking"""
 
     def test_mark_bucket_sync_complete(self, bucket_manager, db_conn):
         """Test marking bucket as synced"""
@@ -129,6 +143,10 @@ class TestBucketStateManagerBasic:
             ).fetchone()
 
         assert row["sync_complete"] == 1
+
+
+class TestBucketVerifyCompletion(TestBucketStateManagerFixtures):
+    """Test bucket verification completion marking"""
 
     def test_mark_bucket_verify_complete(self, bucket_manager, db_conn):
         """Test marking bucket as verified"""
@@ -160,6 +178,10 @@ class TestBucketStateManagerBasic:
         assert row["total_bytes_verified"] == 5000000  # noqa: PLR2004
         assert row["local_file_count"] == 100  # noqa: PLR2004
 
+
+class TestBucketVerifyPartial(TestBucketStateManagerFixtures):
+    """Test bucket verification with partial data"""
+
     def test_mark_bucket_verify_complete_with_partial_data(self, bucket_manager, db_conn):
         """Test marking bucket verified with only some verification fields"""
         bucket_manager.save_bucket_status(
@@ -184,6 +206,10 @@ class TestBucketStateManagerBasic:
         assert row["verified_file_count"] == 100  # noqa: PLR2004
         assert row["size_verified_count"] == 100  # noqa: PLR2004
         assert row["checksum_verified_count"] is None
+
+
+class TestBucketDeleteCompletion(TestBucketStateManagerFixtures):
+    """Test bucket deletion completion marking"""
 
     def test_mark_bucket_delete_complete(self, bucket_manager, db_conn):
         """Test marking bucket as deleted from S3"""

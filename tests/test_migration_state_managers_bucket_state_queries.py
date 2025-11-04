@@ -9,8 +9,8 @@ from migration_state_managers import BucketStateManager, FileStateManager
 from migration_state_v2 import DatabaseConnection
 
 
-class TestBucketStateManagerQueries:
-    """Test BucketStateManager query operations"""
+class TestBucketStateManagerQueriesFixtures:
+    """Shared fixtures for BucketStateManager query tests"""
 
     @pytest.fixture
     def temp_db(self):
@@ -29,6 +29,10 @@ class TestBucketStateManagerQueries:
     def bucket_manager(self, db_conn):
         """Create BucketStateManager instance"""
         return BucketStateManager(db_conn)
+
+
+class TestGetAllBuckets(TestBucketStateManagerQueriesFixtures):
+    """Test get_all_buckets operations"""
 
     def test_get_all_buckets(self, bucket_manager, db_conn):
         """Test retrieving all buckets"""
@@ -61,9 +65,12 @@ class TestBucketStateManagerQueries:
 
         assert buckets == []
 
+
+class TestGetCompletedBuckets(TestBucketStateManagerQueriesFixtures):
+    """Test get_completed_buckets_for_phase operations"""
+
     def test_get_completed_buckets_for_phase(self, bucket_manager, db_conn):
         """Test retrieving buckets completed for a specific phase"""
-        # Create three buckets
         bucket_manager.save_bucket_status(
             bucket="bucket-a",
             file_count=100,
@@ -83,13 +90,16 @@ class TestBucketStateManagerQueries:
             storage_classes={"STANDARD": 300},
         )
 
-        # Mark some as sync_complete
         bucket_manager.mark_bucket_sync_complete("bucket-a")
         bucket_manager.mark_bucket_sync_complete("bucket-b")
 
         buckets = bucket_manager.get_completed_buckets_for_phase("sync_complete")
 
         assert sorted(buckets) == ["bucket-a", "bucket-b"]
+
+
+class TestGetBucketInfo(TestBucketStateManagerQueriesFixtures):
+    """Test get_bucket_info operations"""
 
     def test_get_bucket_info(self, bucket_manager, db_conn):
         """Test retrieving bucket information"""
@@ -114,9 +124,12 @@ class TestBucketStateManagerQueries:
 
         assert info == {}
 
+
+class TestGetScanSummary(TestBucketStateManagerQueriesFixtures):
+    """Test get_scan_summary operations"""
+
     def test_get_scan_summary(self, bucket_manager, db_conn):
         """Test getting scan summary"""
-        # Add files for testing
         file_manager = FileStateManager(db_conn)
         file_manager.add_file(
             bucket="bucket-a",
@@ -143,7 +156,6 @@ class TestBucketStateManagerQueries:
             last_modified="2024-01-01T00:00:00Z",
         )
 
-        # Save bucket statuses
         bucket_manager.save_bucket_status(
             bucket="bucket-a",
             file_count=2,
@@ -167,9 +179,12 @@ class TestBucketStateManagerQueries:
         assert summary["storage_classes"]["STANDARD"] == 2  # noqa: PLR2004
         assert summary["storage_classes"]["GLACIER"] == 1  # noqa: PLR2004
 
+
+class TestScanSummaryFiltering(TestBucketStateManagerQueriesFixtures):
+    """Test scan summary filtering logic"""
+
     def test_get_scan_summary_excludes_incomplete_scans(self, bucket_manager, db_conn):
         """Test that scan summary only includes complete scans"""
-        # Add bucket with scan_complete=False
         bucket_manager.save_bucket_status(
             bucket="incomplete-bucket",
             file_count=10,
@@ -178,7 +193,6 @@ class TestBucketStateManagerQueries:
             scan_complete=False,
         )
 
-        # Add bucket with scan_complete=True
         bucket_manager.save_bucket_status(
             bucket="complete-bucket",
             file_count=5,

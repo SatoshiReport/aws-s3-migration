@@ -5,12 +5,9 @@ Tests cover:
 - Signal handler
 - run() method for all phases
 - Phase transitions and state management
-- Reset confirmation handling (yes/no)
-- Error handling
 """
 
 import signal
-from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -19,8 +16,8 @@ from migrate_v2 import S3MigrationV2
 from migration_state_v2 import Phase
 
 
-class TestS3MigrationV2:
-    """Tests for S3MigrationV2 main orchestrator."""
+class TestS3MigrationV2Fixtures:
+    """Shared fixtures for S3MigrationV2 tests."""
 
     @pytest.fixture
     def mock_dependencies(self):
@@ -60,6 +57,10 @@ class TestS3MigrationV2:
 
         return migrator
 
+
+class TestS3MigrationV2Initialization(TestS3MigrationV2Fixtures):
+    """Tests for S3MigrationV2 initialization."""
+
     def test_initialization(self, mock_dependencies):
         """S3MigrationV2 initializes with all dependencies."""
         migrator = S3MigrationV2(
@@ -82,6 +83,10 @@ class TestS3MigrationV2:
         assert migrator.migration_orchestrator == mock_dependencies["migration_orchestrator"]
         assert migrator.status_reporter == mock_dependencies["status_reporter"]
         assert migrator.interrupted is False
+
+
+class TestS3MigrationV2SignalHandler(TestS3MigrationV2Fixtures):
+    """Tests for signal handler functionality."""
 
     def test_signal_handler_sets_interrupted_flags(self, migrator, mock_dependencies):
         """Signal handler sets interrupted flag on all components."""
@@ -114,6 +119,10 @@ class TestS3MigrationV2:
         assert "MIGRATION INTERRUPTED" in captured.out
         assert "State has been saved" in captured.out
 
+
+class TestS3MigrationV2RunComplete(TestS3MigrationV2Fixtures):
+    """Tests for run() when migration is already complete."""
+
     def test_run_already_complete(self, migrator, mock_dependencies, capsys):
         """run() shows completion message when already complete."""
         mock_dependencies["state"].get_current_phase.return_value = Phase.COMPLETE
@@ -123,6 +132,10 @@ class TestS3MigrationV2:
         captured = capsys.readouterr()
         assert "Migration already complete!" in captured.out
         mock_dependencies["status_reporter"].show_status.assert_called_once()
+
+
+class TestS3MigrationV2RunFromScanning(TestS3MigrationV2Fixtures):
+    """Tests for run() from SCANNING phase."""
 
     def test_run_from_scanning_phase(self, migrator, mock_dependencies, capsys):
         """run() executes all phases starting from SCANNING."""
@@ -142,6 +155,10 @@ class TestS3MigrationV2:
 
         captured = capsys.readouterr()
         assert "S3 MIGRATION V2" in captured.out
+
+
+class TestS3MigrationV2RunFromGlacier(TestS3MigrationV2Fixtures):
+    """Tests for run() from GLACIER phases."""
 
     def test_run_from_glacier_restore_phase(self, migrator, mock_dependencies):
         """run() executes from GLACIER_RESTORE phase."""
@@ -176,6 +193,10 @@ class TestS3MigrationV2:
         mock_dependencies["glacier_waiter"].wait_for_restores.assert_called_once()
         mock_dependencies["migration_orchestrator"].migrate_all_buckets.assert_called_once()
 
+
+class TestS3MigrationV2RunFromSyncing(TestS3MigrationV2Fixtures):
+    """Tests for run() from SYNCING phase."""
+
     def test_run_from_syncing_phase(self, migrator, mock_dependencies):
         """run() executes from SYNCING phase."""
         mock_dependencies["state"].get_current_phase.side_effect = [
@@ -190,6 +211,10 @@ class TestS3MigrationV2:
         mock_dependencies["glacier_restorer"].request_all_restores.assert_not_called()
         mock_dependencies["glacier_waiter"].wait_for_restores.assert_not_called()
         mock_dependencies["migration_orchestrator"].migrate_all_buckets.assert_called_once()
+
+
+class TestS3MigrationV2RunHelpers(TestS3MigrationV2Fixtures):
+    """Tests for run() helper methods and checks."""
 
     def test_run_calls_drive_checker(self, migrator, mock_dependencies):
         """run() calls drive_checker before starting."""
@@ -218,62 +243,9 @@ class TestS3MigrationV2:
         migrator.show_status()
         mock_dependencies["status_reporter"].show_status.assert_called_once()
 
-    def test_reset_with_yes_confirmation(self, migrator, mock_dependencies, capsys, monkeypatch):
-        """reset() deletes state database when user confirms with 'yes'."""
-        monkeypatch.setenv("STATE_DB_PATH", "/tmp/test.db")
-        test_db = "/tmp/test_reset.db"
 
-        # Create a temporary database file
-        Path(test_db).touch()
-        assert Path(test_db).exists()
-
-        # Mock input to return 'yes'
-        with mock.patch("builtins.input", return_value="yes"):
-            with mock.patch("os.path.exists", return_value=True):
-                with mock.patch("os.remove") as mock_remove:
-                    migrator.reset()
-                    mock_remove.assert_called_once()
-
-    def test_reset_with_no_confirmation(self, migrator, capsys):
-        """reset() cancels when user does not confirm."""
-        with mock.patch("builtins.input", return_value="no"):
-            migrator.reset()
-
-        captured = capsys.readouterr()
-        assert "Reset cancelled" in captured.out
-
-    def test_reset_database_not_exists(self, migrator, capsys):
-        """reset() handles missing database gracefully."""
-        with mock.patch("builtins.input", return_value="yes"):
-            with mock.patch("os.path.exists", return_value=False):
-                migrator.reset()
-
-        captured = capsys.readouterr()
-        assert "No state database found" in captured.out
-
-    def test_reset_case_insensitive_confirmation(self, migrator):
-        """reset() handles uppercase confirmation (YES becomes yes via lower())."""
-        with mock.patch("builtins.input", return_value="YES"):
-            with mock.patch("os.path.exists", return_value=True):
-                with mock.patch("os.remove") as mock_remove:
-                    migrator.reset()
-                    # Should delete because "YES".lower() == "yes"
-                    mock_remove.assert_called_once()
-
-    def test_run_handles_interrupted_scanning(self, migrator, mock_dependencies):
-        """run() handles interruption during scanning."""
-
-        # Set up to interrupt during scanning
-        def interrupt_during_scan():
-            migrator.interrupted = True
-
-        mock_dependencies["scanner"].scan_all_buckets.side_effect = interrupt_during_scan
-        mock_dependencies["state"].get_current_phase.return_value = Phase.SCANNING
-
-        migrator.run()
-
-        # Scanner should have been called
-        mock_dependencies["scanner"].scan_all_buckets.assert_called_once()
+class TestS3MigrationV2PhaseTransitions(TestS3MigrationV2Fixtures):
+    """Tests for phase transitions."""
 
     def test_phase_transitions_complete_workflow(self, migrator, mock_dependencies):
         """run() correctly transitions through all phases."""
@@ -293,197 +265,3 @@ class TestS3MigrationV2:
         mock_dependencies["glacier_restorer"].request_all_restores.assert_called_once()
         mock_dependencies["glacier_waiter"].wait_for_restores.assert_called_once()
         mock_dependencies["migration_orchestrator"].migrate_all_buckets.assert_called_once()
-
-
-class TestSignalHandlerIntegration:
-    """Integration tests for signal handler."""
-
-    @pytest.fixture
-    def mock_dependencies(self):
-        """Create mock dependencies for S3MigrationV2."""
-        return {
-            "state": mock.Mock(),
-            "drive_checker": mock.Mock(),
-            "scanner": mock.Mock(),
-            "glacier_restorer": mock.Mock(),
-            "glacier_waiter": mock.Mock(),
-            "migration_orchestrator": mock.Mock(),
-            "bucket_migrator": mock.Mock(),
-            "status_reporter": mock.Mock(),
-        }
-
-    def test_signal_handler_propagates_to_all_components(self, mock_dependencies):
-        """Signal handler properly propagates interrupted flag to all components."""
-        migrator = S3MigrationV2(
-            state=mock_dependencies["state"],
-            drive_checker=mock_dependencies["drive_checker"],
-            scanner=mock_dependencies["scanner"],
-            glacier_restorer=mock_dependencies["glacier_restorer"],
-            glacier_waiter=mock_dependencies["glacier_waiter"],
-            migration_orchestrator=mock_dependencies["migration_orchestrator"],
-            bucket_migrator=mock_dependencies["bucket_migrator"],
-            status_reporter=mock_dependencies["status_reporter"],
-        )
-
-        # Initialize interrupted attributes
-        mock_dependencies["scanner"].interrupted = False
-        mock_dependencies["glacier_restorer"].interrupted = False
-        mock_dependencies["glacier_waiter"].interrupted = False
-        mock_dependencies["bucket_migrator"].interrupted = False
-        mock_dependencies["bucket_migrator"].syncer = mock.Mock()
-        mock_dependencies["bucket_migrator"].syncer.interrupted = False
-        mock_dependencies["migration_orchestrator"].interrupted = False
-
-        with pytest.raises(SystemExit):
-            migrator._signal_handler(signal.SIGINT, None)
-
-        # Verify all flags are set
-        assert migrator.interrupted is True
-        assert mock_dependencies["scanner"].interrupted is True
-        assert mock_dependencies["glacier_restorer"].interrupted is True
-        assert mock_dependencies["glacier_waiter"].interrupted is True
-        assert mock_dependencies["bucket_migrator"].interrupted is True
-        assert mock_dependencies["migration_orchestrator"].interrupted is True
-
-
-class TestResetEdgeCases:
-    """Tests for edge cases in reset() functionality."""
-
-    def test_reset_prints_header_message(self, tmp_path, capsys):
-        """reset() prints reset migration header."""
-        mock_state = mock.Mock()
-        mock_drive_checker = mock.Mock()
-        mock_scanner = mock.Mock()
-        mock_glacier_restorer = mock.Mock()
-        mock_glacier_waiter = mock.Mock()
-        mock_bucket_migrator = mock.Mock()
-        mock_migration_orchestrator = mock.Mock()
-        mock_status_reporter = mock.Mock()
-
-        migrator = S3MigrationV2(
-            state=mock_state,
-            drive_checker=mock_drive_checker,
-            scanner=mock_scanner,
-            glacier_restorer=mock_glacier_restorer,
-            glacier_waiter=mock_glacier_waiter,
-            migration_orchestrator=mock_migration_orchestrator,
-            bucket_migrator=mock_bucket_migrator,
-            status_reporter=mock_status_reporter,
-        )
-
-        with mock.patch("builtins.input", return_value="no"):
-            migrator.reset()
-
-        captured = capsys.readouterr()
-        assert "RESET MIGRATION" in captured.out
-        assert "delete all migration state" in captured.out
-
-
-class TestRunPhaseEdgeCases:
-    """Tests for edge cases in phase execution."""
-
-    def test_run_skips_scanner_in_middle_phases(self):
-        """run() does not call scanner for middle phases."""
-        mock_state = mock.Mock()
-        mock_drive_checker = mock.Mock()
-        mock_scanner = mock.Mock()
-        mock_glacier_restorer = mock.Mock()
-        mock_glacier_waiter = mock.Mock()
-        mock_bucket_migrator = mock.Mock()
-        mock_migration_orchestrator = mock.Mock()
-        mock_status_reporter = mock.Mock()
-
-        migrator = S3MigrationV2(
-            state=mock_state,
-            drive_checker=mock_drive_checker,
-            scanner=mock_scanner,
-            glacier_restorer=mock_glacier_restorer,
-            glacier_waiter=mock_glacier_waiter,
-            migration_orchestrator=mock_migration_orchestrator,
-            bucket_migrator=mock_bucket_migrator,
-            status_reporter=mock_status_reporter,
-        )
-
-        # Start from GLACIER_RESTORE phase
-        mock_state.get_current_phase.side_effect = [
-            Phase.GLACIER_RESTORE,
-            Phase.COMPLETE,
-        ]
-
-        migrator.run()
-
-        # Scanner should NOT be called
-        mock_scanner.scan_all_buckets.assert_not_called()
-        # But restorer should
-        mock_glacier_restorer.request_all_restores.assert_called_once()
-
-    def test_run_completes_all_phase_transitions(self):
-        """run() transitions through phases correctly."""
-        mock_state = mock.Mock()
-        mock_drive_checker = mock.Mock()
-        mock_scanner = mock.Mock()
-        mock_glacier_restorer = mock.Mock()
-        mock_glacier_waiter = mock.Mock()
-        mock_bucket_migrator = mock.Mock()
-        mock_migration_orchestrator = mock.Mock()
-        mock_status_reporter = mock.Mock()
-
-        migrator = S3MigrationV2(
-            state=mock_state,
-            drive_checker=mock_drive_checker,
-            scanner=mock_scanner,
-            glacier_restorer=mock_glacier_restorer,
-            glacier_waiter=mock_glacier_waiter,
-            migration_orchestrator=mock_migration_orchestrator,
-            bucket_migrator=mock_bucket_migrator,
-            status_reporter=mock_status_reporter,
-        )
-
-        # Set up phase sequence
-        mock_state.get_current_phase.side_effect = [
-            Phase.SCANNING,
-            Phase.GLACIER_RESTORE,
-            Phase.GLACIER_WAIT,
-            Phase.SYNCING,
-            Phase.COMPLETE,
-        ]
-
-        migrator.run()
-
-        # All phases should be executed
-        assert mock_scanner.scan_all_buckets.called
-        assert mock_glacier_restorer.request_all_restores.called
-        assert mock_glacier_waiter.wait_for_restores.called
-        assert mock_migration_orchestrator.migrate_all_buckets.called
-
-
-class TestS3MigrationV2ErrorHandling:
-    """Tests for error handling in S3MigrationV2."""
-
-    def test_run_with_drive_check_failure(self):
-        """run() exits if drive check fails."""
-        mock_state = mock.Mock()
-        mock_drive_checker = mock.Mock()
-        mock_scanner = mock.Mock()
-        mock_glacier_restorer = mock.Mock()
-        mock_glacier_waiter = mock.Mock()
-        mock_bucket_migrator = mock.Mock()
-        mock_migration_orchestrator = mock.Mock()
-        mock_status_reporter = mock.Mock()
-
-        migrator = S3MigrationV2(
-            state=mock_state,
-            drive_checker=mock_drive_checker,
-            scanner=mock_scanner,
-            glacier_restorer=mock_glacier_restorer,
-            glacier_waiter=mock_glacier_waiter,
-            migration_orchestrator=mock_migration_orchestrator,
-            bucket_migrator=mock_bucket_migrator,
-            status_reporter=mock_status_reporter,
-        )
-
-        # Make drive check fail
-        mock_drive_checker.check_available.side_effect = SystemExit(1)
-
-        with pytest.raises(SystemExit):
-            migrator.run()

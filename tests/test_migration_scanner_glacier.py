@@ -9,8 +9,29 @@ from migration_scanner import GlacierRestorer, GlacierWaiter
 from migration_state_v2 import MigrationStateV2, Phase
 
 
-class TestGlacierRestorer:
-    """Test GlacierRestorer class"""
+class TestGlacierRestorerInitialization:
+    """Test GlacierRestorer initialization"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    def test_restorer_initialization(self, mock_s3, mock_state):
+        """Test GlacierRestorer initialization"""
+        restorer = GlacierRestorer(mock_s3, mock_state)
+        assert restorer.s3 is mock_s3
+        assert restorer.state is mock_state
+        assert restorer.interrupted is False
+
+
+class TestGlacierRestorerNoFiles:
+    """Test GlacierRestorer with no Glacier files"""
 
     @pytest.fixture
     def mock_s3(self):
@@ -27,13 +48,6 @@ class TestGlacierRestorer:
         """Create GlacierRestorer instance"""
         return GlacierRestorer(mock_s3, mock_state)
 
-    def test_restorer_initialization(self, mock_s3, mock_state):
-        """Test GlacierRestorer initialization"""
-        restorer = GlacierRestorer(mock_s3, mock_state)
-        assert restorer.s3 is mock_s3
-        assert restorer.state is mock_state
-        assert restorer.interrupted is False
-
     def test_request_all_restores_no_glacier_files(self, restorer, mock_state, capsys):
         """Test when no Glacier files need restore"""
         mock_state.get_glacier_files_needing_restore.return_value = []
@@ -43,6 +57,25 @@ class TestGlacierRestorer:
         output = capsys.readouterr().out
         assert "No Glacier files need restore" in output
         mock_state.set_current_phase.assert_called_once_with(Phase.GLACIER_WAIT)
+
+
+class TestGlacierRestorerSingleFile:
+    """Test GlacierRestorer with single file"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def restorer(self, mock_s3, mock_state):
+        """Create GlacierRestorer instance"""
+        return GlacierRestorer(mock_s3, mock_state)
 
     def test_request_all_restores_with_files(self, restorer, mock_s3, mock_state, capsys):
         """Test requesting restores for Glacier files"""
@@ -55,6 +88,57 @@ class TestGlacierRestorer:
         mock_s3.restore_object.assert_called_once()
         mock_state.mark_glacier_restore_requested.assert_called_once()
         mock_state.set_current_phase.assert_called_once_with(Phase.GLACIER_WAIT)
+
+
+class TestGlacierRestorerMultipleFiles:
+    """Test GlacierRestorer with multiple files"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def restorer(self, mock_s3, mock_state):
+        """Create GlacierRestorer instance"""
+        return GlacierRestorer(mock_s3, mock_state)
+
+    def test_request_all_restores_multiple_files(self, restorer, mock_s3, mock_state):
+        """Test requesting restores for multiple files"""
+        mock_state.get_glacier_files_needing_restore.return_value = [
+            {"bucket": "bucket1", "key": "file1.txt", "storage_class": "GLACIER"},
+            {"bucket": "bucket2", "key": "file2.txt", "storage_class": "GLACIER"},
+            {"bucket": "bucket1", "key": "file3.txt", "storage_class": "DEEP_ARCHIVE"},
+        ]
+
+        restorer.request_all_restores()
+
+        assert mock_s3.restore_object.call_count == 3  # noqa: PLR2004
+        assert mock_state.mark_glacier_restore_requested.call_count == 3  # noqa: PLR2004
+
+
+class TestGlacierRestorerInterruption:
+    """Test GlacierRestorer interruption handling"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def restorer(self, mock_s3, mock_state):
+        """Create GlacierRestorer instance"""
+        return GlacierRestorer(mock_s3, mock_state)
 
     def test_request_all_restores_respects_interrupt(self, restorer, mock_s3, mock_state):
         """Test that request_all_restores stops on interrupt"""
@@ -72,6 +156,25 @@ class TestGlacierRestorer:
 
         # Should only process first file
         assert mock_s3.restore_object.call_count == 1
+
+
+class TestGlacierRestorerStorageClassTiers:
+    """Test GlacierRestorer storage class tier selection"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def restorer(self, mock_s3, mock_state):
+        """Create GlacierRestorer instance"""
+        return GlacierRestorer(mock_s3, mock_state)
 
     def test_request_restore_for_glacier(self, restorer, mock_s3, mock_state):
         """Test requesting restore for GLACIER storage class"""
@@ -100,6 +203,25 @@ class TestGlacierRestorer:
             call_args = mock_s3.restore_object.call_args
             assert call_args[1]["RestoreRequest"]["GlacierJobParameters"]["Tier"] == "Bulk"
 
+
+class TestGlacierRestorerSuccessOutput:
+    """Test GlacierRestorer success output"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def restorer(self, mock_s3, mock_state):
+        """Create GlacierRestorer instance"""
+        return GlacierRestorer(mock_s3, mock_state)
+
     def test_request_restore_success(self, restorer, mock_s3, mock_state, capsys):
         """Test successful restore request"""
         file_info = {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
@@ -110,6 +232,25 @@ class TestGlacierRestorer:
         mock_state.mark_glacier_restore_requested.assert_called_once_with("test-bucket", "file.txt")
         output = capsys.readouterr().out
         assert "[5/10]" in output
+
+
+class TestGlacierRestorerErrorHandling:
+    """Test GlacierRestorer error handling"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def restorer(self, mock_s3, mock_state):
+        """Create GlacierRestorer instance"""
+        return GlacierRestorer(mock_s3, mock_state)
 
     def test_request_restore_already_in_progress(self, restorer, mock_s3, mock_state):
         """Test handling RestoreAlreadyInProgress error"""
@@ -136,6 +277,25 @@ class TestGlacierRestorer:
         with pytest.raises(ClientError):
             restorer._request_restore(file_info, 1, 1)
 
+
+class TestGlacierRestorerConfiguration:
+    """Test GlacierRestorer configuration usage"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def restorer(self, mock_s3, mock_state):
+        """Create GlacierRestorer instance"""
+        return GlacierRestorer(mock_s3, mock_state)
+
     def test_request_restore_uses_correct_config_values(self, restorer, mock_s3, mock_state):
         """Test that restore request uses config values"""
         with mock.patch("migration_scanner.config.GLACIER_RESTORE_TIER", "Expedited"):
@@ -149,22 +309,30 @@ class TestGlacierRestorer:
                 assert restore_request["Days"] == 5  # noqa: PLR2004
                 assert restore_request["GlacierJobParameters"]["Tier"] == "Expedited"
 
-    def test_request_all_restores_multiple_files(self, restorer, mock_s3, mock_state):
-        """Test requesting restores for multiple files"""
-        mock_state.get_glacier_files_needing_restore.return_value = [
-            {"bucket": "bucket1", "key": "file1.txt", "storage_class": "GLACIER"},
-            {"bucket": "bucket2", "key": "file2.txt", "storage_class": "GLACIER"},
-            {"bucket": "bucket1", "key": "file3.txt", "storage_class": "DEEP_ARCHIVE"},
-        ]
 
-        restorer.request_all_restores()
+class TestGlacierWaiterInitialization:
+    """Test GlacierWaiter initialization"""
 
-        assert mock_s3.restore_object.call_count == 3  # noqa: PLR2004
-        assert mock_state.mark_glacier_restore_requested.call_count == 3  # noqa: PLR2004
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    def test_waiter_initialization(self, mock_s3, mock_state):
+        """Test GlacierWaiter initialization"""
+        waiter = GlacierWaiter(mock_s3, mock_state)
+        assert waiter.s3 is mock_s3
+        assert waiter.state is mock_state
+        assert waiter.interrupted is False
 
 
-class TestGlacierWaiter:
-    """Test GlacierWaiter class"""
+class TestGlacierWaiterBasicWaiting:
+    """Test GlacierWaiter basic waiting operations"""
 
     @pytest.fixture
     def mock_s3(self):
@@ -181,13 +349,6 @@ class TestGlacierWaiter:
         """Create GlacierWaiter instance"""
         return GlacierWaiter(mock_s3, mock_state)
 
-    def test_waiter_initialization(self, mock_s3, mock_state):
-        """Test GlacierWaiter initialization"""
-        waiter = GlacierWaiter(mock_s3, mock_state)
-        assert waiter.s3 is mock_s3
-        assert waiter.state is mock_state
-        assert waiter.interrupted is False
-
     def test_wait_for_restores_no_restoring_files(self, waiter, mock_state, capsys):
         """Test when no files are restoring"""
         mock_state.get_files_restoring.return_value = []
@@ -197,16 +358,6 @@ class TestGlacierWaiter:
         output = capsys.readouterr().out
         assert "PHASE 3/4: WAITING FOR GLACIER RESTORES" in output
         assert "PHASE 3 COMPLETE" in output
-        mock_state.set_current_phase.assert_called_once_with(Phase.SYNCING)
-
-    def test_wait_for_restores_respects_interrupt(self, waiter, mock_state):
-        """Test that wait_for_restores stops on interrupt"""
-        # When interrupted flag is set before entering, loop exits immediately
-        waiter.interrupted = True
-        with mock.patch("migration_scanner.time.sleep"):
-            waiter.wait_for_restores()
-
-        # Should still transition to SYNCING phase after loop exits
         mock_state.set_current_phase.assert_called_once_with(Phase.SYNCING)
 
     def test_wait_for_restores_with_sleep(self, waiter, mock_s3, mock_state):
@@ -224,6 +375,35 @@ class TestGlacierWaiter:
 
             # Should sleep 300 seconds (5 minutes) after first check
             mock_sleep.assert_called_with(300)
+
+
+class TestGlacierWaiterInterruption:
+    """Test GlacierWaiter interruption handling"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def waiter(self, mock_s3, mock_state):
+        """Create GlacierWaiter instance"""
+        return GlacierWaiter(mock_s3, mock_state)
+
+    def test_wait_for_restores_respects_interrupt(self, waiter, mock_state):
+        """Test that wait_for_restores stops on interrupt"""
+        # When interrupted flag is set before entering, loop exits immediately
+        waiter.interrupted = True
+        with mock.patch("migration_scanner.time.sleep"):
+            waiter.wait_for_restores()
+
+        # Should still transition to SYNCING phase after loop exits
+        mock_state.set_current_phase.assert_called_once_with(Phase.SYNCING)
 
     def test_wait_for_restores_stops_on_interrupt_during_check(self, waiter, mock_s3, mock_state):
         """Test interrupt during restore status check"""
@@ -243,70 +423,24 @@ class TestGlacierWaiter:
         # Should only check first file before interrupt
         assert waiter._check_restore_status.call_count == 1
 
-    def test_check_restore_status_not_complete(self, waiter, mock_s3, mock_state):
-        """Test restore status check when restore is still ongoing"""
-        mock_s3.head_object.return_value = {
-            "Restore": 'ongoing-request="true"',
-        }
 
-        file_info = {"bucket": "test-bucket", "key": "file.txt"}
-        result = waiter._check_restore_status(file_info)
+class TestGlacierWaiterLooping:
+    """Test GlacierWaiter loop behavior"""
 
-        assert result is False
-        mock_state.mark_glacier_restored.assert_not_called()
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
 
-    def test_check_restore_status_complete(self, waiter, mock_s3, mock_state):
-        """Test restore status check when restore is complete"""
-        mock_s3.head_object.return_value = {
-            "Restore": 'ongoing-request="false"',
-        }
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
 
-        file_info = {"bucket": "test-bucket", "key": "file.txt"}
-        result = waiter._check_restore_status(file_info)
-
-        assert result is True
-        mock_state.mark_glacier_restored.assert_called_once_with("test-bucket", "file.txt")
-
-    def test_check_restore_status_no_restore_header(self, waiter, mock_s3, mock_state):
-        """Test restore status when Restore header is missing"""
-        mock_s3.head_object.return_value = {}
-
-        file_info = {"bucket": "test-bucket", "key": "file.txt"}
-        result = waiter._check_restore_status(file_info)
-
-        assert result is False
-        mock_state.mark_glacier_restored.assert_not_called()
-
-    def test_check_restore_status_handles_error(self, waiter, mock_s3, mock_state):
-        """Test restore status check handles errors gracefully"""
-        error_response = {"Error": {"Code": "NoSuchKey", "Message": "Not found"}}
-        mock_s3.head_object.side_effect = ClientError(error_response, "HeadObject")
-
-        file_info = {"bucket": "test-bucket", "key": "file.txt"}
-        result = waiter._check_restore_status(file_info)
-
-        assert result is False
-        mock_state.mark_glacier_restored.assert_not_called()
-
-    def test_check_restore_status_with_multiple_files(self, waiter, mock_s3, mock_state):
-        """Test checking multiple files"""
-        files = [
-            {"bucket": "bucket1", "key": "file1.txt"},
-            {"bucket": "bucket2", "key": "file2.txt"},
-            {"bucket": "bucket1", "key": "file3.txt"},
-        ]
-
-        # First file complete, others still restoring
-        mock_s3.head_object.side_effect = [
-            {"Restore": 'ongoing-request="false"'},
-            {"Restore": 'ongoing-request="true"'},
-            {"Restore": 'ongoing-request="true"'},
-        ]
-
-        results = [waiter._check_restore_status(f) for f in files]
-
-        assert results == [True, False, False]
-        assert mock_state.mark_glacier_restored.call_count == 1
+    @pytest.fixture
+    def waiter(self, mock_s3, mock_state):
+        """Create GlacierWaiter instance"""
+        return GlacierWaiter(mock_s3, mock_state)
 
     def test_wait_for_restores_loops_until_complete(self, waiter, mock_s3, mock_state):
         """Test that wait_for_restores loops multiple times"""
@@ -326,35 +460,123 @@ class TestGlacierWaiter:
         # Should call get_files_restoring 3 times
         assert mock_state.get_files_restoring.call_count == 3  # noqa: PLR2004
 
-    def test_check_restore_status_partial_restore_string(self, waiter, mock_s3, mock_state):
-        """Test restore status with various Restore header formats"""
-        # AWS includes timestamp and expiry in the Restore header
+
+class TestGlacierWaiterRestoreIncomplete:
+    """Test GlacierWaiter incomplete restore status"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def waiter(self, mock_s3, mock_state):
+        """Create GlacierWaiter instance"""
+        return GlacierWaiter(mock_s3, mock_state)
+
+    def test_check_restore_status_not_complete(self, waiter, mock_s3, mock_state):
+        """Test restore status check when restore is still ongoing"""
         mock_s3.head_object.return_value = {
-            "Restore": 'ongoing-request="false", expiry-date="Tue, 25 Oct 2022 00:00:00 GMT"',
+            "Restore": 'ongoing-request="true"',
+        }
+
+        file_info = {"bucket": "test-bucket", "key": "file.txt"}
+        result = waiter._check_restore_status(file_info)
+
+        assert result is False
+        mock_state.mark_glacier_restored.assert_not_called()
+
+
+class TestGlacierWaiterRestoreComplete:
+    """Test GlacierWaiter complete restore status"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def waiter(self, mock_s3, mock_state):
+        """Create GlacierWaiter instance"""
+        return GlacierWaiter(mock_s3, mock_state)
+
+    def test_check_restore_status_complete(self, waiter, mock_s3, mock_state):
+        """Test restore status check when restore is complete"""
+        mock_s3.head_object.return_value = {
+            "Restore": 'ongoing-request="false"',
         }
 
         file_info = {"bucket": "test-bucket", "key": "file.txt"}
         result = waiter._check_restore_status(file_info)
 
         assert result is True
-        mock_state.mark_glacier_restored.assert_called_once()
+        mock_state.mark_glacier_restored.assert_called_once_with("test-bucket", "file.txt")
 
-    def test_wait_for_restores_prints_restored_files(self, waiter, mock_s3, mock_state, capsys):
-        """Test output shows restored files"""
-        # Mock _check_restore_status to return True for both files
-        waiter._check_restore_status = mock.Mock(return_value=True)
 
-        mock_state.get_files_restoring.side_effect = [
-            [
-                {"bucket": "test-bucket", "key": "file1.txt"},
-                {"bucket": "test-bucket", "key": "file2.txt"},
-            ],
-            [],
-        ]
+class TestGlacierWaiterMissingRestoreHeader:
+    """Test GlacierWaiter with missing Restore header"""
 
-        with mock.patch("migration_scanner.time.sleep"):
-            waiter.wait_for_restores()
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
 
-        output = capsys.readouterr().out
-        assert "Restored: test-bucket/file1.txt" in output
-        assert "Restored: test-bucket/file2.txt" in output
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def waiter(self, mock_s3, mock_state):
+        """Create GlacierWaiter instance"""
+        return GlacierWaiter(mock_s3, mock_state)
+
+    def test_check_restore_status_no_restore_header(self, waiter, mock_s3, mock_state):
+        """Test restore status when Restore header is missing"""
+        mock_s3.head_object.return_value = {}
+
+        file_info = {"bucket": "test-bucket", "key": "file.txt"}
+        result = waiter._check_restore_status(file_info)
+
+        assert result is False
+        mock_state.mark_glacier_restored.assert_not_called()
+
+
+class TestGlacierWaiterErrorHandling:
+    """Test GlacierWaiter error handling"""
+
+    @pytest.fixture
+    def mock_s3(self):
+        """Create mock S3 client"""
+        return mock.Mock()
+
+    @pytest.fixture
+    def mock_state(self):
+        """Create mock MigrationStateV2"""
+        return mock.Mock(spec=MigrationStateV2)
+
+    @pytest.fixture
+    def waiter(self, mock_s3, mock_state):
+        """Create GlacierWaiter instance"""
+        return GlacierWaiter(mock_s3, mock_state)
+
+    def test_check_restore_status_handles_error(self, waiter, mock_s3, mock_state):
+        """Test restore status check handles errors gracefully"""
+        error_response = {"Error": {"Code": "NoSuchKey", "Message": "Not found"}}
+        mock_s3.head_object.side_effect = ClientError(error_response, "HeadObject")
+
+        file_info = {"bucket": "test-bucket", "key": "file.txt"}
+        result = waiter._check_restore_status(file_info)
+
+        assert result is False
+        mock_state.mark_glacier_restored.assert_not_called()

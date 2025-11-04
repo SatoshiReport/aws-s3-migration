@@ -8,8 +8,8 @@ import pytest
 from migration_verify import BucketDeleter, BucketVerifier
 
 
-class TestBucketVerifier:
-    """Tests for BucketVerifier class"""
+class TestBucketVerifierSuccess:
+    """Tests for BucketVerifier successful verification"""
 
     def test_verify_bucket_integration_succeeds(self, tmp_path):
         """Test complete bucket verification workflow"""
@@ -46,6 +46,10 @@ class TestBucketVerifier:
         assert results["local_file_count"] == 1
         assert results["checksum_verified"] == 1
 
+
+class TestBucketVerifierMissingPath:
+    """Tests for BucketVerifier when local path is missing"""
+
     def test_verify_bucket_fails_when_local_path_missing(self, tmp_path):
         """Test verification fails when local path doesn't exist"""
         mock_state = mock.Mock()
@@ -58,6 +62,10 @@ class TestBucketVerifier:
 
         with pytest.raises(FileNotFoundError):
             verifier.verify_bucket("nonexistent-bucket")
+
+
+class TestBucketVerifierMissingFiles:
+    """Tests for BucketVerifier with missing files"""
 
     def test_verify_bucket_fails_on_missing_files(self, tmp_path):
         """Test verification fails when files are missing"""
@@ -90,6 +98,10 @@ class TestBucketVerifier:
             verifier.verify_bucket("test-bucket")
 
         assert "File inventory check failed" in str(exc_info.value)
+
+
+class TestBucketVerifierChecksumMismatch:
+    """Tests for BucketVerifier with checksum mismatches"""
 
     def test_verify_bucket_fails_on_checksum_mismatch(self, tmp_path):
         """Test verification fails on checksum mismatch"""
@@ -124,8 +136,8 @@ class TestBucketVerifier:
         assert "Verification failed" in str(exc_info.value)
 
 
-class TestBucketDeleter:
-    """Tests for BucketDeleter class"""
+class TestBucketDeleterSinglePage:
+    """Tests for BucketDeleter with single page of objects"""
 
     def test_delete_bucket_single_page(self):
         """Test deleting bucket with single page of objects"""
@@ -156,6 +168,10 @@ class TestBucketDeleter:
         assert len(call_args[1]["Delete"]["Objects"]) == 3  # noqa: PLR2004
         # Verify VersionId is included
         assert all("VersionId" in obj for obj in call_args[1]["Delete"]["Objects"])
+
+
+class TestBucketDeleterMultiplePagesBasic:
+    """Tests for BucketDeleter with multiple pages - basic functionality"""
 
     def test_delete_bucket_multiple_pages(self):
         """Test deleting bucket with multiple pages of objects"""
@@ -193,6 +209,10 @@ class TestBucketDeleter:
         # Verify delete_objects was called 3 times (once per page)
         assert mock_s3.delete_objects.call_count == 3  # noqa: PLR2004
 
+
+class TestBucketDeleterEmptyPages:
+    """Tests for BucketDeleter handling empty pages"""
+
     def test_delete_bucket_handles_empty_pages(self):
         """Test deleting bucket handles pages with no Versions"""
         mock_s3 = mock.Mock()
@@ -214,6 +234,10 @@ class TestBucketDeleter:
         # Should only call delete_objects twice (skipping empty page)
         assert mock_s3.delete_objects.call_count == 2  # noqa: PLR2004
 
+
+class TestBucketDeleterBucketRemoval:
+    """Tests for BucketDeleter bucket removal after objects deleted"""
+
     def test_delete_bucket_calls_delete_bucket_method(self):
         """Test that delete_bucket is called to remove empty bucket"""
         mock_s3 = mock.Mock()
@@ -231,6 +255,10 @@ class TestBucketDeleter:
 
         # Verify delete_bucket was called
         mock_s3.delete_bucket.assert_called_once_with(Bucket="test-bucket")
+
+
+class TestBucketDeleterObjectFormatting:
+    """Tests for BucketDeleter object key formatting"""
 
     def test_delete_bucket_formats_object_keys_correctly(self):
         """Test that object keys are formatted correctly for deletion"""
@@ -259,4 +287,3 @@ class TestBucketDeleter:
         assert objects[0]["VersionId"] == "v1"
         assert objects[1]["Key"] == "path/to/file2.txt"
         assert objects[1]["VersionId"] == "v2"
-
