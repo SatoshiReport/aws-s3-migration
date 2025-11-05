@@ -47,6 +47,7 @@ python migrate_v2.py status
 | `aws_info.py` | Convenience CLI for showing account metadata and bucket list |
 | `block_s3.py` | Generates restrictive bucket policies per bucket or fleet-wide |
 | `apply_block.py` | Applies locally generated policies back to S3 buckets |
+| `docs/contributor-guides/` | Automation/contributor helper docs (AGENTS, CLAUDE guidance) |
 | `MIGRATION_GUIDE.md`, `SECURITY.md` | Supporting notes and operational guidance |
 | `policies/`, `policy_template.json` | Policy output directory and template |
 | `s3_migration_state.db` | SQLite database (generated on demand; not tracked in git) |

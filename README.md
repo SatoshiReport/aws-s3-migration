@@ -2,7 +2,7 @@
 
 A clean, organized collection of Python scripts for managing AWS S3 buckets, including policy management and complete bucket migration to local storage.
 
-For comprehensive operator and development guidance, see the full documentation in `docs/README.md`.
+For comprehensive operator and development guidance, see the full documentation in `docs/README.md`. Contributor- and automation-specific guides now live under `docs/contributor-guides/`.
 
 ## Prerequisites
 
@@ -171,6 +171,9 @@ aws/
 ├── block_s3.py                # Generate bucket policies
 ├── apply_block.py             # Apply policies to S3
 ├── aws_utils.py               # Shared utility functions
+├── docs/                      # Full documentation set
+│   ├── README.md              # End-to-end operator guide
+│   └── contributor-guides/    # Automation helper docs (AGENTS.md, CLAUDE.md)
 ├── policies/                  # Generated policy files (not in git)
 │   ├── bucket1_policy.json
 │   └── bucket2_policy.json
