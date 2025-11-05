@@ -66,7 +66,7 @@ def test_main_full_output_format_no_buckets():
 
                 # Verify print was called the correct number of times
                 # Account ID, Username, User ARN, S3 Buckets header (with blank line in the string)
-                assert mock_print.call_count == 4  # noqa: PLR2004
+                assert mock_print.call_count == 4
                 calls = [call[0][0] for call in mock_print.call_args_list]
                 assert calls[0] == "Account ID: 111111111111"
                 assert calls[1] == "Username: admin"
@@ -90,7 +90,7 @@ def test_main_full_output_format_with_buckets():
 
                 # Verify print was called for each line
                 # Account ID, Username, User ARN, S3 Buckets header (with blank line in the string), 3 bucket names
-                assert mock_print.call_count == 7  # noqa: PLR2004
+                assert mock_print.call_count == 7
                 calls = [call[0][0] for call in mock_print.call_args_list]
                 assert calls[0] == "Account ID: 999999999999"
                 assert calls[1] == "Username: developer"

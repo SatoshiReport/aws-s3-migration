@@ -182,4 +182,4 @@ class TestBucketScannerSizeAccumulation:
 
         # Total size should be 3000
         call_args = mock_state.save_bucket_status.call_args
-        assert call_args[0][2] == 3000  # noqa: PLR2004
+        assert call_args[0][2] == 3000

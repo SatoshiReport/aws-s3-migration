@@ -43,6 +43,28 @@ IGNORED_FILE_PATTERNS = [
 ]
 
 
+class VerificationFailedError(ValueError):
+    """Raised when verification issues prevent migration progression."""
+
+    def __init__(self, error_count: int) -> None:
+        super().__init__(f"Verification failed: {error_count} file(s) with issues")
+
+
+class LocalPathMissingError(FileNotFoundError):
+    """Raised when the expected local bucket directory cannot be located."""
+
+    def __init__(self, missing_path: Path) -> None:
+        super().__init__(f"Local path does not exist: {missing_path}")
+
+
+class VerificationCountMismatchError(ValueError):
+    """Raised when verified file counts do not align with expectations."""
+
+    def __init__(self, verified: int, expected: int) -> None:
+        message = f"File count mismatch: {verified} verified vs {expected} expected"
+        super().__init__(message)
+
+
 def check_verification_errors(verification_errors):
     """Check and report verification errors"""
     if verification_errors:
@@ -52,9 +74,7 @@ def check_verification_errors(verification_errors):
         if len(verification_errors) > MAX_ERROR_DISPLAY:
             print(f"    ... and {len(verification_errors) - MAX_ERROR_DISPLAY} more errors")
         print()
-        raise ValueError(  # noqa: TRY003
-            f"Verification failed: {len(verification_errors)} file(s) with issues"
-        )
+        raise VerificationFailedError(len(verification_errors))
 
 
 def _should_ignore_key(key: str) -> bool:
@@ -312,7 +332,7 @@ class BucketVerifier:  # pylint: disable=too-few-public-methods
         expected_size = bucket_info["total_size"]
         local_path = self.base_path / bucket
         if not local_path.exists():
-            raise FileNotFoundError("Local path does not exist")  # noqa: TRY003
+            raise LocalPathMissingError(local_path)
         print(f"  Expected: {expected_files:,} files, {format_size(expected_size)}")
         print()
         expected_file_map = self.inventory_checker.load_expected_files(bucket)
@@ -342,9 +362,7 @@ class BucketVerifier:  # pylint: disable=too-few-public-methods
             print(f"  (Ignored {ignored_count:,} system metadata files: .DS_Store, etc.)")
         print()
         if verified_count != expected_files:
-            raise ValueError(  # noqa: TRY003
-                f"File count mismatch: {verified_count} verified vs {expected_files} expected"
-            )
+            raise VerificationCountMismatchError(verified_count, expected_files)
         print(f"  ✓ All {verified_count:,} files verified successfully")
         print_verification_success_messages()
         print(f"  ✓ Total size: {format_size(bucket_info['total_size'])}")

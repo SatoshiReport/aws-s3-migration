@@ -28,8 +28,8 @@ class TestBucketStatusPersistence:
             cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", ("test-bucket",))
             row = cursor.fetchone()
             assert row is not None
-            assert row["file_count"] == 50  # noqa: PLR2004
-            assert row["total_size"] == 5000  # noqa: PLR2004
+            assert row["file_count"] == 50
+            assert row["total_size"] == 5000
             assert row["scan_complete"] == 1
 
 
@@ -74,8 +74,8 @@ class TestBucketVerifyOperations:
             cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", ("bucket1",))
             row = cursor.fetchone()
             assert row["verify_complete"] == 1
-            assert row["verified_file_count"] == 10  # noqa: PLR2004
-            assert row["checksum_verified_count"] == 5  # noqa: PLR2004
+            assert row["verified_file_count"] == 10
+            assert row["checksum_verified_count"] == 5
 
 
 class TestBucketDeleteOperations:
@@ -151,8 +151,8 @@ class TestBucketInfoRetrieval:
         info = state.get_bucket_info("test-bucket")
 
         assert info["bucket"] == "test-bucket"
-        assert info["file_count"] == 25  # noqa: PLR2004
-        assert info["total_size"] == 2500  # noqa: PLR2004
+        assert info["file_count"] == 25
+        assert info["total_size"] == 2500
         assert info["scan_complete"] == 1
         storage_classes = json.loads(info["storage_class_counts"])
         assert storage_classes == {"STANDARD": 20, "GLACIER": 5}
@@ -185,10 +185,10 @@ class TestScanSummaryOperations:
 
         summary = state.get_scan_summary()
 
-        assert summary["bucket_count"] == 2  # noqa: PLR2004
-        assert summary["total_files"] == 3  # noqa: PLR2004
-        assert summary["total_size"] == 300  # noqa: PLR2004
-        assert summary["storage_classes"]["STANDARD"] == 2  # noqa: PLR2004
+        assert summary["bucket_count"] == 2
+        assert summary["total_files"] == 3
+        assert summary["total_size"] == 300
+        assert summary["storage_classes"]["STANDARD"] == 2
         assert summary["storage_classes"]["GLACIER"] == 1
 
 

@@ -1,29 +1,12 @@
 """Unit tests for BucketStateManager query operations from migration_state_managers.py"""
 
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from migration_state_managers import BucketStateManager, FileStateManager
-from migration_state_v2 import DatabaseConnection
 
 
 class TestBucketStateManagerQueriesFixtures:
     """Shared fixtures for BucketStateManager query tests"""
-
-    @pytest.fixture
-    def temp_db(self):
-        """Create temporary database for testing"""
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            db_path = f.name
-        yield db_path
-        Path(db_path).unlink(missing_ok=True)
-
-    @pytest.fixture
-    def db_conn(self, temp_db):
-        """Create database connection with initialized schema"""
-        return DatabaseConnection(temp_db)
 
     @pytest.fixture
     def bucket_manager(self, db_conn):
@@ -114,8 +97,8 @@ class TestGetBucketInfo(TestBucketStateManagerQueriesFixtures):
         info = bucket_manager.get_bucket_info("test-bucket")
 
         assert info["bucket"] == "test-bucket"
-        assert info["file_count"] == 100  # noqa: PLR2004
-        assert info["total_size"] == 5000000  # noqa: PLR2004
+        assert info["file_count"] == 100
+        assert info["total_size"] == 5000000
         assert info["scan_complete"] == 1
 
     def test_get_bucket_info_nonexistent(self, bucket_manager):
@@ -173,11 +156,11 @@ class TestGetScanSummary(TestBucketStateManagerQueriesFixtures):
 
         summary = bucket_manager.get_scan_summary()
 
-        assert summary["bucket_count"] == 2  # noqa: PLR2004
-        assert summary["total_files"] == 3  # noqa: PLR2004
-        assert summary["total_size"] == 6000  # noqa: PLR2004
-        assert summary["storage_classes"]["STANDARD"] == 2  # noqa: PLR2004
-        assert summary["storage_classes"]["GLACIER"] == 1  # noqa: PLR2004
+        assert summary["bucket_count"] == 2
+        assert summary["total_files"] == 3
+        assert summary["total_size"] == 6000
+        assert summary["storage_classes"]["STANDARD"] == 2
+        assert summary["storage_classes"]["GLACIER"] == 1
 
 
 class TestScanSummaryFiltering(TestBucketStateManagerQueriesFixtures):
@@ -204,5 +187,5 @@ class TestScanSummaryFiltering(TestBucketStateManagerQueriesFixtures):
         summary = bucket_manager.get_scan_summary()
 
         assert summary["bucket_count"] == 1
-        assert summary["total_files"] == 5  # noqa: PLR2004
-        assert summary["total_size"] == 50000  # noqa: PLR2004
+        assert summary["total_files"] == 5
+        assert summary["total_size"] == 50000

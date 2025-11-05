@@ -289,7 +289,7 @@ class TestPrintVerificationSuccessMessagesOutput:
 
         output = captured_output.getvalue()
         lines = output.strip().split("\n")
-        assert len(lines) == 5  # noqa: PLR2004
+        assert len(lines) == 5
 
     def test_print_verification_success_messages_checkmarks(self):
         """Test that all top-level messages have checkmarks"""
@@ -358,7 +358,7 @@ class TestPrintVerificationSuccessMessagesBehavior:
 
         # Should have two complete sets of output (10 lines total)
         lines = output.strip().split("\n")
-        assert len(lines) == 10  # noqa: PLR2004
+        assert len(lines) == 10
 
     def test_print_verification_success_messages_no_return_value(self):
         """Test that function returns None"""

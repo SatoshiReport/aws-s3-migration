@@ -12,59 +12,16 @@ from unittest import mock
 
 import pytest
 
-from migrate_v2 import S3MigrationV2
+from migrate_v2 import MigrationComponents, S3MigrationV2
 from migration_state_v2 import Phase
 
 
-class TestS3MigrationV2Fixtures:
-    """Shared fixtures for S3MigrationV2 tests."""
-
-    @pytest.fixture
-    def mock_dependencies(self):
-        """Create mock dependencies for S3MigrationV2."""
-        return {
-            "state": mock.Mock(),
-            "drive_checker": mock.Mock(),
-            "scanner": mock.Mock(),
-            "glacier_restorer": mock.Mock(),
-            "glacier_waiter": mock.Mock(),
-            "migration_orchestrator": mock.Mock(),
-            "bucket_migrator": mock.Mock(),
-            "status_reporter": mock.Mock(),
-        }
-
-    @pytest.fixture
-    def migrator(self, mock_dependencies):
-        """Create S3MigrationV2 instance with mocked dependencies."""
-        migrator = S3MigrationV2(
-            state=mock_dependencies["state"],
-            drive_checker=mock_dependencies["drive_checker"],
-            scanner=mock_dependencies["scanner"],
-            glacier_restorer=mock_dependencies["glacier_restorer"],
-            glacier_waiter=mock_dependencies["glacier_waiter"],
-            migration_orchestrator=mock_dependencies["migration_orchestrator"],
-            bucket_migrator=mock_dependencies["bucket_migrator"],
-            status_reporter=mock_dependencies["status_reporter"],
-        )
-        # Set up mock attributes for signal handler
-        mock_dependencies["scanner"].interrupted = False
-        mock_dependencies["glacier_restorer"].interrupted = False
-        mock_dependencies["glacier_waiter"].interrupted = False
-        mock_dependencies["bucket_migrator"].interrupted = False
-        mock_dependencies["bucket_migrator"].syncer = mock.Mock()
-        mock_dependencies["bucket_migrator"].syncer.interrupted = False
-        mock_dependencies["migration_orchestrator"].interrupted = False
-
-        return migrator
-
-
-class TestS3MigrationV2Initialization(TestS3MigrationV2Fixtures):
+class TestS3MigrationV2Initialization:
     """Tests for S3MigrationV2 initialization."""
 
     def _create_migrator(self, mock_dependencies):
         """Helper to build a migrator with shared dependency wiring."""
-        return S3MigrationV2(
-            state=mock_dependencies["state"],
+        components = MigrationComponents(
             drive_checker=mock_dependencies["drive_checker"],
             scanner=mock_dependencies["scanner"],
             glacier_restorer=mock_dependencies["glacier_restorer"],
@@ -73,6 +30,7 @@ class TestS3MigrationV2Initialization(TestS3MigrationV2Fixtures):
             bucket_migrator=mock_dependencies["bucket_migrator"],
             status_reporter=mock_dependencies["status_reporter"],
         )
+        return S3MigrationV2(mock_dependencies["state"], components)
 
     def test_dependencies_are_wired(self, mock_dependencies):
         """S3MigrationV2 stores the provided dependencies unchanged."""
@@ -98,7 +56,7 @@ class TestS3MigrationV2Initialization(TestS3MigrationV2Fixtures):
         assert migrator.interrupted is False
 
 
-class TestS3MigrationV2SignalHandler(TestS3MigrationV2Fixtures):
+class TestS3MigrationV2SignalHandler:
     """Tests for signal handler functionality."""
 
     def test_signal_handler_sets_interrupted_flags(self, migrator, mock_dependencies):
@@ -133,7 +91,7 @@ class TestS3MigrationV2SignalHandler(TestS3MigrationV2Fixtures):
         assert "State has been saved" in captured.out
 
 
-class TestS3MigrationV2RunComplete(TestS3MigrationV2Fixtures):
+class TestS3MigrationV2RunComplete:
     """Tests for run() when migration is already complete."""
 
     def test_run_already_complete(self, migrator, mock_dependencies, capsys):
@@ -147,7 +105,7 @@ class TestS3MigrationV2RunComplete(TestS3MigrationV2Fixtures):
         mock_dependencies["status_reporter"].show_status.assert_called_once()
 
 
-class TestS3MigrationV2RunFromScanning(TestS3MigrationV2Fixtures):
+class TestS3MigrationV2RunFromScanning:
     """Tests for run() from SCANNING phase."""
 
     def test_run_from_scanning_phase(self, migrator, mock_dependencies, capsys):
@@ -170,7 +128,7 @@ class TestS3MigrationV2RunFromScanning(TestS3MigrationV2Fixtures):
         assert "S3 MIGRATION V2" in captured.out
 
 
-class TestS3MigrationV2RunFromGlacier(TestS3MigrationV2Fixtures):
+class TestS3MigrationV2RunFromGlacier:
     """Tests for run() from GLACIER phases."""
 
     def test_run_from_glacier_restore_phase(self, migrator, mock_dependencies):
@@ -207,7 +165,7 @@ class TestS3MigrationV2RunFromGlacier(TestS3MigrationV2Fixtures):
         mock_dependencies["migration_orchestrator"].migrate_all_buckets.assert_called_once()
 
 
-class TestS3MigrationV2RunFromSyncing(TestS3MigrationV2Fixtures):
+class TestS3MigrationV2RunFromSyncing:
     """Tests for run() from SYNCING phase."""
 
     def test_run_from_syncing_phase(self, migrator, mock_dependencies):
@@ -226,7 +184,7 @@ class TestS3MigrationV2RunFromSyncing(TestS3MigrationV2Fixtures):
         mock_dependencies["migration_orchestrator"].migrate_all_buckets.assert_called_once()
 
 
-class TestS3MigrationV2RunHelpers(TestS3MigrationV2Fixtures):
+class TestS3MigrationV2RunHelpers:
     """Tests for run() helper methods and checks."""
 
     def test_run_calls_drive_checker(self, migrator, mock_dependencies):
@@ -257,7 +215,7 @@ class TestS3MigrationV2RunHelpers(TestS3MigrationV2Fixtures):
         mock_dependencies["status_reporter"].show_status.assert_called_once()
 
 
-class TestS3MigrationV2PhaseTransitions(TestS3MigrationV2Fixtures):
+class TestS3MigrationV2PhaseTransitions:
     """Tests for phase transitions."""
 
     def test_phase_transitions_complete_workflow(self, migrator, mock_dependencies):

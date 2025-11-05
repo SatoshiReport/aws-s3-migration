@@ -45,7 +45,7 @@ class TestFileAddOperations:
             )
             row = cursor.fetchone()
             assert row is not None
-            assert row["size"] == 1024  # noqa: PLR2004
+            assert row["size"] == 1024
             assert row["storage_class"] == "STANDARD"
 
 

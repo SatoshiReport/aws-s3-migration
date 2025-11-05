@@ -7,12 +7,26 @@ import os
 import sys
 from pathlib import Path
 from types import ModuleType
-from typing import Dict
+from typing import Dict, Protocol, Sequence, cast
 
 _LOCAL_PATH = Path(__file__).resolve()
 _REPO_ROOT = _LOCAL_PATH.parents[2]
-_SHARED_ROOT = Path(os.environ.get("CI_SHARED_ROOT", Path.home() / "ci_shared"))
-_SHARED_CONTEXT_PATH = _SHARED_ROOT / "ci_tools" / "scripts" / "policy_context.py"
+_DEFAULT_SHARED_ROOT = Path.home() / "ci_shared"
+_ENV_SHARED_ROOT = Path(os.environ.get("CI_SHARED_ROOT", _DEFAULT_SHARED_ROOT))
+
+
+def _candidate_context_paths() -> tuple[Path, ...]:
+    roots = []
+    for root in (_ENV_SHARED_ROOT, _DEFAULT_SHARED_ROOT):
+        resolved = Path(root).expanduser().resolve()
+        candidate = resolved / "ci_tools" / "scripts" / "policy_context.py"
+        roots.append(candidate)
+    return tuple(dict.fromkeys(roots))
+
+
+class _PolicyContextModule(Protocol):  # pylint: disable=too-few-public-methods
+    ROOT: Path
+    SCAN_DIRECTORIES: Sequence[Path]
 
 
 class SharedPolicyContextError(RuntimeError):
@@ -20,21 +34,22 @@ class SharedPolicyContextError(RuntimeError):
 
     def __init__(self, path: Path) -> None:
         super().__init__(
-            f"Shared policy_context not found at {path}. "
-            "Clone ci_shared or set CI_SHARED_ROOT."
+            f"Shared policy_context not found at {path}. Clone ci_shared or set CI_SHARED_ROOT."
         )
 
 
 def _load_shared_context() -> ModuleType:
     """Load the canonical policy_context module from the shared repo."""
-    if not _SHARED_CONTEXT_PATH.exists():
-        raise SharedPolicyContextError(_SHARED_CONTEXT_PATH)
+    for candidate in _candidate_context_paths():
+        if candidate.exists():
+            context_path = candidate
+            break
+    else:
+        raise SharedPolicyContextError(_candidate_context_paths()[0])
 
-    spec = importlib.util.spec_from_file_location(
-        "_ci_shared_policy_context", _SHARED_CONTEXT_PATH
-    )
+    spec = importlib.util.spec_from_file_location("_ci_shared_policy_context", context_path)
     if spec is None or spec.loader is None:
-        raise SharedPolicyContextError(_SHARED_CONTEXT_PATH)
+        raise SharedPolicyContextError(context_path)
 
     module = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = module
@@ -57,7 +72,7 @@ def _determine_scan_dirs(repo_root: Path) -> tuple[Path, ...]:
     return tuple(ordered.keys())
 
 
-_shared_context = _load_shared_context()
+_shared_context = cast(_PolicyContextModule, _load_shared_context())
 _shared_context.ROOT = _REPO_ROOT
 _shared_context.SCAN_DIRECTORIES = _determine_scan_dirs(_REPO_ROOT)
 

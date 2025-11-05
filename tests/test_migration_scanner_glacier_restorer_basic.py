@@ -118,8 +118,8 @@ class TestGlacierRestorerMultipleFiles:
 
         restorer.request_all_restores()
 
-        assert mock_s3.restore_object.call_count == 3  # noqa: PLR2004
-        assert mock_state.mark_glacier_restore_requested.call_count == 3  # noqa: PLR2004
+        assert mock_s3.restore_object.call_count == 3
+        assert mock_state.mark_glacier_restore_requested.call_count == 3
 
 
 class TestGlacierRestorerInterruption:

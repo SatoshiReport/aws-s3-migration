@@ -116,6 +116,7 @@ def _bootstrap() -> Callable[[], int]:
     guard = _load_shared_guard()
     extra_excludes, allowed_patterns = _load_config()
     _apply_config_overrides(guard, extra_excludes, allowed_patterns)
+    globals()["CONFIG_OVERRIDES"] = (tuple(extra_excludes), tuple(allowed_patterns))
 
     globals().update(guard.__dict__)
     globals()["__file__"] = str(_LOCAL_MODULE_PATH)

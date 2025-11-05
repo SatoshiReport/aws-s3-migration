@@ -38,10 +38,10 @@ class TestFileChecksumVerifierValidFiles:
             expected_size=28,
         )
 
-        assert results["verified_count"] == 2  # noqa: PLR2004
-        assert results["size_verified"] == 2  # noqa: PLR2004
-        assert results["checksum_verified"] == 2  # noqa: PLR2004
-        assert results["total_bytes_verified"] == 28  # noqa: PLR2004
+        assert results["verified_count"] == 2
+        assert results["size_verified"] == 2
+        assert results["checksum_verified"] == 2
+        assert results["total_bytes_verified"] == 28
 
 
 class TestFileChecksumVerifierErrors:

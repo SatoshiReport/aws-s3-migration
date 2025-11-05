@@ -156,4 +156,4 @@ class TestGlacierWaiterLooping:
             waiter.wait_for_restores()
 
         # Should call get_files_restoring 3 times
-        assert mock_state.get_files_restoring.call_count == 3  # noqa: PLR2004
+        assert mock_state.get_files_restoring.call_count == 3

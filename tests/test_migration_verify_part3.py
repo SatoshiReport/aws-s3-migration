@@ -165,7 +165,7 @@ class TestBucketDeleterSinglePage:
         mock_s3.delete_objects.assert_called_once()
         call_args = mock_s3.delete_objects.call_args
         assert call_args[1]["Bucket"] == "test-bucket"
-        assert len(call_args[1]["Delete"]["Objects"]) == 3  # noqa: PLR2004
+        assert len(call_args[1]["Delete"]["Objects"]) == 3
         # Verify VersionId is included
         assert all("VersionId" in obj for obj in call_args[1]["Delete"]["Objects"])
 
@@ -207,7 +207,7 @@ class TestBucketDeleterMultiplePagesBasic:
         deleter.delete_bucket("test-bucket")
 
         # Verify delete_objects was called 3 times (once per page)
-        assert mock_s3.delete_objects.call_count == 3  # noqa: PLR2004
+        assert mock_s3.delete_objects.call_count == 3
 
 
 class TestBucketDeleterEmptyPages:
@@ -232,7 +232,7 @@ class TestBucketDeleterEmptyPages:
         deleter.delete_bucket("test-bucket")
 
         # Should only call delete_objects twice (skipping empty page)
-        assert mock_s3.delete_objects.call_count == 2  # noqa: PLR2004
+        assert mock_s3.delete_objects.call_count == 2
 
 
 class TestBucketDeleterBucketRemoval:

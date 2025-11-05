@@ -37,10 +37,10 @@ class TestFileInventoryCheckerLoadFiles:
         checker = FileInventoryChecker(mock_state, tmp_path)
         result = checker.load_expected_files("test-bucket")
 
-        assert len(result) == 2  # noqa: PLR2004
-        assert result["file1.txt"]["size"] == 100  # noqa: PLR2004
+        assert len(result) == 2
+        assert result["file1.txt"]["size"] == 100
         assert result["file1.txt"]["etag"] == "abc123"
-        assert result["dir/file2.txt"]["size"] == 200  # noqa: PLR2004
+        assert result["dir/file2.txt"]["size"] == 200
 
 
 class TestFileInventoryCheckerPathNormalization:
@@ -89,7 +89,7 @@ class TestFileInventoryCheckerScanFiles:
 
         local_files = checker.scan_local_files("test-bucket", 2)
 
-        assert len(local_files) == 2  # noqa: PLR2004
+        assert len(local_files) == 2
         assert "file1.txt" in local_files
         assert "subdir/file2.txt" in local_files
 

@@ -87,7 +87,7 @@ class TestMainWithMultipleBuckets:
                         block_s3.main()
 
                         # Verify save was called twice (once for each bucket)
-                        assert mock_save.call_count == 2  # noqa: PLR2004
+                        assert mock_save.call_count == 2
 
                         # Verify output mentions both buckets
                         captured = capsys.readouterr()
@@ -209,7 +209,7 @@ class TestMainWithAllFlagProcessing:
                             block_s3.main()
 
                             # Verify save was called for each bucket
-                            assert mock_save.call_count == 3  # noqa: PLR2004
+                            assert mock_save.call_count == 3
 
                             # Verify output message
                             captured = capsys.readouterr()

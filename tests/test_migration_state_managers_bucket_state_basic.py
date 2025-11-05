@@ -1,30 +1,14 @@
 """Unit tests for BucketStateManager basic operations from migration_state_managers.py"""
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
 from migration_state_managers import BucketStateManager
-from migration_state_v2 import DatabaseConnection
 
 
 class TestBucketStateManagerFixtures:
     """Shared fixtures for BucketStateManager tests"""
-
-    @pytest.fixture
-    def temp_db(self):
-        """Create temporary database for testing"""
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            db_path = f.name
-        yield db_path
-        Path(db_path).unlink(missing_ok=True)
-
-    @pytest.fixture
-    def db_conn(self, temp_db):
-        """Create database connection with initialized schema"""
-        return DatabaseConnection(temp_db)
 
     @pytest.fixture
     def bucket_manager(self, db_conn):
@@ -52,8 +36,8 @@ class TestBucketStatusSave(TestBucketStateManagerFixtures):
 
         assert row is not None
         assert row["bucket"] == "test-bucket"
-        assert row["file_count"] == 100  # noqa: PLR2004
-        assert row["total_size"] == 5000000  # noqa: PLR2004
+        assert row["file_count"] == 100
+        assert row["total_size"] == 5000000
         assert row["scan_complete"] == 1
         storage_classes = json.loads(row["storage_class_counts"])
         assert storage_classes == {"STANDARD": 80, "GLACIER": 20}
@@ -85,8 +69,8 @@ class TestBucketStatusUpdate(TestBucketStateManagerFixtures):
                 "SELECT * FROM bucket_status WHERE bucket = ?", ("test-bucket",)
             ).fetchone()
 
-        assert row["file_count"] == 150  # noqa: PLR2004
-        assert row["total_size"] == 7000000  # noqa: PLR2004
+        assert row["file_count"] == 150
+        assert row["total_size"] == 7000000
         assert row["scan_complete"] == 1
 
 
@@ -175,11 +159,11 @@ class TestBucketVerifyCompletion(TestBucketStateManagerFixtures):
             ).fetchone()
 
         assert row["verify_complete"] == 1
-        assert row["verified_file_count"] == 100  # noqa: PLR2004
-        assert row["size_verified_count"] == 100  # noqa: PLR2004
-        assert row["checksum_verified_count"] == 95  # noqa: PLR2004
-        assert row["total_bytes_verified"] == 5000000  # noqa: PLR2004
-        assert row["local_file_count"] == 100  # noqa: PLR2004
+        assert row["verified_file_count"] == 100
+        assert row["size_verified_count"] == 100
+        assert row["checksum_verified_count"] == 95
+        assert row["total_bytes_verified"] == 5000000
+        assert row["local_file_count"] == 100
 
 
 class TestBucketVerifyPartial(TestBucketStateManagerFixtures):
@@ -206,8 +190,8 @@ class TestBucketVerifyPartial(TestBucketStateManagerFixtures):
             ).fetchone()
 
         assert row["verify_complete"] == 1
-        assert row["verified_file_count"] == 100  # noqa: PLR2004
-        assert row["size_verified_count"] == 100  # noqa: PLR2004
+        assert row["verified_file_count"] == 100
+        assert row["size_verified_count"] == 100
         assert row["checksum_verified_count"] is None
 
 

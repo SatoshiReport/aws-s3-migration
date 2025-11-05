@@ -54,7 +54,7 @@ class TestParallelDownloadSettings:
 
     def test_max_concurrent_downloads_reasonable_range(self):
         """Verify MAX_CONCURRENT_DOWNLOADS is within reasonable range (1-500)."""
-        assert 1 <= config.MAX_CONCURRENT_DOWNLOADS <= 500  # noqa: PLR2004
+        assert 1 <= config.MAX_CONCURRENT_DOWNLOADS <= 500
 
     def test_max_concurrent_verifications_exists(self):
         """Verify MAX_CONCURRENT_VERIFICATIONS constant exists."""
@@ -70,7 +70,7 @@ class TestParallelDownloadSettings:
 
     def test_max_concurrent_verifications_reasonable_range(self):
         """Verify MAX_CONCURRENT_VERIFICATIONS is within reasonable range (1-50)."""
-        assert 1 <= config.MAX_CONCURRENT_VERIFICATIONS <= 50  # noqa: PLR2004
+        assert 1 <= config.MAX_CONCURRENT_VERIFICATIONS <= 50
 
     def test_downloads_exceeds_verifications(self):
         """Verify MAX_CONCURRENT_DOWNLOADS is >= MAX_CONCURRENT_VERIFICATIONS."""
@@ -94,7 +94,7 @@ class TestBatchProcessingSettings:
 
     def test_batch_size_reasonable_range(self):
         """Verify BATCH_SIZE is within reasonable range (10-1000)."""
-        assert 10 <= config.BATCH_SIZE <= 1000  # noqa: PLR2004
+        assert 10 <= config.BATCH_SIZE <= 1000
 
     def test_db_batch_commit_size_exists(self):
         """Verify DB_BATCH_COMMIT_SIZE constant exists."""
@@ -110,7 +110,7 @@ class TestBatchProcessingSettings:
 
     def test_db_batch_commit_size_reasonable_range(self):
         """Verify DB_BATCH_COMMIT_SIZE is within reasonable range (1-100)."""
-        assert 1 <= config.DB_BATCH_COMMIT_SIZE <= 100  # noqa: PLR2004
+        assert 1 <= config.DB_BATCH_COMMIT_SIZE <= 100
 
     def test_db_batch_commit_smaller_than_batch_size(self):
         """Verify DB_BATCH_COMMIT_SIZE <= BATCH_SIZE."""

@@ -1,29 +1,13 @@
 """Unit tests for PhaseManager and integration tests for migration_state_managers.py"""
 
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from migration_state_managers import PhaseManager
-from migration_state_v2 import DatabaseConnection, MigrationStateV2, Phase
+from migration_state_v2 import MigrationStateV2, Phase
 
 
 class TestPhaseManagerFixtures:
     """Shared fixtures for PhaseManager tests"""
-
-    @pytest.fixture
-    def temp_db(self):
-        """Create temporary database for testing"""
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            db_path = f.name
-        yield db_path
-        Path(db_path).unlink(missing_ok=True)
-
-    @pytest.fixture
-    def db_conn(self, temp_db):
-        """Create database connection with initialized schema"""
-        return DatabaseConnection(temp_db)
 
     @pytest.fixture
     def phase_manager(self, db_conn):
@@ -122,19 +106,6 @@ class TestPhaseMultipleOperations(TestPhaseManagerFixtures):
 
 class TestIntegrationFixtures:
     """Shared fixtures for integration tests"""
-
-    @pytest.fixture
-    def temp_db(self):
-        """Create temporary database for testing"""
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            db_path = f.name
-        yield db_path
-        Path(db_path).unlink(missing_ok=True)
-
-    @pytest.fixture
-    def db_conn(self, temp_db):
-        """Create database connection with initialized schema"""
-        return DatabaseConnection(temp_db)
 
     @pytest.fixture
     def state(self, temp_db):
@@ -268,8 +239,8 @@ class TestScanSummaryIntegration(TestIntegrationFixtures):
 
         summary = state.get_scan_summary()
 
-        assert summary["bucket_count"] == 2  # noqa: PLR2004
-        assert summary["total_files"] == 3  # noqa: PLR2004
-        assert summary["total_size"] == 6000  # noqa: PLR2004
-        assert summary["storage_classes"]["STANDARD"] == 2  # noqa: PLR2004
+        assert summary["bucket_count"] == 2
+        assert summary["total_files"] == 3
+        assert summary["total_size"] == 6000
+        assert summary["storage_classes"]["STANDARD"] == 2
         assert summary["storage_classes"]["GLACIER"] == 1

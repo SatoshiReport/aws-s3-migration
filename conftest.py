@@ -1,9 +1,76 @@
-"""Pytest configuration to ensure project root is in sys.path for all test workers."""
+"""Pytest configuration and shared fixtures for the AWS S3 toolkit."""
+
+# pylint: disable=wrong-import-position
 
 import sys
 from pathlib import Path
+from unittest import mock
 
-# Add project root to sys.path so workers can import local modules
-project_root = Path(__file__).parent
-if str(project_root) not in sys.path:
-    sys.path.insert(0, str(project_root))
+PROJECT_ROOT = Path(__file__).resolve().parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+import pytest
+
+try:
+    from migrate_v2 import MigrationComponents, S3MigrationV2
+    from migration_state_v2 import DatabaseConnection
+except ImportError:  # pragma: no cover - pylint package context
+    from .migrate_v2 import MigrationComponents, S3MigrationV2  # type: ignore
+    from .migration_state_v2 import DatabaseConnection  # type: ignore
+
+
+@pytest.fixture(name="temp_db")
+def fixture_temp_db(tmp_path):
+    """Provide a temporary SQLite path for stateful tests."""
+    db_path = tmp_path / "migration_state.db"
+    yield str(db_path)
+    db_path.unlink(missing_ok=True)
+
+
+@pytest.fixture
+def db_conn(temp_db):
+    """Return a DatabaseConnection bound to the temporary path."""
+    return DatabaseConnection(temp_db)
+
+
+@pytest.fixture(name="mock_dependencies")
+def fixture_mock_dependencies():
+    """Common dependency graph used across migrate_v2 tests."""
+    dependencies = {
+        "state": mock.Mock(),
+        "drive_checker": mock.Mock(),
+        "scanner": mock.Mock(),
+        "glacier_restorer": mock.Mock(),
+        "glacier_waiter": mock.Mock(),
+        "migration_orchestrator": mock.Mock(),
+        "bucket_migrator": mock.Mock(),
+        "status_reporter": mock.Mock(),
+    }
+    bucket_syncer = mock.Mock()
+    bucket_syncer.interrupted = False
+    dependencies["bucket_migrator"].syncer = bucket_syncer
+    return dependencies
+
+
+@pytest.fixture(name="migrator")
+def fixture_migrator(mock_dependencies):
+    """Instantiate S3MigrationV2 with shared mock dependencies."""
+    components = MigrationComponents(
+        drive_checker=mock_dependencies["drive_checker"],
+        scanner=mock_dependencies["scanner"],
+        glacier_restorer=mock_dependencies["glacier_restorer"],
+        glacier_waiter=mock_dependencies["glacier_waiter"],
+        migration_orchestrator=mock_dependencies["migration_orchestrator"],
+        bucket_migrator=mock_dependencies["bucket_migrator"],
+        status_reporter=mock_dependencies["status_reporter"],
+    )
+    for key in (
+        "scanner",
+        "glacier_restorer",
+        "glacier_waiter",
+        "bucket_migrator",
+        "migration_orchestrator",
+    ):
+        mock_dependencies[key].interrupted = False
+    return S3MigrationV2(mock_dependencies["state"], components)

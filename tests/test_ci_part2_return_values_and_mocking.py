@@ -46,7 +46,7 @@ class TestReturnValuePropagation:
         """Verify run() handles various positive error codes."""
         mock_ci_main.return_value = 42
         result = ci.run()
-        assert result == 42  # noqa: PLR2004
+        assert result == 42
 
     @patch("ci.ci_main")
     def test_run_return_value_matches_ci_main_exactly(self, mock_ci_main):
@@ -95,10 +95,9 @@ class TestMainBlock:
         # Simulate running the main block
         with patch("ci.run", mock_run):
             # Execute the if __name__ == "__main__" block logic
-            try:
-                raise SystemExit(ci.run())  # noqa: TRY301
-            except SystemExit as e:
-                assert e.code == 0
+            with pytest.raises(SystemExit) as exc_info:
+                raise SystemExit(ci.run())
+            assert exc_info.value.code == 0
         mock_run.assert_called_once()
 
     def test_main_block_raises_system_exit_on_zero(self):
@@ -120,8 +119,8 @@ class TestMainBlock:
         """Verify __main__ block uses run's return value for SystemExit."""
         mock_run.return_value = 42
         with pytest.raises(SystemExit) as exc_info:
-            raise SystemExit(ci.run())  # noqa: TRY301
-        assert exc_info.value.code == 42  # noqa: PLR2004
+            raise SystemExit(ci.run())
+        assert exc_info.value.code == 42
 
 
 class TestMainBlockExecution:

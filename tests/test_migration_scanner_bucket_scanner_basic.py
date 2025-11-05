@@ -212,4 +212,4 @@ class TestBucketScannerPagination:
 
         scanner.scan_all_buckets()
 
-        assert mock_state.add_file.call_count == 2  # noqa: PLR2004
+        assert mock_state.add_file.call_count == 2

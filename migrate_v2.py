@@ -22,6 +22,7 @@ Usage:
 import argparse
 import signal
 import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 import boto3
@@ -118,28 +119,31 @@ class DriveChecker:  # pylint: disable=too-few-public-methods
             sys.exit(1)
 
 
+@dataclass(frozen=True)
+class MigrationComponents:
+    """Aggregates the orchestration helpers required by S3MigrationV2."""
+
+    drive_checker: DriveChecker
+    scanner: BucketScanner
+    glacier_restorer: GlacierRestorer
+    glacier_waiter: GlacierWaiter
+    migration_orchestrator: BucketMigrationOrchestrator
+    bucket_migrator: BucketMigrator
+    status_reporter: StatusReporter
+
+
 class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
     """Main orchestrator for S3 to local migration using AWS CLI"""
 
-    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments  # noqa: PLR0913
-        self,
-        state: MigrationStateV2,
-        drive_checker: DriveChecker,
-        scanner: BucketScanner,
-        glacier_restorer: GlacierRestorer,
-        glacier_waiter: GlacierWaiter,
-        migration_orchestrator: BucketMigrationOrchestrator,
-        bucket_migrator: BucketMigrator,
-        status_reporter: StatusReporter,
-    ):
+    def __init__(self, state: MigrationStateV2, components: MigrationComponents):
         self.state = state
-        self.drive_checker = drive_checker
-        self.scanner = scanner
-        self.glacier_restorer = glacier_restorer
-        self.glacier_waiter = glacier_waiter
-        self.bucket_migrator = bucket_migrator
-        self.migration_orchestrator = migration_orchestrator
-        self.status_reporter = status_reporter
+        self.drive_checker = components.drive_checker
+        self.scanner = components.scanner
+        self.glacier_restorer = components.glacier_restorer
+        self.glacier_waiter = components.glacier_waiter
+        self.bucket_migrator = components.bucket_migrator
+        self.migration_orchestrator = components.migration_orchestrator
+        self.status_reporter = components.status_reporter
         self.interrupted = False
         signal.signal(signal.SIGINT, self._signal_handler)
 
@@ -228,16 +232,16 @@ def create_migrator() -> S3MigrationV2:
         s3, state, base_path, drive_checker, bucket_migrator
     )
     status_reporter = StatusReporter(state)
-    return S3MigrationV2(
-        state,
-        drive_checker,
-        scanner,
-        glacier_restorer,
-        glacier_waiter,
-        migration_orchestrator,
-        bucket_migrator,
-        status_reporter,
+    components = MigrationComponents(
+        drive_checker=drive_checker,
+        scanner=scanner,
+        glacier_restorer=glacier_restorer,
+        glacier_waiter=glacier_waiter,
+        migration_orchestrator=migration_orchestrator,
+        bucket_migrator=bucket_migrator,
+        status_reporter=status_reporter,
     )
+    return S3MigrationV2(state, components)
 
 
 def main():

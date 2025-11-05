@@ -67,7 +67,7 @@ class TestIntegrationScenarios:
         assert result3 == 0
 
         # Verify all three calls were made
-        assert mock_ci_main.call_count == 3  # noqa: PLR2004
+        assert mock_ci_main.call_count == 3
 
 
 class TestEdgeCases:
@@ -109,7 +109,7 @@ class TestEdgeCases:
             ci.run()
         argv = mock_ci_main.call_args[0][0]
         # Should have base 3 args + 100 additional args
-        assert len(argv) == 103  # noqa: PLR2004
+        assert len(argv) == 103
 
     @patch("ci.ci_main")
     def test_run_argv_is_list_not_tuple(self, mock_ci_main):

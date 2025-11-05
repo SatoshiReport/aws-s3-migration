@@ -1,30 +1,14 @@
 """Unit tests for FileStateManager from migration_state_managers.py"""
 
-import tempfile
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 
 from migration_state_managers import FileStateManager
-from migration_state_v2 import DatabaseConnection
 
 
 class TestFileStateManagerFixtures:
     """Shared fixtures for FileStateManager tests"""
-
-    @pytest.fixture
-    def temp_db(self):
-        """Create temporary database for testing"""
-        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as f:
-            db_path = f.name
-        yield db_path
-        Path(db_path).unlink(missing_ok=True)
-
-    @pytest.fixture
-    def db_conn(self, temp_db):
-        """Create database connection with initialized schema"""
-        return DatabaseConnection(temp_db)
 
     @pytest.fixture
     def file_manager(self, db_conn):
@@ -55,7 +39,7 @@ class TestFileAddition(TestFileStateManagerFixtures):
         assert row is not None
         assert row["bucket"] == "test-bucket"
         assert row["key"] == "path/to/file.txt"
-        assert row["size"] == 1024  # noqa: PLR2004
+        assert row["size"] == 1024
         assert row["etag"] == "abc123"
         assert row["storage_class"] == "STANDARD"
         assert row["state"] == "discovered"
@@ -220,7 +204,7 @@ class TestGlacierFilesNeedingRestore(TestFileStateManagerFixtures):
         assert "archive1.txt" in keys
         assert "glacier2.txt" not in keys
         assert "standard.txt" not in keys
-        assert len(files) == 2  # noqa: PLR2004
+        assert len(files) == 2
 
 
 class TestFilesRestoring(TestFileStateManagerFixtures):
@@ -310,5 +294,5 @@ class TestMultiBucketTracking(TestFileStateManagerFixtures):
                 ("bucket-b", "file.txt"),
             ).fetchone()
 
-        assert row_a["size"] == 100  # noqa: PLR2004
-        assert row_b["size"] == 200  # noqa: PLR2004
+        assert row_a["size"] == 100
+        assert row_b["size"] == 200

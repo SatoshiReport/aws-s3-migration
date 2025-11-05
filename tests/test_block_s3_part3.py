@@ -110,7 +110,7 @@ class TestArgparseBehavior:
                     with mock.patch("block_s3.save_policy_to_file") as mock_save:
                         block_s3.main()
                         # Should process all three buckets without error
-                        assert mock_save.call_count == 3  # noqa: PLR2004
+                        assert mock_save.call_count == 3
 
     def test_argparse_recognizes_all_flag(self, tmp_path, monkeypatch):
         """Test that argparse correctly recognizes --all flag"""

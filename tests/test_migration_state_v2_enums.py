@@ -74,8 +74,8 @@ class TestBucketStatus:
         status = BucketStatus(row)
 
         assert status.bucket == "test-bucket"
-        assert status.file_count == 100  # noqa: PLR2004
-        assert status.total_size == 5000  # noqa: PLR2004
+        assert status.file_count == 100
+        assert status.total_size == 5000
         assert status.scan_complete is True
         assert status.sync_complete is False
         assert status.verify_complete is False

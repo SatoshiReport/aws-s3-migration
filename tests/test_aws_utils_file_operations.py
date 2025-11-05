@@ -96,7 +96,7 @@ def test_save_policy_to_file_overwrites_existing(tmp_path: Path):
     raw = aws_utils.load_policy_from_file(path)
     loaded = json.loads(raw)
 
-    assert loaded["version"] == 2  # noqa: PLR2004
+    assert loaded["version"] == 2
     assert "updated" in loaded
 
 

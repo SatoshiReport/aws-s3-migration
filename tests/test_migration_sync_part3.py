@@ -3,28 +3,13 @@
 import time
 from unittest import mock
 
+from migration_sync_test_helpers import create_mock_process
+
 from migration_sync import BucketSyncer
 
 
 class TestEdgeCases:
     """Test edge cases and boundary conditions"""
-
-    def _create_mock_process(self, readline_lines=None, poll_returns=None, stderr_output=""):
-        """Helper to create mock process"""
-        mock_process = mock.Mock()
-        if readline_lines is None:
-            readline_lines = [""]
-        if poll_returns is None:
-            poll_returns = [0]
-
-        readline_iter = iter(readline_lines)
-        mock_process.stdout.readline = lambda: next(readline_iter, "")
-
-        poll_iter = iter(poll_returns)
-        mock_process.poll = lambda: next(poll_iter, 0)
-        mock_process.returncode = 0  # Set returncode to success
-        mock_process.stderr.read.return_value = stderr_output
-        return mock_process
 
     def test_sync_bucket_with_special_characters_in_name(self, tmp_path):
         """Test syncing bucket with special characters in name"""
@@ -32,7 +17,7 @@ class TestEdgeCases:
         bucket_name = "test-bucket-with-dashes"
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process([""], [None, 0])
+            mock_popen.return_value = create_mock_process([""], [None, 0])
 
             syncer.sync_bucket(bucket_name)
 
@@ -52,7 +37,7 @@ class TestEdgeCases:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process(["", ""], [None, 0, None, 0])
+            mock_popen.return_value = create_mock_process(["", ""], [None, 0, None, 0])
 
             syncer.sync_bucket("bucket")
             syncer.sync_bucket("bucket")
@@ -84,29 +69,12 @@ class TestEdgeCases:
 class TestIntegration:
     """Integration tests combining multiple components"""
 
-    def _create_mock_process(self, readline_lines=None, poll_returns=None, stderr_output=""):
-        """Helper to create mock process"""
-        mock_process = mock.Mock()
-        if readline_lines is None:
-            readline_lines = [""]
-        if poll_returns is None:
-            poll_returns = [0]
-
-        readline_iter = iter(readline_lines)
-        mock_process.stdout.readline = lambda: next(readline_iter, "")
-
-        poll_iter = iter(poll_returns)
-        mock_process.poll = lambda: next(poll_iter, 0)
-        mock_process.returncode = 0  # Set returncode to success
-        mock_process.stderr.read.return_value = stderr_output
-        return mock_process
-
     def test_full_sync_workflow_with_mock_aws_output(self, tmp_path):
         """Test complete sync workflow with realistic AWS CLI output"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process(
+            mock_popen.return_value = create_mock_process(
                 [
                     "Completed s3://bucket/file1.txt  512.0 KiB\n",
                     "Completed s3://bucket/file2.txt  1.5 MiB\n",
@@ -126,7 +94,7 @@ class TestIntegration:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process([""], [None, 0])
+            mock_popen.return_value = create_mock_process([""], [None, 0])
 
             syncer.sync_bucket("empty-bucket")
 
@@ -138,7 +106,7 @@ class TestIntegration:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process(
+            mock_popen.return_value = create_mock_process(
                 [
                     "Completed s3://bucket/small.txt  100 Bytes\n",
                     "Completed s3://bucket/medium.bin  50 KiB\n",

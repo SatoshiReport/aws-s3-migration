@@ -5,6 +5,7 @@ import time
 from unittest import mock
 
 import pytest
+from migration_sync_test_helpers import create_mock_process
 
 from migration_sync import BucketSyncer
 
@@ -159,28 +160,7 @@ class TestMonitorSyncProgressInterruption:
         assert bytes_done == 0
 
 
-class TestSyncBucketHelpers:
-    """Helper methods for sync_bucket tests"""
-
-    def _create_mock_process(self, readline_lines=None, poll_returns=None, stderr_output=""):
-        """Helper to create mock process with proper readline behavior"""
-        mock_process = mock.Mock()
-        if readline_lines is None:
-            readline_lines = [""]
-        if poll_returns is None:
-            poll_returns = [0]
-
-        readline_iter = iter(readline_lines)
-        mock_process.stdout.readline = lambda: next(readline_iter, "")
-
-        poll_iter = iter(poll_returns)
-        mock_process.poll = lambda: next(poll_iter, 0)
-        mock_process.returncode = 0  # Set returncode to success
-        mock_process.stderr.read.return_value = stderr_output
-        return mock_process
-
-
-class TestSyncBucketBasics(TestSyncBucketHelpers):
+class TestSyncBucketBasics:
     """Test basic sync_bucket functionality"""
 
     def test_sync_bucket_creates_local_directory(self, tmp_path):
@@ -189,7 +169,7 @@ class TestSyncBucketBasics(TestSyncBucketHelpers):
         bucket_name = "test-bucket"
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process([""], [None, 0])
+            mock_popen.return_value = create_mock_process([""], [None, 0])
 
             syncer.sync_bucket(bucket_name)
 
@@ -203,7 +183,7 @@ class TestSyncBucketBasics(TestSyncBucketHelpers):
         bucket_name = "test-bucket"
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process([""], [None, 0])
+            mock_popen.return_value = create_mock_process([""], [None, 0])
 
             syncer.sync_bucket(bucket_name)
 
@@ -220,7 +200,7 @@ class TestSyncBucketBasics(TestSyncBucketHelpers):
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process([""], [None, 0])
+            mock_popen.return_value = create_mock_process([""], [None, 0])
 
             syncer.sync_bucket("test-bucket")
 
@@ -229,7 +209,7 @@ class TestSyncBucketBasics(TestSyncBucketHelpers):
         assert "s3://test-bucket/" in captured.out
 
 
-class TestSyncBucketProcessConfig(TestSyncBucketHelpers):
+class TestSyncBucketProcessConfig:
     """Test sync_bucket process configuration"""
 
     def test_sync_bucket_uses_text_mode_for_process(self, tmp_path):
@@ -237,7 +217,7 @@ class TestSyncBucketProcessConfig(TestSyncBucketHelpers):
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process([""], [None, 0])
+            mock_popen.return_value = create_mock_process([""], [None, 0])
 
             syncer.sync_bucket("bucket")
 
@@ -251,7 +231,7 @@ class TestSyncBucketProcessConfig(TestSyncBucketHelpers):
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process([""], [None, 0])
+            mock_popen.return_value = create_mock_process([""], [None, 0])
 
             syncer.sync_bucket("bucket")
 
@@ -260,7 +240,7 @@ class TestSyncBucketProcessConfig(TestSyncBucketHelpers):
         assert kwargs["stderr"] == subprocess.PIPE
 
 
-class TestSyncBucketErrorHandling(TestSyncBucketHelpers):
+class TestSyncBucketErrorHandling:
     """Test sync_bucket error handling"""
 
     def test_sync_bucket_propagates_subprocess_errors(self, tmp_path):
@@ -268,7 +248,7 @@ class TestSyncBucketErrorHandling(TestSyncBucketHelpers):
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_process = self._create_mock_process([""], [None, 1], "Error occurred")
+            mock_process = create_mock_process([""], [None, 1], "Error occurred")
             mock_process.returncode = 1
             mock_popen.return_value = mock_process
 
@@ -282,7 +262,7 @@ class TestSyncBucketErrorHandling(TestSyncBucketHelpers):
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
 
         with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = self._create_mock_process(
+            mock_popen.return_value = create_mock_process(
                 ["Completed s3://bucket/largefile.bin  10.5 GiB\n", ""], [None, 0]
             )
 

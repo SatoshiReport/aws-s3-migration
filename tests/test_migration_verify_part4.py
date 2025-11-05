@@ -87,7 +87,7 @@ class TestScanningEdgeCases:
 
         local_files = checker.scan_local_files("test-bucket", 5)
 
-        assert len(local_files) == 5  # noqa: PLR2004
+        assert len(local_files) == 5
 
     def test_scan_files_with_equal_expected_files(self, tmp_path):
         """Test scanning when actual files equal expected files"""
@@ -104,7 +104,7 @@ class TestScanningEdgeCases:
         # Tell it to expect exactly 100 files
         local_files = checker.scan_local_files("test-bucket", 100)
 
-        assert len(local_files) == 100  # noqa: PLR2004
+        assert len(local_files) == 100
 
 
 class TestBucketVerificationEdgeCases:
@@ -215,8 +215,8 @@ class TestMixedFileTypeVerification:
             expected_size=15,
         )
 
-        assert results["verified_count"] == 2  # noqa: PLR2004
-        assert results["checksum_verified"] == 2  # noqa: PLR2004
+        assert results["verified_count"] == 2
+        assert results["checksum_verified"] == 2
 
 
 class TestBucketDeletionLargeBatch:
@@ -241,7 +241,7 @@ class TestBucketDeletionLargeBatch:
 
         # Verify delete_objects was called with all objects
         call_args = mock_s3.delete_objects.call_args
-        assert len(call_args[1]["Delete"]["Objects"]) == 1500  # noqa: PLR2004
+        assert len(call_args[1]["Delete"]["Objects"]) == 1500
 
 
 class TestBucketDeletionProgressDisplay:
@@ -273,4 +273,4 @@ class TestBucketDeletionProgressDisplay:
         deleter.delete_bucket("test-bucket")
 
         # Should have called delete_objects for each page
-        assert mock_s3.delete_objects.call_count == 5  # noqa: PLR2004
+        assert mock_s3.delete_objects.call_count == 5

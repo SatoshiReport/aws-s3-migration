@@ -107,7 +107,7 @@ class TestBucketScannerLargeScale:
         scanner.scan_all_buckets()
 
         # Should have added all files
-        assert mock_state.add_file.call_count == 50000  # noqa: PLR2004
+        assert mock_state.add_file.call_count == 50000
 
 
 class TestBucketScannerZeroSizeFiles:
