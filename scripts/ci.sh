@@ -2,19 +2,15 @@
 # Usage: scripts/ci.sh ["Commit message"]
 set -euo pipefail
 
-SCRIPT_PATH=$(python - <<'PY'
-import sys
-from pathlib import Path
+CI_SHARED_ROOT="${CI_SHARED_ROOT:-${HOME}/ci_shared}"
+SHARED_SCRIPT="${CI_SHARED_ROOT}/ci_tools/scripts/ci.sh"
 
-try:
-    import ci_tools
-except ImportError as exc:
-    print("ci_tools package not installed; run `python -m pip install -e ../ci_shared`.", file=sys.stderr)
-    raise SystemExit(1) from exc
+if [[ ! -x "${SHARED_SCRIPT}" ]]; then
+  echo "Shared CI runner not found at ${SHARED_SCRIPT}." >&2
+  echo "Set CI_SHARED_ROOT or clone ci_shared to ${HOME}/ci_shared." >&2
+  exit 1
+fi
 
-path = Path(ci_tools.__file__).resolve().parent / "scripts" / "ci.sh"
-print(path)
-PY
-)
+export PYTHONPATH="${CI_SHARED_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 
-exec "${SCRIPT_PATH}" "$@"
+exec "${SHARED_SCRIPT}" "$@"

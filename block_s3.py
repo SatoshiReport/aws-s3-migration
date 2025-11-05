@@ -11,13 +11,22 @@ import argparse
 import os
 import sys
 
-from aws_utils import (
-    generate_restrictive_bucket_policy,
-    get_aws_identity,
-    list_s3_buckets,
-    print_interactive_help,
-    save_policy_to_file,
-)
+try:  # Prefer package-relative imports for static analysis
+    from .aws_utils import (
+        generate_restrictive_bucket_policy,
+        get_aws_identity,
+        list_s3_buckets,
+        print_interactive_help,
+        save_policy_to_file,
+    )
+except ImportError:  # pragma: no cover - allow running as standalone script
+    from aws_utils import (
+        generate_restrictive_bucket_policy,
+        get_aws_identity,
+        list_s3_buckets,
+        print_interactive_help,
+        save_policy_to_file,
+    )
 
 
 def main():
@@ -25,7 +34,9 @@ def main():
     parser = argparse.ArgumentParser(description="Generate restrictive S3 bucket policies")
     parser.add_argument("buckets", nargs="*", help="Bucket names to generate policies for")
     parser.add_argument(
-        "--all", action="store_true", help="Generate policies for all buckets in the account"
+        "--all",
+        action="store_true",
+        help="Generate policies for all buckets in the account",
     )
 
     args = parser.parse_args()

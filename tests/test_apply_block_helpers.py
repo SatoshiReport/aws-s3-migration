@@ -163,102 +163,104 @@ class TestShowInteractiveHelp:
         assert "(none found)" in captured.out
 
 
-class TestApplyPolicyToBucket:
-    """Tests for _apply_policy_to_bucket() helper function"""
+def test_apply_policy_returns_false_when_policy_file_missing(tmp_path, monkeypatch, capsys):
+    """Test that False is returned when policy file doesn't exist"""
+    monkeypatch.chdir(tmp_path)
+    policies_dir = tmp_path / "policies"
+    policies_dir.mkdir()
 
-    def test_returns_false_when_policy_file_missing(self, tmp_path, monkeypatch, capsys):
-        """Test that False is returned when policy file doesn't exist"""
-        monkeypatch.chdir(tmp_path)
-        policies_dir = tmp_path / "policies"
-        policies_dir.mkdir()
+    result = apply_block._apply_policy_to_bucket("missing-bucket", dry_run=False)
 
-        result = apply_block._apply_policy_to_bucket("missing-bucket", dry_run=False)
+    assert result is False
+    captured = capsys.readouterr()
+    assert "Policy file not found" in captured.out
 
-        assert result is False
-        captured = capsys.readouterr()
-        assert "Policy file not found" in captured.out
 
-    def test_applies_policy_when_file_exists(self, tmp_path, monkeypatch, capsys):
-        """Test that policy is applied when file exists"""
-        monkeypatch.chdir(tmp_path)
-        policies_dir = tmp_path / "policies"
-        policies_dir.mkdir()
+def test_apply_policy_when_file_exists(tmp_path, monkeypatch, capsys):
+    """Test that policy is applied when file exists"""
+    monkeypatch.chdir(tmp_path)
+    policies_dir = tmp_path / "policies"
+    policies_dir.mkdir()
 
-        policy_content = json.dumps({"Version": "2012-10-17", "Statement": [{"Effect": "Allow"}]})
-        (policies_dir / "test-bucket_policy.json").write_text(policy_content)
+    policy_content = json.dumps({"Version": "2012-10-17", "Statement": [{"Effect": "Allow"}]})
+    (policies_dir / "test-bucket_policy.json").write_text(policy_content)
 
-        with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
-            result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=False)
+    with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
+        result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=False)
 
-        assert result is True
-        assert mock_apply.called
-        captured = capsys.readouterr()
-        assert "Applied policy to test-bucket" in captured.out
+    assert result is True
+    assert mock_apply.called
+    captured = capsys.readouterr()
+    assert "Applied policy to test-bucket" in captured.out
 
-    def test_dry_run_does_not_apply_policy(self, tmp_path, monkeypatch, capsys):
-        """Test that --dry-run doesn't actually apply policy"""
-        monkeypatch.chdir(tmp_path)
-        policies_dir = tmp_path / "policies"
-        policies_dir.mkdir()
 
-        policy_content = json.dumps({"Version": "2012-10-17", "Statement": [{"Effect": "Allow"}]})
-        (policies_dir / "test-bucket_policy.json").write_text(policy_content)
+def test_apply_policy_dry_run(tmp_path, monkeypatch, capsys):
+    """Test that --dry-run doesn't actually apply policy"""
+    monkeypatch.chdir(tmp_path)
+    policies_dir = tmp_path / "policies"
+    policies_dir.mkdir()
 
-        with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
-            with mock.patch("apply_block.load_policy_from_file", return_value=policy_content):
-                result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=True)
+    policy_content = json.dumps({"Version": "2012-10-17", "Statement": [{"Effect": "Allow"}]})
+    (policies_dir / "test-bucket_policy.json").write_text(policy_content)
 
-        assert result is True
-        assert not mock_apply.called
-        captured = capsys.readouterr()
-        assert "[DRY RUN]" in captured.out
-        assert "Would apply" in captured.out
+    with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
+        with mock.patch("apply_block.load_policy_from_file", return_value=policy_content):
+            result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=True)
 
-    def test_handles_load_policy_file_error(self, tmp_path, monkeypatch, capsys):
-        """Test that errors reading policy file are handled"""
-        monkeypatch.chdir(tmp_path)
-        policies_dir = tmp_path / "policies"
-        policies_dir.mkdir()
-        (policies_dir / "bad-bucket_policy.json").write_text("{invalid json")
+    assert result is True
+    assert not mock_apply.called
+    captured = capsys.readouterr()
+    assert "[DRY RUN]" in captured.out
+    assert "Would apply" in captured.out
 
-        with mock.patch("apply_block.load_policy_from_file") as mock_load:
-            mock_load.side_effect = ValueError("Invalid JSON")
-            result = apply_block._apply_policy_to_bucket("bad-bucket", dry_run=False)
 
-        assert result is False
-        captured = capsys.readouterr()
-        assert "Failed to apply policy" in captured.out
+def test_apply_policy_handles_load_error(tmp_path, monkeypatch, capsys):
+    """Test that errors reading policy file are handled"""
+    monkeypatch.chdir(tmp_path)
+    policies_dir = tmp_path / "policies"
+    policies_dir.mkdir()
+    (policies_dir / "bad-bucket_policy.json").write_text("{invalid json")
 
-    def test_handles_apply_policy_error(self, tmp_path, monkeypatch, capsys):
-        """Test that errors applying policy are handled"""
-        monkeypatch.chdir(tmp_path)
-        policies_dir = tmp_path / "policies"
-        policies_dir.mkdir()
+    with mock.patch("apply_block.load_policy_from_file") as mock_load:
+        mock_load.side_effect = ValueError("Invalid JSON")
+        result = apply_block._apply_policy_to_bucket("bad-bucket", dry_run=False)
 
-        policy_content = json.dumps({"Version": "2012-10-17"})
-        (policies_dir / "test-bucket_policy.json").write_text(policy_content)
+    assert result is False
+    captured = capsys.readouterr()
+    assert "Failed to apply policy" in captured.out
 
-        with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
-            mock_apply.side_effect = IOError("S3 error")
-            result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=False)
 
-        assert result is False
-        captured = capsys.readouterr()
-        assert "Failed to apply policy" in captured.out
+def test_apply_policy_handles_apply_error(tmp_path, monkeypatch, capsys):
+    """Test that errors applying policy are handled"""
+    monkeypatch.chdir(tmp_path)
+    policies_dir = tmp_path / "policies"
+    policies_dir.mkdir()
 
-    def test_handles_os_error(self, tmp_path, monkeypatch, capsys):
-        """Test that OS errors are handled gracefully"""
-        monkeypatch.chdir(tmp_path)
-        policies_dir = tmp_path / "policies"
-        policies_dir.mkdir()
+    policy_content = json.dumps({"Version": "2012-10-17"})
+    (policies_dir / "test-bucket_policy.json").write_text(policy_content)
 
-        policy_content = json.dumps({"Version": "2012-10-17"})
-        (policies_dir / "test-bucket_policy.json").write_text(policy_content)
+    with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
+        mock_apply.side_effect = IOError("S3 error")
+        result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=False)
 
-        with mock.patch("apply_block.load_policy_from_file") as mock_load:
-            mock_load.side_effect = OSError("Permission denied")
-            result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=False)
+    assert result is False
+    captured = capsys.readouterr()
+    assert "Failed to apply policy" in captured.out
 
-        assert result is False
-        captured = capsys.readouterr()
-        assert "Failed to apply policy" in captured.out
+
+def test_apply_policy_handles_os_error(tmp_path, monkeypatch, capsys):
+    """Test that OS errors are handled gracefully"""
+    monkeypatch.chdir(tmp_path)
+    policies_dir = tmp_path / "policies"
+    policies_dir.mkdir()
+
+    policy_content = json.dumps({"Version": "2012-10-17"})
+    (policies_dir / "test-bucket_policy.json").write_text(policy_content)
+
+    with mock.patch("apply_block.load_policy_from_file") as mock_load:
+        mock_load.side_effect = OSError("Permission denied")
+        result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=False)
+
+    assert result is False
+    captured = capsys.readouterr()
+    assert "Failed to apply policy" in captured.out

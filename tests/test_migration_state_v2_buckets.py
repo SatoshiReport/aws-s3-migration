@@ -91,7 +91,8 @@ class TestBucketDeleteOperations:
 
         with state.db_conn.get_connection() as conn:
             cursor = conn.execute(
-                "SELECT delete_complete FROM bucket_status WHERE bucket = ?", ("bucket1",)
+                "SELECT delete_complete FROM bucket_status WHERE bucket = ?",
+                ("bucket1",),
             )
             row = cursor.fetchone()
             assert row["delete_complete"] == 1

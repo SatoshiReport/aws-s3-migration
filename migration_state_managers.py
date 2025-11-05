@@ -1,47 +1,71 @@
 """State manager classes for file, bucket, and phase operations"""
 
 import sqlite3
-from typing import TYPE_CHECKING, Dict, List
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Dict, List, Optional
 
-from migration_utils import get_utc_now
+try:  # Prefer package-relative imports for tooling
+    from .migration_utils import get_utc_now
+except ImportError:  # pragma: no cover - allow running as standalone script
+    from migration_utils import get_utc_now
 
 if TYPE_CHECKING:
-    from migration_state_v2 import DatabaseConnection, Phase
+    try:
+        from .migration_state_v2 import DatabaseConnection, Phase
+    except ImportError:  # pragma: no cover - mypy/pylint path fallback
+        from migration_state_v2 import DatabaseConnection, Phase
 
 
-def save_bucket_status_to_db(
-    conn,
-    bucket: str,
-    file_count: int,
-    total_size: int,
-    storage_classes: Dict[str, int],
-    scan_complete: bool,
-):
+@dataclass
+class BucketScanStatus:
+    """Payload describing the results of a bucket scan."""
+
+    bucket: str
+    file_count: int
+    total_size: int
+    storage_classes: Dict[str, int]
+    scan_complete: bool = False
+
+
+@dataclass
+class BucketVerificationResult:
+    """Payload describing verification metrics for a bucket."""
+
+    bucket: str
+    verified_file_count: Optional[int] = None
+    size_verified_count: Optional[int] = None
+    checksum_verified_count: Optional[int] = None
+    total_bytes_verified: Optional[int] = None
+    local_file_count: Optional[int] = None
+
+
+def save_bucket_status_to_db(conn, status: BucketScanStatus):
     """Helper to save bucket status to database"""
     import json  # pylint: disable=import-outside-toplevel
 
     now = get_utc_now()
-    storage_json = json.dumps(storage_classes)
+    storage_json = json.dumps(status.storage_classes)
     conn.execute(
         """INSERT OR REPLACE INTO bucket_status
         (bucket, file_count, total_size, storage_class_counts,
         scan_complete, created_at, updated_at)
         VALUES (?, ?, ?, ?, ?,
         COALESCE((SELECT created_at FROM bucket_status WHERE bucket = ?), ?), ?)""",
-        (bucket, file_count, total_size, storage_json, scan_complete, bucket, now, now),
+        (
+            status.bucket,
+            status.file_count,
+            status.total_size,
+            storage_json,
+            status.scan_complete,
+            status.bucket,
+            now,
+            now,
+        ),
     )
     conn.commit()
 
 
-def update_bucket_verification(
-    conn,
-    bucket: str,
-    verified_file_count,
-    size_verified_count,
-    checksum_verified_count,
-    total_bytes_verified,
-    local_file_count,
-):
+def update_bucket_verification(conn, verification: BucketVerificationResult):
     """Helper to update bucket verification status"""
     now = get_utc_now()
     conn.execute(
@@ -49,13 +73,13 @@ def update_bucket_verification(
         size_verified_count = ?, checksum_verified_count = ?, total_bytes_verified = ?,
         local_file_count = ?, updated_at = ? WHERE bucket = ?""",
         (
-            verified_file_count,
-            size_verified_count,
-            checksum_verified_count,
-            total_bytes_verified,
-            local_file_count,
+            verification.verified_file_count,
+            verification.size_verified_count,
+            verification.checksum_verified_count,
+            verification.total_bytes_verified,
+            verification.local_file_count,
             now,
-            bucket,
+            verification.bucket,
         ),
     )
     conn.commit()
@@ -125,7 +149,13 @@ class FileStateManager:
         self.db_conn = db_conn
 
     def add_file(  # pylint: disable=too-many-arguments,too-many-positional-arguments
-        self, bucket: str, key: str, size: int, etag: str, storage_class: str, last_modified: str
+        self,
+        bucket: str,
+        key: str,
+        size: int,
+        etag: str,
+        storage_class: str,
+        last_modified: str,
     ):
         """Add a discovered file to tracking database (idempotent)"""
         now = get_utc_now()
@@ -201,10 +231,15 @@ class BucketStateManager:
         scan_complete: bool = False,
     ):
         """Save or update bucket status"""
+        status = BucketScanStatus(
+            bucket=bucket,
+            file_count=file_count,
+            total_size=total_size,
+            storage_classes=storage_classes,
+            scan_complete=scan_complete,
+        )
         with self.db_conn.get_connection() as conn:
-            save_bucket_status_to_db(
-                conn, bucket, file_count, total_size, storage_classes, scan_complete
-            )
+            save_bucket_status_to_db(conn, status)
 
     def mark_bucket_sync_complete(self, bucket: str):
         """Mark bucket as synced"""
@@ -221,16 +256,16 @@ class BucketStateManager:
         local_file_count: int = None,
     ):
         """Mark bucket as verified and store verification results"""
+        verification = BucketVerificationResult(
+            bucket=bucket,
+            verified_file_count=verified_file_count,
+            size_verified_count=size_verified_count,
+            checksum_verified_count=checksum_verified_count,
+            total_bytes_verified=total_bytes_verified,
+            local_file_count=local_file_count,
+        )
         with self.db_conn.get_connection() as conn:
-            update_bucket_verification(
-                conn,
-                bucket,
-                verified_file_count,
-                size_verified_count,
-                checksum_verified_count,
-                total_bytes_verified,
-                local_file_count,
-            )
+            update_bucket_verification(conn, verification)
 
     def mark_bucket_delete_complete(self, bucket: str):
         """Mark bucket as deleted from S3"""
@@ -267,7 +302,10 @@ class PhaseManager:
 
     def _init_phase(self):
         """Initialize phase if not set"""
-        from migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
+        try:
+            from .migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
+        except ImportError:  # pragma: no cover - allow running as standalone script
+            from migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
 
         with self.db_conn.get_connection() as conn:
             cursor = conn.execute(
@@ -278,7 +316,10 @@ class PhaseManager:
 
     def get_phase(self) -> "Phase":
         """Get current migration phase"""
-        from migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
+        try:
+            from .migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
+        except ImportError:  # pragma: no cover - allow running as standalone script
+            from migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
 
         with self.db_conn.get_connection() as conn:
             cursor = conn.execute(

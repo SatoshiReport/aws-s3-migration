@@ -23,70 +23,6 @@ profile = "black"
 line_length = 100
 skip = ["ci_shared"]
 
-# =============================================================================
-# Standardized Tool Configurations
-# =============================================================================
-# These [tool.*] sections are standardized across all repositories (zeus,
-# kalshi, aws, ci_shared) to ensure consistent CI behavior.
-#
-# Source of truth: ci_shared/shared-tool-config.toml
-#
-# To validate: python -m ci_tools.scripts.tool_config_guard
-# To sync: python -m ci_tools.scripts.tool_config_guard --sync
-# =============================================================================
-
-[tool.pytest.ini_options]
-pythonpath = ["."]
-addopts = [
-    "--tb=short",  # Shorter tracebacks
-    "-q",          # Quiet mode (less output)
-]
-
-[tool.coverage.run]
-omit = [
-    "*/vendor/*",
-    "*/__main__.py",
-]
-
-[tool.bandit]
-# Skip checks that are expected/acceptable in our codebase
-skips = [
-    "B101",  # assert_used - used appropriately in tests
-    "B108",  # hardcoded_tmp_directory - acceptable in test fixtures
-    "B404",  # import_subprocess - required for CI automation
-    "B603",  # subprocess_without_shell_equals_true - our subprocess calls are safe
-    "B607",  # start_process_with_partial_path - standard system commands (git, etc.)
-    "B608",  # hardcoded_sql_expressions - false positive with internal field names
-]
-exclude_dirs = ["/vendor/", "/.venv/", "/venv/"]
-
-[tool.ruff.lint]
-select = ["TRY", "C90", "PLR"]  # C90=McCabe complexity, PLR=Pylint refactor
-ignore = []
-
-[tool.ruff.lint.mccabe]
-max-complexity = 10
-
-[tool.ruff.lint.pylint]
-max-args = 7
-max-branches = 10
-max-statements = 50
-
-[tool.ruff.lint.per-file-ignores]
-"tests/**" = ["TRY002", "TRY003", "TRY203"]
-
-# =============================================================================
-# Repository-Specific Tool Configurations (continued)
-# =============================================================================
-
-[tool.coverage.report]
-exclude_also = [
-    "if __name__ == .__main__.:",
-    "def __repr__",
-    "raise AssertionError",
-    "raise NotImplementedError",
-]
-
 [tool.pylint.'MESSAGES CONTROL']
 disable = []
 
@@ -99,3 +35,74 @@ pep621_dev_dependency_groups = []
 requirements_files_dev = ["scripts/requirements.txt"]
 per_rule_ignores = { DEP002 = ["boto3"], DEP003 = ["ci_tools"] }
 
+[tool.bandit]
+exclude_dirs = [
+    "/vendor/",
+    "/.venv/",
+    "/venv/",
+    "/data/",
+    "/artifacts/",
+]
+skips = [
+    "B101",
+    "B301",
+    "B403",
+    "B105",
+    "B106",
+    "B107",
+    "B108",
+    "B110",
+    "B311",
+    "B404",
+    "B603",
+    "B607",
+    "B608",
+]
+
+[tool.coverage]
+
+[tool.coverage.run]
+omit = [
+    "*/vendor/*",
+    "*/__main__.py",
+]
+
+[tool.pytest]
+
+[tool.pytest.ini_options]
+addopts = [
+    "--tb=short",
+    "-q",
+]
+pythonpath = [
+    ".",
+]
+
+[tool.ruff]
+extend-exclude = [
+    "ci_tools/vendor",
+]
+
+[tool.ruff.lint]
+ignore = []
+select = [
+    "TRY",
+    "C90",
+    "PLR",
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+    "TRY002",
+    "TRY003",
+    "TRY203",
+    "PLR2004",
+]
+
+[tool.ruff.lint.pylint]
+max-args = 7
+max-branches = 10
+max-statements = 50

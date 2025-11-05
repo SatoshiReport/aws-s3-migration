@@ -302,10 +302,12 @@ class TestMultiBucketTracking(TestFileStateManagerFixtures):
 
         with db_conn.get_connection() as conn:
             row_a = conn.execute(
-                "SELECT size FROM files WHERE bucket = ? AND key = ?", ("bucket-a", "file.txt")
+                "SELECT size FROM files WHERE bucket = ? AND key = ?",
+                ("bucket-a", "file.txt"),
             ).fetchone()
             row_b = conn.execute(
-                "SELECT size FROM files WHERE bucket = ? AND key = ?", ("bucket-b", "file.txt")
+                "SELECT size FROM files WHERE bucket = ? AND key = ?",
+                ("bucket-b", "file.txt"),
             ).fetchone()
 
         assert row_a["size"] == 100  # noqa: PLR2004

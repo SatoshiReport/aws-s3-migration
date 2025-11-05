@@ -2,7 +2,11 @@
 """
 Display AWS account information and S3 buckets.
 """
-from aws_utils import get_aws_identity, list_s3_buckets
+
+try:  # Prefer package-relative imports for tooling
+    from .aws_utils import get_aws_identity, list_s3_buckets
+except ImportError:  # pragma: no cover - allow running as standalone script
+    from aws_utils import get_aws_identity, list_s3_buckets
 
 
 def main():

@@ -67,7 +67,10 @@ def generate_restrictive_bucket_policy(user_arn, bucket_name):
                 "Effect": "Allow",
                 "Principal": {"AWS": user_arn},
                 "Action": "s3:*",
-                "Resource": [f"arn:aws:s3:::{bucket_name}", f"arn:aws:s3:::{bucket_name}/*"],
+                "Resource": [
+                    f"arn:aws:s3:::{bucket_name}",
+                    f"arn:aws:s3:::{bucket_name}/*",
+                ],
             }
         ],
     }

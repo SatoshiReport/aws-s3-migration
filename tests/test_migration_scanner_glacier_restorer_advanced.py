@@ -31,7 +31,11 @@ class TestGlacierRestorerStorageClassTiers:
         """Test requesting restore for GLACIER storage class"""
         with mock.patch("migration_scanner.config.GLACIER_RESTORE_TIER", "Standard"):
             with mock.patch("migration_scanner.config.GLACIER_RESTORE_DAYS", 1):
-                file_info = {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
+                file_info = {
+                    "bucket": "test-bucket",
+                    "key": "file.txt",
+                    "storage_class": "GLACIER",
+                }
 
                 restorer._request_restore(file_info, 1, 1)
 
@@ -76,11 +80,18 @@ class TestGlacierRestorerErrorHandling:
     def test_request_restore_already_in_progress(self, restorer, mock_s3, mock_state):
         """Test handling RestoreAlreadyInProgress error"""
         error_response = {
-            "Error": {"Code": "RestoreAlreadyInProgress", "Message": "Already restoring"}
+            "Error": {
+                "Code": "RestoreAlreadyInProgress",
+                "Message": "Already restoring",
+            }
         }
         mock_s3.restore_object.side_effect = ClientError(error_response, "RestoreObject")
 
-        file_info = {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
+        file_info = {
+            "bucket": "test-bucket",
+            "key": "file.txt",
+            "storage_class": "GLACIER",
+        }
 
         # Should not raise, should mark as requested
         restorer._request_restore(file_info, 1, 1)
@@ -92,7 +103,11 @@ class TestGlacierRestorerErrorHandling:
         error_response = {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}
         mock_s3.restore_object.side_effect = ClientError(error_response, "RestoreObject")
 
-        file_info = {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
+        file_info = {
+            "bucket": "test-bucket",
+            "key": "file.txt",
+            "storage_class": "GLACIER",
+        }
 
         # Should raise because it's not RestoreAlreadyInProgress
         with pytest.raises(ClientError):
@@ -121,7 +136,11 @@ class TestGlacierRestorerConfiguration:
         """Test that restore request uses config values"""
         with mock.patch("migration_scanner.config.GLACIER_RESTORE_TIER", "Expedited"):
             with mock.patch("migration_scanner.config.GLACIER_RESTORE_DAYS", 5):
-                file_info = {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
+                file_info = {
+                    "bucket": "test-bucket",
+                    "key": "file.txt",
+                    "storage_class": "GLACIER",
+                }
 
                 restorer._request_restore(file_info, 1, 1)
 

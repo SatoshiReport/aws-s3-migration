@@ -3,10 +3,16 @@
 import sys
 from pathlib import Path
 
-from migration_state_v2 import MigrationStateV2, Phase
-from migration_sync import BucketSyncer
-from migration_utils import format_size, print_verification_success_messages
-from migration_verify import BucketDeleter, BucketVerifier
+try:  # Prefer package-relative imports for tooling
+    from .migration_state_v2 import MigrationStateV2, Phase
+    from .migration_sync import BucketSyncer
+    from .migration_utils import format_size, print_verification_success_messages
+    from .migration_verify import BucketDeleter, BucketVerifier
+except ImportError:  # pragma: no cover - fallback for script entrypoints
+    from migration_state_v2 import MigrationStateV2, Phase
+    from migration_sync import BucketSyncer
+    from migration_utils import format_size, print_verification_success_messages
+    from migration_verify import BucketDeleter, BucketVerifier
 
 
 def show_verification_summary(bucket_info: dict):

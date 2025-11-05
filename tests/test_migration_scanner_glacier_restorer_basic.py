@@ -178,7 +178,11 @@ class TestGlacierRestorerSuccessOutput:
 
     def test_request_restore_success(self, restorer, mock_s3, mock_state, capsys):
         """Test successful restore request"""
-        file_info = {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
+        file_info = {
+            "bucket": "test-bucket",
+            "key": "file.txt",
+            "storage_class": "GLACIER",
+        }
 
         restorer._request_restore(file_info, 5, 10)
 

@@ -4,8 +4,12 @@ import subprocess
 import time
 from pathlib import Path
 
-from migration_state_v2 import MigrationStateV2
-from migration_utils import ProgressTracker, format_duration, format_size
+try:  # Prefer package-relative imports for tooling
+    from .migration_state_v2 import MigrationStateV2
+    from .migration_utils import ProgressTracker, format_duration, format_size
+except ImportError:  # pragma: no cover - allow running as standalone script
+    from migration_state_v2 import MigrationStateV2
+    from migration_utils import ProgressTracker, format_duration, format_size
 
 
 def check_sync_process_errors(process):

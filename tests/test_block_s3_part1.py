@@ -28,7 +28,10 @@ class TestMainWithSingleBucket:
                     "Effect": "Allow",
                     "Principal": {"AWS": "arn:aws:iam::123:user/test"},
                     "Action": "s3:*",
-                    "Resource": ["arn:aws:s3:::test-bucket", "arn:aws:s3:::test-bucket/*"],
+                    "Resource": [
+                        "arn:aws:s3:::test-bucket",
+                        "arn:aws:s3:::test-bucket/*",
+                    ],
                 }
             ],
         }
@@ -39,7 +42,8 @@ class TestMainWithSingleBucket:
                 return_value={"user_arn": "arn:aws:iam::123:user/test"},
             ):
                 with mock.patch(
-                    "block_s3.generate_restrictive_bucket_policy", return_value=mock_policy
+                    "block_s3.generate_restrictive_bucket_policy",
+                    return_value=mock_policy,
                 ):
                     with mock.patch("block_s3.save_policy_to_file") as mock_save:
                         block_s3.main()
@@ -76,7 +80,8 @@ class TestMainWithMultipleBuckets:
                 return_value={"user_arn": "arn:aws:iam::123:user/test"},
             ):
                 with mock.patch(
-                    "block_s3.generate_restrictive_bucket_policy", return_value=mock_policy
+                    "block_s3.generate_restrictive_bucket_policy",
+                    return_value=mock_policy,
                 ):
                     with mock.patch("block_s3.save_policy_to_file") as mock_save:
                         block_s3.main()
@@ -103,7 +108,10 @@ class TestMainPoliciesDirectory:
                     "Effect": "Allow",
                     "Principal": {"AWS": "arn:aws:iam::123:user/test"},
                     "Action": "s3:*",
-                    "Resource": ["arn:aws:s3:::test-bucket", "arn:aws:s3:::test-bucket/*"],
+                    "Resource": [
+                        "arn:aws:s3:::test-bucket",
+                        "arn:aws:s3:::test-bucket/*",
+                    ],
                 }
             ],
         }
@@ -118,7 +126,8 @@ class TestMainPoliciesDirectory:
                 return_value={"user_arn": "arn:aws:iam::123:user/test"},
             ):
                 with mock.patch(
-                    "block_s3.generate_restrictive_bucket_policy", return_value=mock_policy
+                    "block_s3.generate_restrictive_bucket_policy",
+                    return_value=mock_policy,
                 ):
                     with mock.patch("block_s3.save_policy_to_file"):
                         block_s3.main()
@@ -153,7 +162,8 @@ class TestMainPolicyFilenames:
                 return_value={"user_arn": "arn:aws:iam::123:user/test"},
             ):
                 with mock.patch(
-                    "block_s3.generate_restrictive_bucket_policy", return_value=mock_policy
+                    "block_s3.generate_restrictive_bucket_policy",
+                    return_value=mock_policy,
                 ):
                     with mock.patch("block_s3.save_policy_to_file") as mock_save:
                         block_s3.main()
@@ -192,7 +202,8 @@ class TestMainWithAllFlagProcessing:
             ):
                 with mock.patch("block_s3.list_s3_buckets", return_value=all_buckets):
                     with mock.patch(
-                        "block_s3.generate_restrictive_bucket_policy", return_value=mock_policy
+                        "block_s3.generate_restrictive_bucket_policy",
+                        return_value=mock_policy,
                     ):
                         with mock.patch("block_s3.save_policy_to_file") as mock_save:
                             block_s3.main()

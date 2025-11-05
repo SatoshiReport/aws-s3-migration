@@ -61,9 +61,9 @@ class TestS3MigrationV2Fixtures:
 class TestS3MigrationV2Initialization(TestS3MigrationV2Fixtures):
     """Tests for S3MigrationV2 initialization."""
 
-    def test_initialization(self, mock_dependencies):
-        """S3MigrationV2 initializes with all dependencies."""
-        migrator = S3MigrationV2(
+    def _create_migrator(self, mock_dependencies):
+        """Helper to build a migrator with shared dependency wiring."""
+        return S3MigrationV2(
             state=mock_dependencies["state"],
             drive_checker=mock_dependencies["drive_checker"],
             scanner=mock_dependencies["scanner"],
@@ -74,14 +74,27 @@ class TestS3MigrationV2Initialization(TestS3MigrationV2Fixtures):
             status_reporter=mock_dependencies["status_reporter"],
         )
 
-        assert migrator.state == mock_dependencies["state"]
-        assert migrator.drive_checker == mock_dependencies["drive_checker"]
-        assert migrator.scanner == mock_dependencies["scanner"]
-        assert migrator.glacier_restorer == mock_dependencies["glacier_restorer"]
-        assert migrator.glacier_waiter == mock_dependencies["glacier_waiter"]
-        assert migrator.bucket_migrator == mock_dependencies["bucket_migrator"]
-        assert migrator.migration_orchestrator == mock_dependencies["migration_orchestrator"]
-        assert migrator.status_reporter == mock_dependencies["status_reporter"]
+    def test_dependencies_are_wired(self, mock_dependencies):
+        """S3MigrationV2 stores the provided dependencies unchanged."""
+        migrator = self._create_migrator(mock_dependencies)
+
+        expected_mappings = {
+            "state": "state",
+            "drive_checker": "drive_checker",
+            "scanner": "scanner",
+            "glacier_restorer": "glacier_restorer",
+            "glacier_waiter": "glacier_waiter",
+            "bucket_migrator": "bucket_migrator",
+            "migration_orchestrator": "migration_orchestrator",
+            "status_reporter": "status_reporter",
+        }
+
+        for attr_name, dependency_key in expected_mappings.items():
+            assert getattr(migrator, attr_name) == mock_dependencies[dependency_key]
+
+    def test_initial_interrupted_flag_is_false(self, mock_dependencies):
+        """S3MigrationV2 starts in a non-interrupted state."""
+        migrator = self._create_migrator(mock_dependencies)
         assert migrator.interrupted is False
 
 

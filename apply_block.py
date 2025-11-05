@@ -10,7 +10,18 @@ import argparse
 import os
 import sys
 
-from aws_utils import apply_bucket_policy, load_policy_from_file, print_interactive_help
+try:  # Prefer package-relative imports for tooling
+    from .aws_utils import (
+        apply_bucket_policy,
+        load_policy_from_file,
+        print_interactive_help,
+    )
+except ImportError:  # pragma: no cover - allow running as standalone script
+    from aws_utils import (
+        apply_bucket_policy,
+        load_policy_from_file,
+        print_interactive_help,
+    )
 
 
 def get_buckets_with_policy_files():
@@ -73,7 +84,9 @@ def main():
     parser.add_argument("buckets", nargs="*", help="Bucket names to apply policies to")
     parser.add_argument("--all", action="store_true", help="Apply all available policy files")
     parser.add_argument(
-        "--dry-run", action="store_true", help="Show what would be applied without making changes"
+        "--dry-run",
+        action="store_true",
+        help="Show what would be applied without making changes",
     )
     args = parser.parse_args()
     buckets = _determine_buckets(args)

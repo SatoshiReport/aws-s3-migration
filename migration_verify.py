@@ -3,18 +3,30 @@
 import hashlib
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 
-from migration_state_v2 import MigrationStateV2
-from migration_utils import (
-    ProgressTracker,
-    calculate_eta_bytes,
-    calculate_eta_items,
-    format_duration,
-    format_size,
-    hash_file_in_chunks,
-    print_verification_success_messages,
-)
+try:  # Prefer package-relative imports for tooling like pylint
+    from .migration_state_v2 import MigrationStateV2
+    from .migration_utils import (
+        ProgressTracker,
+        calculate_eta_bytes,
+        calculate_eta_items,
+        format_duration,
+        format_size,
+        hash_file_in_chunks,
+        print_verification_success_messages,
+    )
+except ImportError:  # pragma: no cover - allow running as standalone script
+    from migration_state_v2 import MigrationStateV2
+    from migration_utils import (
+        ProgressTracker,
+        calculate_eta_bytes,
+        calculate_eta_items,
+        format_duration,
+        format_size,
+        hash_file_in_chunks,
+        print_verification_success_messages,
+    )
 
 # Constants
 MAX_ERROR_DISPLAY = 10  # Maximum number of errors to display before truncating
@@ -45,6 +57,85 @@ def check_verification_errors(verification_errors):
         )
 
 
+def _should_ignore_key(key: str) -> bool:
+    file_name = key.split("/")[-1]
+    return any(
+        file_name == pattern or file_name.endswith(pattern) for pattern in IGNORED_FILE_PATTERNS
+    )
+
+
+def _load_expected_file_map(state: "MigrationStateV2", bucket: str) -> Dict[str, Dict]:
+    print("  Loading file metadata from database...")
+    expected_file_map: Dict[str, Dict] = {}
+    with state.db_conn.get_connection() as conn:
+        cursor = conn.execute("SELECT key, size, etag FROM files WHERE bucket = ?", (bucket,))
+        for row in cursor:
+            normalized_key = row["key"].replace("\\", "/")
+            expected_file_map[normalized_key] = {"size": row["size"], "etag": row["etag"]}
+    print(f"  Loaded {len(expected_file_map):,} file records")
+    print()
+    return expected_file_map
+
+
+def _scan_local_directory(base_path: Path, bucket: str, expected_files: int) -> Dict[str, Path]:
+    print("  Scanning local files...")
+    local_path = base_path / bucket
+    local_files: Dict[str, Path] = {}
+    scan_count = 0
+    progress = ProgressTracker(update_interval=2.0)
+    for file_path in local_path.rglob("*"):
+        if not file_path.is_file():
+            continue
+        relative_path = file_path.relative_to(local_path)
+        s3_key = str(relative_path).replace("\\", "/")
+        local_files[s3_key] = file_path
+        scan_count += 1
+        if progress.should_update() or scan_count % 10000 == 0:
+            pct = (scan_count / expected_files * 100) if expected_files > 0 else 0
+            status = f"Scanned: {scan_count:,} files ({pct:.1f}%)  "
+            print(f"\r  {status}", end="", flush=True)
+    print(f"\r  Found {len(local_files):,} local files" + " " * 30)
+    print()
+    return local_files
+
+
+def _partition_inventory(expected_keys: Set[str], local_keys: Set[str]):
+    missing_files = expected_keys - local_keys
+    extra_files_raw = local_keys - expected_keys
+    extra_files = {key for key in extra_files_raw if not _should_ignore_key(key)}
+    ignored_count = len(extra_files_raw) - len(extra_files)
+    return missing_files, extra_files, ignored_count
+
+
+def _inventory_error_messages(missing_files: Set[str], extra_files: Set[str]) -> List[str]:
+    errors: List[str] = []
+    for key in list(missing_files)[:MAX_ERROR_DISPLAY]:
+        errors.append(f"Missing file: {key}")
+    if len(missing_files) > MAX_ERROR_DISPLAY:
+        errors.append(f"... and {len(missing_files) - MAX_ERROR_DISPLAY} more missing files")
+    for key in list(extra_files)[:MAX_ERROR_DISPLAY]:
+        errors.append(f"Extra file (not in S3): {key}")
+    if len(extra_files) > MAX_ERROR_DISPLAY:
+        errors.append(f"... and {len(extra_files) - MAX_ERROR_DISPLAY} more extra files")
+    return errors
+
+
+def _validate_inventory(expected_keys: Set[str], local_keys: Set[str]) -> List[str]:
+    print("  Checking file inventory...")
+    missing_files, extra_files, ignored_count = _partition_inventory(expected_keys, local_keys)
+    if ignored_count > 0:
+        print(f"  ℹ Ignoring {ignored_count} system metadata file(s) (.DS_Store, Thumbs.db, etc.)")
+    errors = _inventory_error_messages(missing_files, extra_files)
+    if errors:
+        print("  ✗ File inventory mismatch:")
+        for error in errors:
+            print(f"    - {error}")
+        print()
+        msg = f"File inventory check failed: {len(missing_files)} missing, {len(extra_files)} extra"
+        raise ValueError(msg)
+    return errors
+
+
 class FileInventoryChecker:  # pylint: disable=too-few-public-methods
     """Checks local file inventory against expected files"""
 
@@ -52,94 +143,17 @@ class FileInventoryChecker:  # pylint: disable=too-few-public-methods
         self.state = state
         self.base_path = base_path
 
-    def _should_ignore_key(self, key: str) -> bool:
-        """Check if S3 key should be ignored (for extra local files only)"""
-        file_name = key.split("/")[-1]  # Get filename from key
-        for pattern in IGNORED_FILE_PATTERNS:
-            if file_name == pattern or file_name.endswith(pattern):
-                return True
-        return False
-
     def load_expected_files(self, bucket: str) -> Dict[str, Dict]:
-        """Load file metadata from database"""
-        print("  Loading file metadata from database...")
-        expected_file_map = {}
-        with self.state.db_conn.get_connection() as conn:
-            cursor = conn.execute("SELECT key, size, etag FROM files WHERE bucket = ?", (bucket,))
-            for row in cursor:
-                normalized_key = row["key"].replace("\\", "/")
-                expected_file_map[normalized_key] = {"size": row["size"], "etag": row["etag"]}
-        print(f"  Loaded {len(expected_file_map):,} file records")
-        print()
-        return expected_file_map
+        """Load expected file metadata for the requested bucket."""
+        return _load_expected_file_map(self.state, bucket)
 
     def scan_local_files(self, bucket: str, expected_files: int) -> Dict[str, Path]:
-        """Scan local directory for files"""
-        print("  Scanning local files...")
-        local_path = self.base_path / bucket
-        local_files = {}
-        scan_count = 0
-        progress = ProgressTracker(update_interval=2.0)
-        for file_path in local_path.rglob("*"):
-            if file_path.is_file():
-                relative_path = file_path.relative_to(local_path)
-                s3_key = str(relative_path).replace("\\", "/")
-                local_files[s3_key] = file_path
-                scan_count += 1
-                if progress.should_update() or scan_count % 10000 == 0:
-                    pct = (scan_count / expected_files * 100) if expected_files > 0 else 0
-                    status = f"Scanned: {scan_count:,} files ({pct:.1f}%)  "
-                    print(f"\r  {status}", end="", flush=True)
-        print(f"\r  Found {len(local_files):,} local files" + " " * 30)
-        print()
-        return local_files
+        """Scan the on-disk directory for the bucket and return discovered files."""
+        return _scan_local_directory(self.base_path, bucket, expected_files)
 
-    def _add_missing_file_errors(self, missing_files: set, errors: List[str]):
-        """Add missing file errors to the error list"""
-        for key in list(missing_files)[:MAX_ERROR_DISPLAY]:
-            errors.append(f"Missing file: {key}")
-        if len(missing_files) > MAX_ERROR_DISPLAY:
-            errors.append(f"... and {len(missing_files) - MAX_ERROR_DISPLAY} more missing files")
-
-    def _add_extra_file_errors(self, extra_files: set, errors: List[str]):
-        """Add extra file errors to the error list"""
-        for key in list(extra_files)[:MAX_ERROR_DISPLAY]:
-            errors.append(f"Extra file (not in S3): {key}")
-        if len(extra_files) > MAX_ERROR_DISPLAY:
-            errors.append(f"... and {len(extra_files) - MAX_ERROR_DISPLAY} more extra files")
-
-    def _report_inventory_errors(self, errors: List[str], missing_count: int, extra_count: int):
-        """Report inventory errors and raise exception"""
-        print("  ✗ File inventory mismatch:")
-        for error in errors:
-            print(f"    - {error}")
-        print()
-        msg = f"File inventory check failed: {missing_count} missing, {extra_count} extra"
-        raise ValueError(msg)
-
-    def check_inventory(self, expected_keys: set, local_keys: set) -> List[str]:
-        """Check for missing or extra files"""
-        print("  Checking file inventory...")
-        missing_files = expected_keys - local_keys
-        extra_files_raw = local_keys - expected_keys
-
-        # Filter out system files from extra files (these are created locally by OS)
-        extra_files = {key for key in extra_files_raw if not self._should_ignore_key(key)}
-        ignored_count = len(extra_files_raw) - len(extra_files)
-
-        if ignored_count > 0:
-            print(
-                f"  ℹ Ignoring {ignored_count} system metadata file(s) (.DS_Store, Thumbs.db, etc.)"
-            )
-
-        errors = []
-        if missing_files:
-            self._add_missing_file_errors(missing_files, errors)
-        if extra_files:
-            self._add_extra_file_errors(extra_files, errors)
-        if errors:
-            self._report_inventory_errors(errors, len(missing_files), len(extra_files))
-        return errors
+    def check_inventory(self, expected_keys: Set[str], local_keys: Set[str]) -> List[str]:
+        """Compare inventory results and raise when they differ."""
+        return _validate_inventory(expected_keys, local_keys)
 
 
 class VerificationProgressTracker:  # pylint: disable=too-few-public-methods
@@ -174,6 +188,60 @@ class VerificationProgressTracker:  # pylint: disable=too-few-public-methods
             )
 
 
+def _verify_multipart_file(s3_key: str, file_path: Path, stats: Dict):
+    try:
+        sha256_hash = hashlib.sha256()
+        hash_file_in_chunks(file_path, sha256_hash)
+        sha256_hash.hexdigest()
+        stats["checksum_verified"] += 1
+        stats["verified_count"] += 1
+    except (OSError, IOError) as exc:
+        stats["verification_errors"].append(f"{s3_key}: file health check failed: {exc}")
+
+
+def _compute_etag(file_path: Path, s3_etag: str) -> Tuple[str, bool]:
+    s3_etag = s3_etag.strip('"')
+    md5_hash = hashlib.md5(usedforsecurity=False)
+    hash_file_in_chunks(file_path, md5_hash)
+    computed_etag = md5_hash.hexdigest()
+    return computed_etag, computed_etag == s3_etag
+
+
+def _verify_singlepart_file(s3_key: str, file_path: Path, expected_etag: str, stats: Dict):
+    try:
+        computed_etag, is_match = _compute_etag(file_path, expected_etag)
+        if not is_match:
+            stats["verification_errors"].append(
+                f"{s3_key}: checksum mismatch (expected {expected_etag}, got {computed_etag})"
+            )
+            return
+        stats["checksum_verified"] += 1
+        stats["verified_count"] += 1
+    except (OSError, IOError) as exc:
+        stats["verification_errors"].append(f"{s3_key}: checksum computation failed: {exc}")
+
+
+def _verify_single_file(s3_key: str, local_files: Dict, expected_file_map: Dict, stats: Dict):
+    file_path = local_files[s3_key]
+    expected_meta = expected_file_map[s3_key]
+    expected_file_size = expected_meta["size"]
+    expected_etag = expected_meta["etag"]
+    actual_size = file_path.stat().st_size
+    if actual_size != expected_file_size:
+        error_msg = (
+            f"{s3_key}: size mismatch "
+            f"(expected {format_size(expected_file_size)}, got {format_size(actual_size)})"
+        )
+        stats["verification_errors"].append(error_msg)
+        return
+    stats["size_verified"] += 1
+    stats["total_bytes_verified"] += actual_size
+    if "-" in expected_etag:
+        _verify_multipart_file(s3_key, file_path, stats)
+    else:
+        _verify_singlepart_file(s3_key, file_path, expected_etag, stats)
+
+
 class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
     """Verifies file sizes and checksums"""
 
@@ -181,9 +249,13 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
         self.progress = VerificationProgressTracker()
 
     def verify_files(
-        self, local_files: Dict, expected_file_map: Dict, expected_files: int, expected_size: int
+        self,
+        local_files: Dict,
+        expected_file_map: Dict,
+        expected_files: int,
+        expected_size: int,
     ) -> Dict:
-        """Verify all files' sizes and checksums"""
+        """Validate files by recomputing sizes and checksums."""
         print("  Verifying file sizes and checksums...")
         print("  (This reads all files to compute MD5/ETag - may take time for large files)\n")
         stats = {
@@ -194,9 +266,8 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
             "verification_errors": [],
         }
         start_time = time.time()
-        expected_keys = set(expected_file_map.keys())
-        for s3_key in sorted(expected_keys):
-            self._verify_single_file(s3_key, local_files, expected_file_map, stats)
+        for s3_key in sorted(expected_file_map.keys()):
+            _verify_single_file(s3_key, local_files, expected_file_map, stats)
             self.progress.update_progress(
                 start_time,
                 stats["verified_count"],
@@ -208,63 +279,21 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
         check_verification_errors(stats["verification_errors"])
         return {k: v for k, v in stats.items() if k != "verification_errors"}
 
-    def _verify_single_file(
-        self, s3_key: str, local_files: Dict, expected_file_map: Dict, stats: Dict
-    ):
-        """Verify a single file's size and checksum"""
-        file_path = local_files[s3_key]
-        expected_meta = expected_file_map[s3_key]
-        expected_file_size = expected_meta["size"]
-        expected_etag = expected_meta["etag"]
-        actual_size = file_path.stat().st_size
-        if actual_size != expected_file_size:
-            error_msg = (
-                f"{s3_key}: size mismatch "
-                f"(expected {format_size(expected_file_size)}, got {format_size(actual_size)})"
-            )
-            stats["verification_errors"].append(error_msg)
-            return
-        stats["size_verified"] += 1
-        stats["total_bytes_verified"] += actual_size
-        if "-" in expected_etag:
-            self._verify_multipart_file(s3_key, file_path, stats)
-        else:
-            self._verify_singlepart_file(s3_key, file_path, expected_etag, stats)
+    @staticmethod
+    def _verify_single_file(s3_key: str, local_files: Dict, expected_file_map: Dict, stats: Dict):
+        _verify_single_file(s3_key, local_files, expected_file_map, stats)
 
-    def _verify_multipart_file(self, s3_key: str, file_path: Path, stats: Dict):
-        """Verify multipart file with SHA256"""
-        try:
-            sha256_hash = hashlib.sha256()
-            hash_file_in_chunks(file_path, sha256_hash)
-            sha256_hash.hexdigest()
-            stats["checksum_verified"] += 1
-            stats["verified_count"] += 1
-        except (OSError, IOError) as e:
-            stats["verification_errors"].append(f"{s3_key}: file health check failed: {e}")
+    @staticmethod
+    def _verify_multipart_file(s3_key: str, file_path: Path, stats: Dict):
+        _verify_multipart_file(s3_key, file_path, stats)
 
-    def _verify_singlepart_file(
-        self, s3_key: str, file_path: Path, expected_etag: str, stats: Dict
-    ):
-        """Verify single-part file with MD5"""
-        try:
-            computed_etag, is_match = self._compute_etag(file_path, expected_etag)
-            if not is_match:
-                stats["verification_errors"].append(
-                    f"{s3_key}: checksum mismatch (expected {expected_etag}, got {computed_etag})"
-                )
-                return
-            stats["checksum_verified"] += 1
-            stats["verified_count"] += 1
-        except (OSError, IOError) as e:
-            stats["verification_errors"].append(f"{s3_key}: checksum computation failed: {e}")
+    @staticmethod
+    def _verify_singlepart_file(s3_key: str, file_path: Path, expected_etag: str, stats: Dict):
+        _verify_singlepart_file(s3_key, file_path, expected_etag, stats)
 
-    def _compute_etag(self, file_path: Path, s3_etag: str) -> Tuple[str, bool]:
-        """Compute ETag for a single-part upload (simple MD5 hash)"""
-        s3_etag = s3_etag.strip('"')
-        md5_hash = hashlib.md5(usedforsecurity=False)
-        hash_file_in_chunks(file_path, md5_hash)
-        computed_etag = md5_hash.hexdigest()
-        return computed_etag, computed_etag == s3_etag
+    @staticmethod
+    def _compute_etag(file_path: Path, s3_etag: str) -> Tuple[str, bool]:
+        return _compute_etag(file_path, s3_etag)
 
 
 class BucketVerifier:  # pylint: disable=too-few-public-methods

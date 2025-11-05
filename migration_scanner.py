@@ -4,9 +4,22 @@ import time
 
 from botocore.exceptions import ClientError
 
-import config
-from migration_state_v2 import MigrationStateV2, Phase
-from migration_utils import format_size
+try:  # Prefer package-relative imports when linting
+    from . import config as config_module
+except ImportError:  # pragma: no cover - allow running as standalone script
+    import config as config_module  # type: ignore
+
+config = config_module  # expose module for tests
+EXCLUDED_BUCKETS = config_module.EXCLUDED_BUCKETS
+GLACIER_RESTORE_DAYS = config_module.GLACIER_RESTORE_DAYS
+GLACIER_RESTORE_TIER = config_module.GLACIER_RESTORE_TIER
+
+try:  # Prefer package-relative imports when linting/packaged
+    from .migration_state_v2 import MigrationStateV2, Phase
+    from .migration_utils import format_size
+except ImportError:  # pragma: no cover - allow direct script execution
+    from migration_state_v2 import MigrationStateV2, Phase
+    from migration_utils import format_size
 
 
 class BucketScanner:  # pylint: disable=too-few-public-methods

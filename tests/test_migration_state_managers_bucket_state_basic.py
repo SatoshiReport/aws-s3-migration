@@ -104,7 +104,8 @@ class TestBucketStatusTimestamps(TestBucketStateManagerFixtures):
 
         with db_conn.get_connection() as conn:
             original = conn.execute(
-                "SELECT created_at FROM bucket_status WHERE bucket = ?", ("test-bucket",)
+                "SELECT created_at FROM bucket_status WHERE bucket = ?",
+                ("test-bucket",),
             ).fetchone()
             original_time = original["created_at"]
 
@@ -117,7 +118,8 @@ class TestBucketStatusTimestamps(TestBucketStateManagerFixtures):
 
         with db_conn.get_connection() as conn:
             updated = conn.execute(
-                "SELECT created_at FROM bucket_status WHERE bucket = ?", ("test-bucket",)
+                "SELECT created_at FROM bucket_status WHERE bucket = ?",
+                ("test-bucket",),
             ).fetchone()
 
         assert updated["created_at"] == original_time
@@ -139,7 +141,8 @@ class TestBucketSyncCompletion(TestBucketStateManagerFixtures):
 
         with db_conn.get_connection() as conn:
             row = conn.execute(
-                "SELECT sync_complete FROM bucket_status WHERE bucket = ?", ("test-bucket",)
+                "SELECT sync_complete FROM bucket_status WHERE bucket = ?",
+                ("test-bucket",),
             ).fetchone()
 
         assert row["sync_complete"] == 1
@@ -224,7 +227,8 @@ class TestBucketDeleteCompletion(TestBucketStateManagerFixtures):
 
         with db_conn.get_connection() as conn:
             row = conn.execute(
-                "SELECT delete_complete FROM bucket_status WHERE bucket = ?", ("test-bucket",)
+                "SELECT delete_complete FROM bucket_status WHERE bucket = ?",
+                ("test-bucket",),
             ).fetchone()
 
         assert row["delete_complete"] == 1

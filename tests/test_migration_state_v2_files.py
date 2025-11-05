@@ -40,7 +40,8 @@ class TestFileAddOperations:
 
         with state.db_conn.get_connection() as conn:
             cursor = conn.execute(
-                "SELECT * FROM files WHERE bucket = ? AND key = ?", ("test-bucket", "test-key.txt")
+                "SELECT * FROM files WHERE bucket = ? AND key = ?",
+                ("test-bucket", "test-key.txt"),
             )
             row = cursor.fetchone()
             assert row is not None

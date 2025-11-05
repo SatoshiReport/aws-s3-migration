@@ -156,7 +156,10 @@ class TestAwsUtilsIntegration:
                     "Effect": "Allow",
                     "Principal": {"AWS": "arn:aws:iam::123:user/test"},
                     "Action": "s3:*",
-                    "Resource": ["arn:aws:s3:::test-bucket", "arn:aws:s3:::test-bucket/*"],
+                    "Resource": [
+                        "arn:aws:s3:::test-bucket",
+                        "arn:aws:s3:::test-bucket/*",
+                    ],
                 }
             ],
         }

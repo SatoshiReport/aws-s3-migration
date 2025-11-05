@@ -1,3 +1,0 @@
-[submodule "ci_shared"]
-	path = ci_shared
-	url = https://github.com/SatoshiReport/ci_shared.git

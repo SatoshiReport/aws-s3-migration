@@ -175,7 +175,8 @@ class TestBucketScannerErrorPropagation:
         mock_state = mock.Mock(spec=MigrationStateV2)
         mock_s3.list_buckets.return_value = {"Buckets": [{"Name": "test-bucket"}]}
         mock_s3.get_paginator.return_value.paginate.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "ListObjectsV2"
+            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+            "ListObjectsV2",
         )
 
         scanner = BucketScanner(mock_s3, mock_state)
@@ -195,7 +196,8 @@ class TestGlacierRestorerErrorPropagation:
             {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
         ]
         error = ClientError(
-            {"Error": {"Code": "NoSuchBucket", "Message": "Bucket does not exist"}}, "RestoreObject"
+            {"Error": {"Code": "NoSuchBucket", "Message": "Bucket does not exist"}},
+            "RestoreObject",
         )
         mock_s3.restore_object.side_effect = error
 

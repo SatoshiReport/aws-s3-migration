@@ -26,14 +26,30 @@ from pathlib import Path
 
 import boto3
 
-import config
-from migration_orchestrator import (
-    BucketMigrationOrchestrator,
-    BucketMigrator,
-    StatusReporter,
-)
-from migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
-from migration_state_v2 import MigrationStateV2, Phase
+try:  # Prefer package-relative imports when linting
+    from . import config as config_module
+except ImportError:  # pragma: no cover - allow running as standalone script
+    import config as config_module  # type: ignore
+
+LOCAL_BASE_PATH = config_module.LOCAL_BASE_PATH
+STATE_DB_PATH = config_module.STATE_DB_PATH
+config = config_module  # expose module for tests
+try:  # Prefer package-relative imports for tooling
+    from .migration_orchestrator import (
+        BucketMigrationOrchestrator,
+        BucketMigrator,
+        StatusReporter,
+    )
+    from .migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
+    from .migration_state_v2 import MigrationStateV2, Phase
+except ImportError:  # pragma: no cover - allow running as standalone script
+    from migration_orchestrator import (
+        BucketMigrationOrchestrator,
+        BucketMigrator,
+        StatusReporter,
+    )
+    from migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
+    from migration_state_v2 import MigrationStateV2, Phase
 
 
 def reset_migration_state():
@@ -49,8 +65,8 @@ def reset_migration_state():
     print()
     response = input("Are you sure? (yes/no): ")
     if response.lower() == "yes":
-        if os.path.exists(config.STATE_DB_PATH):
-            os.remove(config.STATE_DB_PATH)
+        if os.path.exists(STATE_DB_PATH):
+            os.remove(STATE_DB_PATH)
             print()
             print("✓ State database deleted")
             print("Run 'python migrate_v2.py' to start fresh")
@@ -153,8 +169,8 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         print("\n" + "=" * 70)
         print("S3 MIGRATION V2 - OPTIMIZED WITH AWS CLI")
         print("=" * 70)
-        print(f"Destination: {config.LOCAL_BASE_PATH}")
-        print(f"State DB: {config.STATE_DB_PATH}")
+        print(f"Destination: {LOCAL_BASE_PATH}")
+        print(f"State DB: {STATE_DB_PATH}")
         print()
         self.drive_checker.check_available()
         current_phase = self.state.get_current_phase()
