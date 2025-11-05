@@ -287,3 +287,69 @@ class TestBucketDeleterObjectFormatting:
         assert objects[0]["VersionId"] == "v1"
         assert objects[1]["Key"] == "path/to/file2.txt"
         assert objects[1]["VersionId"] == "v2"
+
+
+class TestBucketDeleterMultipartCleanup:
+    """Tests for BucketDeleter multipart upload and final cleanup handling"""
+
+    def test_delete_bucket_aborts_multipart_uploads_before_final_delete(self):
+        """BucketDeleter should abort uploads prior to deleting the bucket"""
+        mock_s3 = mock.Mock()
+        mock_state = mock.Mock()
+        mock_state.get_bucket_info.return_value = {"file_count": 0}
+
+        version_paginator = mock.Mock()
+        version_paginator.paginate.return_value = []
+
+        uploads_paginator = mock.Mock()
+        uploads_paginator.paginate.return_value = [
+            {"Uploads": [{"Key": "file1.txt", "UploadId": "upload-1"}]}
+        ]
+
+        final_check_paginator = mock.Mock()
+        final_check_paginator.paginate.return_value = [{}]
+
+        mock_s3.get_paginator.side_effect = [
+            version_paginator,
+            uploads_paginator,
+            final_check_paginator,
+        ]
+
+        deleter = BucketDeleter(mock_s3, mock_state)
+        deleter.delete_bucket("test-bucket")
+
+        mock_s3.abort_multipart_upload.assert_called_once_with(
+            Bucket="test-bucket", Key="file1.txt", UploadId="upload-1"
+        )
+        mock_s3.delete_bucket.assert_called_once_with(Bucket="test-bucket")
+
+    def test_delete_bucket_raises_when_objects_remain(self):
+        """BucketDeleter should raise if objects remain after deletion pass"""
+        mock_s3 = mock.Mock()
+        mock_state = mock.Mock()
+        mock_state.get_bucket_info.return_value = {"file_count": 1}
+
+        version_paginator = mock.Mock()
+        version_paginator.paginate.return_value = []
+
+        uploads_paginator = mock.Mock()
+        uploads_paginator.paginate.return_value = []
+
+        leftover_paginator = mock.Mock()
+        leftover_paginator.paginate.return_value = [
+            {"Versions": [{"Key": "file1.txt", "VersionId": "v1"}]}
+        ]
+
+        mock_s3.get_paginator.side_effect = [
+            version_paginator,
+            uploads_paginator,
+            leftover_paginator,
+        ]
+
+        deleter = BucketDeleter(mock_s3, mock_state)
+
+        with pytest.raises(RuntimeError) as exc_info:
+            deleter.delete_bucket("test-bucket")
+
+        assert "Bucket still contains objects" in str(exc_info.value)
+        mock_s3.delete_bucket.assert_not_called()

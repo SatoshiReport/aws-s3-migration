@@ -76,6 +76,25 @@ python migrate_v2.py reset     # Reset and start over
 - Manual confirmation required before deletion
 - No data loss if interrupted
 
+### Duplicate Tree Reporting
+
+**duplicate_tree_report.py** - Scans the migration state database and reports exact or nearly-identical directory trees on your external drive. It reuses the per-file sizes and checksums gathered by `migrate_v2`.
+
+**Usage:**
+```bash
+python duplicate_tree_report.py \
+  --db-path migration_state_v2.db \
+  --base-path /Volumes/backup-drive \
+  --tolerance 0.99
+```
+
+- Shows a live progress bar while reading the SQLite `files` table
+- Groups directories whose entire hierarchy matches (size + checksum)
+- Flags near-duplicates that are within the tolerance, with a summary of missing/extra or mismatched files
+- Defaults to `config.STATE_DB_PATH` / `config.LOCAL_BASE_PATH` so you rarely need to pass arguments
+
+Use this after a migration completes to spot redundant bucket trees that can be pruned or archived together.
+
 ### Policy Management Tools
 
 ### 1. aws_info.py
