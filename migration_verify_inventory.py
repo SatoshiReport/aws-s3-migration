@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Set, Tuple
 
-try:  # Prefer package-relative imports for tooling like pylint
-    from .migration_utils import ProgressTracker
-    from .migration_verify_common import MAX_ERROR_DISPLAY, should_ignore_key
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from migration_utils import ProgressTracker
-    from migration_verify_common import MAX_ERROR_DISPLAY, should_ignore_key
+_PACKAGE_PREFIX = f"{__package__}." if __package__ else ""
+_migration_utils = import_module(f"{_PACKAGE_PREFIX}migration_utils")
+_migration_verify_common = import_module(f"{_PACKAGE_PREFIX}migration_verify_common")
+
+ProgressTracker = _migration_utils.ProgressTracker
+MAX_ERROR_DISPLAY = _migration_verify_common.MAX_ERROR_DISPLAY
+should_ignore_key = _migration_verify_common.should_ignore_key
 
 if TYPE_CHECKING:
     try:

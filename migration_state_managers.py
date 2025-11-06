@@ -2,12 +2,11 @@
 
 import sqlite3
 from dataclasses import dataclass
+from importlib import import_module
 from typing import TYPE_CHECKING, Dict, List, Optional
 
-try:  # Prefer package-relative imports for tooling
-    from .migration_utils import get_utc_now
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from migration_utils import get_utc_now
+_PACKAGE_PREFIX = f"{__package__}." if __package__ else ""
+get_utc_now = import_module(f"{_PACKAGE_PREFIX}migration_utils").get_utc_now
 
 if TYPE_CHECKING:
     try:

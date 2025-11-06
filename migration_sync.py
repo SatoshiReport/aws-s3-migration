@@ -56,68 +56,121 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
             bufsize=1,
             universal_newlines=True,
         )
-        files_done, bytes_done = self._monitor_sync_progress(process, start_time)
-        self._check_sync_errors(process)
-        self._print_sync_summary(start_time, files_done, bytes_done)
-
-    def _monitor_sync_progress(self, process, start_time):
-        """Monitor AWS CLI sync progress and return stats"""
-        progress = ProgressTracker(update_interval=1.0)
-        files_done = 0
-        bytes_done = 0
-        while True:
-            if self.interrupted:
-                process.terminate()
-                return files_done, bytes_done
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                break
-            if line and "Completed" in line:
-                file_bytes = self._parse_aws_size(line)
-                if file_bytes:
-                    bytes_done += file_bytes
-                    files_done += 1
-                if progress.should_update():
-                    self._display_progress(start_time, files_done, bytes_done)
-        return files_done, bytes_done
-
-    def _check_sync_errors(self, process):
-        """Check for sync errors"""
+        files_done, bytes_done = _monitor_sync_progress(
+            process,
+            start_time,
+            interrupted_check=lambda: self.interrupted,
+            progress_callback=_display_progress,
+        )
         check_sync_process_errors(process)
+        fallback_files, fallback_bytes = _calculate_local_stats(local_path)
+        if files_done == 0 and fallback_files > 0:
+            files_done = fallback_files
+        if bytes_done == 0 and fallback_bytes > 0:
+            bytes_done = fallback_bytes
+        _print_sync_summary(start_time, files_done, bytes_done)
+
+    # Compatibility wrappers for tests that access previous private methods
+    def _monitor_sync_progress(self, process, start_time):
+        """Delegate to the module-level monitor helper."""
+        return _monitor_sync_progress(
+            process,
+            start_time,
+            interrupted_check=lambda: self.interrupted,
+            progress_callback=_display_progress,
+        )
 
     def _parse_aws_size(self, line: str):
-        """Parse byte size from AWS CLI output line"""
-        try:
-            parts = line.split()
-            size_str = parts[-1]
-            multiplier = 1
-            if size_str.endswith("KiB"):
-                multiplier = 1024
-            elif size_str.endswith("MiB"):
-                multiplier = 1024 * 1024
-            elif size_str.endswith("GiB"):
-                multiplier = 1024 * 1024 * 1024
-            size_val = float(size_str.split()[0])
-            return int(size_val * multiplier)
-        except (ValueError, IndexError, AttributeError):
-            return None
+        """Delegate to the shared AWS size parser."""
+        return _parse_aws_size(line)
 
     def _display_progress(self, start_time, files_done, bytes_done):
-        """Display progress"""
-        elapsed = time.time() - start_time
-        if elapsed > 0 and bytes_done > 0:
-            throughput = bytes_done / elapsed
-            progress = (
-                f"Progress: {files_done:,} files, {format_size(bytes_done)} "
-                f"({format_size(throughput)}/s)  "
-            )
-            print(f"\r  {progress}", end="", flush=True)
+        """Proxy to the shared progress renderer."""
+        _display_progress(start_time, files_done, bytes_done)
 
     def _print_sync_summary(self, start_time, files_done, bytes_done):
-        """Print sync completion summary"""
-        elapsed = time.time() - start_time
-        throughput = bytes_done / elapsed if elapsed > 0 else 0
-        print(f"\n✓ Completed in {format_duration(elapsed)}")
-        print(f"  Downloaded: {files_done:,} files, {format_size(bytes_done)}")
-        print(f"  Throughput: {format_size(throughput)}/s")
-        print()
+        """Proxy to the shared summary renderer."""
+        _print_sync_summary(start_time, files_done, bytes_done)
+
+    def _calculate_local_stats(self, local_path: Path):
+        """Proxy to the shared stats calculator."""
+        return _calculate_local_stats(local_path)
+
+    def _check_sync_errors(self, process):
+        """Proxy to the shared error checker."""
+        check_sync_process_errors(process)
+
+
+def _monitor_sync_progress(process, start_time, interrupted_check, progress_callback):
+    """Monitor AWS CLI sync progress and return stats"""
+    progress = ProgressTracker(update_interval=1.0)
+    files_done = 0
+    bytes_done = 0
+    while True:
+        if interrupted_check():
+            process.terminate()
+            return files_done, bytes_done
+        line = process.stdout.readline()
+        if not line and process.poll() is not None:
+            break
+        if line and "Completed" in line:
+            file_bytes = _parse_aws_size(line)
+            if file_bytes:
+                bytes_done += file_bytes
+                files_done += 1
+            if progress.should_update():
+                progress_callback(start_time, files_done, bytes_done)
+    return files_done, bytes_done
+
+
+def _parse_aws_size(line: str):
+    """Parse byte size from AWS CLI output line"""
+    try:
+        parts = line.split()
+        size_str = parts[-1]
+        multiplier = 1
+        if size_str.endswith("KiB"):
+            multiplier = 1024
+        elif size_str.endswith("MiB"):
+            multiplier = 1024 * 1024
+        elif size_str.endswith("GiB"):
+            multiplier = 1024 * 1024 * 1024
+        size_val = float(size_str.split()[0])
+        return int(size_val * multiplier)
+    except (ValueError, IndexError, AttributeError):
+        return None
+
+
+def _display_progress(start_time, files_done, bytes_done):
+    """Display sync progress"""
+    elapsed = time.time() - start_time
+    if elapsed > 0 and bytes_done > 0:
+        throughput = bytes_done / elapsed
+        progress = (
+            f"Progress: {files_done:,} files, {format_size(bytes_done)} "
+            f"({format_size(throughput)}/s)  "
+        )
+        print(f"\r  {progress}", end="", flush=True)
+
+
+def _print_sync_summary(start_time, files_done, bytes_done):
+    """Print sync completion summary"""
+    elapsed = time.time() - start_time
+    throughput = bytes_done / elapsed if elapsed > 0 else 0
+    print(f"\n✓ Completed in {format_duration(elapsed)}")
+    print(f"  Downloaded: {files_done:,} files, {format_size(bytes_done)}")
+    print(f"  Throughput: {format_size(throughput)}/s")
+    print()
+
+
+def _calculate_local_stats(local_path: Path):
+    """Return total files and bytes currently present for the bucket."""
+    files = 0
+    total_bytes = 0
+    if not local_path.exists():
+        return files, total_bytes
+    for file_path in local_path.rglob("*"):
+        if file_path.is_file():
+            files += 1
+            total_bytes += file_path.stat().st_size
+    return files, total_bytes

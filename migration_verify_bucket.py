@@ -2,25 +2,22 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict
 
-try:  # Prefer package-relative imports for tooling like pylint
-    from .migration_utils import format_size, print_verification_success_messages
-    from .migration_verify_checksums import FileChecksumVerifier
-    from .migration_verify_common import (
-        LocalPathMissingError,
-        VerificationCountMismatchError,
-    )
-    from .migration_verify_inventory import FileInventoryChecker
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from migration_utils import format_size, print_verification_success_messages
-    from migration_verify_checksums import FileChecksumVerifier
-    from migration_verify_common import (
-        LocalPathMissingError,
-        VerificationCountMismatchError,
-    )
-    from migration_verify_inventory import FileInventoryChecker
+_PACKAGE_PREFIX = f"{__package__}." if __package__ else ""
+_migration_utils = import_module(f"{_PACKAGE_PREFIX}migration_utils")
+_migration_verify_checksums = import_module(f"{_PACKAGE_PREFIX}migration_verify_checksums")
+_migration_verify_common = import_module(f"{_PACKAGE_PREFIX}migration_verify_common")
+_migration_verify_inventory = import_module(f"{_PACKAGE_PREFIX}migration_verify_inventory")
+
+format_size = _migration_utils.format_size
+print_verification_success_messages = _migration_utils.print_verification_success_messages
+FileChecksumVerifier = _migration_verify_checksums.FileChecksumVerifier
+LocalPathMissingError = _migration_verify_common.LocalPathMissingError
+VerificationCountMismatchError = _migration_verify_common.VerificationCountMismatchError
+FileInventoryChecker = _migration_verify_inventory.FileInventoryChecker
 
 if TYPE_CHECKING:
     try:

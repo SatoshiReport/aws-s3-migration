@@ -46,7 +46,10 @@ class BucketNotEmptyError(RuntimeError):
 
     def __init__(self) -> None:
         super().__init__(
-            "Bucket still contains objects after delete pass. Re-run deletion once remaining versions are cleared."
+            (
+                "Bucket still contains objects after delete pass. "
+                "Re-run deletion once remaining versions are cleared."
+            )
         )
 
 

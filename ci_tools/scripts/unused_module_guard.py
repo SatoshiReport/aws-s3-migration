@@ -1,4 +1,8 @@
+# pylint: disable=duplicate-code
 """Repository-aware shim for the shared unused_module_guard script."""
+
+# The import fallback pattern matches numerous migration scripts that must remain
+# consistent for tooling, so suppress duplicate-code for this shim.
 
 from __future__ import annotations
 
