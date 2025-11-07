@@ -55,7 +55,7 @@ class Candidate:
         return datetime.fromtimestamp(self.mtime, tz=timezone.utc).isoformat()
 
 
-CACHE_VERSION = 1
+CACHE_VERSION = 2
 
 
 def _default_cache_dir() -> Path:
@@ -67,13 +67,11 @@ def build_scan_params(
     categories: Sequence[Category],
     older_than: int | None,
     min_size_bytes: int | None,
-    measure_size: bool,
 ) -> dict[str, object]:
     return {
         "categories": [cat.name for cat in categories],
         "older_than": older_than,
         "min_size_bytes": min_size_bytes,
-        "measure_size": measure_size,
     }
 
 
@@ -385,33 +383,6 @@ def format_size(num_bytes: int | None) -> str:
     return f"{value:.1f}PB"
 
 
-def measure_path_size(path: Path) -> int:
-    """Approximate disk usage by summing file sizes under the path."""
-    total = 0
-    if path.is_file():
-        return path.stat().st_size
-    stack = [path]
-    while stack:
-        current = stack.pop()
-        try:
-            with os.scandir(current) as entries:
-                for entry in entries:
-                    try:
-                        if entry.is_symlink():
-                            continue
-                        if entry.is_dir(follow_symlinks=False):
-                            stack.append(Path(entry.path))
-                        else:
-                            total += entry.stat(follow_symlinks=False).st_size
-                    except OSError as exc:
-                        logging.warning("Failed to inspect %s: %s", entry.path, exc)
-        except NotADirectoryError:
-            total += Path(current).stat().st_size
-        except OSError as exc:
-            logging.warning("Failed to inspect %s: %s", current, exc)
-    return total
-
-
 def match_category(path: Path, is_dir: bool, categories: Sequence[Category]) -> Category | None:
     for category in categories:
         try:
@@ -429,62 +400,65 @@ def scan_candidates_from_db(
     *,
     cutoff_ts: float | None,
     min_size_bytes: int | None,
-    measure_size: bool,
     total_files: int,
 ) -> list[Candidate]:
     """Inspect the migration SQLite database and find directories worth pruning."""
 
     base_path = base_path.resolve()
     progress = ProgressTracker(total_files, "Scanning migration database")
-    candidates: list[Candidate] = []
-    seen_dirs: set[Path] = set()
+    candidates: dict[Path, Candidate] = {}
+    non_matching: set[Path] = set()
 
     if total_files == 0:
         progress.update(0)
 
-    cursor = conn.execute("SELECT bucket, key FROM files")
+    cursor = conn.execute("SELECT bucket, key, size FROM files")
     for idx, row in enumerate(cursor, start=1):
         progress.update(idx)
         local_file = derive_local_path(base_path, row["bucket"], row["key"])
         if local_file is None:
             continue
+        file_size = row["size"] or 0
         for parent in iter_relevant_dirs(local_file, base_path):
             try:
                 canonical = parent.resolve()
             except OSError:
                 continue
-            if canonical in seen_dirs:
+            entry = candidates.get(canonical)
+            if entry:
+                entry.size_bytes = (entry.size_bytes or 0) + file_size
+                continue
+            if canonical in non_matching:
                 continue
             category = match_category(parent, True, categories)
             if not category:
+                non_matching.add(canonical)
                 continue
             try:
                 stat = parent.stat()
             except OSError as exc:
                 logging.warning("Unable to stat %s: %s", parent, exc)
+                non_matching.add(canonical)
                 continue
             if cutoff_ts is not None and stat.st_mtime > cutoff_ts:
+                non_matching.add(canonical)
                 continue
-            size_bytes: int | None = None
-            if measure_size:
-                size_bytes = measure_path_size(parent)
-            if (
-                min_size_bytes is not None
-                and size_bytes is not None
-                and size_bytes < min_size_bytes
-            ):
-                continue
-            candidates.append(
-                Candidate(
-                    path=parent,
-                    category=category,
-                    size_bytes=size_bytes,
-                    mtime=stat.st_mtime,
-                )
+            entry = Candidate(
+                path=parent,
+                category=category,
+                size_bytes=file_size,
+                mtime=stat.st_mtime,
             )
-            seen_dirs.add(canonical)
+            candidates[canonical] = entry
     progress.finish()
-    return candidates
+    results: list[Candidate] = []
+    for candidate in candidates.values():
+        size_bytes = candidate.size_bytes or 0
+        if min_size_bytes is not None and size_bytes < min_size_bytes:
+            continue
+        candidate.size_bytes = size_bytes
+        results.append(candidate)
+    return results
 
 
 def summarise(candidates: Sequence[Candidate]) -> list[tuple[str, int, int]]:
@@ -529,15 +503,9 @@ def order_candidates(
     candidates: Sequence[Candidate],
     *,
     order: str,
-    measure_size: bool,
 ) -> list[Candidate]:
-    if order == "size" and not measure_size:
-        logging.warning(
-            "Sort order 'size' requested without --measure-size; defaulting to path order."
-        )
-        order = "path"
     if order == "size":
-        return sorted(candidates, key=lambda c: c.size_bytes or -1, reverse=True)
+        return sorted(candidates, key=lambda c: c.size_bytes or 0, reverse=True)
     return sorted(candidates, key=lambda c: str(c.path))
 
 
@@ -594,12 +562,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument(
         "--min-size",
         type=str,
-        help="Only include entries >= SIZE (e.g. 500M). Requires --measure-size.",
-    )
-    parser.add_argument(
-        "--measure-size",
-        action="store_true",
-        help="Compute disk usage for each candidate (slower).",
+        help="Only include entries >= SIZE (e.g. 500M).",
     )
     parser.add_argument(
         "--limit",
@@ -654,8 +617,6 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         sys.exit(0)
     if not args.base_path:
         parser.error("--base-path is required when no default could be determined.")
-    if args.min_size and not args.measure_size:
-        parser.error("--min-size requires --measure-size to be set.")
     if args.limit is not None and args.limit <= 0:
         parser.error("--limit must be positive.")
     args.min_size_bytes = parse_size(args.min_size) if args.min_size else None
@@ -704,7 +665,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.categories,
         args.older_than,
         args.min_size_bytes,
-        args.measure_size,
     )
     category_map = {cat.name: cat for cat in args.categories}
     cache_path: Path | None = None
@@ -756,7 +716,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 args.categories,
                 cutoff_ts=cutoff_ts,
                 min_size_bytes=args.min_size_bytes,
-                measure_size=args.measure_size,
                 total_files=total_files,
             )
     finally:
@@ -780,7 +739,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("No candidates found for the selected categories.")
         return 0
 
-    ordered = order_candidates(candidates, order=args.sort, measure_size=args.measure_size)
+    ordered = order_candidates(candidates, order=args.sort)
     acted_upon = ordered[: args.limit] if args.limit else ordered
 
     print(
