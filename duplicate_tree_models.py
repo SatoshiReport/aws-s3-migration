@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 PathTuple = Tuple[str, ...]
 PROGRESS_MIN_INTERVAL = 5.0
@@ -60,18 +60,6 @@ class DuplicateCluster:
     nodes: List[DirectoryNode]
 
 
-@dataclass
-class NearDuplicateReport:
-    """Summary of an almost-identical directory pair."""
-
-    primary: DirectoryNode
-    secondary: DirectoryNode
-    similarity: float
-    file_delta: int
-    size_delta: int
-    differences: Dict[str, List[str]]
-
-
 class ProgressPrinter:  # pylint: disable=too-few-public-methods
     """Simple in-place progress bar."""
 
@@ -119,7 +107,6 @@ __all__ = [
     "DuplicateCluster",
     "FileEntry",
     "FilesTableReadError",
-    "NearDuplicateReport",
     "PathTuple",
     "ProgressPrinter",
     "PROGRESS_MIN_INTERVAL",

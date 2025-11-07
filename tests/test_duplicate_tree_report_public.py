@@ -16,7 +16,6 @@ def test_reexported_symbols_are_accessible():
     index.finalize()
     clusters = dtr.find_exact_duplicates(index)
     assert isinstance(clusters, list)
-    assert dtr.NearDuplicateReport.__name__ == "NearDuplicateReport"
     assert dtr.DuplicateCluster.__name__ == "DuplicateCluster"
 
 

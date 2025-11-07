@@ -23,6 +23,7 @@ SHARED_DOC_ROOT ?= .
 SHARED_CODESPELL_IGNORE ?= $(if $(CI_TOOLS_CONFIG_PATH),$(CI_TOOLS_CONFIG_PATH)/codespell_ignore_words.txt)
 SHARED_PYRIGHT_TARGETS ?= $(SHARED_SOURCE_ROOT)
 SHARED_PYLINT_TARGETS ?= $(SHARED_SOURCE_ROOT)
+RUFF_TARGETS ?= $(SHARED_SOURCE_ROOT) $(SHARED_TEST_ROOT)
 SHARED_PYTEST_TARGET ?= $(SHARED_TEST_ROOT)
 SHARED_PYTEST_COV_TARGET ?= $(SHARED_SOURCE_ROOT)
 SHARED_PYTEST_THRESHOLD ?= 80
@@ -31,6 +32,9 @@ COMPLEXITY_GUARD_ARGS ?= --root $(SHARED_SOURCE_ROOT) --max-cyclomatic 10 --max-
 MODULE_GUARD_ARGS ?= --root $(SHARED_SOURCE_ROOT) --max-module-lines 400
 FUNCTION_GUARD_ARGS ?= --root $(SHARED_SOURCE_ROOT) --max-function-lines 80
 METHOD_COUNT_GUARD_ARGS ?= --root $(SHARED_SOURCE_ROOT) --max-public-methods 15 --max-total-methods 25
+UNUSED_MODULE_GUARD_ARGS ?= --root $(SHARED_SOURCE_ROOT) --strict
+ENABLE_PYLINT ?= 1
+COVERAGE_GUARD_THRESHOLD ?= 80
 PYLINT_ARGS ?=
 BANDIT_BASELINE ?=
 BANDIT_EXCLUDE ?= artifacts,trash,models,logs
@@ -106,11 +110,15 @@ shared-checks:
 	$(PYTHON) -m ci_tools.scripts.inheritance_guard --root $(SHARED_SOURCE_ROOT) --max-depth 2
 	$(PYTHON) -m ci_tools.scripts.method_count_guard $(METHOD_COUNT_GUARD_ARGS)
 	$(PYTHON) -m ci_tools.scripts.dependency_guard --root $(SHARED_SOURCE_ROOT) --max-instantiations 5
-	$(PYTHON) -m ci_tools.scripts.unused_module_guard --root $(SHARED_SOURCE_ROOT) --strict
+	$(PYTHON) -m ci_tools.scripts.unused_module_guard $(UNUSED_MODULE_GUARD_ARGS)
 	$(PYTHON) -m ci_tools.scripts.documentation_guard --root $(SHARED_DOC_ROOT)
-	ruff check --target-version=py310 --fix $(SHARED_SOURCE_ROOT) $(SHARED_TEST_ROOT)
+	ruff check --target-version=py310 --fix $(RUFF_TARGETS)
 	pyright --warnings $(SHARED_PYRIGHT_TARGETS)
+ifeq ($(ENABLE_PYLINT),1)
 	pylint -j $(PYTEST_NODES) $(PYLINT_ARGS) $(SHARED_PYLINT_TARGETS)
+else
+	@echo "Skipping pylint (disabled)"
+endif
 	@for DIR in $(SHARED_CLEANUP_ROOTS); do \
 		if [ -d "$$DIR" ]; then \
 			find "$$DIR" -name "*.pyc" -delete 2>/dev/null || true; \
@@ -122,6 +130,6 @@ shared-checks:
 		fi; \
 	done
 	pytest -n $(PYTEST_NODES) $(SHARED_PYTEST_TARGET) --cov=$(SHARED_PYTEST_COV_TARGET) --cov-fail-under=$(SHARED_PYTEST_THRESHOLD) $(SHARED_PYTEST_EXTRA)
-	$(PYTHON) -m ci_tools.scripts.coverage_guard --threshold 80 --data-file "$(CURDIR)/.coverage"
+	$(PYTHON) -m ci_tools.scripts.coverage_guard --threshold $(COVERAGE_GUARD_THRESHOLD) --data-file "$(CURDIR)/.coverage"
 	$(PYTHON) -m compileall $(SHARED_SOURCE_ROOT) $(SHARED_TEST_ROOT)
 	@echo "✅ All shared CI checks passed!"

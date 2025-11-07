@@ -1,0 +1,66 @@
+AWS EBS Snapshot to S3 Manual Export Commands
+==================================================
+
+Step 1: Export snap-036eee4a7c291fd26 (8 GB)
+----------------------------------------
+Export Command:
+aws ec2 export-image \
+    --image-id ami-0bf5a634769fbcfb8 \
+    --disk-image-format VMDK \
+    --s3-export-location S3Bucket=ebs-snapshot-archive-us-east-2-20250723,S3Prefix=ebs-snapshots/ami-0bf5a634769fbcfb8/ \
+    --description "Manual export of snap-036eee4a7c291fd26" \
+    --region us-east-2
+
+Monitor Command:
+# Monitor export progress:
+aws ec2 describe-export-image-tasks \
+    --region us-east-2 \
+    --query 'ExportImageTasks[?ImageId==`ami-0bf5a634769fbcfb8`].[ExportImageTaskId,Status,Progress,StatusMessage]' \
+    --output table
+
+Cleanup Command:
+# CLEANUP (run only after successful export):
+aws ec2 deregister-image --image-id ami-0bf5a634769fbcfb8 --region us-east-2
+
+Step 2: Export snap-046b7eace8694913b (64 GB)
+----------------------------------------
+Export Command:
+aws ec2 export-image \
+    --image-id ami-082071cf28c4386d6 \
+    --disk-image-format VMDK \
+    --s3-export-location S3Bucket=ebs-snapshot-archive-eu-west-2-20250723,S3Prefix=ebs-snapshots/ami-082071cf28c4386d6/ \
+    --description "Manual export of snap-046b7eace8694913b" \
+    --region eu-west-2
+
+Monitor Command:
+# Monitor export progress:
+aws ec2 describe-export-image-tasks \
+    --region eu-west-2 \
+    --query 'ExportImageTasks[?ImageId==`ami-082071cf28c4386d6`].[ExportImageTaskId,Status,Progress,StatusMessage]' \
+    --output table
+
+Cleanup Command:
+# CLEANUP (run only after successful export):
+aws ec2 deregister-image --image-id ami-082071cf28c4386d6 --region eu-west-2
+
+Step 3: Export snap-0f68820355c25e73e (384 GB)
+----------------------------------------
+Export Command:
+aws ec2 export-image \
+    --image-id ami-0dd9d50a584c2d076 \
+    --disk-image-format VMDK \
+    --s3-export-location S3Bucket=ebs-snapshot-archive-eu-west-2-20250723,S3Prefix=ebs-snapshots/ami-0dd9d50a584c2d076/ \
+    --description "Manual export of snap-0f68820355c25e73e" \
+    --region eu-west-2
+
+Monitor Command:
+# Monitor export progress:
+aws ec2 describe-export-image-tasks \
+    --region eu-west-2 \
+    --query 'ExportImageTasks[?ImageId==`ami-0dd9d50a584c2d076`].[ExportImageTaskId,Status,Progress,StatusMessage]' \
+    --output table
+
+Cleanup Command:
+# CLEANUP (run only after successful export):
+aws ec2 deregister-image --image-id ami-0dd9d50a584c2d076 --region eu-west-2
+

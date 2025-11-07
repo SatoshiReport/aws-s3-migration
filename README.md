@@ -78,20 +78,21 @@ python migrate_v2.py reset     # Reset and start over
 
 ### Duplicate Tree Reporting
 
-**duplicate_tree_report.py** - Scans the migration state database and reports exact or nearly-identical directory trees on your external drive. It reuses the per-file sizes and checksums gathered by `migrate_v2`.
+**duplicate_tree_report.py** - Scans the migration state database and reports exact duplicate directory trees on your external drive. It reuses the per-file sizes and checksums gathered by `migrate_v2`.
 
 **Usage:**
 ```bash
 python duplicate_tree_report.py \
   --db-path migration_state_v2.db \
-  --base-path /Volumes/backup-drive \
-  --tolerance 0.99
+  --base-path /Volumes/backup-drive
 ```
 
 - Shows a live progress bar while reading the SQLite `files` table
 - Groups directories whose entire hierarchy matches (size + checksum)
-- Flags near-duplicates that are within the tolerance, with a summary of missing/extra or mismatched files
+- Ignores macOS/Windows metadata files so Finder/Explorer artifacts never flag duplicates
+- Only reports directories with more than 2 files and at least 0.5 GiB by default (tune with `--min-files` / `--min-size-gb`)
 - Defaults to `config.STATE_DB_PATH` / `config.LOCAL_BASE_PATH` so you rarely need to pass arguments
+- Add `--delete` to automatically remove every duplicate directory except the first entry in each cluster after a `y/n` confirmation
 
 Use this after a migration completes to spot redundant bucket trees that can be pruned or archived together.
 
@@ -177,6 +178,24 @@ The migration runs in phases, handling Glacier restores automatically. You can i
    # Apply to specific buckets
    python apply_block.py important-bucket1 important-bucket2
    ```
+
+## Cost Toolkit
+
+The legacy `~/aws_cost` project (minus the embedding server) now lives under `cost_toolkit/` inside this repo:
+
+- `cost_toolkit/cost_overview.py` prints the monthly spend summary plus optimization ideas.
+- `cost_toolkit/scripts/` contains billing reports, audits, cleanup automation, migration helpers, and the one-off RDS remediation scripts.
+- `cost_toolkit/docs/` keeps the associated runbooks, environmental notes, and manual export logs.
+
+Run any helper from the repo root, for example:
+
+```bash
+python cost_toolkit/scripts/billing/aws_billing_report.py
+python cost_toolkit/scripts/audit/aws_s3_audit.py
+python cost_toolkit/scripts/cleanup/aws_vpc_cleanup.py
+```
+
+Read `cost_toolkit/README.md` for the full layout and integration details.
 
 ## Directory Structure
 

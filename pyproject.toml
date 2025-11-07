@@ -8,6 +8,9 @@ dependencies = [
     "botocore>=1.31.0",
     "pytest>=7.4.0",
     "pydantic>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "python-dotenv>=1.0.0",
+    "requests>=2.31.0",
 ]
 
 # =============================================================================
@@ -36,6 +39,9 @@ extend_exclude = ["ci_shared", "tests", "scripts"]
 pep621_dev_dependency_groups = []
 requirements_files_dev = ["scripts/requirements.txt"]
 per_rule_ignores = { DEP002 = ["boto3", "pydantic"], DEP003 = ["ci_tools"] }
+
+[tool.deptry.package_module_name_map]
+"psycopg2-binary" = ["psycopg2"]
 
 [tool.bandit]
 exclude_dirs = [

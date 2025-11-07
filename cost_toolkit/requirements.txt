@@ -1,0 +1,21 @@
+# AWS SDK and utilities
+boto3>=1.26.0
+botocore>=1.29.0
+
+# Environment configuration
+python-dotenv>=1.0.0
+
+# HTTP requests
+requests>=2.31.0
+
+# Flask web framework for embedding server
+flask>=3.0.0
+
+# Machine learning and embeddings
+sentence-transformers>=2.7.0
+numpy>=1.26.0
+torch>=2.1.0
+transformers>=4.40.0
+
+# Additional utilities that may be needed
+typing-extensions>=4.0.0

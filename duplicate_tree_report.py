@@ -8,25 +8,19 @@ try:  # Prefer package-relative imports when packaged
     from .duplicate_tree_core import (
         DirectoryIndex,
         DuplicateCluster,
-        NearDuplicateReport,
         find_exact_duplicates,
-        find_near_duplicates,
     )
 except ImportError:  # pragma: no cover - direct script execution
     from duplicate_tree_core import (  # type: ignore
         DirectoryIndex,
         DuplicateCluster,
-        NearDuplicateReport,
         find_exact_duplicates,
-        find_near_duplicates,
     )
 
 __all__ = [
     "DirectoryIndex",
     "DuplicateCluster",
-    "NearDuplicateReport",
     "find_exact_duplicates",
-    "find_near_duplicates",
 ]
 
 

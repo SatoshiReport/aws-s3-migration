@@ -1,0 +1,210 @@
+#!/usr/bin/env python3
+
+import json
+from datetime import datetime, timezone
+
+import boto3
+from botocore.exceptions import ClientError
+
+
+def check_route53_registered_domains():
+    """Check domains registered through Route 53"""
+    print(f"\n🏠 Checking Route 53 Registered Domains")
+    print("=" * 80)
+
+    try:
+        route53domains = boto3.client(
+            "route53domains", region_name="us-east-1"
+        )  # Route 53 domains is only in us-east-1
+
+        # Get all registered domains
+        response = route53domains.list_domains()
+        domains = response.get("Domains", [])
+
+        if not domains:
+            print("✅ No domains registered through Route 53")
+            return []
+
+        domain_details = []
+        total_annual_cost = 0
+
+        for domain in domains:
+            domain_name = domain.get("DomainName", "")
+            expiry = domain.get("Expiry")
+            auto_renew = domain.get("AutoRenew", False)
+
+            print(f"Domain: {domain_name}")
+            print(f"  Expiry: {expiry}")
+            print(f"  Auto-renew: {auto_renew}")
+
+            # Get more details about the domain
+            try:
+                detail_response = route53domains.get_domain_detail(DomainName=domain_name)
+                domain_detail = detail_response
+
+                registrar = domain_detail.get("RegistrarName", "Unknown")
+                status = domain_detail.get("StatusList", [])
+                nameservers = domain_detail.get("Nameservers", [])
+
+                print(f"  Registrar: {registrar}")
+                print(f"  Status: {', '.join(status) if status else 'Unknown'}")
+                print(f"  Nameservers:")
+                for ns in nameservers:
+                    ns_name = ns.get("Name", "")
+                    print(f"    {ns_name}")
+
+                # Estimate annual cost (varies by TLD)
+                if domain_name.endswith(".com"):
+                    annual_cost = 12.00
+                elif domain_name.endswith(".org"):
+                    annual_cost = 12.00
+                elif domain_name.endswith(".net"):
+                    annual_cost = 12.00
+                elif domain_name.endswith(".report"):
+                    annual_cost = 25.00  # Premium TLD
+                else:
+                    annual_cost = 15.00  # Estimate for other TLDs
+
+                total_annual_cost += annual_cost
+                print(f"  Estimated annual cost: ${annual_cost:.2f}")
+
+                domain_details.append(
+                    {
+                        "domain_name": domain_name,
+                        "expiry": expiry,
+                        "auto_renew": auto_renew,
+                        "registrar": registrar,
+                        "status": status,
+                        "nameservers": nameservers,
+                        "annual_cost": annual_cost,
+                    }
+                )
+
+            except ClientError as e:
+                print(f"  ❌ Error getting domain details: {e}")
+
+            print()
+
+        print(f"📊 Domain Registration Summary:")
+        print(f"  Total registered domains: {len(domains)}")
+        print(f"  Estimated total annual cost: ${total_annual_cost:.2f}")
+
+        return domain_details
+
+    except ClientError as e:
+        print(f"❌ Error checking registered domains: {e}")
+        return []
+
+
+def check_current_hosted_zones():
+    """Check current hosted zones (after cleanup)"""
+    print(f"\n🌐 Current Route 53 Hosted Zones")
+    print("=" * 80)
+
+    try:
+        route53 = boto3.client("route53")
+
+        # Get all hosted zones
+        response = route53.list_hosted_zones()
+        hosted_zones = response.get("HostedZones", [])
+
+        if not hosted_zones:
+            print("✅ No hosted zones found")
+            return []
+
+        zone_details = []
+
+        for zone in hosted_zones:
+            zone_id = zone["Id"].split("/")[-1]  # Remove /hostedzone/ prefix
+            zone_name = zone["Name"]
+            is_private = zone.get("Config", {}).get("PrivateZone", False)
+            record_count = zone.get("ResourceRecordSetCount", 0)
+
+            print(f"Hosted Zone: {zone_name}")
+            print(f"  Zone ID: {zone_id}")
+            print(f"  Type: {'Private' if is_private else 'Public'}")
+            print(f"  Record Count: {record_count}")
+            print(f"  Monthly Cost: $0.50")
+
+            zone_details.append(
+                {
+                    "zone_name": zone_name,
+                    "zone_id": zone_id,
+                    "is_private": is_private,
+                    "record_count": record_count,
+                }
+            )
+            print()
+
+        print(f"📊 Hosted Zones Summary:")
+        print(f"  Total zones: {len(hosted_zones)}")
+        print(f"  Monthly cost: ${len(hosted_zones) * 0.50:.2f}")
+
+        return zone_details
+
+    except ClientError as e:
+        print(f"❌ Error checking hosted zones: {e}")
+        return []
+
+
+def main():
+    print("AWS Route 53 Domain Ownership Analysis")
+    print("=" * 80)
+    print("Checking domain registration vs DNS hosting...")
+
+    # Check registered domains
+    registered_domains = check_route53_registered_domains()
+
+    # Check current hosted zones
+    hosted_zones = check_current_hosted_zones()
+
+    # Analysis
+    print("\n" + "=" * 80)
+    print("🎯 DOMAIN OWNERSHIP ANALYSIS")
+    print("=" * 80)
+
+    if registered_domains:
+        print(f"✅ You OWN these domains through Route 53:")
+        for domain in registered_domains:
+            print(f"  {domain['domain_name']} (expires: {domain['expiry']})")
+    else:
+        print(f"❌ No domains registered through Route 53")
+        print(f"   Your domains may be registered elsewhere (GoDaddy, Namecheap, etc.)")
+
+    if hosted_zones:
+        print(f"\n🌐 You have DNS hosting for:")
+        for zone in hosted_zones:
+            print(f"  {zone['zone_name']} (Route 53 hosted zone)")
+
+    # Cost breakdown
+    print(f"\n💰 COST BREAKDOWN:")
+
+    if registered_domains:
+        total_registration_cost = sum(d["annual_cost"] for d in registered_domains)
+        print(f"  Domain registration: ${total_registration_cost:.2f}/year")
+    else:
+        print(f"  Domain registration: $0/year (registered elsewhere)")
+
+    if hosted_zones:
+        monthly_hosting_cost = len(hosted_zones) * 0.50
+        annual_hosting_cost = monthly_hosting_cost * 12
+        print(f"  DNS hosting: ${monthly_hosting_cost:.2f}/month (${annual_hosting_cost:.2f}/year)")
+    else:
+        print(f"  DNS hosting: $0/month")
+
+    # Recommendations
+    print(f"\n📋 RECOMMENDATIONS:")
+
+    if not registered_domains and hosted_zones:
+        print(f"  🔍 Your domains are likely registered elsewhere")
+        print(f"  💡 You can keep using Route 53 for DNS even if domains are registered elsewhere")
+        print(f"  💰 Consider moving DNS to free providers like Cloudflare to save money")
+
+    if registered_domains:
+        print(f"  ✅ You own {len(registered_domains)} domain(s) through Route 53")
+        print(f"  🔄 These will auto-renew unless you disable it")
+        print(f"  💡 You can transfer DNS hosting elsewhere while keeping registration here")
+
+
+if __name__ == "__main__":
+    main()

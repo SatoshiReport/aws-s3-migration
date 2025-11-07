@@ -1,0 +1,819 @@
+#!/usr/bin/env python3
+"""
+Scan backup trees for disposable cache/temp artifacts and optionally delete them.
+
+The script focuses on developer tooling residue (Python caches, VS Code remote
+downloads, language package caches, etc.) and intentionally ignores macOS system
+metadata (.Spotlight-V100, .DS_Store, ...).
+"""
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import logging
+import os
+import shutil
+import sqlite3
+import sys
+import time
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
+from typing import Callable, Iterator, Sequence
+
+REPO_ROOT = Path(__file__).resolve().parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+try:
+    import config as config_module  # type: ignore
+except ImportError:  # pragma: no cover - best-effort fallback
+    config_module = None
+
+Matcher = Callable[[Path, bool], bool]
+
+
+@dataclass(frozen=True)
+class Category:
+    name: str
+    description: str
+    matcher: Matcher
+    prune: bool = True
+
+
+@dataclass
+class Candidate:
+    path: Path
+    category: Category
+    size_bytes: int | None
+    mtime: float
+
+    @property
+    def iso_mtime(self) -> str:
+        return datetime.fromtimestamp(self.mtime, tz=timezone.utc).isoformat()
+
+
+CACHE_VERSION = 1
+
+
+def _default_cache_dir() -> Path:
+    base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")).expanduser()
+    return base / "cleanup_temp_artifacts"
+
+
+def build_scan_params(
+    categories: Sequence[Category],
+    older_than: int | None,
+    min_size_bytes: int | None,
+    measure_size: bool,
+) -> dict[str, object]:
+    return {
+        "categories": [cat.name for cat in categories],
+        "older_than": older_than,
+        "min_size_bytes": min_size_bytes,
+        "measure_size": measure_size,
+    }
+
+
+def build_cache_key(base_path: Path, db_path: Path, scan_params: dict[str, object]) -> str:
+    payload = {
+        "base_path": str(base_path),
+        "db_path": str(db_path),
+        "scan_params": scan_params,
+    }
+    data = json.dumps(payload, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(data).hexdigest()
+
+
+def load_cache(
+    cache_path: Path,
+    scan_params: dict[str, object],
+    category_map: dict[str, Category],
+) -> tuple[list[Candidate], dict] | None:
+    try:
+        payload = json.loads(cache_path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        logging.warning("Failed to read cache %s: %s", cache_path, exc)
+        return None
+    if payload.get("version") != CACHE_VERSION:
+        return None
+    if payload.get("scan_params") != scan_params:
+        return None
+    metadata = {
+        "generated_at": payload.get("generated_at"),
+        "rowcount": payload.get("rowcount"),
+        "max_rowid": payload.get("max_rowid"),
+        "db_mtime_ns": payload.get("db_mtime_ns"),
+    }
+    items = payload.get("candidates", [])
+    candidates: list[Candidate] = []
+    for item in items:
+        cat_name = item.get("category")
+        if cat_name not in category_map:
+            return None
+        candidates.append(
+            Candidate(
+                path=Path(item["path"]),
+                category=category_map[cat_name],
+                size_bytes=item.get("size_bytes"),
+                mtime=item.get("mtime", 0),
+            )
+        )
+    return candidates, metadata
+
+
+def write_cache(
+    cache_path: Path,
+    candidates: Sequence[Candidate],
+    *,
+    scan_params: dict[str, object],
+    base_path: Path,
+    db_path: Path,
+    rowcount: int,
+    max_rowid: int,
+    db_mtime_ns: int,
+) -> None:
+    payload = {
+        "version": CACHE_VERSION,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "base_path": str(base_path),
+        "db_path": str(db_path),
+        "rowcount": rowcount,
+        "max_rowid": max_rowid,
+        "db_mtime_ns": db_mtime_ns,
+        "scan_params": scan_params,
+        "candidates": [
+            {
+                "path": str(c.path),
+                "category": c.category.name,
+                "size_bytes": c.size_bytes,
+                "mtime": c.mtime,
+            }
+            for c in candidates
+        ],
+    }
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps(payload, indent=2))
+
+
+def cache_is_valid(
+    metadata: dict,
+    *,
+    ttl_seconds: int,
+    rowcount: int,
+    max_rowid: int,
+    db_mtime_ns: int,
+) -> bool:
+    if metadata.get("rowcount") != rowcount:
+        return False
+    if metadata.get("max_rowid") != max_rowid:
+        return False
+    if metadata.get("db_mtime_ns") != db_mtime_ns:
+        return False
+    generated_at = metadata.get("generated_at")
+    if ttl_seconds > 0:
+        if not generated_at:
+            return False
+        try:
+            generated_dt = datetime.fromisoformat(generated_at)
+        except ValueError:
+            return False
+        age = (datetime.now(timezone.utc) - generated_dt).total_seconds()
+        if age > ttl_seconds:
+            return False
+    return True
+
+
+def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
+    """Convert a bucket/key pair into the expected local filesystem path."""
+    candidate = base_path / bucket
+    for part in PurePosixPath(key).parts:
+        if part in ("", "."):
+            continue
+        if part == "..":
+            return None
+        candidate /= part
+    try:
+        candidate.relative_to(base_path)
+    except ValueError:
+        return None
+    return candidate
+
+
+def iter_relevant_dirs(file_path: Path, base_path: Path) -> Iterator[Path]:
+    """Yield ancestor directories under base_path (excluding base_path itself)."""
+    try:
+        file_path.relative_to(base_path)
+    except ValueError:
+        return
+    current = file_path.parent
+    while True:
+        try:
+            current.relative_to(base_path)
+        except ValueError:
+            break
+        if current == base_path:
+            break
+        yield current
+        current = current.parent
+
+
+class ProgressTracker:
+    """Minimal progress indicator for long-running scans."""
+
+    def __init__(self, total: int, label: str):
+        self.total = total
+        self.label = label
+        self.start = time.time()
+        self.last_print = 0.0
+
+    def update(self, current: int):
+        now = time.time()
+        if current == self.total or now - self.last_print >= 0.5:
+            if self.total:
+                pct = (current / self.total) * 100
+                status = f"{current:,}/{self.total:,} ({pct:5.1f}%)"
+            else:
+                status = f"{current:,}"
+            print(f"\r{self.label}: {status}", end="", flush=True)
+            self.last_print = now
+
+    def finish(self):
+        print()
+
+
+def _determine_default_base_path() -> Path | None:
+    """Return the most likely local base path for migrated objects."""
+
+    candidates: list[Path] = []
+    if config_module and getattr(config_module, "LOCAL_BASE_PATH", None):
+        candidates.append(Path(config_module.LOCAL_BASE_PATH).expanduser())
+    for name in ("CLEANUP_TEMP_ROOT", "CLEANUP_ROOT"):
+        if os.environ.get(name):
+            candidates.append(Path(os.environ[name]).expanduser())
+    candidates.extend(
+        [
+            Path("/Volumes/Extreme SSD/s3_backup"),
+            Path("/Volumes/Extreme SSD"),
+            Path.cwd(),
+        ]
+    )
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if not candidate:
+            continue
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        if candidate.exists():
+            return candidate
+    return candidates[0] if candidates else None
+
+
+def _determine_default_db_path() -> Path:
+    """Return the default SQLite DB path shared with migrate_v2."""
+
+    if config_module and getattr(config_module, "STATE_DB_PATH", None):
+        candidate = Path(config_module.STATE_DB_PATH)
+    else:
+        candidate = Path("s3_migration_state.db")
+    if not candidate.is_absolute():
+        candidate = (REPO_ROOT / candidate).resolve()
+    return candidate
+
+
+DEFAULT_BASE_PATH = _determine_default_base_path()
+DEFAULT_DB_PATH = _determine_default_db_path()
+
+
+def build_categories() -> dict[str, Category]:
+    """Return the static set of cleanup categories."""
+
+    def suffix_match(path: Path, *parts: str) -> bool:
+        return path.parts[-len(parts) :] == parts if len(path.parts) >= len(parts) else False
+
+    def in_vscode_server(path: Path) -> bool:
+        return ".vscode-server" in path.parts
+
+    categories = [
+        Category(
+            name="python-bytecode",
+            description="Python __pycache__ directories generated by the interpreter.",
+            matcher=lambda p, is_dir: is_dir and p.name == "__pycache__",
+        ),
+        Category(
+            name="python-test-cache",
+            description=".pytest_cache / .mypy_cache / .hypothesis artifacts from test runs.",
+            matcher=lambda p, is_dir: is_dir
+            and p.name in {".pytest_cache", ".mypy_cache", ".hypothesis"},
+        ),
+        Category(
+            name="python-tox-cache",
+            description="Python tooling environments such as .tox, .nox, and .ruff_cache.",
+            matcher=lambda p, is_dir: is_dir and p.name in {".tox", ".nox", ".ruff_cache"},
+        ),
+        Category(
+            name="generic-dot-cache",
+            description="Generic .cache directories (pip wheels, IDE caches, etc.).",
+            matcher=lambda p, is_dir: is_dir and p.name == ".cache",
+        ),
+        Category(
+            name="vscode-remote",
+            description="VS Code Remote server bundles (node_modules, extensions, server caches).",
+            matcher=lambda p, is_dir: is_dir
+            and in_vscode_server(p)
+            and p.name in {"node_modules", "extensions", "server"},
+        ),
+        Category(
+            name="go-module-cache",
+            description="Go module download cache under go/pkg/mod/cache.",
+            matcher=lambda p, is_dir: is_dir
+            and p.name == "cache"
+            and suffix_match(p, "go", "pkg", "mod", "cache"),
+        ),
+        Category(
+            name="maven-cache",
+            description="Maven .m2/repository/.cache directories.",
+            matcher=lambda p, is_dir: is_dir
+            and p.name.startswith(".cache")
+            and any(part == ".m2" for part in p.parts)
+            and suffix_match(p, ".m2", "repository", p.name),
+        ),
+        Category(
+            name="npm-cache",
+            description="npm/yarn cache folders such as .npm/_cacache and .yarn/cache.",
+            matcher=lambda p, is_dir: is_dir
+            and (
+                (p.name == "_cacache" and p.parent.name == ".npm")
+                or (p.name == "cache" and p.parent.name == ".yarn")
+            ),
+        ),
+    ]
+    return {c.name: c for c in categories}
+
+
+def parse_size(text: str) -> int:
+    """Parse human-readable size strings (e.g. 10G, 512M) into bytes."""
+    text = text.strip().upper()
+    multiplier = 1
+    if text.endswith("K"):
+        multiplier = 1024
+        text = text[:-1]
+    elif text.endswith("M"):
+        multiplier = 1024**2
+        text = text[:-1]
+    elif text.endswith("G"):
+        multiplier = 1024**3
+        text = text[:-1]
+    elif text.endswith("T"):
+        multiplier = 1024**4
+        text = text[:-1]
+    return int(float(text) * multiplier)
+
+
+def format_size(num_bytes: int | None) -> str:
+    if num_bytes is None:
+        return "n/a"
+    suffixes = ["B", "KB", "MB", "GB", "TB", "PB"]
+    value = float(num_bytes)
+    for suffix in suffixes:
+        if value < 1024 or suffix == suffixes[-1]:
+            return f"{value:.1f}{suffix}"
+        value /= 1024
+    return f"{value:.1f}PB"
+
+
+def measure_path_size(path: Path) -> int:
+    """Approximate disk usage by summing file sizes under the path."""
+    total = 0
+    if path.is_file():
+        return path.stat().st_size
+    stack = [path]
+    while stack:
+        current = stack.pop()
+        try:
+            with os.scandir(current) as entries:
+                for entry in entries:
+                    try:
+                        if entry.is_symlink():
+                            continue
+                        if entry.is_dir(follow_symlinks=False):
+                            stack.append(Path(entry.path))
+                        else:
+                            total += entry.stat(follow_symlinks=False).st_size
+                    except OSError as exc:
+                        logging.warning("Failed to inspect %s: %s", entry.path, exc)
+        except NotADirectoryError:
+            total += Path(current).stat().st_size
+        except OSError as exc:
+            logging.warning("Failed to inspect %s: %s", current, exc)
+    return total
+
+
+def match_category(path: Path, is_dir: bool, categories: Sequence[Category]) -> Category | None:
+    for category in categories:
+        try:
+            if category.matcher(path, is_dir):
+                return category
+        except Exception as exc:  # Defensive: matcher should not break the scan.
+            logging.warning("Matcher %s failed on %s: %s", category.name, path, exc)
+    return None
+
+
+def scan_candidates_from_db(
+    conn: sqlite3.Connection,
+    base_path: Path,
+    categories: Sequence[Category],
+    *,
+    cutoff_ts: float | None,
+    min_size_bytes: int | None,
+    measure_size: bool,
+    total_files: int,
+) -> list[Candidate]:
+    """Inspect the migration SQLite database and find directories worth pruning."""
+
+    base_path = base_path.resolve()
+    progress = ProgressTracker(total_files, "Scanning migration database")
+    candidates: list[Candidate] = []
+    seen_dirs: set[Path] = set()
+
+    if total_files == 0:
+        progress.update(0)
+
+    cursor = conn.execute("SELECT bucket, key FROM files")
+    for idx, row in enumerate(cursor, start=1):
+        progress.update(idx)
+        local_file = derive_local_path(base_path, row["bucket"], row["key"])
+        if local_file is None:
+            continue
+        for parent in iter_relevant_dirs(local_file, base_path):
+            try:
+                canonical = parent.resolve()
+            except OSError:
+                continue
+            if canonical in seen_dirs:
+                continue
+            category = match_category(parent, True, categories)
+            if not category:
+                continue
+            try:
+                stat = parent.stat()
+            except OSError as exc:
+                logging.warning("Unable to stat %s: %s", parent, exc)
+                continue
+            if cutoff_ts is not None and stat.st_mtime > cutoff_ts:
+                continue
+            size_bytes: int | None = None
+            if measure_size:
+                size_bytes = measure_path_size(parent)
+            if (
+                min_size_bytes is not None
+                and size_bytes is not None
+                and size_bytes < min_size_bytes
+            ):
+                continue
+            candidates.append(
+                Candidate(
+                    path=parent,
+                    category=category,
+                    size_bytes=size_bytes,
+                    mtime=stat.st_mtime,
+                )
+            )
+            seen_dirs.add(canonical)
+    progress.finish()
+    return candidates
+
+
+def summarise(candidates: Sequence[Candidate]) -> list[tuple[str, int, int]]:
+    """Return per-category summary of (name, count, total_size)."""
+    summary: dict[str, tuple[int, int]] = {}
+    for candidate in candidates:
+        count, total_size = summary.get(candidate.category.name, (0, 0))
+        summary[candidate.category.name] = (count + 1, total_size + (candidate.size_bytes or 0))
+    return sorted((name, cnt, size) for name, (cnt, size) in summary.items())
+
+
+def write_reports(
+    candidates: Sequence[Candidate],
+    *,
+    json_path: Path | None,
+    csv_path: Path | None,
+) -> None:
+    rows = [
+        {
+            "path": str(c.path),
+            "category": c.category.name,
+            "size_bytes": c.size_bytes,
+            "size_human": format_size(c.size_bytes),
+            "mtime": c.iso_mtime,
+        }
+        for c in candidates
+    ]
+    if json_path:
+        json_path.parent.mkdir(parents=True, exist_ok=True)
+        json_path.write_text(json.dumps(rows, indent=2))
+    if csv_path:
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        with csv_path.open("w", newline="") as handle:
+            writer = csv.DictWriter(
+                handle, fieldnames=["path", "category", "size_bytes", "size_human", "mtime"]
+            )
+            writer.writeheader()
+            writer.writerows(rows)
+
+
+def order_candidates(
+    candidates: Sequence[Candidate],
+    *,
+    order: str,
+    measure_size: bool,
+) -> list[Candidate]:
+    if order == "size" and not measure_size:
+        logging.warning(
+            "Sort order 'size' requested without --measure-size; defaulting to path order."
+        )
+        order = "path"
+    if order == "size":
+        return sorted(candidates, key=lambda c: c.size_bytes or -1, reverse=True)
+    return sorted(candidates, key=lambda c: str(c.path))
+
+
+def delete_paths(
+    candidates: Sequence[Candidate], *, root: Path
+) -> list[tuple[Candidate, Exception]]:
+    errors: list[tuple[Candidate, Exception]] = []
+    for candidate in candidates:
+        resolved = candidate.path.resolve()
+        try:
+            resolved.relative_to(root)
+        except ValueError:
+            errors.append((candidate, ValueError(f"{resolved} escapes root {root}")))
+            continue
+        try:
+            if resolved.is_dir():
+                shutil.rmtree(resolved)
+            else:
+                resolved.unlink()
+        except (OSError, shutil.Error) as exc:
+            logging.exception("Failed to delete %s: %s", resolved, exc)
+            errors.append((candidate, exc))
+        else:
+            logging.info("Deleted %s", resolved)
+    return errors
+
+
+def parse_args(argv: Sequence[str]) -> argparse.Namespace:
+    categories = build_categories()
+    parser = argparse.ArgumentParser(description=__doc__)
+    base_help = "Local base path containing migrated bucket folders."
+    if DEFAULT_BASE_PATH:
+        base_help += f" Default: {DEFAULT_BASE_PATH}."
+    parser.add_argument(
+        "--base-path",
+        default=str(DEFAULT_BASE_PATH) if DEFAULT_BASE_PATH else None,
+        help=base_help,
+    )
+    parser.add_argument(
+        "--db-path",
+        default=str(DEFAULT_DB_PATH),
+        help=f"Path to migration SQLite database (default: {DEFAULT_DB_PATH}).",
+    )
+    parser.add_argument(
+        "--categories",
+        nargs="+",
+        choices=sorted(categories),
+        default=sorted(categories),
+        help="Categories to include (default: all).",
+    )
+    parser.add_argument(
+        "--older-than", type=int, metavar="DAYS", help="Only include entries older than DAYS."
+    )
+    parser.add_argument(
+        "--min-size",
+        type=str,
+        help="Only include entries >= SIZE (e.g. 500M). Requires --measure-size.",
+    )
+    parser.add_argument(
+        "--measure-size",
+        action="store_true",
+        help="Compute disk usage for each candidate (slower).",
+    )
+    parser.add_argument(
+        "--limit",
+        type=int,
+        help="Limit the number of entries acted on (heaviest first when sorting by size).",
+    )
+    parser.add_argument(
+        "--sort",
+        choices={"path", "size"},
+        default="path",
+        help="Order used when reporting/deleting.",
+    )
+    parser.add_argument(
+        "--delete",
+        action="store_true",
+        help="Delete the matched entries. Default is dry-run/report only.",
+    )
+    parser.add_argument("--yes", action="store_true", help="Skip confirmation when using --delete.")
+    parser.add_argument(
+        "--report-json", type=Path, help="Optional path to write the full candidate list as JSON."
+    )
+    parser.add_argument("--report-csv", type=Path, help="Optional path to write the report as CSV.")
+    parser.add_argument(
+        "--list-categories", action="store_true", help="List available categories and exit."
+    )
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose logging.")
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        help="Directory for cached scan results (default: ~/.cache/cleanup_temp_artifacts).",
+    )
+    parser.add_argument(
+        "--cache-ttl",
+        type=int,
+        default=43200,
+        help="Reuse cached scans younger than TTL seconds (default: 43200). Set <=0 to disable TTL expiration.",
+    )
+    parser.add_argument(
+        "--refresh-cache",
+        action="store_true",
+        help="Force a fresh scan even if cache metadata matches the database.",
+    )
+    parser.add_argument(
+        "--no-cache",
+        action="store_true",
+        help="Disable cache reads and writes entirely.",
+    )
+    args = parser.parse_args(argv)
+    if args.list_categories:
+        for cat in categories.values():
+            print(f"{cat.name:20} {cat.description}")
+        sys.exit(0)
+    if not args.base_path:
+        parser.error("--base-path is required when no default could be determined.")
+    if args.min_size and not args.measure_size:
+        parser.error("--min-size requires --measure-size to be set.")
+    if args.limit is not None and args.limit <= 0:
+        parser.error("--limit must be positive.")
+    args.min_size_bytes = parse_size(args.min_size) if args.min_size else None
+    args.categories = [categories[name] for name in args.categories]
+    args.cache_dir = Path(args.cache_dir).expanduser() if args.cache_dir else _default_cache_dir()
+    args.cache_enabled = not args.no_cache
+    return args
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    args = parse_args(argv or sys.argv[1:])
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(levelname)s %(message)s",
+    )
+    base_path = Path(args.base_path).expanduser()
+    if not base_path.exists():
+        logging.error("Base path %s does not exist.", base_path)
+        return 1
+    base_path = base_path.resolve()
+
+    db_path = Path(args.db_path).expanduser()
+    if not db_path.is_absolute():
+        db_path = (REPO_ROOT / db_path).resolve()
+    if not db_path.exists():
+        logging.error("SQLite database %s does not exist.", db_path)
+        return 1
+    db_path = db_path.resolve()
+    db_stat = db_path.stat()
+
+    cutoff_ts: float | None = None
+    if args.older_than:
+        cutoff_ts = time.time() - (args.older_than * 86400)
+
+    if not args.delete:
+        print("Dry run: no directories will be deleted. Use --delete --yes to remove them.\n")
+
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+    except sqlite3.Error as exc:  # pragma: no cover - connection failure
+        logging.exception("Failed to open SQLite database %s: %s", db_path, exc)
+        return 1
+
+    scan_params = build_scan_params(
+        args.categories,
+        args.older_than,
+        args.min_size_bytes,
+        args.measure_size,
+    )
+    category_map = {cat.name: cat for cat in args.categories}
+    cache_path: Path | None = None
+    cache_used = False
+    candidates: list[Candidate] | None = None
+    total_files = 0
+    max_rowid = 0
+
+    try:
+        try:
+            total_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+        except sqlite3.OperationalError as exc:
+            logging.exception("Migration database missing expected 'files' table: %s", exc)
+            return 1
+        try:
+            max_rowid_row = conn.execute("SELECT MAX(rowid) FROM files").fetchone()
+            max_rowid = max_rowid_row[0] if max_rowid_row and max_rowid_row[0] is not None else 0
+        except sqlite3.OperationalError:
+            max_rowid = total_files
+
+        if args.cache_enabled:
+            cache_key = build_cache_key(base_path, db_path, scan_params)
+            cache_dir = args.cache_dir
+            cache_dir.mkdir(parents=True, exist_ok=True)
+            cache_path = cache_dir / f"{cache_key}.json"
+            if cache_path.exists() and not args.refresh_cache:
+                loaded = load_cache(cache_path, scan_params, category_map)
+                if loaded:
+                    cached_candidates, metadata = loaded
+                    if cache_is_valid(
+                        metadata,
+                        ttl_seconds=args.cache_ttl,
+                        rowcount=total_files,
+                        max_rowid=max_rowid,
+                        db_mtime_ns=db_stat.st_mtime_ns,
+                    ):
+                        candidates = cached_candidates
+                        cache_used = True
+                        generated = metadata.get("generated_at", "unknown time")
+                        print(
+                            f"Using cached results from {generated} "
+                            f"(files={total_files:,}). Use --refresh-cache to rescan.\n"
+                        )
+
+        if candidates is None:
+            candidates = scan_candidates_from_db(
+                conn,
+                base_path,
+                args.categories,
+                cutoff_ts=cutoff_ts,
+                min_size_bytes=args.min_size_bytes,
+                measure_size=args.measure_size,
+                total_files=total_files,
+            )
+    finally:
+        conn.close()
+
+    if args.cache_enabled and cache_path and candidates is not None and not cache_used:
+        try:
+            write_cache(
+                cache_path,
+                candidates,
+                scan_params=scan_params,
+                base_path=base_path,
+                db_path=db_path,
+                rowcount=total_files,
+                max_rowid=max_rowid,
+                db_mtime_ns=db_stat.st_mtime_ns,
+            )
+        except OSError as exc:
+            logging.warning("Failed to write cache %s: %s", cache_path, exc)
+    if not candidates:
+        print("No candidates found for the selected categories.")
+        return 0
+
+    ordered = order_candidates(candidates, order=args.sort, measure_size=args.measure_size)
+    acted_upon = ordered[: args.limit] if args.limit else ordered
+
+    print(
+        f"Identified {len(candidates)} candidate(s) (showing {len(acted_upon)}) under {base_path}:"
+    )
+    for candidate in acted_upon:
+        size_str = format_size(candidate.size_bytes)
+        print(
+            f"- [{candidate.category.name}] {candidate.path} (mtime {candidate.iso_mtime}, size {size_str})"
+        )
+
+    summary = summarise(candidates)
+    print("\nPer-category totals:")
+    for name, count, size in summary:
+        print(f"  {name:20} count={count:6d} size={format_size(size)}")
+
+    write_reports(ordered, json_path=args.report_json, csv_path=args.report_csv)
+
+    if args.delete:
+        if not args.yes:
+            resp = input(f"\nDelete {len(acted_upon)} entry(ies)? [y/N] ").strip().lower()
+            if resp not in {"y", "yes"}:
+                print("Aborted by user.")
+                return 0
+        errors = delete_paths(acted_upon, root=base_path.resolve())
+        if errors:
+            print(f"Completed with {len(errors)} error(s); see log for details.")
+            return 2
+        print("Deletion complete.")
+    else:
+        print("\nDry run only (use --delete --yes to remove the listed entries).")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

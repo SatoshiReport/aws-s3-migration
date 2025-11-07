@@ -22,11 +22,14 @@ def _write_sample_db(tmp_path: Path) -> Path:
         )
         """
     )
+    large = 600 * 1024 * 1024  # 0.56 GiB
     rows = [
-        ("bucket", "dirA/file1.txt", 100, "aaa", None),
-        ("bucket", "dirA/sub/file2.txt", 200, "bbb", None),
-        ("bucket", "dirB/file1.txt", 100, "aaa", None),
-        ("bucket", "dirB/sub/file2.txt", 200, "bbb", None),
+        ("bucket", "dirA/file1.txt", large, "aaa", None),
+        ("bucket", "dirA/sub/file2.txt", large, "bbb", None),
+        ("bucket", "dirA/extra/file3.bin", large, "ccc", None),
+        ("bucket", "dirB/file1.txt", large, "aaa", None),
+        ("bucket", "dirB/sub/file2.txt", large, "bbb", None),
+        ("bucket", "dirB/extra/file3.bin", large, "ccc", None),
     ]
     conn.executemany(
         "INSERT INTO files (bucket, key, size, local_checksum, etag) VALUES (?, ?, ?, ?, ?)",
@@ -40,7 +43,7 @@ def _write_sample_db(tmp_path: Path) -> Path:
 def test_build_directory_index_from_db(tmp_path):
     db_path = _write_sample_db(tmp_path)
     index, fingerprint = cli.build_directory_index_from_db(str(db_path))
-    assert fingerprint.total_files == 4
+    assert fingerprint.total_files == 6
     assert len(index.nodes) >= 2
 
 
@@ -50,13 +53,12 @@ def test_cache_round_trip(tmp_path):
     cli.store_cached_report(
         str(db_path),
         fingerprint,
-        tolerance=0.99,
         base_path="/drive",
-        report_text="cached report",
+        clusters=[],
     )
-    cached = cli.load_cached_report(str(db_path), fingerprint, 0.99, "/drive")
+    cached = cli.load_cached_report(str(db_path), fingerprint, "/drive")
     assert cached is not None
-    assert "cached report" in cached["report"]
+    assert "rows" in cached
 
 
 def test_cli_main_end_to_end(tmp_path, capsys):
@@ -75,10 +77,9 @@ def test_cli_main_end_to_end(tmp_path, capsys):
     captured = capsys.readouterr().out
     assert exit_code == 0
     assert "EXACT DUPLICATE TREES" in captured
-    assert (
-        "NEAR DUPLICATES" in captured
-        or "No near-duplicate directories within tolerance." in captured
-    )
+    assert "NEAR DUPLICATES" not in captured
+    assert "dirA/sub" not in captured
+    assert "GiB" in captured
 
     exit_code_cached = cli.main(
         [
@@ -91,3 +92,43 @@ def test_cli_main_end_to_end(tmp_path, capsys):
     cached_output = capsys.readouterr().out
     assert exit_code_cached == 0
     assert "cached duplicate analysis" in cached_output
+
+
+def test_threshold_filters_small_clusters(tmp_path, capsys):
+    db_path = tmp_path / "small.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute(
+        """
+        CREATE TABLE files (
+            bucket TEXT NOT NULL,
+            key TEXT NOT NULL,
+            size INTEGER NOT NULL,
+            local_checksum TEXT,
+            etag TEXT
+        )
+        """
+    )
+    rows = [
+        ("bucket", "tinyA/file1.txt", 10, "aaa", None),
+        ("bucket", "tinyB/file1.txt", 10, "aaa", None),
+    ]
+    conn.executemany(
+        "INSERT INTO files (bucket, key, size, local_checksum, etag) VALUES (?, ?, ?, ?, ?)",
+        rows,
+    )
+    conn.commit()
+    conn.close()
+    base_path = tmp_path / "drive_small"
+    base_path.mkdir()
+    exit_code = cli.main(
+        [
+            "--db-path",
+            str(db_path),
+            "--base-path",
+            str(base_path),
+            "--refresh-cache",
+        ]
+    )
+    captured = capsys.readouterr().out
+    assert exit_code == 0
+    assert "No exact duplicate directories found." in captured

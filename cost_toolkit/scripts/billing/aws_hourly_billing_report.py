@@ -1,0 +1,280 @@
+#!/usr/bin/env python3
+"""
+AWS Hourly Billing Report Script
+Gets detailed billing information for the current hour to identify active cost-generating services.
+"""
+
+import json
+import os
+import subprocess
+from collections import defaultdict
+from datetime import datetime, timedelta
+
+import boto3
+import botocore.exceptions
+from dotenv import load_dotenv
+
+
+def clear_screen():
+    """Clear the terminal screen without invoking a shell."""
+    try:
+        if os.name == "nt":
+            subprocess.run(["cmd", "/c", "cls"], check=False)
+        else:
+            subprocess.run(["clear"], check=False)
+    except FileNotFoundError:
+        print("\033c", end="")
+
+
+def setup_aws_credentials():
+    """Load AWS credentials from .env file"""
+    # Load environment variables from .env file
+    load_dotenv(os.path.expanduser("~/.env"))
+
+    # Check if credentials are loaded
+    if not os.environ.get("AWS_ACCESS_KEY_ID"):
+        print("⚠️  AWS credentials not found in ~/.env file.")
+        print("Please ensure ~/.env contains:")
+        print("  AWS_ACCESS_KEY_ID=your-access-key")
+        print("  AWS_SECRET_ACCESS_KEY=your-secret-key")
+        print("  AWS_DEFAULT_REGION=us-east-1")
+        return False
+
+    return True
+
+
+def get_hourly_date_range():
+    """Get the date range for the current hour"""
+    now = datetime.now()
+    # Start of current hour
+    start_time = now.replace(minute=0, second=0, microsecond=0)
+    # Current time (end of range)
+    end_time = now
+
+    return start_time.strftime("%Y-%m-%dT%H:%M:%S"), end_time.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def get_today_date_range():
+    """Get the date range for today (for comparison)"""
+    now = datetime.now()
+    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    # AWS Cost Explorer requires dates in YYYY-MM-DD format, not datetime
+    end_of_day = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    return start_of_day.strftime("%Y-%m-%d"), end_of_day.strftime("%Y-%m-%d")
+
+
+def get_hourly_billing_data():
+    """Retrieve hourly cost and usage data from AWS Cost Explorer"""
+    setup_aws_credentials()
+
+    # Create Cost Explorer client
+    ce_client = boto3.client("ce", region_name="us-east-1")
+
+    start_date, end_date = get_today_date_range()
+
+    print(f"Retrieving hourly billing data for today: {start_date}")
+    print("=" * 80)
+
+    try:
+        # Get cost and usage data grouped by service with hourly granularity
+        hourly_response = ce_client.get_cost_and_usage(
+            TimePeriod={"Start": start_date, "End": end_date},
+            Granularity="HOURLY",
+            Metrics=["BlendedCost", "UsageQuantity"],
+            GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
+        )
+
+        # Get daily summary for comparison
+        daily_response = ce_client.get_cost_and_usage(
+            TimePeriod={"Start": start_date, "End": end_date},
+            Granularity="DAILY",
+            Metrics=["BlendedCost", "UsageQuantity"],
+            GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
+        )
+
+        return hourly_response, daily_response
+
+    except Exception as e:
+        print(f"Error retrieving billing data: {str(e)}")
+        return None, None
+
+
+def format_hourly_billing_report(hourly_data, daily_data):
+    """Format and display the hourly billing report"""
+    if not hourly_data or "ResultsByTime" not in hourly_data:
+        print("No hourly billing data available")
+        return
+
+    # Process daily data for comparison
+    daily_service_costs = defaultdict(float)
+    if daily_data and "ResultsByTime" in daily_data:
+        for result in daily_data["ResultsByTime"]:
+            for group in result["Groups"]:
+                service = group["Keys"][0] if group["Keys"] else "Unknown Service"
+                cost_amount = float(group["Metrics"]["BlendedCost"]["Amount"])
+                daily_service_costs[service] += cost_amount
+
+    # Process hourly data
+    hourly_service_costs = defaultdict(list)
+    current_hour_costs = defaultdict(float)
+
+    now = datetime.now()
+    current_hour = now.replace(minute=0, second=0, microsecond=0)
+
+    for result in hourly_data["ResultsByTime"]:
+        period_start = result["TimePeriod"]["Start"]
+        period_end = result["TimePeriod"]["End"]
+
+        # Parse the hour from the period
+        hour_start = datetime.fromisoformat(period_start.replace("Z", "+00:00"))
+
+        for group in result["Groups"]:
+            service = group["Keys"][0] if group["Keys"] else "Unknown Service"
+            cost_amount = float(group["Metrics"]["BlendedCost"]["Amount"])
+
+            if cost_amount > 0:
+                hourly_service_costs[service].append(
+                    {
+                        "hour": hour_start,
+                        "cost": cost_amount,
+                        "period_start": period_start,
+                        "period_end": period_end,
+                    }
+                )
+
+                # Track current hour costs
+                if hour_start.hour == current_hour.hour:
+                    current_hour_costs[service] += cost_amount
+
+    # Display report
+    print(f"\nHOURLY AWS BILLING REPORT - {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 120)
+
+    # Current hour active services
+    if current_hour_costs:
+        print(
+            f"\n🔥 ACTIVE SERVICES IN CURRENT HOUR ({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})"
+        )
+        print("-" * 80)
+
+        current_hour_total = 0
+        sorted_current = sorted(current_hour_costs.items(), key=lambda x: x[1], reverse=True)
+
+        for service, cost in sorted_current:
+            current_hour_total += cost
+            daily_cost = daily_service_costs.get(service, 0)
+
+            # Calculate hourly rate if we have daily data
+            hourly_rate = ""
+            if daily_cost > 0:
+                hours_elapsed = now.hour + (now.minute / 60.0)
+                if hours_elapsed > 0:
+                    estimated_daily = (daily_cost / hours_elapsed) * 24
+                    hourly_rate = f" (Est. ${estimated_daily:.4f}/day)"
+
+            print(f"   💰 {service:<50} ${cost:.6f}{hourly_rate}")
+
+        print(f"\n   📊 Current Hour Total: ${current_hour_total:.6f}")
+    else:
+        print(
+            f"\n✅ NO ACTIVE SERVICES IN CURRENT HOUR ({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})"
+        )
+
+    # Today's summary by service
+    if daily_service_costs:
+        print(f"\n📈 TODAY'S COST SUMMARY BY SERVICE")
+        print("-" * 80)
+
+        daily_total = 0
+        sorted_daily = sorted(daily_service_costs.items(), key=lambda x: x[1], reverse=True)
+
+        for service, cost in sorted_daily:
+            daily_total += cost
+
+            # Show hourly breakdown if available
+            hourly_breakdown = ""
+            if service in hourly_service_costs:
+                hours_with_cost = len([h for h in hourly_service_costs[service] if h["cost"] > 0])
+                if hours_with_cost > 0:
+                    avg_hourly = cost / hours_with_cost
+                    hourly_breakdown = f" ({hours_with_cost}h active, avg ${avg_hourly:.6f}/h)"
+
+            print(f"   📊 {service:<50} ${cost:.6f}{hourly_breakdown}")
+
+        print(f"\n   💰 Today's Total: ${daily_total:.6f}")
+
+    # Hourly trend analysis
+    if hourly_service_costs:
+        print(f"\n⏰ HOURLY COST TRENDS (Top Services)")
+        print("-" * 80)
+
+        # Get top 5 services by daily cost
+        top_services = sorted(daily_service_costs.items(), key=lambda x: x[1], reverse=True)[:5]
+
+        for service, daily_cost in top_services:
+            if service in hourly_service_costs:
+                print(f"\n🔍 {service} (${daily_cost:.6f} today)")
+
+                # Show hourly breakdown
+                hourly_costs = hourly_service_costs[service]
+                hourly_costs.sort(key=lambda x: x["hour"])
+
+                for hour_data in hourly_costs[-12:]:  # Show last 12 hours
+                    hour_str = hour_data["hour"].strftime("%H:00")
+                    cost = hour_data["cost"]
+                    if cost > 0:
+                        bar_length = min(int(cost * 1000000), 50)  # Scale for visualization
+                        bar = "█" * bar_length
+                        print(f"   {hour_str}: ${cost:.6f} {bar}")
+
+    # Cost optimization recommendations
+    print(f"\n💡 COST OPTIMIZATION INSIGHTS")
+    print("-" * 80)
+
+    if current_hour_costs:
+        print("⚠️  Services currently generating costs:")
+        for service, cost in sorted(current_hour_costs.items(), key=lambda x: x[1], reverse=True):
+            print(f"   • {service}: ${cost:.6f} this hour")
+        print("\n🎯 Focus cleanup efforts on these active services")
+    else:
+        print("✅ No services generating costs in the current hour")
+        print("🎉 Your cleanup efforts are working!")
+
+    # Show services that were active earlier today but not now
+    earlier_services = set(daily_service_costs.keys()) - set(current_hour_costs.keys())
+    if earlier_services:
+        print(f"\n📝 Services active earlier today but not in current hour:")
+        for service in sorted(earlier_services):
+            daily_cost = daily_service_costs[service]
+            print(f"   • {service}: ${daily_cost:.6f} (may be already cleaned up)")
+
+
+def main():
+    """Main execution function"""
+    clear_screen()
+
+    print("AWS HOURLY BILLING REPORT")
+    print("=" * 50)
+    print("Real-time cost analysis to identify active services")
+    print()
+
+    if not setup_aws_credentials():
+        return
+
+    # Get billing data
+    hourly_data, daily_data = get_hourly_billing_data()
+
+    if hourly_data and daily_data:
+        format_hourly_billing_report(hourly_data, daily_data)
+    else:
+        print("Failed to retrieve billing data")
+
+    print("\n" + "=" * 120)
+    print("💡 Use this report to identify services still generating costs")
+    print("🎯 Focus cleanup efforts on services active in the current hour")
+    print("📊 Compare with monthly report to track cleanup progress")
+
+
+if __name__ == "__main__":
+    main()

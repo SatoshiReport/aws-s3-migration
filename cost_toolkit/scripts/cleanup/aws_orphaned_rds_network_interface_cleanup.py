@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""
+AWS Orphaned RDS Network Interface Cleanup Script
+Deletes RDS network interfaces that are no longer attached to any RDS instances.
+"""
+
+import os
+from datetime import datetime
+
+import boto3
+from dotenv import load_dotenv
+
+
+def load_aws_credentials():
+    """Load AWS credentials from environment file"""
+    load_dotenv(os.path.expanduser("~/.env"))
+
+    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+
+    if not aws_access_key_id or not aws_secret_access_key:
+        raise ValueError("AWS credentials not found in ~/.env file")
+
+    print("✅ AWS credentials loaded from ~/.env")
+    return aws_access_key_id, aws_secret_access_key
+
+
+def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_key):
+    """Delete orphaned RDS network interfaces"""
+
+    # Target orphaned RDS network interfaces identified in audit
+    orphaned_interfaces = [
+        {
+            "region": "us-east-1",
+            "interface_id": "eni-0a369310199dd8b96",
+            "description": "RDSNetworkInterface",
+            "public_ip": "18.213.133.185",
+        },
+        {
+            "region": "us-east-1",
+            "interface_id": "eni-01c2a771086939fe3",
+            "description": "RDSNetworkInterface",
+            "public_ip": "34.195.43.187",
+        },
+    ]
+
+    print(f"🎯 Target: {len(orphaned_interfaces)} orphaned RDS network interfaces")
+    print()
+
+    deleted_interfaces = []
+    failed_deletions = []
+
+    for interface in orphaned_interfaces:
+        region = interface["region"]
+        interface_id = interface["interface_id"]
+
+        try:
+            ec2 = boto3.client(
+                "ec2",
+                region_name=region,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+            )
+
+            print(f"🗑️  Deleting orphaned RDS interface: {interface_id} ({region})")
+            print(f"   Public IP: {interface['public_ip']}")
+            print(f"   Description: {interface['description']}")
+
+            # Verify it's still orphaned before deletion
+            response = ec2.describe_network_interfaces(NetworkInterfaceIds=[interface_id])
+            eni = response["NetworkInterfaces"][0]
+
+            # Check if it has any attachments
+            attachment = eni.get("Attachment", {})
+            if attachment and attachment.get("InstanceId"):
+                print(f"   ⚠️  Interface is now attached to {attachment['InstanceId']} - skipping")
+                continue
+
+            # Delete the network interface
+            ec2.delete_network_interface(NetworkInterfaceId=interface_id)
+
+            print(f"   ✅ Successfully deleted {interface_id}")
+            deleted_interfaces.append(interface)
+
+        except ec2.exceptions.ClientError as e:
+            error_code = e.response["Error"]["Code"]
+            error_message = e.response["Error"]["Message"]
+
+            if error_code == "InvalidNetworkInterfaceID.NotFound":
+                print(f"   ℹ️  Interface {interface_id} already deleted")
+                deleted_interfaces.append(interface)
+            elif error_code == "InvalidNetworkInterface.InUse":
+                print(f"   ⚠️  Interface {interface_id} is in use - cannot delete")
+                failed_deletions.append({"interface": interface, "reason": "In use"})
+            else:
+                print(f"   ❌ Failed to delete {interface_id}: {error_message}")
+                failed_deletions.append({"interface": interface, "reason": error_message})
+
+        except Exception as e:
+            print(f"   ❌ Unexpected error deleting {interface_id}: {str(e)}")
+            failed_deletions.append({"interface": interface, "reason": str(e)})
+
+        print()
+
+    return deleted_interfaces, failed_deletions
+
+
+def main():
+    """Main execution function"""
+    print("AWS Orphaned RDS Network Interface Cleanup")
+    print("=" * 60)
+    print("Cleaning up RDS network interfaces from deleted RDS instances...")
+    print()
+
+    try:
+        # Load credentials
+        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+
+        print("⚠️  IMPORTANT: This will delete orphaned RDS network interfaces")
+        print("   • These interfaces are from deleted RDS instances")
+        print("   • No active RDS instances/clusters found in audit")
+        print("   • This will free up public IP addresses")
+        print("   • No cost savings but improves account hygiene")
+        print()
+
+        confirmation = input("Type 'DELETE ORPHANED RDS INTERFACES' to proceed: ")
+
+        if confirmation != "DELETE ORPHANED RDS INTERFACES":
+            print("❌ Operation cancelled - confirmation text did not match")
+            return
+
+        print("\n🚨 Proceeding with orphaned RDS network interface cleanup...")
+        print("=" * 60)
+
+        # Delete orphaned interfaces
+        deleted_interfaces, failed_deletions = delete_orphaned_rds_network_interfaces(
+            aws_access_key_id, aws_secret_access_key
+        )
+
+        # Summary
+        print("=" * 60)
+        print("🎯 ORPHANED RDS NETWORK INTERFACE CLEANUP SUMMARY")
+        print("=" * 60)
+        print(f"✅ Successfully deleted: {len(deleted_interfaces)} interfaces")
+        print(f"❌ Failed deletions: {len(failed_deletions)} interfaces")
+        print()
+
+        if deleted_interfaces:
+            print("✅ Successfully deleted interfaces:")
+            for interface in deleted_interfaces:
+                print(
+                    f"   🗑️  {interface['interface_id']} ({interface['region']}) - {interface['public_ip']}"
+                )
+
+        if failed_deletions:
+            print("\n❌ Failed deletions:")
+            for failure in failed_deletions:
+                interface = failure["interface"]
+                reason = failure["reason"]
+                print(f"   ❌ {interface['interface_id']} ({interface['region']}) - {reason}")
+
+        if len(deleted_interfaces) == 2:
+            print("\n🎉 Orphaned RDS network interface cleanup completed!")
+            print("   • Freed up 2 public IP addresses")
+            print("   • Improved account security hygiene")
+            print("   • Cleaned up remnants from deleted RDS instances")
+
+    except Exception as e:
+        print(f"❌ Critical error during cleanup: {str(e)}")
+        raise
+
+
+if __name__ == "__main__":
+    main()

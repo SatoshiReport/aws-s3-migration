@@ -3,9 +3,8 @@
 import time
 from unittest import mock
 
-from migration_sync_test_helpers import create_mock_process
-
 from migration_sync import BucketSyncer
+from migration_sync_test_helpers import create_mock_process
 
 
 class TestEdgeCases:
