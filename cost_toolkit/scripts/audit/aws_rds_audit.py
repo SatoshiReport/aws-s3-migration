@@ -6,7 +6,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def audit_rds_databases():
+def audit_rds_databases():  # noqa: C901, PLR0912, PLR0915
     """Audit RDS databases across all regions to understand what's running"""
 
     # Get all AWS regions

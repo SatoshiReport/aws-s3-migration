@@ -61,7 +61,7 @@ class TestMonitorSyncProgressNonCompletedLines:
         mock_process.poll = lambda: next(poll_iter, 0)
 
         start_time = time.time()
-        files_done, bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
+        files_done, _bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
 
         # Non-completed lines are not counted
         assert files_done == 0
@@ -136,7 +136,7 @@ class TestMonitorSyncProgressEdgeCases:
         mock_process.poll = lambda: next(poll_iter, 0)
 
         start_time = time.time()
-        files_done, bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
+        files_done, _bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
 
         # All lines contain "Completed" but parse_aws_size returns None
         assert files_done == 0
@@ -187,7 +187,7 @@ class TestSyncBucketBasics:
 
             syncer.sync_bucket(bucket_name)
 
-        args, kwargs = mock_popen.call_args
+        args, _kwargs = mock_popen.call_args
         cmd = args[0]
         assert cmd[0] == "aws"
         assert cmd[1] == "s3"
@@ -221,7 +221,7 @@ class TestSyncBucketProcessConfig:
 
             syncer.sync_bucket("bucket")
 
-        args, kwargs = mock_popen.call_args
+        _args, kwargs = mock_popen.call_args
         assert kwargs["text"] is True
         assert kwargs["universal_newlines"] is True
         assert kwargs["bufsize"] == 1
@@ -235,7 +235,7 @@ class TestSyncBucketProcessConfig:
 
             syncer.sync_bucket("bucket")
 
-        args, kwargs = mock_popen.call_args
+        _args, kwargs = mock_popen.call_args
         assert kwargs["stdout"] == subprocess.PIPE
         assert kwargs["stderr"] == subprocess.PIPE
 
@@ -280,7 +280,7 @@ class TestMonitorSyncProgressInterruptHandling:
         mock_process.stdout.readline.return_value = ""
 
         start_time = time.time()
-        files_done, bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
+        _files_done, _bytes_done = syncer._monitor_sync_progress(mock_process, start_time)
 
         mock_process.terminate.assert_called_once()
 

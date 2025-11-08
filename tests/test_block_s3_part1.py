@@ -6,12 +6,10 @@ Tests cover:
 - main() with --all flag
 """
 
-import os
 from unittest import mock
 
-import pytest
-
 import block_s3
+from tests.assertions import assert_equal
 
 
 class TestMainWithSingleBucket:
@@ -50,7 +48,7 @@ class TestMainWithSingleBucket:
 
                         # Verify save was called with correct parameters
                         mock_save.assert_called_once()
-                        args, kwargs = mock_save.call_args
+                        args, _kwargs = mock_save.call_args
                         assert args[0] == mock_policy
                         assert "test-bucket_policy.json" in args[1]
 
@@ -87,7 +85,7 @@ class TestMainWithMultipleBuckets:
                         block_s3.main()
 
                         # Verify save was called twice (once for each bucket)
-                        assert mock_save.call_count == 2
+                        assert_equal(mock_save.call_count, 2)
 
                         # Verify output mentions both buckets
                         captured = capsys.readouterr()
@@ -209,7 +207,7 @@ class TestMainWithAllFlagProcessing:
                             block_s3.main()
 
                             # Verify save was called for each bucket
-                            assert mock_save.call_count == 3
+                            assert_equal(mock_save.call_count, 3)
 
                             # Verify output message
                             captured = capsys.readouterr()

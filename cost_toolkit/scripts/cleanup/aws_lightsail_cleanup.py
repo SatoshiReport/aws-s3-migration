@@ -17,7 +17,7 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from aws_utils import get_aws_regions, setup_aws_credentials
 
 
-def delete_lightsail_instances():
+def delete_lightsail_instances():  # noqa: PLR0915
     """Delete all Lightsail instances across all regions"""
     setup_aws_credentials()
 

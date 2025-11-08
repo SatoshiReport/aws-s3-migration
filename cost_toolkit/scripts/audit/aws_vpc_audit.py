@@ -85,14 +85,15 @@ def audit_elastic_ips_in_region(region_name):
         print(f"  Total Elastic IPs: {len(addresses)}")
         print(f"  Estimated monthly cost: ${total_cost_estimate:.2f}")
 
-        return region_summary
-
     except ClientError as e:
         if e.response["Error"]["Code"] == "UnauthorizedOperation":
             print(f"❌ No permission to access {region_name}")
         else:
             print(f"❌ Error auditing {region_name}: {e}")
         return []
+
+    else:
+        return region_summary
 
 
 def audit_nat_gateways_in_region(region_name):
@@ -143,11 +144,12 @@ def audit_nat_gateways_in_region(region_name):
             print()
             region_summary.append(nat_info)
 
-        return region_summary
-
     except ClientError as e:
         print(f"❌ Error auditing NAT Gateways in {region_name}: {e}")
         return []
+
+    else:
+        return region_summary
 
 
 def main():

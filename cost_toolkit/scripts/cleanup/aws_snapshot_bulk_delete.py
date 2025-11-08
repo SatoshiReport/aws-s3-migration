@@ -110,15 +110,16 @@ def delete_snapshot_safely(snapshot_id, region):
         print(f"   💰 Monthly savings: ${monthly_savings:.2f}")
         print()
 
-        return True
-
     except Exception as e:
         print(f"   ❌ Error deleting snapshot {snapshot_id}: {str(e)}")
         print()
         return False
 
+    else:
+        return True
 
-def main():
+
+def main():  # noqa: PLR0915
     """Main function to delete specified snapshots."""
     setup_aws_credentials()
 

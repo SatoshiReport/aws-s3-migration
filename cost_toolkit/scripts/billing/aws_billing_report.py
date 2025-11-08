@@ -80,7 +80,7 @@ def check_global_accelerator_status():
         return None, f"⚠️ ERROR - {str(e)}"
 
 
-def check_lightsail_status():
+def check_lightsail_status():  # noqa: C901, PLR0912
     """Check if Lightsail instances and databases are stopped"""
     try:
         # Check all regions where we had Lightsail resources
@@ -136,7 +136,7 @@ def check_lightsail_status():
         return None, f"⚠️ ERROR - {str(e)}"
 
 
-def check_cloudwatch_status():
+def check_cloudwatch_status():  # noqa: C901, PLR0912
     """Check if CloudWatch canaries are stopped and alarms disabled"""
     try:
         regions = ["us-east-1", "us-east-2", "us-west-2"]
@@ -174,8 +174,8 @@ def check_cloudwatch_status():
             except botocore.exceptions.ClientError:
                 continue
 
-        canaries_resolved = total_canaries == 0 or stopped_canaries == total_canaries
-        alarms_resolved = total_alarms == 0 or disabled_alarms == total_alarms
+        canaries_resolved = total_canaries in (0, stopped_canaries)
+        alarms_resolved = total_alarms in (0, disabled_alarms)
 
         if canaries_resolved and alarms_resolved:
             status_parts = []
@@ -461,14 +461,15 @@ def get_combined_billing_data():
             ],
         )
 
-        return cost_response, usage_response
-
     except Exception as e:
         print(f"Error retrieving billing data: {str(e)}")
         return None, None
 
+    else:
+        return cost_response, usage_response
 
-def format_combined_billing_report(cost_data, usage_data):
+
+def format_combined_billing_report(cost_data, usage_data):  # noqa: C901, PLR0912, PLR0915
     """Format and display the combined billing report with costs and usage details"""
     if not cost_data or "ResultsByTime" not in cost_data:
         print("No billing data available")

@@ -10,6 +10,9 @@ from datetime import datetime
 import boto3
 from dotenv import load_dotenv
 
+# Constants
+EXPECTED_ORPHANED_INTERFACES_COUNT = 2
+
 
 def load_aws_credentials():
     """Load AWS credentials from environment file"""
@@ -19,7 +22,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -159,9 +162,9 @@ def main():
                 reason = failure["reason"]
                 print(f"   ❌ {interface['interface_id']} ({interface['region']}) - {reason}")
 
-        if len(deleted_interfaces) == 2:
+        if len(deleted_interfaces) == EXPECTED_ORPHANED_INTERFACES_COUNT:
             print("\n🎉 Orphaned RDS network interface cleanup completed!")
-            print("   • Freed up 2 public IP addresses")
+            print(f"   • Freed up {EXPECTED_ORPHANED_INTERFACES_COUNT} public IP addresses")
             print("   • Improved account security hygiene")
             print("   • Cleaned up remnants from deleted RDS instances")
 

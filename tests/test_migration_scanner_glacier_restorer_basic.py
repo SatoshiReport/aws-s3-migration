@@ -3,10 +3,10 @@
 from unittest import mock
 
 import pytest
-from botocore.exceptions import ClientError
 
 from migration_scanner import GlacierRestorer
 from migration_state_v2 import MigrationStateV2, Phase
+from tests.assertions import assert_equal
 
 
 class TestGlacierRestorerInitialization:
@@ -118,8 +118,8 @@ class TestGlacierRestorerMultipleFiles:
 
         restorer.request_all_restores()
 
-        assert mock_s3.restore_object.call_count == 3
-        assert mock_state.mark_glacier_restore_requested.call_count == 3
+        assert_equal(mock_s3.restore_object.call_count, 3)
+        assert_equal(mock_state.mark_glacier_restore_requested.call_count, 3)
 
 
 class TestGlacierRestorerInterruption:

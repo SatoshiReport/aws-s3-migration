@@ -6,7 +6,9 @@ import time
 
 import boto3
 
+# Constants
 MAX_SSM_MONITOR_SECONDS = 7200
+OUTPUT_TRUNCATE_CHARS = 2000
 
 
 def setup_aws_credentials():
@@ -16,7 +18,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def start_instance_and_migrate():
+def start_instance_and_migrate():  # noqa: PLR0912, PLR0915
     """Start EC2 instance and run migration via SSM"""
     setup_aws_credentials()
 
@@ -269,10 +271,10 @@ echo "3. Potential monthly savings: ~$25.54"
 
                     if "StandardOutputContent" in command_status:
                         output = command_status["StandardOutputContent"]
-                        # Show last 2000 characters to avoid overwhelming output
-                        if len(output) > 2000:
+                        # Show last characters to avoid overwhelming output
+                        if len(output) > OUTPUT_TRUNCATE_CHARS:
                             print("... (output truncated) ...")
-                            print(output[-2000:])
+                            print(output[-OUTPUT_TRUNCATE_CHARS:])
                         else:
                             print(output)
 

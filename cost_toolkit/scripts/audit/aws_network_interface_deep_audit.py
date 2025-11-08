@@ -19,13 +19,13 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
 
 
-def investigate_network_interface(
+def investigate_network_interface(  # noqa: PLR0911, PLR0912, PLR0915
     region_name, interface_id, aws_access_key_id, aws_secret_access_key
 ):
     """Deep investigation of a specific network interface"""

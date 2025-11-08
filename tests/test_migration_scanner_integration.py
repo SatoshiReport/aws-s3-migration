@@ -3,7 +3,6 @@
 Tests phase transitions, interruption handling, error handling, and edge cases.
 """
 
-from datetime import datetime
 from unittest import mock
 
 import pytest

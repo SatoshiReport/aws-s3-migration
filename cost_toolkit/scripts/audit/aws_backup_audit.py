@@ -14,6 +14,9 @@ import boto3
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from aws_utils import setup_aws_credentials
 
+# Constants
+SNAPSHOT_ANALYSIS_DAYS = 30
+
 
 def get_all_aws_regions():
     """Get all available AWS regions."""
@@ -22,7 +25,7 @@ def get_all_aws_regions():
     return [region["RegionName"] for region in response["Regions"]]
 
 
-def check_aws_backup_plans(region):
+def check_aws_backup_plans(region):  # noqa: C901
     """Check for AWS Backup plans in a specific region."""
     try:
         backup_client = boto3.client("backup", region_name=region)
@@ -190,7 +193,7 @@ def check_scheduled_events(region):
         print(f"  Error checking EventBridge in {region}: {e}")
 
 
-def analyze_recent_snapshots(region):
+def analyze_recent_snapshots(region):  # noqa: C901, PLR0912
     """Analyze recent snapshots to identify automated creation patterns."""
     try:
         ec2_client = boto3.client("ec2", region_name=region)
@@ -206,11 +209,11 @@ def analyze_recent_snapshots(region):
         for snapshot in snapshots:
             start_time = snapshot["StartTime"]
             age_days = (now - start_time).days
-            if age_days <= 30:
+            if age_days <= SNAPSHOT_ANALYSIS_DAYS:
                 recent_snapshots.append(snapshot)
 
         if recent_snapshots:
-            print(f"📸 Recent Snapshots Analysis in {region} (Last 30 days):")
+            print(f"📸 Recent Snapshots Analysis in {region} (Last {SNAPSHOT_ANALYSIS_DAYS} days):")
 
             # Group by creation pattern
             automated_patterns = {}

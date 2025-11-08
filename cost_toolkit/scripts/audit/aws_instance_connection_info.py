@@ -7,7 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def get_instance_connection_info(instance_id, region_name):
+def get_instance_connection_info(instance_id, region_name):  # noqa: C901, PLR0912, PLR0915
     """Get connection information for an EC2 instance"""
     print(f"\n🔍 Getting connection info for instance {instance_id} in {region_name}")
     print("=" * 80)

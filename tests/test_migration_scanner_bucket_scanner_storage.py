@@ -7,6 +7,7 @@ import pytest
 
 from migration_scanner import BucketScanner
 from migration_state_v2 import MigrationStateV2
+from tests.assertions import assert_equal
 
 
 class TestBucketScannerInterruption:
@@ -182,4 +183,4 @@ class TestBucketScannerSizeAccumulation:
 
         # Total size should be 3000
         call_args = mock_state.save_bucket_status.call_args
-        assert call_args[0][2] == 3000
+        assert_equal(call_args[0][2], 3000)

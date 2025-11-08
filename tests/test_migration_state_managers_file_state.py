@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import pytest
 
 from migration_state_managers import FileStateManager
+from tests.assertions import assert_equal
 
 
 class TestFileStateManagerFixtures:
@@ -39,7 +40,7 @@ class TestFileAddition(TestFileStateManagerFixtures):
         assert row is not None
         assert row["bucket"] == "test-bucket"
         assert row["key"] == "path/to/file.txt"
-        assert row["size"] == 1024
+        assert_equal(row["size"], 1024)
         assert row["etag"] == "abc123"
         assert row["storage_class"] == "STANDARD"
         assert row["state"] == "discovered"
@@ -74,7 +75,7 @@ class TestFileIdempotency(TestFileStateManagerFixtures):
                 ("test-bucket", "path/to/file.txt"),
             ).fetchone()
 
-        assert count["cnt"] == 1
+        assert_equal(count["cnt"], 1)
 
 
 class TestFileTimestamps(TestFileStateManagerFixtures):
@@ -204,7 +205,7 @@ class TestGlacierFilesNeedingRestore(TestFileStateManagerFixtures):
         assert "archive1.txt" in keys
         assert "glacier2.txt" not in keys
         assert "standard.txt" not in keys
-        assert len(files) == 2
+        assert_equal(len(files), 2)
 
 
 class TestFilesRestoring(TestFileStateManagerFixtures):
@@ -258,7 +259,7 @@ class TestFilesRestoring(TestFileStateManagerFixtures):
         assert "glacier3.txt" not in keys
         assert "glacier1.txt" not in keys
         assert "standard.txt" not in keys
-        assert len(files) == 1
+        assert_equal(len(files), 1)
 
 
 class TestMultiBucketTracking(TestFileStateManagerFixtures):
@@ -294,5 +295,5 @@ class TestMultiBucketTracking(TestFileStateManagerFixtures):
                 ("bucket-b", "file.txt"),
             ).fetchone()
 
-        assert row_a["size"] == 100
-        assert row_b["size"] == 200
+        assert_equal(row_a["size"], 100)
+        assert_equal(row_b["size"], 200)

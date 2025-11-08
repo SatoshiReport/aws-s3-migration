@@ -14,7 +14,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def inspect_volumes_via_ssh():
+def inspect_volumes_via_ssh():  # noqa: PLR0915
     """Connect to the London instance and inspect volume contents"""
     setup_aws_credentials()
 

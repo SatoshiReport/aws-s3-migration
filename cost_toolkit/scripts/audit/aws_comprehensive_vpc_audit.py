@@ -15,6 +15,7 @@ Identifies orphaned resources that may be left over from terminated instances.
 """
 
 import os
+import sys
 from datetime import datetime
 
 import boto3
@@ -29,7 +30,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -45,7 +46,9 @@ def get_resource_name(tags):
     return "Unnamed"
 
 
-def audit_vpc_resources_in_region(region, aws_access_key_id, aws_secret_access_key):
+def audit_vpc_resources_in_region(  # noqa: C901, PLR0912
+    region, aws_access_key_id, aws_secret_access_key
+):  # noqa: C901, PLR0912
     """Audit VPC resources in a specific region"""
     try:
         ec2_client = boto3.client(
@@ -238,14 +241,15 @@ def audit_vpc_resources_in_region(region, aws_access_key_id, aws_secret_access_k
                 }
             )
 
-        return region_data
-
     except Exception as e:
         print(f"   ❌ Error auditing region {region}: {e}")
         return None
 
+    else:
+        return region_data
 
-def audit_comprehensive_vpc():
+
+def audit_comprehensive_vpc():  # noqa: C901, PLR0912, PLR0915
     """Audit VPC resources across key AWS regions"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -366,4 +370,4 @@ if __name__ == "__main__":
         audit_comprehensive_vpc()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

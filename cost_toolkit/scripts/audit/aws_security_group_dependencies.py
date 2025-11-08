@@ -11,6 +11,7 @@ This helps understand what's preventing cleanup and provides targeted solutions.
 """
 
 import os
+import sys
 
 import boto3
 from dotenv import load_dotenv
@@ -24,13 +25,13 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
 
 
-def check_security_group_dependencies(ec2_client, group_id, region):
+def check_security_group_dependencies(ec2_client, group_id, region):  # noqa: C901, PLR0912
     """Check what's preventing a security group from being deleted"""
     dependencies = {
         "network_interfaces": [],
@@ -141,14 +142,15 @@ def check_security_group_dependencies(ec2_client, group_id, region):
         except Exception as e:
             print(f"   ⚠️  Could not check RDS dependencies: {e}")
 
-        return dependencies
-
     except Exception as e:
         print(f"   ❌ Error checking dependencies for {group_id}: {e}")
         return dependencies
 
+    else:
+        return dependencies
 
-def audit_security_group_dependencies():
+
+def audit_security_group_dependencies():  # noqa: C901, PLR0912
     """Audit dependencies for security groups that couldn't be deleted"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -272,4 +274,4 @@ if __name__ == "__main__":
         audit_security_group_dependencies()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

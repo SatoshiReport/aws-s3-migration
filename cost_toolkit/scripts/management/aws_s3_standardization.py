@@ -34,13 +34,15 @@ def get_bucket_region(bucket_name):
         response = s3_client.get_bucket_location(Bucket=bucket_name)
         region = response.get("LocationConstraint")
         # us-east-1 returns None for LocationConstraint
-        return region if region else "us-east-1"
     except Exception as e:
         print(f"Error getting region for bucket {bucket_name}: {e}")
         return "us-east-1"
 
+    else:
+        return region if region else "us-east-1"
 
-def delete_bucket_completely(bucket_name):
+
+def delete_bucket_completely(bucket_name):  # noqa: C901, PLR0912
     """Delete a bucket and all its contents"""
     try:
         region = get_bucket_region(bucket_name)
@@ -91,7 +93,6 @@ def delete_bucket_completely(bucket_name):
         print(f"  Deleting bucket {bucket_name}...")
         s3_client.delete_bucket(Bucket=bucket_name)
         print(f"✅ Successfully deleted bucket: {bucket_name}")
-        return True
 
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
@@ -107,6 +108,9 @@ def delete_bucket_completely(bucket_name):
     except Exception as e:
         print(f"❌ Unexpected error deleting bucket {bucket_name}: {e}")
         return False
+
+    else:
+        return True
 
 
 def ensure_bucket_private(bucket_name, region):
@@ -137,7 +141,6 @@ def ensure_bucket_private(bucket_name, region):
                 print(f"  Warning: Could not remove bucket policy from {bucket_name}: {e}")
 
         print(f"✅ Secured bucket: {bucket_name}")
-        return True
 
     except ClientError as e:
         print(f"❌ Error securing bucket {bucket_name}: {e}")
@@ -145,6 +148,8 @@ def ensure_bucket_private(bucket_name, region):
     except Exception as e:
         print(f"❌ Unexpected error securing bucket {bucket_name}: {e}")
         return False
+
+    return True
 
 
 def remove_lifecycle_policy(bucket_name, region):
@@ -160,7 +165,7 @@ def remove_lifecycle_policy(bucket_name, region):
             # If we get here, policy exists, so delete it
             s3_client.delete_bucket_lifecycle(Bucket=bucket_name)
             print(f"✅ Removed lifecycle policy from: {bucket_name}")
-            return True
+            return True  # noqa: TRY300
         except ClientError as e:
             if e.response["Error"]["Code"] == "NoSuchLifecycleConfiguration":
                 print(f"✅ No lifecycle policy to remove from: {bucket_name}")
@@ -168,7 +173,6 @@ def remove_lifecycle_policy(bucket_name, region):
             else:
                 print(f"❌ Error removing lifecycle policy from {bucket_name}: {e}")
                 return False
-
     except Exception as e:
         print(f"❌ Unexpected error removing lifecycle policy from {bucket_name}: {e}")
         return False
@@ -223,7 +227,6 @@ def move_objects_to_standard_storage(bucket_name, region):
         print(
             f"✅ Processed {objects_processed} objects, converted {objects_converted} to Standard storage in: {bucket_name}"
         )
-        return True
 
     except ClientError as e:
         print(f"❌ Error converting objects in bucket {bucket_name}: {e}")
@@ -232,8 +235,11 @@ def move_objects_to_standard_storage(bucket_name, region):
         print(f"❌ Unexpected error converting objects in bucket {bucket_name}: {e}")
         return False
 
+    else:
+        return True
 
-def standardize_s3_buckets():
+
+def standardize_s3_buckets():  # noqa: PLR0915
     """Main function to standardize S3 bucket configurations"""
     setup_aws_credentials()
 

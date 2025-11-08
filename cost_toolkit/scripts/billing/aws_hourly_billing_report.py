@@ -93,14 +93,15 @@ def get_hourly_billing_data():
             GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
         )
 
-        return hourly_response, daily_response
-
     except Exception as e:
         print(f"Error retrieving billing data: {str(e)}")
         return None, None
 
+    else:
+        return hourly_response, daily_response
 
-def format_hourly_billing_report(hourly_data, daily_data):
+
+def format_hourly_billing_report(hourly_data, daily_data):  # noqa: C901, PLR0912, PLR0915
     """Format and display the hourly billing report"""
     if not hourly_data or "ResultsByTime" not in hourly_data:
         print("No hourly billing data available")

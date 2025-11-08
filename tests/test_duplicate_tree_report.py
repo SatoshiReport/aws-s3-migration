@@ -1,6 +1,7 @@
-import pytest
+"""Tests for duplicate_tree_report functionality."""
 
 from duplicate_tree_report import DirectoryIndex, find_exact_duplicates
+from tests.assertions import assert_equal
 
 
 def _build_sample_index():
@@ -29,8 +30,8 @@ def test_find_exact_duplicates_groups_identical_directories():
         None,
     )
     assert match is not None
-    assert match.nodes[0].total_files == 2
-    assert match.nodes[0].total_size == 300
+    assert_equal(match.nodes[0].total_files, 2)
+    assert_equal(match.nodes[0].total_size, 300)
 
 
 def test_directory_index_ignores_system_files():
@@ -40,5 +41,5 @@ def test_directory_index_ignores_system_files():
     index.add_file("bucket", "dirA/real.txt", 5, "keep")
     index.finalize()
     node = index.nodes[("bucket", "dirA")]
-    assert node.direct_files == 1
-    assert node.direct_size == 5
+    assert_equal(node.direct_files, 1)
+    assert_equal(node.direct_size, 5)

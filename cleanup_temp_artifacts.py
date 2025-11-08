@@ -32,6 +32,11 @@ try:
 except ImportError:  # pragma: no cover - best-effort fallback
     config_module = None
 
+try:  # Shared state DB utilities.
+    from .state_db_admin import reseed_state_db_from_local_drive
+except ImportError:  # pragma: no cover - direct script execution
+    from state_db_admin import reseed_state_db_from_local_drive  # type: ignore
+
 Matcher = Callable[[Path, bool], bool]
 
 
@@ -55,7 +60,25 @@ class Candidate:
         return datetime.fromtimestamp(self.mtime, tz=timezone.utc).isoformat()
 
 
+@dataclass
+class CandidateLoadResult:
+    candidates: list[Candidate]
+    cache_path: Path | None
+    cache_used: bool
+    total_files: int
+    max_rowid: int
+
+
+class CandidateLoadError(RuntimeError):
+    """Raised when the migration database cannot be queried."""
+
+
 CACHE_VERSION = 2
+PROGRESS_UPDATE_INTERVAL_SECONDS = 0.5
+BYTES_PER_KIB = 1024
+BYTES_PER_MIB = BYTES_PER_KIB**2
+BYTES_PER_GIB = BYTES_PER_KIB**3
+BYTES_PER_TIB = BYTES_PER_KIB**4
 
 
 def _default_cache_dir() -> Path:
@@ -122,7 +145,7 @@ def load_cache(
     return candidates, metadata
 
 
-def write_cache(
+def write_cache(  # noqa: PLR0913 - function arguments reflect cache metadata requirements
     cache_path: Path,
     candidates: Sequence[Candidate],
     *,
@@ -156,7 +179,7 @@ def write_cache(
     cache_path.write_text(json.dumps(payload, indent=2))
 
 
-def cache_is_valid(
+def cache_is_valid(  # noqa: PLR0911 - explicit guard clauses improve readability
     metadata: dict,
     *,
     ttl_seconds: int,
@@ -229,7 +252,7 @@ class ProgressTracker:
 
     def update(self, current: int):
         now = time.time()
-        if current == self.total or now - self.last_print >= 0.5:
+        if current == self.total or now - self.last_print >= PROGRESS_UPDATE_INTERVAL_SECONDS:
             if self.total:
                 pct = (current / self.total) * 100
                 status = f"{current:,}/{self.total:,} ({pct:5.1f}%)"
@@ -357,16 +380,16 @@ def parse_size(text: str) -> int:
     text = text.strip().upper()
     multiplier = 1
     if text.endswith("K"):
-        multiplier = 1024
+        multiplier = BYTES_PER_KIB
         text = text[:-1]
     elif text.endswith("M"):
-        multiplier = 1024**2
+        multiplier = BYTES_PER_MIB
         text = text[:-1]
     elif text.endswith("G"):
-        multiplier = 1024**3
+        multiplier = BYTES_PER_GIB
         text = text[:-1]
     elif text.endswith("T"):
-        multiplier = 1024**4
+        multiplier = BYTES_PER_TIB
         text = text[:-1]
     return int(float(text) * multiplier)
 
@@ -377,9 +400,9 @@ def format_size(num_bytes: int | None) -> str:
     suffixes = ["B", "KB", "MB", "GB", "TB", "PB"]
     value = float(num_bytes)
     for suffix in suffixes:
-        if value < 1024 or suffix == suffixes[-1]:
+        if value < BYTES_PER_KIB or suffix == suffixes[-1]:
             return f"{value:.1f}{suffix}"
-        value /= 1024
+        value /= BYTES_PER_KIB
     return f"{value:.1f}PB"
 
 
@@ -393,7 +416,7 @@ def match_category(path: Path, is_dir: bool, categories: Sequence[Category]) -> 
     return None
 
 
-def scan_candidates_from_db(
+def scan_candidates_from_db(  # noqa: C901, PLR0912 - complex filtering logic mirrors SQL view
     conn: sqlite3.Connection,
     base_path: Path,
     categories: Sequence[Category],
@@ -526,7 +549,7 @@ def delete_paths(
             else:
                 resolved.unlink()
         except (OSError, shutil.Error) as exc:
-            logging.exception("Failed to delete %s: %s", resolved, exc)
+            logging.exception("Failed to delete %s", resolved)
             errors.append((candidate, exc))
         else:
             logging.info("Deleted %s", resolved)
@@ -548,6 +571,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         "--db-path",
         default=str(DEFAULT_DB_PATH),
         help=f"Path to migration SQLite database (default: {DEFAULT_DB_PATH}).",
+    )
+    parser.add_argument(
+        "--reset-state-db",
+        action="store_true",
+        help="Delete and recreate the migrate_v2 state DB before scanning.",
     )
     parser.add_argument(
         "--categories",
@@ -580,7 +608,11 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         action="store_true",
         help="Delete the matched entries. Default is dry-run/report only.",
     )
-    parser.add_argument("--yes", action="store_true", help="Skip confirmation when using --delete.")
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip confirmation prompts for destructive actions (deletes, DB reset).",
+    )
     parser.add_argument(
         "--report-json", type=Path, help="Optional path to write the full candidate list as JSON."
     )
@@ -626,59 +658,67 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     return args
 
 
-def main(argv: Sequence[str] | None = None) -> int:
-    args = parse_args(argv or sys.argv[1:])
-    logging.basicConfig(
-        level=logging.DEBUG if args.verbose else logging.INFO,
-        format="%(levelname)s %(message)s",
+def maybe_reset_state_db(
+    base_path: Path,
+    db_path: Path,
+    *,
+    reset_requested: bool,
+    auto_confirm: bool,
+) -> Path:
+    """Handle optional migrate_v2 state DB reseeding."""
+    if not reset_requested:
+        return db_path
+    reset_confirmed = auto_confirm
+    if not reset_confirmed:
+        resp = (
+            input(
+                f"Reset migrate_v2 state database at {db_path}? "
+                "This deletes cached migration metadata. [y/N] "
+            )
+            .strip()
+            .lower()
+        )
+        reset_confirmed = resp in {"y", "yes"}
+        if not reset_confirmed:
+            print("State database reset cancelled; continuing without reset.")
+            return db_path
+    new_db_path, file_count, total_bytes = reseed_state_db_from_local_drive(base_path, db_path)
+    print(
+        f"✓ Recreated migrate_v2 state database at {new_db_path} "
+        f"({file_count:,} files, {format_size(total_bytes)}). Continuing."
     )
-    base_path = Path(args.base_path).expanduser()
-    if not base_path.exists():
-        logging.error("Base path %s does not exist.", base_path)
-        return 1
-    base_path = base_path.resolve()
+    return new_db_path
 
-    db_path = Path(args.db_path).expanduser()
-    if not db_path.is_absolute():
-        db_path = (REPO_ROOT / db_path).resolve()
-    if not db_path.exists():
-        logging.error("SQLite database %s does not exist.", db_path)
-        return 1
-    db_path = db_path.resolve()
-    db_stat = db_path.stat()
 
-    cutoff_ts: float | None = None
-    if args.older_than:
-        cutoff_ts = time.time() - (args.older_than * 86400)
-
-    if not args.delete:
-        print("Dry run: no directories will be deleted. Use --delete --yes to remove them.\n")
-
+def load_candidates_from_db(
+    *,
+    args: argparse.Namespace,
+    base_path: Path,
+    db_path: Path,
+    db_stat: os.stat_result,
+    cutoff_ts: float | None,
+    scan_params: dict[str, object],
+) -> CandidateLoadResult:
+    """Read candidate directories, honoring cache settings."""
     try:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
     except sqlite3.Error as exc:  # pragma: no cover - connection failure
-        logging.exception("Failed to open SQLite database %s: %s", db_path, exc)
-        return 1
+        message = f"Failed to open SQLite database {db_path}"
+        raise CandidateLoadError(message) from exc  # noqa: TRY003
 
-    scan_params = build_scan_params(
-        args.categories,
-        args.older_than,
-        args.min_size_bytes,
-    )
     category_map = {cat.name: cat for cat in args.categories}
     cache_path: Path | None = None
     cache_used = False
     candidates: list[Candidate] | None = None
-    total_files = 0
-    max_rowid = 0
 
     try:
         try:
             total_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
         except sqlite3.OperationalError as exc:
-            logging.exception("Migration database missing expected 'files' table: %s", exc)
-            return 1
+            raise CandidateLoadError(  # noqa: TRY003
+                "Migration database missing expected 'files' table"
+            ) from exc
         try:
             max_rowid_row = conn.execute("SELECT MAX(rowid) FROM files").fetchone()
             max_rowid = max_rowid_row[0] if max_rowid_row and max_rowid_row[0] is not None else 0
@@ -718,19 +758,90 @@ def main(argv: Sequence[str] | None = None) -> int:
                 min_size_bytes=args.min_size_bytes,
                 total_files=total_files,
             )
+
+        return CandidateLoadResult(
+            candidates=candidates,
+            cache_path=cache_path,
+            cache_used=cache_used,
+            total_files=total_files,
+            max_rowid=max_rowid,
+        )
     finally:
         conn.close()
 
-    if args.cache_enabled and cache_path and candidates is not None and not cache_used:
+
+def main(  # noqa: C901, PLR0911, PLR0912, PLR0915 - CLI orchestration benefits from linear flow
+    argv: Sequence[str] | None = None,
+) -> int:
+    args = parse_args(argv or sys.argv[1:])
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(levelname)s %(message)s",
+    )
+    base_path = Path(args.base_path).expanduser()
+    if not base_path.exists():
+        logging.error("Base path %s does not exist.", base_path)
+        return 1
+    base_path = base_path.resolve()
+
+    db_path = Path(args.db_path).expanduser()
+    if not db_path.is_absolute():
+        db_path = (REPO_ROOT / db_path).resolve()
+    else:
+        db_path = db_path.resolve()
+
+    db_path = maybe_reset_state_db(
+        base_path,
+        db_path,
+        reset_requested=args.reset_state_db,
+        auto_confirm=args.yes,
+    )
+
+    if not db_path.exists():
+        logging.error("SQLite database %s does not exist.", db_path)
+        return 1
+    db_path = db_path.resolve()
+    db_stat = db_path.stat()
+
+    cutoff_ts: float | None = None
+    if args.older_than:
+        cutoff_ts = time.time() - (args.older_than * 86400)
+
+    if not args.delete:
+        print("Dry run: no directories will be deleted. Use --delete --yes to remove them.\n")
+
+    scan_params = build_scan_params(
+        args.categories,
+        args.older_than,
+        args.min_size_bytes,
+    )
+    try:
+        load_result = load_candidates_from_db(
+            args=args,
+            base_path=base_path,
+            db_path=db_path,
+            db_stat=db_stat,
+            cutoff_ts=cutoff_ts,
+            scan_params=scan_params,
+        )
+    except CandidateLoadError:
+        logging.exception("Failed to load candidates from database")
+        return 1
+
+    candidates = load_result.candidates
+    cache_path = load_result.cache_path
+    cache_used = load_result.cache_used
+
+    if args.cache_enabled and cache_path and not cache_used:
         try:
             write_cache(
                 cache_path,
-                candidates,
+                load_result.candidates,
                 scan_params=scan_params,
                 base_path=base_path,
                 db_path=db_path,
-                rowcount=total_files,
-                max_rowid=max_rowid,
+                rowcount=load_result.total_files,
+                max_rowid=load_result.max_rowid,
                 db_mtime_ns=db_stat.st_mtime_ns,
             )
         except OSError as exc:

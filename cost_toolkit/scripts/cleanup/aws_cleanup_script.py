@@ -104,7 +104,7 @@ def disable_global_accelerators():
         print(f"❌ Unexpected error: {e}")
 
 
-def stop_lightsail_instances():
+def stop_lightsail_instances():  # noqa: C901, PLR0912, PLR0915
     """Stop all Lightsail instances"""
     setup_aws_credentials()
 

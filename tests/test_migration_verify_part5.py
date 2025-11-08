@@ -12,6 +12,7 @@ from migration_verify import (
     FileInventoryChecker,
     VerificationProgressTracker,
 )
+from tests.assertions import assert_equal
 
 
 class TestProgressTrackerLargeNumbers:
@@ -93,7 +94,7 @@ class TestFileInventoryScanningLargeNumbers:
 
         local_files = checker.scan_local_files("test-bucket", 10100)
 
-        assert len(local_files) == 10100
+        assert_equal(len(local_files), 10100)
 
 
 class TestBucketDeleterProgressUpdates:
@@ -126,7 +127,7 @@ class TestBucketDeleterProgressUpdates:
         deleter.delete_bucket("test-bucket")
 
         # Should be called 3 times (one per page)
-        assert mock_s3.delete_objects.call_count == 3
+        assert_equal(mock_s3.delete_objects.call_count, 3)
 
 
 class TestIntegrationSuccess:
@@ -165,9 +166,9 @@ class TestIntegrationSuccess:
         verifier = BucketVerifier(mock_state, tmp_path)
         results = verifier.verify_bucket("test-bucket")
 
-        assert results["verified_count"] == 2
-        assert results["checksum_verified"] == 2
-        assert results["local_file_count"] == 2
+        assert_equal(results["verified_count"], 2)
+        assert_equal(results["checksum_verified"], 2)
+        assert_equal(results["local_file_count"], 2)
 
 
 class TestIntegrationErrors:

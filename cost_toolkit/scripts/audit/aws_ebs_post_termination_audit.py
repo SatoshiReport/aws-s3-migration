@@ -54,11 +54,12 @@ def get_ebs_volumes_by_region(region_name):
                 }
             )
 
-        return volume_details
-
     except Exception as e:
         print(f"❌ Error getting volumes in {region_name}: {str(e)}")
         return []
+
+    else:
+        return volume_details
 
 
 def check_terminated_instances_volumes():

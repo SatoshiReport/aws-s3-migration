@@ -8,7 +8,6 @@ Tests cover:
 """
 
 import signal
-from unittest import mock
 
 import pytest
 

@@ -6,6 +6,7 @@ This script targets the 7 specific snapshots that should now be deletable.
 """
 
 import os
+import sys
 import time
 from datetime import datetime
 
@@ -21,7 +22,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -33,13 +34,15 @@ def delete_snapshot(ec2_client, snapshot_id, region):
         print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
         ec2_client.delete_snapshot(SnapshotId=snapshot_id)
         print(f"   ✅ Successfully deleted {snapshot_id}")
-        return True
     except Exception as e:
         print(f"   ❌ Error deleting {snapshot_id}: {e}")
         return False
 
+    else:
+        return True
 
-def delete_freed_snapshots():
+
+def delete_freed_snapshots():  # noqa: PLR0915
     """Delete snapshots that were freed after AMI deregistration"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -177,4 +180,4 @@ if __name__ == "__main__":
         delete_freed_snapshots()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

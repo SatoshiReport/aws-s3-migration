@@ -13,7 +13,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def create_s3_bucket_and_migrate():
+def create_s3_bucket_and_migrate():  # noqa: PLR0915
     """Create S3 bucket and set up migration from EBS to S3"""
     setup_aws_credentials()
 

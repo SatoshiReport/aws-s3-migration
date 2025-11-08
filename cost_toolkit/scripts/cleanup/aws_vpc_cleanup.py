@@ -65,11 +65,12 @@ def release_elastic_ips_in_region(region_name):
         print(f"  Released: {released_count} Elastic IPs")
         print(f"  Monthly savings: ${monthly_savings:.2f}")
 
-        return monthly_savings
-
     except ClientError as e:
         print(f"❌ Error accessing {region_name}: {e}")
         return 0
+
+    else:
+        return monthly_savings
 
 
 def main():

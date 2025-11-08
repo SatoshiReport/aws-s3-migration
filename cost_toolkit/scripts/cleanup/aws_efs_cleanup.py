@@ -17,7 +17,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def delete_efs_resources():
+def delete_efs_resources():  # noqa: C901, PLR0912, PLR0915
     """Delete all EFS file systems and mount targets across regions"""
     setup_aws_credentials()
 

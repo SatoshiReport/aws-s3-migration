@@ -4,9 +4,20 @@ import datetime
 import socket
 import ssl
 import subprocess
+import sys
 from urllib.parse import urlparse
 
 import requests
+
+# HTTP status codes
+HTTP_STATUS_MOVED_PERMANENTLY = 301
+HTTP_STATUS_OK = 200
+
+# Certificate tuple structure indices
+CERT_TUPLE_MIN_LENGTH = 2
+
+# Test success thresholds
+MIN_TESTS_FOR_MOSTLY_WORKING = 4
 
 
 def test_dns_resolution(domain):
@@ -23,11 +34,12 @@ def test_dns_resolution(domain):
         www_ip = socket.gethostbyname(www_domain)
         print(f"  ✅ {www_domain} resolves to: {www_ip}")
 
-        return True, ip_address
-
     except socket.gaierror as e:
         print(f"  ❌ DNS resolution failed: {e}")
         return False, None
+
+    else:
+        return True, ip_address
 
 
 def test_http_connectivity(domain):
@@ -39,16 +51,22 @@ def test_http_connectivity(domain):
         http_url = f"http://{domain}"
         response = requests.get(http_url, allow_redirects=False, timeout=10)
 
-        if response.status_code == 301 and "https://" in response.headers.get("Location", ""):
-            print(f"  ✅ HTTP redirects to HTTPS (301): {response.headers['Location']}")
+        if (
+            response.status_code == HTTP_STATUS_MOVED_PERMANENTLY
+            and "https://" in response.headers.get("Location", "")
+        ):
+            print(
+                f"  ✅ HTTP redirects to HTTPS ({HTTP_STATUS_MOVED_PERMANENTLY}): {response.headers['Location']}"
+            )
         else:
             print(f"  ⚠️  HTTP response: {response.status_code}")
-
-        return True
 
     except requests.RequestException as e:
         print(f"  ❌ HTTP test failed: {e}")
         return False
+
+    else:
+        return True
 
 
 def test_https_connectivity(domain):
@@ -60,8 +78,8 @@ def test_https_connectivity(domain):
         https_url = f"https://{domain}"
         response = requests.get(https_url, timeout=10)
 
-        if response.status_code == 200:
-            print(f"  ✅ HTTPS connection successful (200)")
+        if response.status_code == HTTP_STATUS_OK:
+            print(f"  ✅ HTTPS connection successful ({HTTP_STATUS_OK})")
             print(f"  ✅ Content-Type: {response.headers.get('Content-Type', 'Unknown')}")
 
             # Check if it's served by Cloudflare (Canva uses Cloudflare)
@@ -79,7 +97,7 @@ def test_https_connectivity(domain):
         return False
 
 
-def check_ssl_certificate(domain):
+def check_ssl_certificate(domain):  # noqa: PLR0912
     """Check SSL certificate details"""
     print(f"\n🛡️  Checking SSL certificate for {domain}")
 
@@ -94,13 +112,13 @@ def check_ssl_certificate(domain):
                 subject_dict = {}
                 if cert and "subject" in cert and cert["subject"]:
                     for item in cert["subject"]:
-                        if len(item) >= 1 and len(item[0]) >= 2:
+                        if len(item) >= 1 and len(item[0]) >= CERT_TUPLE_MIN_LENGTH:
                             subject_dict[item[0][0]] = item[0][1]
 
                 issuer_dict = {}
                 if cert and "issuer" in cert and cert["issuer"]:
                     for item in cert["issuer"]:
-                        if len(item) >= 1 and len(item[0]) >= 2:
+                        if len(item) >= 1 and len(item[0]) >= CERT_TUPLE_MIN_LENGTH:
                             issuer_dict[item[0][0]] = item[0][1]
 
                 # Parse dates safely
@@ -112,7 +130,9 @@ def check_ssl_certificate(domain):
                         str(cert["notAfter"]), "%b %d %H:%M:%S %Y %Z"
                     )
                 else:
-                    raise Exception("Certificate date information not available")
+                    raise Exception(  # noqa: TRY003, TRY002, TRY301
+                        "Certificate date information not available"
+                    )
 
                 print(f"  ✅ Certificate Subject: {subject_dict.get('commonName', 'Unknown')}")
                 print(f"  ✅ Certificate Issuer: {issuer_dict.get('organizationName', 'Unknown')}")
@@ -199,14 +219,15 @@ def check_route53_configuration(domain):
                     print(f"    - {ns}")
                 break
 
-        return True
-
     except ImportError:
         print(f"  ⚠️  boto3 not available, skipping Route53 check")
         return True
     except Exception as e:
         print(f"  ❌ Route53 check failed: {e}")
         return False
+
+    else:
+        return True
 
 
 def main():
@@ -266,7 +287,7 @@ def main():
         print(f"🌐 Your Canva website is accessible at: https://{domain}")
         print(f"🔒 SSL certificate is valid and secure")
         print(f"☁️  DNS is properly configured through Route53")
-    elif len(passed_tests) >= 4:  # Core functionality working
+    elif len(passed_tests) >= MIN_TESTS_FOR_MOSTLY_WORKING:  # Core functionality working
         print(f"\n✅ MOSTLY WORKING: {domain} is functional with minor issues")
         print(f"🌐 Your Canva website should be accessible at: https://{domain}")
         print(f"⚠️  Some non-critical tests failed - check details above")
@@ -280,4 +301,4 @@ def main():
 
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

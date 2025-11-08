@@ -7,6 +7,7 @@ import pytest
 
 from migration_scanner import BucketScanner
 from migration_state_v2 import MigrationStateV2, Phase
+from tests.assertions import assert_equal
 
 
 class TestBucketScannerInitialization:
@@ -76,7 +77,7 @@ class TestBucketScannerSingleBucket:
         """Create BucketScanner instance"""
         return BucketScanner(mock_s3, mock_state)
 
-    def test_scan_all_buckets_with_single_bucket(self, scanner, mock_s3, mock_state, capsys):
+    def test_scan_all_buckets_with_single_bucket(self, scanner, mock_s3, mock_state, _capsys):
         """Test scanning with single bucket"""
         mock_s3.list_buckets.return_value = {"Buckets": [{"Name": "test-bucket"}]}
         mock_s3.get_paginator.return_value.paginate.return_value = [
@@ -117,7 +118,7 @@ class TestBucketScannerEmptyBucket:
         """Create BucketScanner instance"""
         return BucketScanner(mock_s3, mock_state)
 
-    def test_scan_all_buckets_handles_empty_bucket(self, scanner, mock_s3, mock_state, capsys):
+    def test_scan_all_buckets_handles_empty_bucket(self, scanner, mock_s3, mock_state, _capsys):
         """Test scanning empty bucket"""
         mock_s3.list_buckets.return_value = {"Buckets": [{"Name": "empty-bucket"}]}
         mock_s3.get_paginator.return_value.paginate.return_value = [{}]
@@ -148,7 +149,9 @@ class TestBucketScannerFiltering:
         """Create BucketScanner instance"""
         return BucketScanner(mock_s3, mock_state)
 
-    def test_scan_all_buckets_filters_excluded_buckets(self, scanner, mock_s3, mock_state, capsys):
+    def test_scan_all_buckets_filters_excluded_buckets(
+        self, scanner, mock_s3, _mock_state, capsys
+    ):
         """Test that excluded buckets are filtered out"""
         with mock.patch("migration_scanner.config.EXCLUDED_BUCKETS", ["excluded-bucket"]):
             mock_s3.list_buckets.return_value = {
@@ -212,4 +215,4 @@ class TestBucketScannerPagination:
 
         scanner.scan_all_buckets()
 
-        assert mock_state.add_file.call_count == 2
+        assert_equal(mock_state.add_file.call_count, 2)

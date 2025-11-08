@@ -6,6 +6,9 @@ import sqlite3
 from pathlib import Path
 
 import duplicate_tree_cli as cli
+from tests.assertions import assert_equal
+
+MIN_DUPLICATE_DIRECTORIES = 2
 
 
 def _write_sample_db(tmp_path: Path) -> Path:
@@ -41,13 +44,15 @@ def _write_sample_db(tmp_path: Path) -> Path:
 
 
 def test_build_directory_index_from_db(tmp_path):
+    """Test building directory index from database."""
     db_path = _write_sample_db(tmp_path)
     index, fingerprint = cli.build_directory_index_from_db(str(db_path))
-    assert fingerprint.total_files == 6
-    assert len(index.nodes) >= 2
+    assert_equal(fingerprint.total_files, 6)
+    assert len(index.nodes) >= MIN_DUPLICATE_DIRECTORIES
 
 
 def test_cache_round_trip(tmp_path):
+    """Test caching and loading report."""
     db_path = tmp_path / "cache.db"
     fingerprint = cli.ScanFingerprint(total_files=4, checksum="abc123")
     cli.store_cached_report(
@@ -62,6 +67,7 @@ def test_cache_round_trip(tmp_path):
 
 
 def test_cli_main_end_to_end(tmp_path, capsys):
+    """Test CLI main function end-to-end with caching."""
     db_path = _write_sample_db(tmp_path)
     base_path = tmp_path / "drive"
     base_path.mkdir()
@@ -95,6 +101,7 @@ def test_cli_main_end_to_end(tmp_path, capsys):
 
 
 def test_threshold_filters_small_clusters(tmp_path, capsys):
+    """Test that threshold filters out small clusters."""
     db_path = tmp_path / "small.db"
     conn = sqlite3.connect(db_path)
     conn.execute(

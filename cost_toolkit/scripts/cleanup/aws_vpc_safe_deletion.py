@@ -8,7 +8,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def delete_vpc_and_dependencies(vpc_id, region_name):
+def delete_vpc_and_dependencies(vpc_id, region_name):  # noqa: C901, PLR0912, PLR0915
     """Delete a VPC and all its dependencies in the correct order"""
     print(f"\n🗑️  Deleting VPC {vpc_id} in {region_name}")
     print("=" * 80)
@@ -128,11 +128,10 @@ def delete_vpc_and_dependencies(vpc_id, region_name):
         try:
             ec2.delete_vpc(VpcId=vpc_id)
             print(f"  ✅ VPC {vpc_id} deleted successfully")
-            return True
         except ClientError as e:
             print(f"  ❌ Error deleting VPC {vpc_id}: {e}")
             return False
-
+        return True  # noqa: TRY300
     except ClientError as e:
         print(f"❌ Error during VPC deletion process: {e}")
         return False

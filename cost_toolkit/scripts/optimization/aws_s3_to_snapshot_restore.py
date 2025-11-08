@@ -7,6 +7,7 @@ This script handles the reverse process of importing AMIs from S3 and creating s
 
 import json
 import os
+import sys
 import time
 from datetime import datetime
 
@@ -22,7 +23,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -45,10 +46,12 @@ def list_s3_exports(s3_client, bucket_name):
                         }
                     )
 
-        return exports
     except Exception as e:
         print(f"❌ Error listing S3 exports: {e}")
         return []
+
+    else:
+        return exports
 
 
 def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
@@ -162,7 +165,7 @@ def create_snapshot_from_ami(ec2_client, ami_id, description):
         return None
 
 
-def restore_snapshots_from_s3():
+def restore_snapshots_from_s3():  # noqa: C901, PLR0912, PLR0915
     """Main function to restore EBS snapshots from S3"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -304,4 +307,4 @@ if __name__ == "__main__":
         restore_snapshots_from_s3()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

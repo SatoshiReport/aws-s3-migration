@@ -1,6 +1,5 @@
 """Comprehensive tests for migration_sync.py - Progress and Error Handling"""
 
-import subprocess
 import time
 from unittest import mock
 

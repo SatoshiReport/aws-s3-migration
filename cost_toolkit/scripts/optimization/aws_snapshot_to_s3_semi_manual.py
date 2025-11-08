@@ -33,7 +33,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -44,7 +44,6 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
     try:
         s3_client.head_bucket(Bucket=bucket_name)
         print(f"   ✅ S3 bucket {bucket_name} already exists")
-        return True
     except s3_client.exceptions.NoSuchBucket:
         print(f"   🔄 Creating S3 bucket {bucket_name}...")
         if region == "us-east-1":
@@ -60,6 +59,9 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
         )
 
         print(f"   ✅ Created S3 bucket {bucket_name} with versioning enabled")
+        return True
+
+    else:
         return True
 
 
@@ -151,7 +153,7 @@ def prepare_snapshot_for_export(snapshot_info, aws_access_key_id, aws_secret_acc
     }
 
 
-def generate_manual_commands(prepared_snapshots):
+def generate_manual_commands(prepared_snapshots):  # noqa: PLR0915
     """Generate the manual AWS CLI commands for exports"""
     print("\n" + "=" * 80)
     print("📋 MANUAL EXPORT COMMANDS")

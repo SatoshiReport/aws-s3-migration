@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import time
 from datetime import datetime, timezone
 
@@ -25,8 +26,7 @@ def get_current_hosted_zone_nameservers(domain_name):
                 break
 
         if not target_zone:
-            raise Exception(f"No hosted zone found for {domain_name}")
-
+            raise Exception(f"No hosted zone found for {domain_name}")  # noqa: TRY002, TRY003
         zone_id = target_zone["Id"].split("/")[-1]
         print(f"  Found hosted zone: {zone_id}")
 
@@ -41,16 +41,16 @@ def get_current_hosted_zone_nameservers(domain_name):
                 break
 
         if not nameservers:
-            raise Exception(f"No NS records found for {domain_name}")
+            raise Exception(f"No NS records found for {domain_name}")  # noqa: TRY002, TRY003
 
         print(f"  Current nameservers:")
         for ns in nameservers:
             print(f"    - {ns}")
 
-        return nameservers, zone_id
-
     except ClientError as e:
-        raise Exception(f"AWS API error: {e}")
+        raise Exception(f"AWS API error: {e}")  # noqa: TRY002, TRY003
+    else:
+        return nameservers, zone_id
 
 
 def update_domain_nameservers_at_registrar(domain_name, nameservers):
@@ -79,8 +79,7 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
             operation_id = response.get("OperationId")
             print(f"  ✅ Nameserver update initiated (Operation ID: {operation_id})")
             print(f"  ⏳ Changes may take up to 48 hours to propagate globally")
-
-            return True
+            return True  # noqa: TRY300
 
         except ClientError as e:
             if "DomainNotFound" in str(e):
@@ -95,13 +94,13 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
                 )
                 return False
             else:
-                raise e
+                raise
+    except Exception as e:
+        print(f"❌ Route53 Domains API error: {e}")
+        return False
 
-    except ClientError as e:
-        raise Exception(f"Route53 Domains API error: {e}")
 
-
-def verify_canva_dns_setup(domain_name, zone_id):
+def verify_canva_dns_setup(domain_name, zone_id):  # noqa: C901, PLR0912
     """Verify the DNS records are properly set up for Canva"""
     print(f"\n🔍 Verifying Canva DNS setup for {domain_name}")
 
@@ -154,7 +153,7 @@ def verify_canva_dns_setup(domain_name, zone_id):
             return False, canva_ip
 
     except ClientError as e:
-        raise Exception(f"Error verifying DNS setup: {e}")
+        raise Exception(f"Error verifying DNS setup: {e}")  # noqa: TRY002, TRY003
 
 
 def create_missing_dns_records(domain_name, zone_id, canva_ip):
@@ -241,7 +240,7 @@ def create_missing_dns_records(domain_name, zone_id, canva_ip):
             return True
 
     except ClientError as e:
-        raise Exception(f"Error creating DNS records: {e}")
+        raise Exception(f"Error creating DNS records: {e}")  # noqa: TRY002, TRY003
 
 
 def test_dns_resolution(domain_name):
@@ -343,4 +342,4 @@ def main():
 
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())

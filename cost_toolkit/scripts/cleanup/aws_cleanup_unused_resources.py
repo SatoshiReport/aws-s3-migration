@@ -7,7 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def analyze_security_groups_usage(region_name):
+def analyze_security_groups_usage(region_name):  # noqa: C901, PLR0912
     """Analyze which security groups are actually in use"""
     print(f"\n🔍 Analyzing Security Group usage in {region_name}")
     print("=" * 80)
@@ -83,14 +83,15 @@ def analyze_security_groups_usage(region_name):
                     f"  {sg['GroupId']} - {sg['GroupName']} (VPC: {sg.get('VpcId', 'EC2-Classic')})"
                 )
 
-        return {"unused": unused_sgs, "used": used_sg_details, "default": default_sgs}
-
     except ClientError as e:
         print(f"❌ Error analyzing security groups: {e}")
         return {"unused": [], "used": [], "default": []}
 
+    else:
+        return {"unused": unused_sgs, "used": used_sg_details, "default": default_sgs}
 
-def analyze_subnet_usage(region_name):
+
+def analyze_subnet_usage(region_name):  # noqa: C901, PLR0912
     """Analyze which subnets are actually in use"""
     print(f"\n🔍 Analyzing Subnet usage in {region_name}")
     print("=" * 80)
@@ -165,11 +166,12 @@ def analyze_subnet_usage(region_name):
                 cidr = subnet.get("CidrBlock")
                 print(f"  {subnet_id} - {cidr} (VPC: {vpc_id}, AZ: {az})")
 
-        return {"unused": unused_subnets, "used": used_subnet_details}
-
     except ClientError as e:
         print(f"❌ Error analyzing subnets: {e}")
         return {"unused": [], "used": []}
+
+    else:
+        return {"unused": unused_subnets, "used": used_subnet_details}
 
 
 def delete_unused_security_groups(unused_sgs, region_name):
@@ -203,11 +205,12 @@ def delete_unused_security_groups(unused_sgs, region_name):
         print(f"  ✅ Deleted: {deleted_count}")
         print(f"  ❌ Failed: {failed_count}")
 
-        return failed_count == 0
-
     except ClientError as e:
         print(f"❌ Error deleting security groups: {e}")
         return False
+
+    else:
+        return failed_count == 0
 
 
 def delete_unused_subnets(unused_subnets, region_name):
@@ -241,11 +244,12 @@ def delete_unused_subnets(unused_subnets, region_name):
         print(f"  ✅ Deleted: {deleted_count}")
         print(f"  ❌ Failed: {failed_count}")
 
-        return failed_count == 0
-
     except ClientError as e:
         print(f"❌ Error deleting subnets: {e}")
         return False
+
+    else:
+        return failed_count == 0
 
 
 def main():

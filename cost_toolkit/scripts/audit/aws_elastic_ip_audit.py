@@ -10,6 +10,7 @@ Unassociated Elastic IPs cost $0.005 per hour ($3.65/month each)
 """
 
 import os
+import sys
 from datetime import datetime
 
 import boto3
@@ -24,7 +25,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -108,11 +109,12 @@ def audit_elastic_ips_in_region(region, aws_access_key_id, aws_secret_access_key
                 region_data["unassociated_eips"].append(eip_data)
                 region_data["total_monthly_cost"] += 3.65
 
-        return region_data
-
     except Exception as e:
         print(f"   ❌ Error auditing region {region}: {e}")
         return None
+
+    else:
+        return region_data
 
 
 def get_instance_name(ec2_client, instance_id):
@@ -124,12 +126,13 @@ def get_instance_name(ec2_client, instance_id):
                 for tag in instance.get("Tags", []):
                     if tag["Key"] == "Name":
                         return tag["Value"]
-        return "Unnamed"
     except:
         return "Unknown"
+    else:
+        return "Unnamed"
 
 
-def audit_all_elastic_ips():
+def audit_all_elastic_ips():  # noqa: C901, PLR0912, PLR0915
     """Audit Elastic IPs across all AWS regions"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -249,4 +252,4 @@ if __name__ == "__main__":
         audit_all_elastic_ips()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

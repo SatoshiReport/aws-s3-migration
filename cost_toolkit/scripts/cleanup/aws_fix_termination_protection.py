@@ -25,11 +25,12 @@ def disable_termination_protection_and_terminate(instance_id, region_name):
         print(f"  ✅ Instance {instance_id} termination initiated")
         print(f"  💰 This will stop EBS storage charges for attached volumes")
 
-        return True
-
     except ClientError as e:
         print(f"  ❌ Error: {e}")
         return False
+
+    else:
+        return True
 
 
 def main():

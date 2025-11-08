@@ -7,6 +7,7 @@ import sys
 from types import SimpleNamespace
 
 import duplicate_tree_report as dtr
+from tests.assertions import assert_equal
 
 
 def test_reexported_symbols_are_accessible():
@@ -25,4 +26,4 @@ def test_main_delegates_to_cli(monkeypatch):
     monkeypatch.setitem(sys.modules, "duplicate_tree_cli", dummy_cli)
     monkeypatch.setitem(sys.modules, "aws.duplicate_tree_cli", dummy_cli)
     module = importlib.reload(dtr)
-    assert module.main([]) == 42
+    assert_equal(module.main([]), 42)

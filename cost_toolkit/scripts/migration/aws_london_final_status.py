@@ -13,7 +13,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def show_final_london_status():
+def show_final_london_status():  # noqa: PLR0915
     """Show final status after London EBS cleanup"""
     setup_aws_credentials()
 

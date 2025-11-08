@@ -17,6 +17,9 @@ from datetime import datetime, timedelta
 import boto3
 from dotenv import load_dotenv
 
+# Constants
+STUCK_EXPORT_PROGRESS_PERCENT = 80
+
 
 # Constants based on successful export patterns
 class RobustExportConstants:
@@ -51,7 +54,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -62,7 +65,6 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
     try:
         s3_client.head_bucket(Bucket=bucket_name)
         print(f"   ✅ S3 bucket {bucket_name} already exists")
-        return True
     except s3_client.exceptions.NoSuchBucket:
         if region == "us-east-1":
             s3_client.create_bucket(Bucket=bucket_name)
@@ -77,6 +79,9 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
             Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
         )
         print(f"   ✅ Enabled versioning for {bucket_name}")
+        return True
+
+    else:
         return True
 
 
@@ -121,7 +126,7 @@ def create_ami_from_snapshot_robust(ec2_client, snapshot_id, snapshot_descriptio
     return ami_id
 
 
-def wait_for_export_completion_robust(
+def wait_for_export_completion_robust(  # noqa: C901, PLR0912
     ec2_client, s3_client, export_task_id, bucket_name, ami_id, size_gb
 ):
     """Monitor export with robust completion detection"""
@@ -139,7 +144,7 @@ def wait_for_export_completion_robust(
         elapsed_hours = elapsed_time / 3600
 
         if elapsed_hours >= RobustExportConstants.EXPORT_MAX_DURATION_HOURS:
-            raise Exception(
+            raise Exception(  # noqa: TRY003, TRY002
                 f"Export exceeded maximum duration of {RobustExportConstants.EXPORT_MAX_DURATION_HOURS} hours"
             )
 
@@ -154,9 +159,10 @@ def wait_for_export_completion_robust(
                     s3_response = s3_client.head_object(Bucket=bucket_name, Key=s3_key)
                     file_size_gb = s3_response["ContentLength"] / (1024**3)
                     print(f"   ✅ S3 file found! Size: {file_size_gb:.2f} GB")
-                    return True, s3_key
                 except:
                     return False, None
+                else:
+                    return True, s3_key
 
             task = response["ExportImageTasks"][0]
             status = task["Status"]
@@ -175,13 +181,15 @@ def wait_for_export_completion_robust(
                 print(f"   ❌ Export failed: {error_msg}")
                 return False, None
 
-            # If progress hasn't changed in a while and we're at 80%, check S3
+            # If progress hasn't changed in a while and we're at stuck threshold, check S3
             if (
-                current_progress == 80
+                current_progress == STUCK_EXPORT_PROGRESS_PERCENT
                 and current_progress == last_progress
                 and elapsed_time > (30 * 60)
             ):
-                print(f"   🔍 Export stuck at 80% - checking S3 directly...")
+                print(
+                    f"   🔍 Export stuck at {STUCK_EXPORT_PROGRESS_PERCENT}% - checking S3 directly..."
+                )
                 try:
                     s3_response = s3_client.head_object(Bucket=bucket_name, Key=s3_key)
                     file_size_gb = s3_response["ContentLength"] / (1024**3)

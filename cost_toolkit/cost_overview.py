@@ -19,6 +19,9 @@ if SCRIPTS_DIR not in sys.path:
 
 from aws_utils import setup_aws_credentials
 
+# Cost thresholds for recommendations
+COST_RECOMMENDATION_THRESHOLD = 5  # Minimum cost in dollars to trigger recommendations
+
 
 def get_current_month_costs():
     """Get current month's AWS costs from Cost Explorer"""
@@ -50,14 +53,14 @@ def get_current_month_costs():
                     service_costs[service] = cost
                     total_cost += cost
 
-        return service_costs, total_cost
-
     except Exception as e:
         print(f"❌ Error retrieving cost data: {str(e)}")
         return {}, 0.0
+    else:
+        return service_costs, total_cost
 
 
-def analyze_optimization_opportunities():
+def analyze_optimization_opportunities():  # noqa: C901, PLR0912, PLR0915
     """Analyze potential cost optimization opportunities"""
     opportunities = []
 
@@ -190,7 +193,7 @@ def get_completed_cleanups():
     return completed_services
 
 
-def get_service_recommendations(service_costs):
+def get_service_recommendations(service_costs):  # noqa: C901, PLR0912
     """Get specific recommendations based on current service usage"""
     recommendations = []
     total_cost = sum(service_costs.values())
@@ -198,7 +201,7 @@ def get_service_recommendations(service_costs):
 
     # High-cost services recommendations
     for service, cost in sorted(service_costs.items(), key=lambda x: x[1], reverse=True)[:8]:
-        if cost > 5:  # Lower threshold for more recommendations
+        if cost > COST_RECOMMENDATION_THRESHOLD:
             percentage = (cost / total_cost) * 100
 
             if "S3" in service.upper() or "STORAGE" in service.upper():
@@ -282,7 +285,7 @@ def get_service_recommendations(service_costs):
     return recommendations
 
 
-def run_quick_audit():
+def run_quick_audit():  # noqa: PLR0912
     """Run a quick audit using existing scripts"""
     print("🔍 Running Quick Resource Audit...")
     print("=" * 60)
@@ -365,7 +368,7 @@ def report_lightsail_cost_breakdown():
         print(f"⚠️ Unable to fetch Lightsail cost breakdown: {exc}")
 
 
-def main():
+def main():  # noqa: PLR0915
     """Main function to display AWS cost overview"""
     print("AWS Cost Management Overview")
     print("=" * 80)

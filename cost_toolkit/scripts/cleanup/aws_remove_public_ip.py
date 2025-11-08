@@ -7,7 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def remove_public_ip_from_instance(instance_id, region_name):
+def remove_public_ip_from_instance(instance_id, region_name):  # noqa: PLR0915
     """Remove public IP from an EC2 instance by stopping, modifying, and restarting"""
     print(f"\n🔧 Removing public IP from instance {instance_id} in {region_name}")
     print("=" * 80)

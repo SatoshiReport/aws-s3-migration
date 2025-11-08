@@ -8,6 +8,8 @@ Tests verify:
 
 import config
 
+MAX_CONCURRENCY_LIMIT = 50
+
 
 class TestMultipartTransferSettings:
     """Tests for S3 multipart transfer configuration."""
@@ -67,7 +69,7 @@ class TestMultipartTransferSettings:
 
     def test_max_concurrency_reasonable_range(self):
         """Verify MAX_CONCURRENCY is within reasonable range (1-50)."""
-        assert 1 <= config.MAX_CONCURRENCY <= 50
+        assert 1 <= config.MAX_CONCURRENCY <= MAX_CONCURRENCY_LIMIT
 
     def test_use_threads_exists(self):
         """Verify USE_THREADS constant exists."""

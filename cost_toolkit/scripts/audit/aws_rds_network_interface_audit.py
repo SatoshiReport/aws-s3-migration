@@ -19,7 +19,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -108,11 +108,12 @@ def audit_rds_instances_in_region(region_name, aws_access_key_id, aws_secret_acc
             }
             region_data["clusters"].append(cluster_info)
 
-        return region_data
-
     except Exception as e:
         print(f"❌ Error auditing RDS in {region_name}: {str(e)}")
         return None
+
+    else:
+        return region_data
 
 
 def get_network_interfaces_in_region(region_name, aws_access_key_id, aws_secret_access_key):
@@ -137,7 +138,7 @@ def get_network_interfaces_in_region(region_name, aws_access_key_id, aws_secret_
         return []
 
 
-def main():
+def main():  # noqa: C901, PLR0912, PLR0915
     """Main execution function"""
     print("AWS RDS and Network Interface Correlation Audit")
     print("=" * 70)

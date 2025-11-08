@@ -34,11 +34,13 @@ def tag_volume_with_name(volume_id, name, region):
         ec2_client.create_tags(Resources=[volume_id], Tags=[{"Key": "Name", "Value": name}])
 
         print(f"✅ Successfully tagged volume {volume_id} with name '{name}' in {region}")
-        return True
 
     except Exception as e:
         print(f"❌ Error tagging volume {volume_id}: {str(e)}")
         return False
+
+    else:
+        return True
 
 
 def delete_snapshot(snapshot_id, region):
@@ -74,11 +76,13 @@ def delete_snapshot(snapshot_id, region):
         monthly_cost_saved = size_gb * 0.05  # $0.05 per GB/month
         print(f"✅ Successfully deleted snapshot {snapshot_id}")
         print(f"💰 Monthly cost savings: ${monthly_cost_saved:.2f}")
-        return True
 
     except Exception as e:
         print(f"❌ Error deleting snapshot {snapshot_id}: {str(e)}")
         return False
+
+    else:
+        return True
 
 
 def list_s3_buckets():
@@ -169,11 +173,12 @@ def list_s3_buckets():
                 {"name": bucket_name, "creation_date": creation_date, "region": region}
             )
 
-        return bucket_info
-
     except Exception as e:
         print(f"❌ Error listing S3 buckets: {str(e)}")
         return []
+
+    else:
+        return bucket_info
 
 
 def main():

@@ -1,12 +1,11 @@
 """Unit tests for migration_verify.py - Part 2: FileChecksumVerifier"""
 
 import hashlib
-from pathlib import Path
-from unittest import mock
 
 import pytest
 
 from migration_verify import FileChecksumVerifier
+from tests.assertions import assert_equal
 
 
 class TestFileChecksumVerifierValidFiles:
@@ -38,10 +37,10 @@ class TestFileChecksumVerifierValidFiles:
             expected_size=28,
         )
 
-        assert results["verified_count"] == 2
-        assert results["size_verified"] == 2
-        assert results["checksum_verified"] == 2
-        assert results["total_bytes_verified"] == 28
+        assert_equal(results["verified_count"], 2)
+        assert_equal(results["size_verified"], 2)
+        assert_equal(results["checksum_verified"], 2)
+        assert_equal(results["total_bytes_verified"], 28)
 
 
 class TestFileChecksumVerifierErrors:
@@ -325,6 +324,6 @@ class TestFileChecksumVerifierComputeEtag:
         quoted_etag = f'"{md5_hash}"'
 
         verifier = FileChecksumVerifier()
-        computed, is_match = verifier._compute_etag(file1, quoted_etag)
+        _computed, is_match = verifier._compute_etag(file1, quoted_etag)
 
         assert is_match is True

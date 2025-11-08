@@ -9,6 +9,10 @@ Tests verify:
 
 import config
 
+MAX_GLACIER_RESTORE_DAYS = 30
+MAX_PROGRESS_INTERVAL_SECONDS = 60
+MAX_ACTIVE_GLACIER_RESTORES = 1000
+
 
 class TestGlacierRestoreSettings:
     """Tests for Glacier restore configuration."""
@@ -27,7 +31,7 @@ class TestGlacierRestoreSettings:
 
     def test_glacier_restore_days_reasonable_range(self):
         """Verify GLACIER_RESTORE_DAYS is within reasonable range (1-30 days)."""
-        assert 1 <= config.GLACIER_RESTORE_DAYS <= 30
+        assert 1 <= config.GLACIER_RESTORE_DAYS <= MAX_GLACIER_RESTORE_DAYS
 
     def test_glacier_restore_tier_exists(self):
         """Verify GLACIER_RESTORE_TIER constant exists."""
@@ -60,7 +64,7 @@ class TestProgressUpdateInterval:
 
     def test_progress_update_interval_reasonable_range(self):
         """Verify PROGRESS_UPDATE_INTERVAL is within reasonable range (1-60 seconds)."""
-        assert 1 <= config.PROGRESS_UPDATE_INTERVAL <= 60
+        assert 1 <= config.PROGRESS_UPDATE_INTERVAL <= MAX_PROGRESS_INTERVAL_SECONDS
 
 
 class TestMaxGlacierRestores:
@@ -80,4 +84,4 @@ class TestMaxGlacierRestores:
 
     def test_max_glacier_restores_reasonable_range(self):
         """Verify MAX_GLACIER_RESTORES is within reasonable range (1-1000)."""
-        assert 1 <= config.MAX_GLACIER_RESTORES <= 1000
+        assert 1 <= config.MAX_GLACIER_RESTORES <= MAX_ACTIVE_GLACIER_RESTORES

@@ -9,6 +9,12 @@ Tests verify:
 
 import config
 
+MAX_DOWNLOADS_UPPER_BOUND = 500
+MAX_VERIFICATIONS_UPPER_BOUND = 50
+MIN_BATCH_SIZE = 10
+MAX_BATCH_SIZE = 1000
+MAX_DB_BATCH_SIZE = 100
+
 
 class TestDownloadChunkSize:
     """Tests for DOWNLOAD_CHUNK_SIZE configuration."""
@@ -54,7 +60,7 @@ class TestParallelDownloadSettings:
 
     def test_max_concurrent_downloads_reasonable_range(self):
         """Verify MAX_CONCURRENT_DOWNLOADS is within reasonable range (1-500)."""
-        assert 1 <= config.MAX_CONCURRENT_DOWNLOADS <= 500
+        assert 1 <= config.MAX_CONCURRENT_DOWNLOADS <= MAX_DOWNLOADS_UPPER_BOUND
 
     def test_max_concurrent_verifications_exists(self):
         """Verify MAX_CONCURRENT_VERIFICATIONS constant exists."""
@@ -70,7 +76,7 @@ class TestParallelDownloadSettings:
 
     def test_max_concurrent_verifications_reasonable_range(self):
         """Verify MAX_CONCURRENT_VERIFICATIONS is within reasonable range (1-50)."""
-        assert 1 <= config.MAX_CONCURRENT_VERIFICATIONS <= 50
+        assert 1 <= config.MAX_CONCURRENT_VERIFICATIONS <= MAX_VERIFICATIONS_UPPER_BOUND
 
     def test_downloads_exceeds_verifications(self):
         """Verify MAX_CONCURRENT_DOWNLOADS is >= MAX_CONCURRENT_VERIFICATIONS."""
@@ -94,7 +100,7 @@ class TestBatchProcessingSettings:
 
     def test_batch_size_reasonable_range(self):
         """Verify BATCH_SIZE is within reasonable range (10-1000)."""
-        assert 10 <= config.BATCH_SIZE <= 1000
+        assert MIN_BATCH_SIZE <= config.BATCH_SIZE <= MAX_BATCH_SIZE
 
     def test_db_batch_commit_size_exists(self):
         """Verify DB_BATCH_COMMIT_SIZE constant exists."""
@@ -110,7 +116,7 @@ class TestBatchProcessingSettings:
 
     def test_db_batch_commit_size_reasonable_range(self):
         """Verify DB_BATCH_COMMIT_SIZE is within reasonable range (1-100)."""
-        assert 1 <= config.DB_BATCH_COMMIT_SIZE <= 100
+        assert 1 <= config.DB_BATCH_COMMIT_SIZE <= MAX_DB_BATCH_SIZE
 
     def test_db_batch_commit_smaller_than_batch_size(self):
         """Verify DB_BATCH_COMMIT_SIZE <= BATCH_SIZE."""

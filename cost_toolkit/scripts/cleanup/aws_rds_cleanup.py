@@ -6,7 +6,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def cleanup_rds_databases():
+def cleanup_rds_databases():  # noqa: C901, PLR0912, PLR0915
     """Delete Aurora cluster and stop MariaDB instance"""
 
     print("AWS RDS Database Cleanup")

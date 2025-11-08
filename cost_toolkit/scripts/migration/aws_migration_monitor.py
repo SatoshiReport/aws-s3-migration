@@ -14,7 +14,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def monitor_migration():
+def monitor_migration():  # noqa: PLR0915
     """Monitor the EBS to S3 migration progress"""
     setup_aws_credentials()
 

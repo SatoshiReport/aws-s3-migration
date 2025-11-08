@@ -2,9 +2,8 @@
 
 from pathlib import Path
 
-import pytest
-
 from migration_state_v2 import DatabaseConnection, MigrationStateV2
+from tests.assertions import assert_equal
 
 
 class TestMigrationStateInitialization:
@@ -45,7 +44,7 @@ class TestFileAddOperations:
             )
             row = cursor.fetchone()
             assert row is not None
-            assert row["size"] == 1024
+            assert_equal(row["size"], 1024)
             assert row["storage_class"] == "STANDARD"
 
 

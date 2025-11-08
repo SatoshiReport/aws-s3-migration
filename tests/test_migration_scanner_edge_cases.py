@@ -7,6 +7,7 @@ import pytest
 
 from migration_scanner import BucketScanner, GlacierWaiter
 from migration_state_v2 import MigrationStateV2
+from tests.assertions import assert_equal
 
 
 class TestBucketScannerPaginationInterrupt:
@@ -107,7 +108,7 @@ class TestBucketScannerLargeScale:
         scanner.scan_all_buckets()
 
         # Should have added all files
-        assert mock_state.add_file.call_count == 50000
+        assert_equal(mock_state.add_file.call_count, 50000)
 
 
 class TestBucketScannerZeroSizeFiles:

@@ -6,6 +6,7 @@ This script removes the temporary AMIs that were left behind when exports failed
 """
 
 import os
+import sys
 
 import boto3
 from dotenv import load_dotenv
@@ -19,7 +20,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -107,4 +108,4 @@ if __name__ == "__main__":
         cleanup_failed_export_amis()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

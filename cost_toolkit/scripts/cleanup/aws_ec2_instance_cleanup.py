@@ -43,11 +43,12 @@ def terminate_instance(instance_id, region_name):
         print(f"  ✅ Termination initiated for {instance_id}")
         print(f"  💰 This will stop EBS storage charges for attached volumes")
 
-        return True
-
     except ClientError as e:
         print(f"  ❌ Error terminating instance {instance_id}: {e}")
         return False
+
+    else:
+        return True
 
 
 def rename_instance(instance_id, new_name, region_name):
@@ -62,11 +63,13 @@ def rename_instance(instance_id, new_name, region_name):
         ec2.create_tags(Resources=[instance_id], Tags=[{"Key": "Name", "Value": new_name}])
 
         print(f"  ✅ Instance {instance_id} renamed to '{new_name}'")
-        return True
 
     except ClientError as e:
         print(f"  ❌ Error renaming instance {instance_id}: {e}")
         return False
+
+    else:
+        return True
 
 
 def get_instance_detailed_info(instance_id, region_name):
@@ -131,6 +134,10 @@ def get_instance_detailed_info(instance_id, region_name):
             age = datetime.now(timezone.utc) - launch_time
             print(f"  Age: {age.days} days")
 
+    except ClientError as e:
+        print(f"  ❌ Error getting instance info: {e}")
+        return None
+    else:
         return {
             "instance_id": instance_id,
             "name": name_tag,
@@ -140,12 +147,8 @@ def get_instance_detailed_info(instance_id, region_name):
             "region": region_name,
         }
 
-    except ClientError as e:
-        print(f"  ❌ Error getting instance info: {e}")
-        return None
 
-
-def main():
+def main():  # noqa: C901, PLR0912, PLR0915
     print("AWS EC2 Instance Cleanup and Analysis")
     print("=" * 80)
 

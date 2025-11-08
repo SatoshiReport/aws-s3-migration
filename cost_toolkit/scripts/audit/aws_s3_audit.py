@@ -17,6 +17,12 @@ from botocore.exceptions import ClientError, NoCredentialsError
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from aws_utils import setup_aws_credentials
 
+# Constants for byte conversion and age thresholds
+BYTES_PER_KB = 1024.0  # Bytes to kilobytes conversion factor
+DAYS_THRESHOLD_IA = 30  # Days threshold for Standard-IA storage class transition
+DAYS_THRESHOLD_GLACIER = 90  # Days threshold for Glacier archival transition
+DAYS_THRESHOLD_VERY_OLD = 365  # Days threshold for very old objects (1 year)
+
 # S3 storage class pricing per GB/month (US East 1 rates as baseline)
 STORAGE_CLASS_PRICING = {
     "STANDARD": 0.023,
@@ -71,13 +77,15 @@ def get_bucket_region(bucket_name):
         response = s3_client.get_bucket_location(Bucket=bucket_name)
         region = response.get("LocationConstraint")
         # us-east-1 returns None for LocationConstraint
-        return region if region else "us-east-1"
     except Exception as e:
         print(f"Error getting region for bucket {bucket_name}: {e}")
         return "us-east-1"
 
+    else:
+        return region if region else "us-east-1"
 
-def analyze_bucket_objects(bucket_name, region):
+
+def analyze_bucket_objects(bucket_name, region):  # noqa: C901, PLR0912, PLR0915
     """Analyze all objects in a bucket for storage classes, sizes, and counts"""
     try:
         s3_client = boto3.client("s3", region_name=region)
@@ -195,8 +203,6 @@ def analyze_bucket_objects(bucket_name, region):
                         }
                     )
 
-        return bucket_analysis
-
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code == "NoSuchBucket":
@@ -210,6 +216,9 @@ def analyze_bucket_objects(bucket_name, region):
         print(f"⚠️  Unexpected error analyzing bucket {bucket_name}: {e}")
         return None
 
+    else:
+        return bucket_analysis
+
 
 def calculate_monthly_cost(size_bytes, storage_class):
     """Calculate estimated monthly cost for given size and storage class"""
@@ -221,9 +230,9 @@ def calculate_monthly_cost(size_bytes, storage_class):
 def format_bytes(bytes_value):
     """Format bytes into human readable format"""
     for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if bytes_value < 1024.0:
+        if bytes_value < BYTES_PER_KB:
             return f"{bytes_value:.2f} {unit}"
-        bytes_value /= 1024.0
+        bytes_value /= BYTES_PER_KB
     return f"{bytes_value:.2f} PB"
 
 
@@ -240,7 +249,7 @@ def generate_optimization_recommendations(bucket_analysis):
         old_standard_objects = [
             obj
             for obj in bucket_analysis["old_objects"]
-            if obj["storage_class"] == "STANDARD" and obj["age_days"] > 30
+            if obj["storage_class"] == "STANDARD" and obj["age_days"] > DAYS_THRESHOLD_IA
         ]
         if old_standard_objects:
             old_size = sum(obj["size_bytes"] for obj in old_standard_objects)
@@ -260,7 +269,8 @@ def generate_optimization_recommendations(bucket_analysis):
         very_old_objects = [
             obj
             for obj in bucket_analysis["old_objects"]
-            if obj["storage_class"] in ["STANDARD", "STANDARD_IA"] and obj["age_days"] > 90
+            if obj["storage_class"] in ["STANDARD", "STANDARD_IA"]
+            and obj["age_days"] > DAYS_THRESHOLD_GLACIER
         ]
         if very_old_objects:
             old_size = sum(obj["size_bytes"] for obj in very_old_objects)
@@ -325,7 +335,7 @@ def generate_optimization_recommendations(bucket_analysis):
     return recommendations
 
 
-def audit_s3_comprehensive():
+def audit_s3_comprehensive():  # noqa: C901, PLR0912, PLR0915
     """Perform comprehensive S3 audit across all regions"""
     setup_aws_credentials()
 
@@ -498,7 +508,9 @@ def audit_s3_comprehensive():
         cleanup_candidates = []
         for analysis in all_bucket_analyses:
             # Very old objects that haven't been accessed
-            very_old_objects = [obj for obj in analysis["old_objects"] if obj["age_days"] > 365]
+            very_old_objects = [
+                obj for obj in analysis["old_objects"] if obj["age_days"] > DAYS_THRESHOLD_VERY_OLD
+            ]
             if very_old_objects:
                 cleanup_size = sum(obj["size_bytes"] for obj in very_old_objects)
                 cleanup_cost = sum(

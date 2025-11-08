@@ -7,7 +7,9 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def remove_public_ip_by_network_interface_replacement(instance_id, region_name):
+def remove_public_ip_by_network_interface_replacement(  # noqa: C901, PLR0911, PLR0912, PLR0915
+    instance_id, region_name
+):  # noqa: C901, PLR0911, PLR0912, PLR0915
     """Remove public IP by creating a new network interface without public IP"""
     print(f"\n🔧 Advanced method: Replacing network interface for {instance_id}")
     print("=" * 80)

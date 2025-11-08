@@ -10,8 +10,6 @@ Tests verify:
 import sys
 from unittest.mock import patch
 
-import pytest
-
 # Import the module under test
 import ci
 

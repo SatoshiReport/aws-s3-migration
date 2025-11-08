@@ -12,9 +12,8 @@ Tests cover:
 import os
 from unittest import mock
 
-import pytest
-
 import block_s3
+from tests.assertions import assert_equal
 
 
 class TestEdgeCases:
@@ -110,7 +109,7 @@ class TestArgparseBehavior:
                     with mock.patch("block_s3.save_policy_to_file") as mock_save:
                         block_s3.main()
                         # Should process all three buckets without error
-                        assert mock_save.call_count == 3
+                        assert_equal(mock_save.call_count, 3)
 
     def test_argparse_recognizes_all_flag(self, tmp_path, monkeypatch):
         """Test that argparse correctly recognizes --all flag"""
@@ -178,10 +177,11 @@ class TestRealFileOperations:
 
                         # Verify filename format
                         assert captured_filename is not None
-                        assert captured_filename.startswith("policies")
-                        assert captured_filename.endswith("test-bucket_policy.json")
+                        filename_str = str(captured_filename)  # Convert to str for pylint
+                        assert filename_str.startswith("policies")
+                        assert filename_str.endswith("test-bucket_policy.json")
                         # Verify path uses OS separator
-                        assert os.sep in captured_filename
+                        assert os.sep in filename_str
 
 
 class TestMultipleConsecutiveCalls:

@@ -38,7 +38,6 @@ def release_remaining_elastic_ip():
                 print(f"  🗑️  Attempting to release Elastic IP...")
                 ec2.release_address(AllocationId=allocation_id)
                 print(f"  ✅ Successfully released {public_ip}")
-                return True
 
             except ClientError as e:
                 error_code = e.response["Error"]["Code"]
@@ -52,11 +51,11 @@ def release_remaining_elastic_ip():
                     print(f"  ❌ Failed to release {public_ip}: {error_message}")
                     return False
 
-        return True
-
     except ClientError as e:
         print(f"❌ Error accessing eu-west-2: {e}")
         return False
+    else:
+        return True
 
 
 def main():

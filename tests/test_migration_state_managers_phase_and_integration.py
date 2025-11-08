@@ -4,6 +4,7 @@ import pytest
 
 from migration_state_managers import PhaseManager
 from migration_state_v2 import MigrationStateV2, Phase
+from tests.assertions import assert_equal
 
 
 class TestPhaseManagerFixtures:
@@ -239,8 +240,8 @@ class TestScanSummaryIntegration(TestIntegrationFixtures):
 
         summary = state.get_scan_summary()
 
-        assert summary["bucket_count"] == 2
-        assert summary["total_files"] == 3
-        assert summary["total_size"] == 6000
-        assert summary["storage_classes"]["STANDARD"] == 2
-        assert summary["storage_classes"]["GLACIER"] == 1
+        assert_equal(summary["bucket_count"], 2)
+        assert_equal(summary["total_files"], 3)
+        assert_equal(summary["total_size"], 6000)
+        assert_equal(summary["storage_classes"]["STANDARD"], 2)
+        assert_equal(summary["storage_classes"]["GLACIER"], 1)

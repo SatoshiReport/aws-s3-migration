@@ -7,7 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def audit_flow_logs_in_region(region_name):
+def audit_flow_logs_in_region(region_name):  # noqa: C901
     """Audit VPC Flow Logs in a specific region"""
     print(f"\n🔍 Auditing VPC Flow Logs in {region_name}")
     print("=" * 80)
@@ -75,11 +75,12 @@ def audit_flow_logs_in_region(region_name):
             print()
             region_summary.append(flow_info)
 
-        return region_summary
-
     except ClientError as e:
         print(f"❌ Error auditing Flow Logs in {region_name}: {e}")
         return []
+
+    else:
+        return region_summary
 
 
 def audit_additional_vpc_costs_in_region(region_name):

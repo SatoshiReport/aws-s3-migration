@@ -10,8 +10,6 @@ Tests cover:
 import json
 from unittest import mock
 
-import pytest
-
 import apply_block
 
 
@@ -27,9 +25,11 @@ class TestMainErrorHandling:
         # Create a policy file with invalid JSON
         (policies_dir / "bucket1_policy.json").write_text("{invalid json")
 
+        error_message = "Invalid JSON"
+
         with mock.patch("sys.argv", ["apply_block.py", "bucket1"]):
             with mock.patch("apply_block.load_policy_from_file") as mock_load:
-                mock_load.side_effect = ValueError("Invalid JSON")
+                mock_load.side_effect = ValueError(error_message)
                 apply_block.main()
 
         captured = capsys.readouterr()
@@ -44,9 +44,11 @@ class TestMainErrorHandling:
         policy_content = json.dumps({"Version": "2012-10-17", "Statement": [{"Effect": "Allow"}]})
         (policies_dir / "bucket1_policy.json").write_text(policy_content)
 
+        error_message = "AccessDenied"
+
         with mock.patch("sys.argv", ["apply_block.py", "bucket1"]):
             with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
-                mock_apply.side_effect = OSError("AccessDenied")
+                mock_apply.side_effect = OSError(error_message)
                 apply_block.main()
 
         captured = capsys.readouterr()
@@ -63,9 +65,11 @@ class TestMainErrorHandling:
         (policies_dir / "bucket2_policy.json").write_text(policy_content)
         (policies_dir / "bucket3_policy.json").write_text(policy_content)
 
+        failure_message = "S3 error"
+
         def apply_side_effect(bucket, policy):
             if bucket == "bucket2":
-                raise IOError("S3 error")
+                raise IOError(failure_message)
 
         with mock.patch("sys.argv", ["apply_block.py", "bucket1", "bucket2", "bucket3"]):
             with mock.patch("apply_block.apply_bucket_policy") as mock_apply:

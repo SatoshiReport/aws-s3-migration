@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 
 from migration_scanner import GlacierRestorer
 from migration_state_v2 import MigrationStateV2
+from tests.assertions import assert_equal
 
 
 class TestGlacierRestorerStorageClassTiers:
@@ -146,5 +147,5 @@ class TestGlacierRestorerConfiguration:
 
                 call_args = mock_s3.restore_object.call_args
                 restore_request = call_args[1]["RestoreRequest"]
-                assert restore_request["Days"] == 5
+                assert_equal(restore_request["Days"], 5)
                 assert restore_request["GlacierJobParameters"]["Tier"] == "Expedited"

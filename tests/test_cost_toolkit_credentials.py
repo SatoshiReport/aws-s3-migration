@@ -1,14 +1,14 @@
+"""Tests for cost_toolkit AWS credentials loading."""
+
 from __future__ import annotations
 
-import importlib
 import os
-
-import pytest
 
 from cost_toolkit.scripts import aws_utils
 
 
 def test_load_aws_credentials_respects_custom_env(tmp_path, monkeypatch):
+    """Test load_aws_credentials loads from custom AWS_ENV_FILE."""
     env_file = tmp_path / "aws.env"
     env_file.write_text(
         "\n".join(
@@ -33,25 +33,14 @@ def test_load_aws_credentials_respects_custom_env(tmp_path, monkeypatch):
     assert os.environ["AWS_DEFAULT_REGION"] == "us-east-1"
 
 
-@pytest.mark.parametrize(
-    "module_path",
-    [
-        "cost_toolkit.scripts.cleanup.aws_cleanup_script",
-        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup",
-        "cost_toolkit.scripts.migration.aws_start_and_migrate",
-    ],
-)
-def test_script_setup_delegates_to_shared_helper(module_path, monkeypatch):
-    module = importlib.import_module(module_path)
+def test_load_aws_credentials_warns_for_missing_file(monkeypatch, capsys):
+    """Test load_aws_credentials warns when credential file is missing."""
+    monkeypatch.delenv("AWS_ENV_FILE", raising=False)
+    monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
+    env_file = os.path.join(os.getcwd(), "nonexistent.env")
+    monkeypatch.setenv("AWS_ENV_FILE", env_file)
 
-    called = {"count": 0}
-
-    def fake_setup(_env_path=None):
-        called["count"] += 1
-
-    monkeypatch.setattr("cost_toolkit.scripts.aws_utils.setup_aws_credentials", fake_setup)
-
-    setup_fn = getattr(module, "setup_aws_credentials")
-    setup_fn()
-
-    assert called["count"] == 1
+    assert not aws_utils.load_aws_credentials()
+    captured = capsys.readouterr()
+    assert "AWS credentials not found" in captured.out

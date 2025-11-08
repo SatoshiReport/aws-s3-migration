@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 
 from migration_verify import BucketDeleter, BucketVerifier
+from tests.assertions import assert_equal
 
 
 class TestBucketVerifierSuccess:
@@ -42,9 +43,9 @@ class TestBucketVerifierSuccess:
         verifier = BucketVerifier(mock_state, tmp_path)
         results = verifier.verify_bucket("test-bucket")
 
-        assert results["verified_count"] == 1
-        assert results["local_file_count"] == 1
-        assert results["checksum_verified"] == 1
+        assert_equal(results["verified_count"], 1)
+        assert_equal(results["local_file_count"], 1)
+        assert_equal(results["checksum_verified"], 1)
 
 
 class TestBucketVerifierMissingPath:
@@ -165,7 +166,7 @@ class TestBucketDeleterSinglePage:
         mock_s3.delete_objects.assert_called_once()
         call_args = mock_s3.delete_objects.call_args
         assert call_args[1]["Bucket"] == "test-bucket"
-        assert len(call_args[1]["Delete"]["Objects"]) == 3
+        assert_equal(len(call_args[1]["Delete"]["Objects"]), 3)
         # Verify VersionId is included
         assert all("VersionId" in obj for obj in call_args[1]["Delete"]["Objects"])
 
@@ -207,7 +208,7 @@ class TestBucketDeleterMultiplePagesBasic:
         deleter.delete_bucket("test-bucket")
 
         # Verify delete_objects was called 3 times (once per page)
-        assert mock_s3.delete_objects.call_count == 3
+        assert_equal(mock_s3.delete_objects.call_count, 3)
 
 
 class TestBucketDeleterEmptyPages:
@@ -232,7 +233,7 @@ class TestBucketDeleterEmptyPages:
         deleter.delete_bucket("test-bucket")
 
         # Should only call delete_objects twice (skipping empty page)
-        assert mock_s3.delete_objects.call_count == 2
+        assert_equal(mock_s3.delete_objects.call_count, 2)
 
 
 class TestBucketDeleterBucketRemoval:

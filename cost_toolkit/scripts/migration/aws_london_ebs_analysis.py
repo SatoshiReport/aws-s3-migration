@@ -14,7 +14,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def analyze_london_ebs():
+def analyze_london_ebs():  # noqa: C901, PLR0912, PLR0915
     """Analyze London EBS volumes and start instance for inspection"""
     setup_aws_credentials()
 

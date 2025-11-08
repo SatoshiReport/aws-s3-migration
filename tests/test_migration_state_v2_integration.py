@@ -2,9 +2,8 @@
 
 from pathlib import Path
 
-import pytest
-
 from migration_state_v2 import MigrationStateV2, Phase
+from tests.assertions import assert_equal
 
 
 class TestFullBucketMigration:
@@ -25,7 +24,7 @@ class TestFullBucketMigration:
 
         state.set_current_phase(Phase.GLACIER_RESTORE)
         glacier_files = state.get_glacier_files_needing_restore()
-        assert len(glacier_files) == 1
+        assert_equal(len(glacier_files), 1)
 
         state.mark_glacier_restore_requested("bucket1", "key1")
         state.set_current_phase(Phase.GLACIER_WAIT)
@@ -43,9 +42,9 @@ class TestFullBucketMigration:
         state.set_current_phase(Phase.COMPLETE)
 
         summary = state.get_scan_summary()
-        assert summary["bucket_count"] == 1
-        assert summary["total_files"] == 2
-        assert summary["total_size"] == 300
+        assert_equal(summary["bucket_count"], 1)
+        assert_equal(summary["total_files"], 2)
+        assert_equal(summary["total_size"], 300)
 
 
 class TestMultipleBucketStatus:
@@ -90,10 +89,10 @@ class TestStorageClassAggregation:
 
         summary = state.get_scan_summary()
 
-        assert summary["storage_classes"]["STANDARD"] == 1
-        assert summary["storage_classes"]["GLACIER"] == 2
-        assert summary["storage_classes"]["DEEP_ARCHIVE"] == 1
-        assert summary["storage_classes"]["GLACIER_IR"] == 1
+        assert_equal(summary["storage_classes"]["STANDARD"], 1)
+        assert_equal(summary["storage_classes"]["GLACIER"], 2)
+        assert_equal(summary["storage_classes"]["DEEP_ARCHIVE"], 1)
+        assert_equal(summary["storage_classes"]["GLACIER_IR"], 1)
 
 
 class TestGlacierRestoreIntegration:
@@ -108,19 +107,19 @@ class TestGlacierRestoreIntegration:
         state.add_file("b1", "glacier2", 200, "e2", "DEEP_ARCHIVE", "2025-10-31T00:00:00Z")
 
         needing_restore = state.get_glacier_files_needing_restore()
-        assert len(needing_restore) == 2
+        assert_equal(len(needing_restore), 2)
 
         state.mark_glacier_restore_requested("b1", "glacier1")
         state.mark_glacier_restore_requested("b1", "glacier2")
 
         restoring = state.get_files_restoring()
-        assert len(restoring) == 2
+        assert_equal(len(restoring), 2)
 
         state.mark_glacier_restored("b1", "glacier1")
 
         restoring = state.get_files_restoring()
-        assert len(restoring) == 1
+        assert_equal(len(restoring), 1)
         assert restoring[0]["key"] == "glacier2"
 
         needing_restore = state.get_glacier_files_needing_restore()
-        assert len(needing_restore) == 0
+        assert_equal(len(needing_restore), 0)

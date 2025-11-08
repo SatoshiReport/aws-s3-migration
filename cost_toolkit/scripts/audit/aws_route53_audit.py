@@ -6,6 +6,13 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+# Route 53 constants
+COST_VARIANCE_THRESHOLD = 0.50  # Acceptable cost difference in dollars
+DEFAULT_DNS_RECORD_COUNT = 2  # NS and SOA records
+EXPECTED_HOSTED_ZONE_COUNT_1 = 3  # Common configuration
+EXPECTED_HOSTED_ZONE_COUNT_2 = 2  # Alternative configuration
+EXPECTED_HEALTH_CHECK_COUNT = 2  # Common health check count
+
 
 def audit_route53_hosted_zones():
     """Audit Route 53 hosted zones and their costs"""
@@ -88,11 +95,12 @@ def audit_route53_hosted_zones():
         print(f"  Total zones: {len(hosted_zones)}")
         print(f"  Estimated monthly cost: ${total_monthly_cost:.2f}")
 
-        return zone_details
-
     except ClientError as e:
         print(f"❌ Error auditing Route 53: {e}")
         return []
+
+    else:
+        return zone_details
 
 
 def audit_route53_health_checks():
@@ -126,7 +134,7 @@ def audit_route53_health_checks():
             print(f"  Type: {hc_type}")
             print(f"  Monthly Cost: ${monthly_cost:.2f}")
 
-            if hc_type == "HTTP" or hc_type == "HTTPS":
+            if hc_type in {"HTTP", "HTTPS"}:
                 fqdn = hc_config.get("FullyQualifiedDomainName", "")
                 port = hc_config.get("Port", "")
                 path = hc_config.get("ResourcePath", "")
@@ -141,11 +149,12 @@ def audit_route53_health_checks():
         print(f"  Total health checks: {len(health_checks)}")
         print(f"  Estimated monthly cost: ${total_monthly_cost:.2f}")
 
-        return health_check_details
-
     except ClientError as e:
         print(f"❌ Error auditing health checks: {e}")
         return []
+
+    else:
+        return health_check_details
 
 
 def audit_route53_resolver_endpoints():
@@ -198,14 +207,15 @@ def audit_route53_resolver_endpoints():
         print(f"  Total endpoints: {len(endpoints)}")
         print(f"  Estimated monthly cost: ${total_monthly_cost:.2f}")
 
-        return endpoint_details
-
     except ClientError as e:
         print(f"❌ Error auditing resolver endpoints: {e}")
         return []
 
+    else:
+        return endpoint_details
 
-def main():
+
+def main():  # noqa: PLR0912
     print("AWS Route 53 Cost Audit")
     print("=" * 80)
     print("Analyzing Route 53 resources that could be costing $1.57...")
@@ -237,7 +247,7 @@ def main():
 
     # Analysis
     print(f"\n💡 COST ANALYSIS:")
-    if abs(total_estimated_cost - 1.57) < 0.50:
+    if abs(total_estimated_cost - 1.57) < COST_VARIANCE_THRESHOLD:
         print(f"  ✅ Estimated cost closely matches reported cost")
     else:
         print(f"  ⚠️  Estimated cost differs from reported cost")
@@ -248,7 +258,7 @@ def main():
     if hosted_zones:
         print(f"  Hosted Zones ({len(hosted_zones)} zones):")
         for zone in hosted_zones:
-            if zone["record_count"] <= 2:  # Only NS and SOA records
+            if zone["record_count"] <= DEFAULT_DNS_RECORD_COUNT:  # Only NS and SOA records
                 print(f"    🗑️  {zone['zone_name']} - appears unused (only default records)")
             else:
                 print(
@@ -266,10 +276,13 @@ def main():
         print(f"    🔍 Review if resolver endpoints are actually needed")
 
     print(f"\n🎯 LIKELY EXPLANATION FOR $1.57:")
-    if len(hosted_zones) == 3:
+    if len(hosted_zones) == EXPECTED_HOSTED_ZONE_COUNT_1:
         print(f"  3 hosted zones × $0.50 = $1.50/month")
         print(f"  Plus DNS queries and other small charges = ~$1.57")
-    elif len(hosted_zones) == 2 and len(health_checks) == 2:
+    elif (
+        len(hosted_zones) == EXPECTED_HOSTED_ZONE_COUNT_2
+        and len(health_checks) == EXPECTED_HEALTH_CHECK_COUNT
+    ):
         print(f"  2 hosted zones × $0.50 + 2 health checks × $0.50 = $2.00/month")
         print(f"  Partial month billing could explain $1.57")
     else:

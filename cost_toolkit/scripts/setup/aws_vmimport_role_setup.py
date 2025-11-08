@@ -7,6 +7,7 @@ This role is required by AWS to export AMIs to S3.
 
 import json
 import os
+import sys
 
 import boto3
 from dotenv import load_dotenv
@@ -20,7 +21,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -88,7 +89,6 @@ def create_vmimport_role():
             print("✅ vmimport role already exists")
             print(f"   Role ARN: {role['Role']['Arn']}")
             print(f"   Created: {role['Role']['CreateDate']}")
-            return True
         except iam_client.exceptions.NoSuchEntityException:
             print("🔄 Creating vmimport service role...")
 
@@ -124,8 +124,6 @@ def create_vmimport_role():
             print("🎉 VM Import service role setup completed!")
             print("   You can now run the S3 export script successfully.")
 
-            return True
-
     except Exception as e:
         print(f"❌ Error setting up vmimport role: {e}")
         print()
@@ -151,6 +149,8 @@ def create_vmimport_role():
         )
 
         return False
+    else:
+        return True
 
 
 if __name__ == "__main__":
@@ -158,4 +158,4 @@ if __name__ == "__main__":
         create_vmimport_role()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

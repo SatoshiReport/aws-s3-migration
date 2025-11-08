@@ -118,7 +118,10 @@ def test_main_with_long_username():
     mock_identity = {
         "account_id": "123456789012",
         "username": "very-long-username-with-many-characters-and-dashes",
-        "user_arn": "arn:aws:iam::123456789012:user/very-long-username-with-many-characters-and-dashes",
+        "user_arn": (
+            "arn:aws:iam::123456789012:user/"
+            "very-long-username-with-many-characters-and-dashes"
+        ),
     }
     mock_buckets = []
 

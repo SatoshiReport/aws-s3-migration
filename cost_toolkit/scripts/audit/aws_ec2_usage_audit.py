@@ -6,8 +6,12 @@ from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+# Constants
+CPU_USAGE_VERY_LOW_THRESHOLD = 5
+CPU_USAGE_MODERATE_THRESHOLD = 20
 
-def get_instance_details_in_region(region_name):
+
+def get_instance_details_in_region(region_name):  # noqa: C901, PLR0912, PLR0915
     """Get detailed information about EC2 instances in a region"""
     print(f"\n🔍 Auditing EC2 instances in {region_name}")
     print("=" * 80)
@@ -80,12 +84,12 @@ def get_instance_details_in_region(region_name):
                     # Determine usage level
                     if avg_cpu < 1:
                         usage_level = "🔴 VERY LOW (<1% avg)"
-                    elif avg_cpu < 5:
-                        usage_level = "🟡 LOW (<5% avg)"
-                    elif avg_cpu < 20:
-                        usage_level = "🟢 MODERATE (5-20% avg)"
+                    elif avg_cpu < CPU_USAGE_VERY_LOW_THRESHOLD:
+                        usage_level = f"🟡 LOW (<{CPU_USAGE_VERY_LOW_THRESHOLD}% avg)"
+                    elif avg_cpu < CPU_USAGE_MODERATE_THRESHOLD:
+                        usage_level = f"🟢 MODERATE ({CPU_USAGE_VERY_LOW_THRESHOLD}-{CPU_USAGE_MODERATE_THRESHOLD}% avg)"
                     else:
-                        usage_level = "🔵 HIGH (>20% avg)"
+                        usage_level = f"🔵 HIGH (>{CPU_USAGE_MODERATE_THRESHOLD}% avg)"
 
                     print(f"    Usage Level: {usage_level}")
                 else:
@@ -154,11 +158,12 @@ def get_instance_details_in_region(region_name):
             region_summary.append(instance_info)
             print()
 
-        return region_summary
-
     except ClientError as e:
         print(f"❌ Error auditing instances in {region_name}: {e}")
         return []
+
+    else:
+        return region_summary
 
 
 def main():

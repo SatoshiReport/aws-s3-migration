@@ -151,11 +151,13 @@ def create_rds_snapshot(rds_client, instance_identifier, region):
         )
 
         print(f"✅ Snapshot completed: {snapshot_identifier}")
-        return snapshot_identifier
 
     except ClientError as e:
         print(f"❌ Error creating snapshot: {e}")
         raise
+
+    else:
+        return snapshot_identifier
 
 
 def create_aurora_serverless_cluster(rds_client, instance_info, target_engine, snapshot_identifier):
@@ -237,14 +239,17 @@ def create_aurora_serverless_cluster(rds_client, instance_info, target_engine, s
             "status": cluster["Status"],
         }
 
-        return endpoint_info
-
     except ClientError as e:
         print(f"❌ Error creating Aurora Serverless v2 cluster: {e}")
         raise
 
+    else:
+        return endpoint_info
 
-def migrate_rds_to_aurora_serverless(instance_identifier=None, region=None):
+
+def migrate_rds_to_aurora_serverless(  # noqa: C901, PLR0912, PLR0915
+    instance_identifier=None, region=None
+):  # noqa: C901, PLR0912, PLR0915
     """Main migration function"""
     setup_aws_credentials()
 
@@ -272,7 +277,7 @@ def migrate_rds_to_aurora_serverless(instance_identifier=None, region=None):
         try:
             choice = int(input("\nSelect instance to migrate (number): ")) - 1
             if choice < 0 or choice >= len(instances):
-                raise ValueError("Invalid selection")
+                raise ValueError("Invalid selection")  # noqa: TRY003, TRY301
             selected_instance = instances[choice]
         except (ValueError, IndexError):
             print("❌ Invalid selection. Exiting.")

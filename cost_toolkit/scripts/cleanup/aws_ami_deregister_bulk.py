@@ -6,6 +6,7 @@ This script will deregister 7 unused AMIs, preserving only the one currently in 
 """
 
 import os
+import sys
 from datetime import datetime
 
 import boto3
@@ -20,7 +21,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -32,13 +33,15 @@ def deregister_ami(ec2_client, ami_id, region):
         print(f"🗑️  Deregistering AMI: {ami_id} in {region}")
         ec2_client.deregister_image(ImageId=ami_id)
         print(f"   ✅ Successfully deregistered {ami_id}")
-        return True
     except Exception as e:
         print(f"   ❌ Error deregistering {ami_id}: {e}")
         return False
 
+    else:
+        return True
 
-def bulk_deregister_unused_amis():
+
+def bulk_deregister_unused_amis():  # noqa: PLR0915
     """Deregister all unused AMIs that are preventing snapshot deletion"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -179,4 +182,4 @@ if __name__ == "__main__":
         bulk_deregister_unused_amis()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

@@ -27,6 +27,7 @@ try:  # Prefer package-relative imports when packaged
         PathTuple,
         ProgressPrinter,
     )
+    from .state_db_admin import reseed_state_db_from_local_drive
 except ImportError:  # pragma: no cover - execution as standalone script
     import config as config_module  # type: ignore
     from duplicate_tree_core import (  # type: ignore
@@ -39,6 +40,7 @@ except ImportError:  # pragma: no cover - execution as standalone script
         PathTuple,
         ProgressPrinter,
     )
+    from state_db_admin import reseed_state_db_from_local_drive  # type: ignore
 
 
 CACHE_TABLE_SQL = """
@@ -56,6 +58,8 @@ CREATE TABLE IF NOT EXISTS duplicate_tree_cache (
 EXACT_TOLERANCE = 1.0
 MIN_REPORT_FILES = 2
 MIN_REPORT_BYTES = 512 * 1024 * 1024  # 0.5 GiB
+MIN_DUPLICATE_NODES = 2
+BYTES_PER_UNIT = 1024
 
 ClusterRow = Dict[str, Any]
 NodeRow = Dict[str, Any]
@@ -250,17 +254,50 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
             "in each cluster (requires confirmation)."
         ),
     )
+    parser.add_argument(
+        "--reset-state-db",
+        action="store_true",
+        help="Delete and recreate the migrate_v2 state DB before scanning.",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip confirmation when using --reset-state-db.",
+    )
     return parser.parse_args(argv)
 
 
-def main(argv: Optional[Sequence[str]] = None) -> int:
+def main(argv: Optional[Sequence[str]] = None) -> int:  # noqa: C901, PLR0912, PLR0915
     """Run the duplicate tree report workflow."""
     args = parse_args(argv)
-    db_path = Path(args.db_path)
+    base_path = Path(args.base_path).expanduser()
+    db_path = Path(args.db_path).expanduser()
+    reset_confirmed = False
+    if args.reset_state_db:
+        if args.yes:
+            reset_confirmed = True
+        else:
+            resp = (
+                input(
+                    f"Reset migrate_v2 state database at {db_path}? "
+                    "This deletes cached migration metadata. [y/N] "
+                )
+                .strip()
+                .lower()
+            )
+            reset_confirmed = resp in {"y", "yes"}
+            if not reset_confirmed:
+                print("State database reset cancelled; continuing without reset.")
+    if reset_confirmed:
+        db_path, file_count, total_bytes = reseed_state_db_from_local_drive(base_path, db_path)
+        print(
+            f"✓ Recreated migrate_v2 state database at {db_path} "
+            f"({file_count:,} files, {_format_bytes(total_bytes)}). Continuing."
+        )
+
     if not db_path.exists():
         print(f"State DB not found at {db_path}. Run migrate_v2 first.", file=sys.stderr)
         return 1
-    base_path = Path(args.base_path)
     min_files = max(0, args.min_files)
     min_bytes = max(0, int(args.min_size_gb * (1024**3)))
     print(f"Using database: {db_path}")
@@ -331,7 +368,7 @@ def _apply_thresholds(
             for node in cluster.nodes
             if node.total_files > min_files and node.total_size >= min_bytes
         ]
-        if len(nodes) >= 2:
+        if len(nodes) >= MIN_DUPLICATE_NODES:
             filtered.append(DuplicateCluster(cluster.signature, nodes))
     return filtered
 
@@ -390,9 +427,9 @@ def _format_bytes(num_bytes: int) -> str:
     units = ["bytes", "KiB", "MiB", "GiB", "TiB"]
     value = float(num_bytes)
     for unit in units:
-        if value < 1024 or unit == units[-1]:
+        if value < BYTES_PER_UNIT or unit == units[-1]:
             return f"{value:0.2f} {unit}"
-        value /= 1024
+        value /= BYTES_PER_UNIT
 
 
 def _sort_node_rows(node_rows: Sequence[NodeRow]) -> List[NodeRow]:
@@ -403,14 +440,16 @@ def _sort_node_rows(node_rows: Sequence[NodeRow]) -> List[NodeRow]:
     )
 
 
-def _delete_duplicate_directories(cluster_rows: Sequence[ClusterRow], base_path: Path):
+def _delete_duplicate_directories(  # noqa: C901, PLR0912 - deletion UX requires branching
+    cluster_rows: Sequence[ClusterRow], base_path: Path
+):
     """Delete every duplicate directory except the first entry in each cluster."""
     deletion_groups = []
     total_bytes = 0
     total_dirs = 0
     for idx, cluster in enumerate(cluster_rows, start=1):
         nodes = _sort_node_rows(cluster["nodes"])
-        if len(nodes) < 2:
+        if len(nodes) < MIN_DUPLICATE_NODES:
             continue
         keep_node = nodes[0]
         delete_nodes = nodes[1:]

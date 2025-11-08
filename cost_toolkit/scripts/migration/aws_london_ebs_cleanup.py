@@ -13,7 +13,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def cleanup_london_ebs_volumes():
+def cleanup_london_ebs_volumes():  # noqa: C901, PLR0912, PLR0915
     """Clean up duplicate and unattached EBS volumes in London"""
     setup_aws_credentials()
 

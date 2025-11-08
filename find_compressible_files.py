@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Locate large locally downloaded objects that should compress well with xz and optionally compress them with verification."""
+# ruff: noqa: TRY003 - CLI emits user-focused errors with contextual messages
 
 from __future__ import annotations
 
@@ -21,6 +22,11 @@ try:
     from config import LOCAL_BASE_PATH, STATE_DB_PATH
 except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
     raise SystemExit(f"Unable to import config module: {exc}") from exc
+
+try:  # Shared helper for resetting migrate_v2 state DB.
+    from .state_db_admin import reseed_state_db_from_local_drive
+except ImportError:  # pragma: no cover - direct script execution
+    from state_db_admin import reseed_state_db_from_local_drive  # type: ignore
 
 IMAGE_EXTENSIONS = {
     "jpg",
@@ -87,6 +93,7 @@ ALREADY_COMPRESSED_EXTENSIONS = {
     "db",
 }
 
+BYTES_PER_UNIT = 1024
 DEFAULT_MIN_SIZE = 512 * 1024 * 1024  # 512 MiB
 
 
@@ -140,6 +147,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Compress each reported file in-place using `xz -9e`. Disabled by default.",
     )
+    parser.add_argument(
+        "--reset-state-db",
+        action="store_true",
+        help="Delete and recreate the migrate_v2 state DB before scanning.",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Skip confirmation when using --reset-state-db.",
+    )
     return parser.parse_args()
 
 
@@ -148,7 +165,12 @@ def parse_size(value: str) -> int:
     raw = value.strip().lower()
     if not raw:
         raise argparse.ArgumentTypeError("Size cannot be empty")
-    multipliers = {"k": 1024, "m": 1024**2, "g": 1024**3, "t": 1024**4}
+    multipliers = {
+        "k": BYTES_PER_UNIT,
+        "m": BYTES_PER_UNIT**2,
+        "g": BYTES_PER_UNIT**3,
+        "t": BYTES_PER_UNIT**4,
+    }
     suffix = raw[-1]
     if suffix in multipliers:
         number = raw[:-1]
@@ -166,9 +188,9 @@ def parse_size(value: str) -> int:
 def format_size(num: int) -> str:
     """Return a human-friendly size string."""
     for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
-        if num < 1024 or unit == "TiB":
+        if num < BYTES_PER_UNIT or unit == "TiB":
             return f"{num:,.2f} {unit}"
-        num /= 1024
+        num /= BYTES_PER_UNIT
     return f"{num:,.2f} PiB"
 
 
@@ -177,7 +199,7 @@ def suffix_tokens(name: str) -> Sequence[str]:
     return [suffix.lstrip(".").lower() for suffix in PurePosixPath(name).suffixes if suffix]
 
 
-def should_skip_by_suffix(*names: str) -> str | None:
+def should_skip_by_suffix(*names: str) -> str | None:  # noqa: C901, PLR0912
     """Return a reason string if the file should be skipped based on suffix."""
     tokens: list[str] = []
     for name in names:
@@ -307,7 +329,7 @@ def verify_compressed_file(path: Path) -> None:
         ) from exc
 
 
-def main() -> None:
+def main() -> None:  # noqa: C901, PLR0912, PLR0915
     args = parse_args()
     base_path = Path(args.base_path).expanduser()
     if not base_path.exists():
@@ -317,7 +339,33 @@ def main() -> None:
     else:
         buckets = []
 
-    conn = sqlite3.connect(args.db_path)
+    db_path = Path(args.db_path).expanduser()
+    reset_confirmed = False
+    if args.reset_state_db:
+        if args.yes:
+            reset_confirmed = True
+        else:
+            resp = (
+                input(
+                    f"Reset migrate_v2 state database at {db_path}? "
+                    "This deletes cached migration metadata. [y/N] "
+                )
+                .strip()
+                .lower()
+            )
+            reset_confirmed = resp in {"y", "yes"}
+            if not reset_confirmed:
+                print("State database reset cancelled; continuing without reset.")
+    if reset_confirmed:
+        db_path, file_count, total_bytes = reseed_state_db_from_local_drive(base_path, db_path)
+        print(
+            f"✓ Recreated migrate_v2 state database at {db_path} "
+            f"({file_count:,} files, {format_size(total_bytes)}). Continuing."
+        )
+    if not db_path.exists():
+        raise SystemExit(f"State DB not found at {db_path}. Run migrate_v2 first.")
+
+    conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
     stats: Counter = Counter()
 
@@ -397,7 +445,7 @@ def main() -> None:
     print("\nScan summary")
     print("============")
     print(f"Local base:      {base_path}")
-    print(f"Database:        {args.db_path}")
+    print(f"Database:        {db_path}")
     print(f"Rows examined:   {stats['rows_examined']:,}")
     print(f"Candidates:      {stats['candidates_found']:,}")
     print(f"Reported (desc): {total_reported:,}")

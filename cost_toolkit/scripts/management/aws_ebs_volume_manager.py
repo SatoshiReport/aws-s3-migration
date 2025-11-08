@@ -15,6 +15,10 @@ import boto3
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from aws_utils import setup_aws_credentials
 
+# Command-line argument count constants
+MIN_ARGS_FOR_COMMAND = 2
+MIN_ARGS_WITH_VOLUME_ID = 3
+
 
 def get_all_aws_regions() -> List[str]:
     """
@@ -74,9 +78,11 @@ def get_instance_name(instance_id: str, region: str) -> str:
                 for tag in instance.get("Tags", []):
                     if tag["Key"] == "Name":
                         return tag["Value"]
-        return "No Name"
     except Exception:
         return "Unknown"
+
+    else:
+        return "No Name"
 
 
 def get_volume_tags(volume: Dict) -> Dict[str, str]:
@@ -107,8 +113,7 @@ def get_volume_detailed_info(volume_id: str) -> Dict:
     """
     region = find_volume_region(volume_id)
     if not region:
-        raise ValueError(f"Volume {volume_id} not found in any region")
-
+        raise ValueError(f"Volume {volume_id} not found in any region")  # noqa: TRY003
     ec2_client = boto3.client("ec2", region_name=region)
     cloudwatch_client = boto3.client("cloudwatch", region_name=region)
 
@@ -238,10 +243,12 @@ def delete_ebs_volume(volume_id: str, force: bool = False) -> bool:
         ec2_client.delete_volume(VolumeId=volume_id)
         print(f"✅ Volume {volume_id} deletion initiated successfully")
         print("   The volume will be permanently deleted within a few minutes")
-        return True
     except Exception as e:
         print(f"❌ Error deleting volume {volume_id}: {str(e)}")
         return False
+
+    else:
+        return True
 
 
 def print_volume_detailed_report(volume_info: Dict) -> None:
@@ -302,8 +309,7 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
     """
     region = find_volume_region(volume_id)
     if not region:
-        raise ValueError(f"Volume {volume_id} not found in any region")
-
+        raise ValueError(f"Volume {volume_id} not found in any region")  # noqa: TRY003
     ec2_client = boto3.client("ec2", region_name=region)
 
     # Get volume information for the description
@@ -320,8 +326,7 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
             description = f"Snapshot of {volume_name} ({volume_id}) - {volume_size}GB - {timestamp}"
 
     except Exception as e:
-        raise ValueError(f"Error retrieving volume {volume_id}: {str(e)}")
-
+        raise ValueError(f"Error retrieving volume {volume_id}: {str(e)}")  # noqa: TRY003
     # Create the snapshot
     try:
         snapshot_response = ec2_client.create_snapshot(VolumeId=volume_id, Description=description)
@@ -363,7 +368,9 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
         }
 
     except Exception as e:
-        raise ValueError(f"Error creating snapshot for volume {volume_id}: {str(e)}")
+        raise ValueError(  # noqa: TRY003
+            f"Error creating snapshot for volume {volume_id}: {str(e)}"
+        )
 
 
 def create_multiple_snapshots(volume_ids: List[str]) -> List[Dict]:
@@ -394,9 +401,9 @@ def create_multiple_snapshots(volume_ids: List[str]) -> List[Dict]:
     return snapshots
 
 
-def main():
+def main():  # noqa: C901, PLR0912, PLR0915
     """Main function to handle command line arguments and execute operations."""
-    if len(sys.argv) < 2:
+    if len(sys.argv) < MIN_ARGS_FOR_COMMAND:
         print("AWS EBS Volume Manager")
         print("=" * 50)
         print("Usage:")
@@ -423,7 +430,7 @@ def main():
     command = sys.argv[1].lower()
 
     if command == "delete":
-        if len(sys.argv) < 3:
+        if len(sys.argv) < MIN_ARGS_WITH_VOLUME_ID:
             print("❌ Volume ID required for delete command")
             sys.exit(1)
 
@@ -436,7 +443,7 @@ def main():
         sys.exit(0 if success else 1)
 
     elif command == "info":
-        if len(sys.argv) < 3:
+        if len(sys.argv) < MIN_ARGS_WITH_VOLUME_ID:
             print("❌ At least one volume ID required for info command")
             sys.exit(1)
 
@@ -454,7 +461,7 @@ def main():
                 print()
 
     elif command == "snapshot":
-        if len(sys.argv) < 3:
+        if len(sys.argv) < MIN_ARGS_WITH_VOLUME_ID:
             print("❌ At least one volume ID required for snapshot command")
             sys.exit(1)
 

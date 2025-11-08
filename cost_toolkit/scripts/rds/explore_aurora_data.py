@@ -3,8 +3,11 @@ import sys
 
 import psycopg2
 
+# Constants
+MAX_SAMPLE_COLUMNS = 5
 
-def explore_aurora_database():
+
+def explore_aurora_database():  # noqa: C901, PLR0912, PLR0915
     """Connect to the Aurora Serverless v2 cluster and explore user data"""
 
     # Connection to Aurora Serverless v2 cluster
@@ -123,12 +126,12 @@ def explore_aurora_database():
                     )
                     columns = cursor.fetchall()
                     print(f"     Columns ({len(columns)}):")
-                    for col in columns[:5]:  # Show first 5 columns
+                    for col in columns[:MAX_SAMPLE_COLUMNS]:
                         nullable = "NULL" if col[2] == "YES" else "NOT NULL"
                         default = f" DEFAULT {col[3]}" if col[3] else ""
                         print(f"       - {col[0]} ({col[1]}) {nullable}{default}")
-                    if len(columns) > 5:
-                        print(f"       ... and {len(columns) - 5} more columns")
+                    if len(columns) > MAX_SAMPLE_COLUMNS:
+                        print(f"       ... and {len(columns) - MAX_SAMPLE_COLUMNS} more columns")
 
                     # Show sample data (first 2 rows)
                     cursor.execute(f'SELECT * FROM "{schema_name}"."{table_name}" LIMIT 2;')

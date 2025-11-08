@@ -12,6 +12,7 @@ import pytest
 
 from migration_orchestrator import BucketMigrationOrchestrator
 from migration_state_v2 import Phase
+from tests.assertions import assert_equal
 
 
 @pytest.fixture
@@ -68,7 +69,7 @@ class TestOrchestratorBasicMigration:
         with mock.patch("builtins.print"):
             orchestrator.migrate_all_buckets()
 
-        assert mock_dependencies["bucket_migrator"].process_bucket.call_count == 3
+        assert_equal(mock_dependencies["bucket_migrator"].process_bucket.call_count, 3)
         calls = [
             mock.call("bucket-1"),
             mock.call("bucket-2"),
@@ -109,6 +110,9 @@ class TestOrchestratorCompletedBuckets:
 class TestOrchestratorInterruption:
     """Tests for orchestrator interruption handling"""
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}()"
+
     def test_migrate_all_buckets_respects_interrupted_flag(self, orchestrator, mock_dependencies):
         """Test migrate_all_buckets stops when interrupted"""
         all_buckets = ["bucket-1", "bucket-2", "bucket-3"]
@@ -130,6 +134,9 @@ class TestOrchestratorInterruption:
 
 class TestSingleBucketMigration:
     """Tests for single bucket migration operations"""
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}()"
 
     def test_migrate_single_bucket_success(self, orchestrator, mock_dependencies):
         """Test _migrate_single_bucket successful processing"""
@@ -215,7 +222,7 @@ class TestErrorHandlers:
 
     def test_handle_drive_error_prints_error_message(self, mock_dependencies):
         """Test handle_drive_error prints proper error message"""
-        from migration_orchestrator import handle_drive_error
+        from migration_orchestrator import handle_drive_error  # pylint: disable=import-outside-toplevel
 
         error = FileNotFoundError("Drive not found")
 
@@ -230,7 +237,7 @@ class TestErrorHandlers:
 
     def test_handle_migration_error_prints_error_details(self, mock_dependencies):
         """Test handle_migration_error prints error details"""
-        from migration_orchestrator import handle_migration_error
+        from migration_orchestrator import handle_migration_error  # pylint: disable=import-outside-toplevel
 
         error = RuntimeError("Sync failed")
         bucket = "test-bucket"

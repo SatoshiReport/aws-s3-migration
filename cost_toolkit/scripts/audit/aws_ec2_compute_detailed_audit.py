@@ -6,6 +6,9 @@ from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+# Constants
+GP3_DEFAULT_THROUGHPUT_MBS = 125
+
 
 def get_all_regions():
     """Get list of all AWS regions"""
@@ -18,7 +21,7 @@ def get_all_regions():
         return ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "eu-west-2"]
 
 
-def analyze_ec2_instances_in_region(region_name):
+def analyze_ec2_instances_in_region(region_name):  # noqa: C901, PLR0912, PLR0915
     """Analyze EC2 instances and their compute costs in a specific region"""
     print(f"\n🖥️  Analyzing EC2 Compute in {region_name}")
     print("=" * 80)
@@ -102,11 +105,12 @@ def analyze_ec2_instances_in_region(region_name):
             print(f"  Terminated instances: {len(terminated_instances)}")
             print(f"  Total monthly compute cost: ${total_monthly_cost:.2f}")
 
-        return instances_found
-
     except ClientError as e:
         print(f"❌ Error analyzing EC2 in {region_name}: {e}")
         return []
+
+    else:
+        return instances_found
 
 
 def get_instance_hourly_cost(instance_type, region_name):
@@ -239,11 +243,12 @@ def analyze_ebs_volumes_in_region(region_name):
         print(f"  Total volumes: {len(volumes)}")
         print(f"  Total monthly storage cost: ${total_storage_cost:.2f}")
 
-        return volume_details
-
     except ClientError as e:
         print(f"❌ Error analyzing EBS in {region_name}: {e}")
         return []
+
+    else:
+        return volume_details
 
 
 def calculate_ebs_monthly_cost(volume_type, size_gb, iops, throughput):
@@ -268,15 +273,15 @@ def calculate_ebs_monthly_cost(volume_type, size_gb, iops, throughput):
         base_cost += iops_cost
 
     # Add throughput costs for gp3
-    if volume_type == "gp3" and throughput > 125:
-        extra_throughput = throughput - 125
+    if volume_type == "gp3" and throughput > GP3_DEFAULT_THROUGHPUT_MBS:
+        extra_throughput = throughput - GP3_DEFAULT_THROUGHPUT_MBS
         throughput_cost = extra_throughput * 0.04  # $0.04 per MB/s per month
         base_cost += throughput_cost
 
     return base_cost
 
 
-def main():
+def main():  # noqa: PLR0915
     print("AWS EC2 Compute Detailed Cost Analysis")
     print("=" * 80)
     print("Analyzing 'Amazon Elastic Compute Cloud - Compute' costs...")

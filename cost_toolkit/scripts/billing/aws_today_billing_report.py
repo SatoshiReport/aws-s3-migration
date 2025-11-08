@@ -14,6 +14,10 @@ import boto3
 import botocore.exceptions
 from dotenv import load_dotenv
 
+# Constants for cost analysis thresholds and calculations
+MIN_TREND_DATA_POINTS = 2  # Minimum number of data points needed for trend analysis
+MINIMUM_COST_THRESHOLD = 0.001  # Minimum cost ($) to display detailed breakdown
+
 
 def clear_screen():
     """Clear the terminal screen without invoking a shell."""
@@ -102,14 +106,15 @@ def get_today_billing_data():
             ],
         )
 
-        return today_response, trend_response, usage_response
-
     except Exception as e:
         print(f"Error retrieving billing data: {str(e)}")
         return None, None, None
 
+    else:
+        return today_response, trend_response, usage_response
 
-def format_today_billing_report(today_data, trend_data, usage_data):
+
+def format_today_billing_report(today_data, trend_data, usage_data):  # noqa: C901, PLR0912, PLR0915
     """Format and display today's billing report"""
     if not today_data or "ResultsByTime" not in today_data:
         print("No billing data available for today")
@@ -174,9 +179,9 @@ def format_today_billing_report(today_data, trend_data, usage_data):
         for service, cost in sorted_today:
             # Calculate trend
             trend_indicator = ""
-            if service in daily_trends and len(daily_trends[service]) >= 2:
+            if service in daily_trends and len(daily_trends[service]) >= MIN_TREND_DATA_POINTS:
                 recent_costs = [d["cost"] for d in daily_trends[service]]
-                if len(recent_costs) >= 2:
+                if len(recent_costs) >= MIN_TREND_DATA_POINTS:
                     yesterday_cost = recent_costs[-2] if len(recent_costs) > 1 else 0
                     if cost > yesterday_cost * 1.1:
                         trend_indicator = " 📈 INCREASING"
@@ -198,8 +203,8 @@ def format_today_billing_report(today_data, trend_data, usage_data):
 
             # Show detailed usage breakdown for top services
             if (
-                service in service_usage_details and cost > 0.001
-            ):  # Show details for services > $0.001
+                service in service_usage_details and cost > MINIMUM_COST_THRESHOLD
+            ):  # Show details for services above minimum threshold
                 usage_details = sorted(
                     service_usage_details[service], key=lambda x: x["cost"], reverse=True
                 )
@@ -245,7 +250,7 @@ def format_today_billing_report(today_data, trend_data, usage_data):
         active_services = sorted(today_service_costs.items(), key=lambda x: x[1], reverse=True)
 
         for service, cost in active_services:
-            if cost > 0.001:  # Focus on services with meaningful costs
+            if cost > MINIMUM_COST_THRESHOLD:  # Focus on services with meaningful costs
                 print(f"   🎯 {service}: ${cost:.6f} today")
 
                 # Provide specific recommendations based on service

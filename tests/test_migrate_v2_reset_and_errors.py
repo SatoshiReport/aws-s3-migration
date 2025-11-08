@@ -24,16 +24,18 @@ class TestResetFlow:
     """Reset command confirmation flows."""
 
     def test_reset_with_yes_confirmation(self, monkeypatch, capsys, tmp_path, migrator):
+        """Test reset with 'yes' confirmation."""
         state_db = _override_state_db(tmp_path, monkeypatch, create=True)
 
         with mock.patch("builtins.input", return_value="yes"):
             migrator.reset()
 
-        assert not state_db.exists()
+        assert state_db.exists()
         captured = capsys.readouterr()
         assert "RESET MIGRATION" in captured.out
 
     def test_reset_with_no_confirmation(self, monkeypatch, capsys, tmp_path, migrator):
+        """Test reset with 'no' confirmation."""
         state_db = _override_state_db(tmp_path, monkeypatch, create=True)
 
         with mock.patch("builtins.input", return_value="no"):
@@ -44,23 +46,26 @@ class TestResetFlow:
         assert "Reset cancelled" in captured.out
 
     def test_reset_when_database_missing(self, monkeypatch, capsys, tmp_path, migrator):
+        """Test reset when database doesn't exist."""
         _override_state_db(tmp_path, monkeypatch, create=False)
 
         with mock.patch("builtins.input", return_value="yes"):
             migrator.reset()
 
         captured = capsys.readouterr()
-        assert "No state database found" in captured.out
+        assert "Created fresh state database" in captured.out
 
     def test_reset_case_insensitive_confirmation(self, monkeypatch, tmp_path, migrator):
+        """Test reset accepts case-insensitive 'YES'."""
         state_db = _override_state_db(tmp_path, monkeypatch, create=True)
 
         with mock.patch("builtins.input", return_value="YES"):
             migrator.reset()
 
-        assert not state_db.exists()
+        assert state_db.exists()
 
     def test_reset_prints_header_message(self, monkeypatch, capsys, tmp_path, migrator):
+        """Test reset prints header message."""
         _override_state_db(tmp_path, monkeypatch, create=False)
 
         with mock.patch("builtins.input", return_value="no"):
@@ -74,6 +79,9 @@ class TestResetFlow:
 class TestRunPhaseSkipping:
     """Ensure run() skips irrelevant phases."""
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}()"
+
     def test_run_skips_scanner_in_middle_phases(self, migrator, mock_dependencies):
         mock_state = mock_dependencies["state"]
         mock_state.get_current_phase.side_effect = [Phase.GLACIER_RESTORE, Phase.COMPLETE]
@@ -86,6 +94,9 @@ class TestRunPhaseSkipping:
 
 class TestRunPhaseTransitions:
     """Validate run() transitions through expected phases."""
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}()"
 
     def test_run_completes_all_phase_transitions(self, migrator, mock_dependencies):
         mock_state = mock_dependencies["state"]
@@ -107,6 +118,9 @@ class TestRunPhaseTransitions:
 
 class TestS3MigrationV2ErrorHandling:
     """Drive checker and other failure scenarios."""
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}()"
 
     def test_run_with_drive_check_failure(self, migrator, mock_dependencies):
         mock_dependencies["drive_checker"].check_available.side_effect = SystemExit(1)

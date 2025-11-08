@@ -48,7 +48,7 @@ def fix_rds_subnet_routing():
             if "already exists" in str(e).lower():
                 print(f"✅ Subnet group {subnet_group_name} already exists")
             else:
-                raise e
+                raise
 
         # Modify the RDS instance to use the new subnet group
         print(f"🔄 Moving RDS instance to public subnet group...")

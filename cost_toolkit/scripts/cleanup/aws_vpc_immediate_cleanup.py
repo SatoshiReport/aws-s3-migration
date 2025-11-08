@@ -88,14 +88,16 @@ def remove_detached_internet_gateway(igw_id, region_name):
         # Delete the Internet Gateway
         ec2.delete_internet_gateway(InternetGatewayId=igw_id)
         print(f"✅ Internet Gateway {igw_id} deleted successfully")
-        return True
 
     except ClientError as e:
         print(f"❌ Error deleting Internet Gateway: {e}")
         return False
 
+    else:
+        return True
 
-def analyze_vpc_dependencies(region_name):
+
+def analyze_vpc_dependencies(region_name):  # noqa: C901, PLR0912, PLR0915
     """Analyze VPC dependencies to determine safe removal order"""
     print(f"\n🔍 Analyzing VPC dependencies in {region_name}")
     print("=" * 80)
@@ -206,14 +208,15 @@ def analyze_vpc_dependencies(region_name):
             if analysis["blocking_resources"]:
                 print(f"  Blocking resources: {', '.join(analysis['blocking_resources'])}")
 
-        return vpc_analysis
-
     except ClientError as e:
         print(f"❌ Error analyzing VPC dependencies: {e}")
         return {}
 
+    else:
+        return vpc_analysis
 
-def main():
+
+def main():  # noqa: C901, PLR0912
     print("AWS VPC Immediate Cleanup")
     print("=" * 80)
     print("Performing immediate cleanup tasks...")

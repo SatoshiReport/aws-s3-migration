@@ -6,6 +6,7 @@ about what each AMI is used for and whether it can be safely deregistered.
 """
 
 import os
+import sys
 from datetime import datetime
 
 import boto3
@@ -20,7 +21,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -79,13 +80,15 @@ def check_ami_usage(ec2_client, ami_id):
                     }
                 )
 
-        return instances
     except Exception as e:
         print(f"   ❌ Error checking AMI usage: {e}")
         return []
 
+    else:
+        return instances
 
-def analyze_snapshot_ami_relationships():
+
+def analyze_snapshot_ami_relationships():  # noqa: C901, PLR0912, PLR0915
     """Analyze the relationship between snapshots and AMIs"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -210,4 +213,4 @@ if __name__ == "__main__":
         analyze_snapshot_ami_relationships()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

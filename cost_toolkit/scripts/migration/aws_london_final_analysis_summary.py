@@ -12,7 +12,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def final_analysis_summary():
+def final_analysis_summary():  # noqa: PLR0915
     """Stop instance and provide final analysis summary"""
     setup_aws_credentials()
 

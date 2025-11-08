@@ -6,6 +6,7 @@ import pytest
 
 from migration_scanner import GlacierWaiter
 from migration_state_v2 import MigrationStateV2, Phase
+from tests.assertions import assert_equal
 
 
 class TestGlacierWaiterInitialization:
@@ -156,4 +157,4 @@ class TestGlacierWaiterLooping:
             waiter.wait_for_restores()
 
         # Should call get_files_restoring 3 times
-        assert mock_state.get_files_restoring.call_count == 3
+        assert_equal(mock_state.get_files_restoring.call_count, 3)

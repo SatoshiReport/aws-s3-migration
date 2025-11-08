@@ -1,9 +1,6 @@
 """Comprehensive tests for migration_sync.py - Initialization and Parsing"""
 
-import time
 from unittest import mock
-
-import pytest
 
 from migration_sync import BucketSyncer
 

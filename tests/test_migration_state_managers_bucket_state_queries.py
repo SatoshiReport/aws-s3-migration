@@ -4,6 +4,30 @@ import pytest
 
 from migration_state_managers import BucketStateManager, FileStateManager
 
+BUCKET_A_FILE_COUNT = 100
+BUCKET_B_FILE_COUNT = 200
+BUCKET_C_FILE_COUNT = 300
+BUCKET_A_TOTAL_SIZE = 1_000_000
+BUCKET_B_TOTAL_SIZE = 2_000_000
+BUCKET_C_TOTAL_SIZE = 3_000_000
+MIXED_STORAGE_COUNTS = {"STANDARD": 80, "GLACIER": 20}
+SMALL_SCAN_FILE_COUNT = 2
+SMALL_SCAN_TOTAL_SIZE = 3_000
+SINGLE_FILE_COUNT = 1
+SINGLE_BUCKET_TOTAL_SIZE = 3_000
+STANDARD_FILE_SIZE_BYTES = 1_000
+GLACIER_FILE_SIZE_BYTES = 2_000
+SECOND_BUCKET_FILE_SIZE_BYTES = 3_000
+SUMMARY_BUCKET_COUNT = 2
+SUMMARY_FILE_TOTAL = 3
+SUMMARY_TOTAL_SIZE = 6_000
+SUMMARY_STANDARD_CLASS_COUNT = 2
+SUMMARY_GLACIER_CLASS_COUNT = 1
+INCOMPLETE_BUCKET_COUNT = 10
+INCOMPLETE_BUCKET_SIZE = 100_000
+COMPLETE_BUCKET_COUNT = 5
+COMPLETE_BUCKET_SIZE = 50_000
+
 
 class TestBucketStateManagerQueriesFixtures:
     """Shared fixtures for BucketStateManager query tests"""
@@ -21,21 +45,21 @@ class TestGetAllBuckets(TestBucketStateManagerQueriesFixtures):
         """Test retrieving all buckets"""
         bucket_manager.save_bucket_status(
             bucket="bucket-a",
-            file_count=100,
-            total_size=1000000,
-            storage_classes={"STANDARD": 100},
+            file_count=BUCKET_A_FILE_COUNT,
+            total_size=BUCKET_A_TOTAL_SIZE,
+            storage_classes={"STANDARD": BUCKET_A_FILE_COUNT},
         )
         bucket_manager.save_bucket_status(
             bucket="bucket-b",
-            file_count=200,
-            total_size=2000000,
-            storage_classes={"STANDARD": 200},
+            file_count=BUCKET_B_FILE_COUNT,
+            total_size=BUCKET_B_TOTAL_SIZE,
+            storage_classes={"STANDARD": BUCKET_B_FILE_COUNT},
         )
         bucket_manager.save_bucket_status(
             bucket="bucket-c",
-            file_count=300,
-            total_size=3000000,
-            storage_classes={"STANDARD": 300},
+            file_count=BUCKET_C_FILE_COUNT,
+            total_size=BUCKET_C_TOTAL_SIZE,
+            storage_classes={"STANDARD": BUCKET_C_FILE_COUNT},
         )
 
         buckets = bucket_manager.get_all_buckets()
@@ -56,21 +80,21 @@ class TestGetCompletedBuckets(TestBucketStateManagerQueriesFixtures):
         """Test retrieving buckets completed for a specific phase"""
         bucket_manager.save_bucket_status(
             bucket="bucket-a",
-            file_count=100,
-            total_size=1000000,
-            storage_classes={"STANDARD": 100},
+            file_count=BUCKET_A_FILE_COUNT,
+            total_size=BUCKET_A_TOTAL_SIZE,
+            storage_classes={"STANDARD": BUCKET_A_FILE_COUNT},
         )
         bucket_manager.save_bucket_status(
             bucket="bucket-b",
-            file_count=200,
-            total_size=2000000,
-            storage_classes={"STANDARD": 200},
+            file_count=BUCKET_B_FILE_COUNT,
+            total_size=BUCKET_B_TOTAL_SIZE,
+            storage_classes={"STANDARD": BUCKET_B_FILE_COUNT},
         )
         bucket_manager.save_bucket_status(
             bucket="bucket-c",
-            file_count=300,
-            total_size=3000000,
-            storage_classes={"STANDARD": 300},
+            file_count=BUCKET_C_FILE_COUNT,
+            total_size=BUCKET_C_TOTAL_SIZE,
+            storage_classes={"STANDARD": BUCKET_C_FILE_COUNT},
         )
 
         bucket_manager.mark_bucket_sync_complete("bucket-a")
@@ -88,17 +112,17 @@ class TestGetBucketInfo(TestBucketStateManagerQueriesFixtures):
         """Test retrieving bucket information"""
         bucket_manager.save_bucket_status(
             bucket="test-bucket",
-            file_count=100,
-            total_size=5000000,
-            storage_classes={"STANDARD": 80, "GLACIER": 20},
+            file_count=BUCKET_A_FILE_COUNT,
+            total_size=BUCKET_A_TOTAL_SIZE,
+            storage_classes=MIXED_STORAGE_COUNTS,
             scan_complete=True,
         )
 
         info = bucket_manager.get_bucket_info("test-bucket")
 
         assert info["bucket"] == "test-bucket"
-        assert info["file_count"] == 100
-        assert info["total_size"] == 5000000
+        assert info["file_count"] == BUCKET_A_FILE_COUNT
+        assert info["total_size"] == BUCKET_A_TOTAL_SIZE
         assert info["scan_complete"] == 1
 
     def test_get_bucket_info_nonexistent(self, bucket_manager):
@@ -117,7 +141,7 @@ class TestGetScanSummary(TestBucketStateManagerQueriesFixtures):
         file_manager.add_file(
             bucket="bucket-a",
             key="file1.txt",
-            size=1000,
+            size=STANDARD_FILE_SIZE_BYTES,
             etag="abc1",
             storage_class="STANDARD",
             last_modified="2024-01-01T00:00:00Z",
@@ -125,7 +149,7 @@ class TestGetScanSummary(TestBucketStateManagerQueriesFixtures):
         file_manager.add_file(
             bucket="bucket-a",
             key="file2.txt",
-            size=2000,
+            size=GLACIER_FILE_SIZE_BYTES,
             etag="abc2",
             storage_class="GLACIER",
             last_modified="2024-01-01T00:00:00Z",
@@ -133,7 +157,7 @@ class TestGetScanSummary(TestBucketStateManagerQueriesFixtures):
         file_manager.add_file(
             bucket="bucket-b",
             key="file3.txt",
-            size=3000,
+            size=SECOND_BUCKET_FILE_SIZE_BYTES,
             etag="def1",
             storage_class="STANDARD",
             last_modified="2024-01-01T00:00:00Z",
@@ -141,26 +165,26 @@ class TestGetScanSummary(TestBucketStateManagerQueriesFixtures):
 
         bucket_manager.save_bucket_status(
             bucket="bucket-a",
-            file_count=2,
-            total_size=3000,
+            file_count=SMALL_SCAN_FILE_COUNT,
+            total_size=SMALL_SCAN_TOTAL_SIZE,
             storage_classes={"STANDARD": 1, "GLACIER": 1},
             scan_complete=True,
         )
         bucket_manager.save_bucket_status(
             bucket="bucket-b",
-            file_count=1,
-            total_size=3000,
+            file_count=SINGLE_FILE_COUNT,
+            total_size=SINGLE_BUCKET_TOTAL_SIZE,
             storage_classes={"STANDARD": 1},
             scan_complete=True,
         )
 
         summary = bucket_manager.get_scan_summary()
 
-        assert summary["bucket_count"] == 2
-        assert summary["total_files"] == 3
-        assert summary["total_size"] == 6000
-        assert summary["storage_classes"]["STANDARD"] == 2
-        assert summary["storage_classes"]["GLACIER"] == 1
+        assert summary["bucket_count"] == SUMMARY_BUCKET_COUNT
+        assert summary["total_files"] == SUMMARY_FILE_TOTAL
+        assert summary["total_size"] == SUMMARY_TOTAL_SIZE
+        assert summary["storage_classes"]["STANDARD"] == SUMMARY_STANDARD_CLASS_COUNT
+        assert summary["storage_classes"]["GLACIER"] == SUMMARY_GLACIER_CLASS_COUNT
 
 
 class TestScanSummaryFiltering(TestBucketStateManagerQueriesFixtures):
@@ -170,22 +194,22 @@ class TestScanSummaryFiltering(TestBucketStateManagerQueriesFixtures):
         """Test that scan summary only includes complete scans"""
         bucket_manager.save_bucket_status(
             bucket="incomplete-bucket",
-            file_count=10,
-            total_size=100000,
-            storage_classes={"STANDARD": 10},
+            file_count=INCOMPLETE_BUCKET_COUNT,
+            total_size=INCOMPLETE_BUCKET_SIZE,
+            storage_classes={"STANDARD": INCOMPLETE_BUCKET_COUNT},
             scan_complete=False,
         )
 
         bucket_manager.save_bucket_status(
             bucket="complete-bucket",
-            file_count=5,
-            total_size=50000,
-            storage_classes={"STANDARD": 5},
+            file_count=COMPLETE_BUCKET_COUNT,
+            total_size=COMPLETE_BUCKET_SIZE,
+            storage_classes={"STANDARD": COMPLETE_BUCKET_COUNT},
             scan_complete=True,
         )
 
         summary = bucket_manager.get_scan_summary()
 
         assert summary["bucket_count"] == 1
-        assert summary["total_files"] == 5
-        assert summary["total_size"] == 50000
+        assert summary["total_files"] == COMPLETE_BUCKET_COUNT
+        assert summary["total_size"] == COMPLETE_BUCKET_SIZE

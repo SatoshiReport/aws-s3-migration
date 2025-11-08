@@ -89,8 +89,9 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file - cannot proceed")
-
+        raise ValueError(  # noqa: TRY003
+            "AWS credentials not found in ~/.env file - cannot proceed"
+        )
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
 
@@ -177,14 +178,16 @@ def validate_export_task_exists(ec2_client, export_task_id):
     response = ec2_client.describe_export_image_tasks(ExportImageTaskIds=[export_task_id])
 
     if not response["ExportImageTasks"]:
-        raise ExportTaskDeletedException(
+        raise ExportTaskDeletedException(  # noqa: TRY003
             f"Export task {export_task_id} no longer exists - was deleted"
         )
 
     return response["ExportImageTasks"][0]
 
 
-def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, fast_check=False):
+def check_s3_file_completion(  # noqa: C901, PLR0912
+    s3_client, bucket_name, s3_key, expected_size_gb, fast_check=False
+):  # noqa: C901, PLR0912
     """Check if S3 file exists and is stable - fail fast on validation errors"""
     if fast_check:
         stability_required_minutes = ExportConstants.S3_FAST_CHECK_MINUTES
@@ -242,14 +245,14 @@ def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, f
                 print(f"   📭 S3 file not found yet - this is normal during export")
             else:
                 print(f"   ❌ S3 file disappeared during stability check - export may have failed")
-                raise S3FileValidationException("S3 file disappeared during validation")
-
+                raise S3FileValidationException(  # noqa: TRY003
+                    "S3 file disappeared during validation"
+                )
             # Reset stability checks since file doesn't exist
             stability_checks = []
         except Exception as e:
             print(f"   ❌ Error checking S3 file: {e}")
-            raise S3FileValidationException(f"Failed to check S3 file: {e}")
-
+            raise S3FileValidationException(f"Failed to check S3 file: {e}")  # noqa: TRY003
         # Wait before next check (except on last iteration)
         if check_num < required_stable_checks - 1:
             print(f"   ⏳ Waiting {check_interval_minutes} minutes for next stability check...")
@@ -257,7 +260,7 @@ def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, f
 
     # Validate final file
     if len(stability_checks) < required_stable_checks:
-        raise S3FileValidationException(
+        raise S3FileValidationException(  # noqa: TRY003
             f"File not stable - completed {len(stability_checks)}/{required_stable_checks} checks"
         )
 
@@ -286,7 +289,7 @@ def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, f
     }
 
 
-def export_ami_to_s3_with_recovery(
+def export_ami_to_s3_with_recovery(  # noqa: C901, PLR0912, PLR0915
     ec2_client, s3_client, ami_id, bucket_name, region, snapshot_size_gb
 ):
     """Export AMI to S3 with proper error handling and recovery - fail fast on unrecoverable errors"""
@@ -319,7 +322,7 @@ def export_ami_to_s3_with_recovery(
 
         # CRITICAL: Check maximum time limit to prevent infinite loops
         if elapsed_hours >= ExportConstants.EXPORT_MAX_DURATION_HOURS:
-            raise ExportTaskStuckException(
+            raise ExportTaskStuckException(  # noqa: TRY003
                 f"Export exceeded maximum duration of {ExportConstants.EXPORT_MAX_DURATION_HOURS} hours - aborting"
             )
 
@@ -340,10 +343,10 @@ def export_ami_to_s3_with_recovery(
                     f"   ✅ S3 file found and validated! Export completed successfully despite task deletion"
                 )
                 print(f"   📏 Final file size: {s3_result['size_gb']:.2f} GB")
-                return export_task_id, s3_key
+                return export_task_id, s3_key  # noqa: TRY300
             except Exception as s3_error:
                 print(f"   ❌ Cannot retrieve export results - task no longer exists")
-                raise ExportTaskDeletedException(
+                raise ExportTaskDeletedException(  # noqa: TRY003
                     f"Export task deleted and no valid S3 file found: {s3_error}"
                 )
         except Exception as e:
@@ -353,7 +356,7 @@ def export_ami_to_s3_with_recovery(
             )
 
             if consecutive_api_errors >= ExportConstants.MAX_CONSECUTIVE_API_ERRORS:
-                raise Exception(
+                raise Exception(  # noqa: TRY002, TRY003
                     f"Too many consecutive API errors ({consecutive_api_errors}) - failing fast"
                 )
 
@@ -387,7 +390,9 @@ def export_ami_to_s3_with_recovery(
             return export_task_id, s3_key
         elif status == "failed":
             error_msg = task.get("StatusMessage", "Unknown error")
-            raise Exception(f"AWS export failed after {elapsed_hours:.1f} hours: {error_msg}")
+            raise Exception(  # noqa: TRY002, TRY003
+                f"AWS export failed after {elapsed_hours:.1f} hours: {error_msg}"
+            )
         elif status == "deleted":
             # Export task was deleted - check if S3 file exists before failing
             print(f"   ⚠️  Export task was deleted after {elapsed_hours:.1f} hours")
@@ -401,19 +406,20 @@ def export_ami_to_s3_with_recovery(
                     f"   ✅ S3 file found and validated! Export completed successfully despite task deletion"
                 )
                 print(f"   📏 Final file size: {s3_result['size_gb']:.2f} GB")
-                return export_task_id, s3_key
             except Exception as s3_error:
                 print(
                     f"   ❌ Cannot retrieve export results - task deleted and no valid S3 file found"
                 )
-                raise ExportTaskDeletedException(
+                raise ExportTaskDeletedException(  # noqa: TRY003
                     f"Export task deleted after {elapsed_hours:.1f} hours and no valid S3 file found: {s3_error}"
                 )
 
+            else:
+                return export_task_id, s3_key
         # CRITICAL: Check for the known AWS 80% stuck issue
         if (
             status == "active"
-            and current_progress == 80
+            and current_progress == 80  # noqa: PLR2004
             and status_msg == "converting"
             and elapsed_time >= (ExportConstants.EXPORT_80_PERCENT_STUCK_DETECTION_MINUTES * 60)
         ):
@@ -427,13 +433,14 @@ def export_ami_to_s3_with_recovery(
                 )
                 print(f"   ✅ S3 file completed! AWS 80% stuck issue confirmed - export successful")
                 print(f"   📏 Final file size: {s3_result['size_gb']:.2f} GB")
-                return export_task_id, s3_key
             except Exception as e:
                 print(f"   ❌ S3 file validation failed: {e}")
-                raise ExportTaskStuckException(
+                raise ExportTaskStuckException(  # noqa: TRY003
                     f"AWS 80% stuck issue detected but S3 file invalid: {e}"
                 )
 
+            else:
+                return export_task_id, s3_key
         # Check if export is stuck (no progress change for too long)
         time_since_progress_change = (current_time - last_progress_change_time) / 3600
         if (
@@ -451,16 +458,19 @@ def export_ami_to_s3_with_recovery(
                 )
                 print(f"   ✅ S3 file completed despite stuck AWS status! Export successful")
                 print(f"   📏 Final file size: {s3_result['size_gb']:.2f} GB")
-                return export_task_id, s3_key
             except Exception as e:
                 print(f"   ❌ S3 file validation failed: {e}")
-                raise ExportTaskStuckException(f"Export stuck and S3 file invalid: {e}")
-
+                raise ExportTaskStuckException(  # noqa: TRY003
+                    f"Export stuck and S3 file invalid: {e}"
+                )
+            else:
+                return export_task_id, s3_key
         # Intelligent S3 checking - only check periodically to avoid excessive API calls
         time_since_last_s3_check = (current_time - last_s3_check_time) / 60
         should_check_s3 = (
             status == "active"
-            and current_progress >= 60  # Only check S3 when progress is significant
+            and current_progress
+            >= 60  # noqa: PLR2004  #  Only check S3 when progress is significant
             and time_since_last_s3_check >= ExportConstants.EXPORT_S3_CHECK_INTERVAL_MINUTES
         )
 
@@ -479,7 +489,6 @@ def export_ami_to_s3_with_recovery(
                 )
                 print(f"   ✅ S3 file completed! Export successful despite AWS showing 'active'")
                 print(f"   📏 Final file size: {s3_result['size_gb']:.2f} GB")
-                return export_task_id, s3_key
 
             except s3_client.exceptions.NoSuchKey:
                 print(f"   📭 S3 file not found yet - continuing to monitor AWS status")
@@ -487,6 +496,8 @@ def export_ami_to_s3_with_recovery(
                 print(f"   ❌ Error checking S3 file: {e}")
                 print(f"   📭 S3 file not found yet - continuing to monitor AWS status")
 
+            else:
+                return export_task_id, s3_key
         # Wait before checking again
         time.sleep(ExportConstants.EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
 
@@ -519,7 +530,7 @@ def verify_s3_export_final(s3_client, bucket_name, s3_key, expected_size_gb):
     max_expected_gb = expected_size_gb * ExportConstants.VMDK_MAX_EXPANSION_RATIO
 
     if not (min_expected_gb <= file_size_gb <= max_expected_gb):
-        raise S3FileValidationException(
+        raise S3FileValidationException(  # noqa: TRY003
             f"Final size validation failed: {file_size_gb:.2f} GB "
             f"(expected {min_expected_gb:.1f}-{max_expected_gb:.1f} GB)"
         )
@@ -627,7 +638,7 @@ def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_ac
             print(f"   ⚠️  Warning: Could not clean up AMI {ami_id}: {cleanup_error}")
 
         # Re-raise the original exception to be handled by main function
-        raise e
+        raise
 
     except Exception as e:
         # Clean up AMI on failure for other errors
@@ -637,7 +648,7 @@ def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_ac
             print(f"   ⚠️  Warning: Could not clean up AMI {ami_id}: {cleanup_error}")
 
         # Re-raise the original exception
-        raise e
+        raise
 
 
 def get_snapshots_to_export(aws_access_key_id, aws_secret_access_key):
@@ -681,7 +692,7 @@ def check_existing_completed_exports(s3_client, region):
                 if obj["Key"].endswith(".vmdk"):
                     # Extract export task ID from the key
                     key_parts = obj["Key"].split("/")
-                    if len(key_parts) >= 3:
+                    if len(key_parts) >= 3:  # noqa: PLR2004
                         ami_id = key_parts[1]
                         export_file = key_parts[2]
                         export_task_id = export_file.replace(".vmdk", "")
@@ -702,8 +713,6 @@ def check_existing_completed_exports(s3_client, region):
                 size_gb = export["size_bytes"] / (1024**3)
                 print(f"      - {export['export_task_id']}: s3://{bucket_name}/{export['s3_key']}")
 
-        return existing_exports
-
     except s3_client.exceptions.NoSuchBucket:
         print(f"   📭 No existing exports found (bucket doesn't exist)")
         return []
@@ -711,8 +720,11 @@ def check_existing_completed_exports(s3_client, region):
         print(f"   ⚠️  Could not check existing exports: {e}")
         return []
 
+    else:
+        return existing_exports
 
-def export_snapshots_to_s3_fixed():
+
+def export_snapshots_to_s3_fixed():  # noqa: PLR0915
     """Main function to export EBS snapshots to S3 with fail-fast error handling"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -746,8 +758,7 @@ def export_snapshots_to_s3_fixed():
     confirmation = input("Type 'EXPORT TO S3' to proceed with snapshot export: ")
 
     if confirmation != "EXPORT TO S3":
-        raise ValueError("Operation cancelled by user")
-
+        raise ValueError("Operation cancelled by user")  # noqa: TRY003
     print()
     print("🚨 Proceeding with snapshot export to S3...")
     print("=" * 80)
@@ -781,8 +792,9 @@ def export_snapshots_to_s3_fixed():
         except Exception as e:
             print(f"   ❌ Failed to export {snap_info['snapshot_id']}: {e}")
             # Fail fast - don't continue with other snapshots if one fails
-            raise Exception(f"Export failed for {snap_info['snapshot_id']}: {e}")
-
+            raise Exception(  # noqa: TRY002, TRY003
+                f"Export failed for {snap_info['snapshot_id']}: {e}"
+            )
         print()
 
     print("=" * 80)

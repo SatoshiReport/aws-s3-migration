@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 import boto3
 from dotenv import load_dotenv
 
+# Constants
+OLD_SNAPSHOT_AGE_DAYS = 30
+
 
 def setup_aws_credentials():
     """Load AWS credentials from .env file"""
@@ -44,7 +47,7 @@ def get_all_regions():
         ]
 
 
-def audit_ebs_volumes():
+def audit_ebs_volumes():  # noqa: C901, PLR0912, PLR0915
     """Audit all EBS volumes across all regions"""
     setup_aws_credentials()
 
@@ -99,7 +102,7 @@ def audit_ebs_volumes():
                             monthly_cost = size_gb * 0.08  # $0.08 per GB/month
                         elif volume_type == "gp2":
                             monthly_cost = size_gb * 0.10  # $0.10 per GB/month
-                        elif volume_type == "io1" or volume_type == "io2":
+                        elif volume_type in {"io1", "io2"}:
                             monthly_cost = size_gb * 0.125  # $0.125 per GB/month
                         else:
                             monthly_cost = size_gb * 0.10  # Default estimate
@@ -215,13 +218,13 @@ def audit_ebs_volumes():
         old_snapshots = []
         for snap in snapshot_details:
             age_days = (now - snap["start_time"]).days
-            if age_days > 30:  # Older than 30 days
+            if age_days > OLD_SNAPSHOT_AGE_DAYS:
                 old_snapshots.append({**snap, "age_days": age_days})
 
         if old_snapshots:
             old_snapshot_cost = sum(snap["monthly_cost"] for snap in old_snapshots)
             print(
-                f"Found {len(old_snapshots)} snapshots older than 30 days costing ${old_snapshot_cost:.2f}/month"
+                f"Found {len(old_snapshots)} snapshots older than {OLD_SNAPSHOT_AGE_DAYS} days costing ${old_snapshot_cost:.2f}/month"
             )
             # Show top 10 oldest/most expensive
             old_snapshots.sort(key=lambda x: x["monthly_cost"], reverse=True)
@@ -230,7 +233,7 @@ def audit_ebs_volumes():
                     f"  {snap['region']}: {snap['snapshot_id']} ({snap['size_gb']} GB, {snap['age_days']} days old) - ${snap['monthly_cost']:.2f}/month"
                 )
         else:
-            print("All snapshots are less than 30 days old")
+            print(f"All snapshots are less than {OLD_SNAPSHOT_AGE_DAYS} days old")
         print()
 
     print("💡 RECOMMENDATIONS:")

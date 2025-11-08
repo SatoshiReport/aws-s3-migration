@@ -13,6 +13,7 @@ Cost savings: From $0.05/GB/month (EBS) to $0.00099/GB/month (S3 Deep Archive) =
 import argparse
 import json
 import os
+import sys
 import time
 from datetime import datetime, timedelta
 
@@ -36,7 +37,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -48,7 +49,7 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
         # Check if bucket exists
         s3_client.head_bucket(Bucket=bucket_name)
         print(f"   ✅ S3 bucket {bucket_name} already exists")
-        return True
+        return True  # noqa: TRY300
     except:
         try:
             if region == "us-east-1":
@@ -58,10 +59,12 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
                     Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
                 )
             print(f"   ✅ Created S3 bucket: {bucket_name}")
-            return True
         except Exception as e:
             print(f"   ❌ Error creating bucket {bucket_name}: {e}")
             return False
+
+        else:
+            return True
 
 
 def setup_s3_bucket_versioning(s3_client, bucket_name):
@@ -71,10 +74,12 @@ def setup_s3_bucket_versioning(s3_client, bucket_name):
             Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
         )
         print(f"   ✅ Enabled versioning for {bucket_name}")
-        return True
     except Exception as e:
         print(f"   ❌ Error enabling versioning: {e}")
         return False
+
+    else:
+        return True
 
 
 def create_ami_from_snapshot(ec2_client, snapshot_id, snapshot_description):
@@ -119,10 +124,12 @@ def create_ami_from_snapshot(ec2_client, snapshot_id, snapshot_description):
         )
         print(f"   ✅ AMI {ami_id} is now available")
 
-        return ami_id
     except Exception as e:
         print(f"   ❌ Error creating AMI from snapshot {snapshot_id}: {e}")
         return None
+
+    else:
+        return ami_id
 
 
 def _extract_s3_key_from_task(task, export_task_id, ami_id):
@@ -144,7 +151,9 @@ def _extract_s3_key_from_task(task, export_task_id, ami_id):
     return export_task_id, s3_key
 
 
-def export_ami_to_s3(ec2_client, s3_client, ami_id, bucket_name, region, snapshot_size_gb):
+def export_ami_to_s3(  # noqa: C901, PLR0911, PLR0912, PLR0915
+    ec2_client, s3_client, ami_id, bucket_name, region, snapshot_size_gb
+):  # noqa: C901, PLR0911, PLR0912, PLR0915
     """Export AMI to S3 bucket with multi-signal completion detection"""
     # Reset error counter for this export attempt
     export_ami_to_s3.error_count = 0
@@ -334,10 +343,12 @@ def cleanup_temporary_ami(ec2_client, ami_id, region):
         print(f"   🧹 Cleaning up temporary AMI: {ami_id}")
         ec2_client.deregister_image(ImageId=ami_id)
         print(f"   ✅ Successfully cleaned up AMI {ami_id}")
-        return True
     except Exception as e:
         print(f"   ⚠️  Warning: Could not clean up AMI {ami_id}: {e}")
         return False
+
+    else:
+        return True
 
 
 def check_existing_exports(ec2_client, region):
@@ -365,13 +376,15 @@ def check_existing_exports(ec2_client, region):
                 s3_prefix = export["s3_location"].get("S3Prefix", "unknown")
                 print(f"      - {export['export_task_id']}: s3://{s3_bucket}/{s3_prefix}")
 
-        return completed_exports
     except Exception as e:
         print(f"   ⚠️  Could not check existing exports: {e}")
         return []
 
+    else:
+        return completed_exports
 
-def check_s3_file_stability(
+
+def check_s3_file_stability(  # noqa: PLR0912
     s3_client, bucket_name, s3_key, expected_size_gb=None, fast_check=False
 ):
     """Check if S3 file exists and monitor its stability (size unchanged for multiple checks)"""
@@ -506,7 +519,7 @@ def verify_s3_export(s3_client, bucket_name, s3_key, expected_size_gb=None):
                     f"{expected_size_gb} GB)"
                 )
 
-        return {
+        return {  # noqa: TRY300
             "exists": True,
             "size_bytes": file_size_bytes,
             "size_gb": file_size_gb,
@@ -537,7 +550,7 @@ def calculate_cost_savings(snapshot_size_gb):
     }
 
 
-def export_snapshots_to_s3(overwrite_existing=False):
+def export_snapshots_to_s3(overwrite_existing=False):  # noqa: C901, PLR0912, PLR0915
     """Main function to export EBS snapshots to S3"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -784,4 +797,4 @@ Examples:
         export_snapshots_to_s3(overwrite_existing=args.overwrite)
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

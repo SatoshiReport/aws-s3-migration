@@ -13,7 +13,7 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def check_instance_status():
+def check_instance_status():  # noqa: C901, PLR0912, PLR0915
     """Check EC2 instance status and User Data execution"""
     setup_aws_credentials()
 

@@ -9,6 +9,7 @@ This cleanup improves security hygiene and reduces clutter.
 """
 
 import os
+import sys
 
 import boto3
 from dotenv import load_dotenv
@@ -22,7 +23,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -34,13 +35,15 @@ def delete_security_group(ec2_client, group_id, group_name, region):
         print(f"   🗑️  Deleting security group: {group_id} ({group_name})")
         ec2_client.delete_security_group(GroupId=group_id)
         print(f"   ✅ Successfully deleted {group_id}")
-        return True
     except Exception as e:
         print(f"   ❌ Error deleting {group_id}: {e}")
         return False
 
+    else:
+        return True
 
-def cleanup_unused_vpc_resources():
+
+def cleanup_unused_vpc_resources():  # noqa: PLR0915
     """Clean up unused VPC resources identified in the audit"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -237,4 +240,4 @@ if __name__ == "__main__":
         cleanup_unused_vpc_resources()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

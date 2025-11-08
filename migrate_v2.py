@@ -33,6 +33,11 @@ try:  # Prefer package-relative imports when linting
 except ImportError:  # pragma: no cover - allow running as standalone script
     import config as config_module  # type: ignore
 
+try:  # Shared helpers for state DB recreation.
+    from .state_db_admin import recreate_state_db
+except ImportError:  # pragma: no cover - allow running as standalone script
+    from state_db_admin import recreate_state_db  # type: ignore
+
 try:  # Prefer package-relative imports for smoke-test helpers
     from . import migrate_v2_smoke as smoke_tests
 except ImportError:  # pragma: no cover - allow running as standalone script
@@ -60,7 +65,8 @@ except ImportError:  # pragma: no cover - allow running as standalone script
 
 
 def reset_migration_state():
-    """Reset all state and start from beginning"""
+    """Reset all cached migrate_v2 state and recreate an empty database."""
+
     print("\n" + "=" * 70)
     print("RESET MIGRATION")
     print("=" * 70)
@@ -70,14 +76,15 @@ def reset_migration_state():
     print()
     response = input("Are you sure? (yes/no): ")
     if response.lower() == "yes":
-        if os.path.exists(STATE_DB_PATH):
-            os.remove(STATE_DB_PATH)
-            print()
-            print("✓ State database deleted")
-            print("Run 'python migrate_v2.py' to start fresh")
+        target = Path(STATE_DB_PATH).expanduser()
+        existed = target.exists()
+        recreated_path = recreate_state_db(target)
+        print()
+        if existed:
+            print(f"✓ State database reset at {recreated_path}")
         else:
-            print()
-            print("No state database found")
+            print(f"✓ Created fresh state database at {recreated_path}")
+        print("Run 'python migrate_v2.py' to start fresh")
     else:
         print()
         print("Reset cancelled")

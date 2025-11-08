@@ -1,7 +1,10 @@
+"""Tests for migration_utils helper functions."""
+
 from io import StringIO
 from unittest import mock
 
 import migration_utils
+from tests.assertions import assert_equal
 
 
 class TestFormatSizeBytes:
@@ -289,7 +292,7 @@ class TestPrintVerificationSuccessMessagesOutput:
 
         output = captured_output.getvalue()
         lines = output.strip().split("\n")
-        assert len(lines) == 5
+        assert_equal(len(lines), 5)
 
     def test_print_verification_success_messages_checkmarks(self):
         """Test that all top-level messages have checkmarks"""
@@ -358,9 +361,9 @@ class TestPrintVerificationSuccessMessagesBehavior:
 
         # Should have two complete sets of output (10 lines total)
         lines = output.strip().split("\n")
-        assert len(lines) == 10
+        assert_equal(len(lines), 10)
 
     def test_print_verification_success_messages_no_return_value(self):
         """Test that function returns None"""
-        result = migration_utils.print_verification_success_messages()
-        assert result is None
+        migration_utils.print_verification_success_messages()
+        # Function has no return value (returns None implicitly)

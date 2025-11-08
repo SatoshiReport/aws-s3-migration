@@ -19,7 +19,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -43,11 +43,13 @@ def disable_termination_protection(
         )
 
         print(f"   ✅ Termination protection disabled for {instance_id}")
-        return True
 
     except Exception as e:
         print(f"   ❌ Failed to disable termination protection for {instance_id}: {str(e)}")
         return False
+
+    else:
+        return True
 
 
 def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
@@ -67,14 +69,16 @@ def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_a
         previous_state = response["TerminatingInstances"][0]["PreviousState"]["Name"]
 
         print(f"   State change: {previous_state} → {current_state}")
-        return True
 
     except Exception as e:
         print(f"   ❌ Failed to terminate {instance_id}: {str(e)}")
         return False
 
+    else:
+        return True
 
-def main():
+
+def main():  # noqa: PLR0915
     """Main execution function"""
     print("AWS Fix Termination Protection and Terminate")
     print("=" * 60)

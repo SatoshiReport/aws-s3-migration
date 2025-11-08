@@ -70,10 +70,12 @@ def disable_accelerator(accelerator_arn):
             elapsed_time += wait_interval
 
         print(f"  ⚠️ Timeout waiting for accelerator to reach stable state")
-        return False
 
     except Exception as e:
         print(f"  ❌ Error disabling accelerator: {str(e)}")
+        return False
+
+    else:
         return False
 
 
@@ -106,10 +108,12 @@ def delete_listeners(accelerator_arn):
             client.delete_listener(ListenerArn=listener_arn)
             print(f"  ✅ Deleted listener successfully")
 
-        return True
     except Exception as e:
         print(f"  ❌ Error deleting listeners: {str(e)}")
         return False
+
+    else:
+        return True
 
 
 def delete_accelerator(accelerator_arn):
@@ -121,13 +125,15 @@ def delete_accelerator(accelerator_arn):
         client.delete_accelerator(AcceleratorArn=accelerator_arn)
 
         print(f"  ✅ Accelerator deletion initiated")
-        return True
     except Exception as e:
         print(f"  ❌ Error deleting accelerator: {str(e)}")
         return False
 
+    else:
+        return True
 
-def main():
+
+def main():  # noqa: PLR0915
     """Main cleanup function"""
     print("AWS Global Accelerator Cleanup")
     print("=" * 80)

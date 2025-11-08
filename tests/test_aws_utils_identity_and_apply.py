@@ -1,3 +1,5 @@
+"""Tests for aws_utils identity and policy application functions."""
+
 import json
 from unittest import mock
 

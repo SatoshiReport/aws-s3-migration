@@ -3,9 +3,28 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from migration_state_v2 import MigrationStateV2, Phase
+
+DEFAULT_BUCKET = "test-bucket"
+DEFAULT_FILE_COUNT = 50
+DEFAULT_TOTAL_SIZE = 5_000
+DEFAULT_STORAGE = {"STANDARD": 40, "GLACIER": 10}
+SMALL_FILE_COUNT = 10
+SMALL_TOTAL_SIZE = 100
+MEDIUM_FILE_COUNT = 20
+MEDIUM_TOTAL_SIZE = 200
+LARGE_FILE_COUNT = 30
+LARGE_TOTAL_SIZE = 300
+INFO_FILE_COUNT = 25
+INFO_TOTAL_SIZE = 2_500
+INFO_STORAGE = {"STANDARD": 20, "GLACIER": 5}
+SUMMARY_STANDARD_COUNT = 2
+SUMMARY_GLACIER_COUNT = 1
+INCOMPLETE_FILE_COUNT = 5
+INCOMPLETE_TOTAL_SIZE = 50
+PARTIAL_CHECKSUM_COUNT = 5
+COMPLETED_BUCKET_COUNT = 2
+SUMMARY_FILE_TOTAL = 3
 
 
 class TestBucketStatusPersistence:
@@ -17,19 +36,19 @@ class TestBucketStatusPersistence:
         state = MigrationStateV2(str(db_path))
 
         state.save_bucket_status(
-            bucket="test-bucket",
-            file_count=50,
-            total_size=5000,
-            storage_classes={"STANDARD": 40, "GLACIER": 10},
+            bucket=DEFAULT_BUCKET,
+            file_count=DEFAULT_FILE_COUNT,
+            total_size=DEFAULT_TOTAL_SIZE,
+            storage_classes=DEFAULT_STORAGE,
             scan_complete=True,
         )
 
         with state.db_conn.get_connection() as conn:
-            cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", ("test-bucket",))
+            cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,))
             row = cursor.fetchone()
             assert row is not None
-            assert row["file_count"] == 50
-            assert row["total_size"] == 5000
+            assert row["file_count"] == DEFAULT_FILE_COUNT
+            assert row["total_size"] == DEFAULT_TOTAL_SIZE
             assert row["scan_complete"] == 1
 
 
@@ -41,7 +60,7 @@ class TestBucketSyncOperations:
         db_path = tmp_path / "test.db"
         state = MigrationStateV2(str(db_path))
 
-        state.save_bucket_status("bucket1", 10, 100, {})
+        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
         state.mark_bucket_sync_complete("bucket1")
 
         with state.db_conn.get_connection() as conn:
@@ -60,22 +79,22 @@ class TestBucketVerifyOperations:
         db_path = tmp_path / "test.db"
         state = MigrationStateV2(str(db_path))
 
-        state.save_bucket_status("bucket1", 10, 100, {})
+        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
         state.mark_bucket_verify_complete(
             bucket="bucket1",
-            verified_file_count=10,
-            size_verified_count=10,
-            checksum_verified_count=5,
-            total_bytes_verified=100,
-            local_file_count=10,
+            verified_file_count=SMALL_FILE_COUNT,
+            size_verified_count=SMALL_FILE_COUNT,
+            checksum_verified_count=PARTIAL_CHECKSUM_COUNT,
+            total_bytes_verified=SMALL_TOTAL_SIZE,
+            local_file_count=SMALL_FILE_COUNT,
         )
 
         with state.db_conn.get_connection() as conn:
             cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", ("bucket1",))
             row = cursor.fetchone()
             assert row["verify_complete"] == 1
-            assert row["verified_file_count"] == 10
-            assert row["checksum_verified_count"] == 5
+            assert row["verified_file_count"] == SMALL_FILE_COUNT
+            assert row["checksum_verified_count"] == PARTIAL_CHECKSUM_COUNT
 
 
 class TestBucketDeleteOperations:
@@ -86,7 +105,7 @@ class TestBucketDeleteOperations:
         db_path = tmp_path / "test.db"
         state = MigrationStateV2(str(db_path))
 
-        state.save_bucket_status("bucket1", 10, 100, {})
+        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
         state.mark_bucket_delete_complete("bucket1")
 
         with state.db_conn.get_connection() as conn:
@@ -106,9 +125,9 @@ class TestBucketListOperations:
         db_path = tmp_path / "test.db"
         state = MigrationStateV2(str(db_path))
 
-        state.save_bucket_status("bucket1", 10, 100, {})
-        state.save_bucket_status("bucket2", 20, 200, {})
-        state.save_bucket_status("bucket3", 30, 300, {})
+        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
+        state.save_bucket_status("bucket2", MEDIUM_FILE_COUNT, MEDIUM_TOTAL_SIZE, {})
+        state.save_bucket_status("bucket3", LARGE_FILE_COUNT, LARGE_TOTAL_SIZE, {})
 
         buckets = state.get_all_buckets()
 
@@ -124,9 +143,9 @@ class TestBucketPhaseFiltering:
         db_path = tmp_path / "test.db"
         state = MigrationStateV2(str(db_path))
 
-        state.save_bucket_status("bucket1", 10, 100, {})
-        state.save_bucket_status("bucket2", 20, 200, {})
-        state.save_bucket_status("bucket3", 30, 300, {})
+        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
+        state.save_bucket_status("bucket2", MEDIUM_FILE_COUNT, MEDIUM_TOTAL_SIZE, {})
+        state.save_bucket_status("bucket3", LARGE_FILE_COUNT, LARGE_TOTAL_SIZE, {})
 
         state.mark_bucket_sync_complete("bucket1")
         state.mark_bucket_sync_complete("bucket2")
@@ -145,17 +164,17 @@ class TestBucketInfoRetrieval:
         state = MigrationStateV2(str(db_path))
 
         state.save_bucket_status(
-            "test-bucket", 25, 2500, {"STANDARD": 20, "GLACIER": 5}, scan_complete=True
+            DEFAULT_BUCKET, INFO_FILE_COUNT, INFO_TOTAL_SIZE, INFO_STORAGE, scan_complete=True
         )
 
-        info = state.get_bucket_info("test-bucket")
+        info = state.get_bucket_info(DEFAULT_BUCKET)
 
-        assert info["bucket"] == "test-bucket"
-        assert info["file_count"] == 25
-        assert info["total_size"] == 2500
+        assert info["bucket"] == DEFAULT_BUCKET
+        assert info["file_count"] == INFO_FILE_COUNT
+        assert info["total_size"] == INFO_TOTAL_SIZE
         assert info["scan_complete"] == 1
         storage_classes = json.loads(info["storage_class_counts"])
-        assert storage_classes == {"STANDARD": 20, "GLACIER": 5}
+        assert storage_classes == INFO_STORAGE
 
     def test_migration_state_v2_get_bucket_info_nonexistent(self, tmp_path: Path):
         """MigrationStateV2.get_bucket_info returns empty dict for missing bucket."""
@@ -175,21 +194,29 @@ class TestScanSummaryOperations:
         db_path = tmp_path / "test.db"
         state = MigrationStateV2(str(db_path))
 
-        state.add_file("b1", "k1", 100, "e1", "STANDARD", "2025-10-31T00:00:00Z")
-        state.add_file("b1", "k2", 100, "e2", "GLACIER", "2025-10-31T00:00:00Z")
-        state.add_file("b2", "k3", 100, "e3", "STANDARD", "2025-10-31T00:00:00Z")
+        state.add_file("b1", "k1", SMALL_TOTAL_SIZE, "e1", "STANDARD", "2025-10-31T00:00:00Z")
+        state.add_file("b1", "k2", SMALL_TOTAL_SIZE, "e2", "GLACIER", "2025-10-31T00:00:00Z")
+        state.add_file("b2", "k3", SMALL_TOTAL_SIZE, "e3", "STANDARD", "2025-10-31T00:00:00Z")
 
-        state.save_bucket_status("b1", 2, 200, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True)
-        state.save_bucket_status("b2", 1, 100, {"STANDARD": 1}, scan_complete=True)
-        state.save_bucket_status("b3", 5, 50, {"STANDARD": 5}, scan_complete=False)
+        state.save_bucket_status(
+            "b1", 2, 2 * SMALL_TOTAL_SIZE, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True
+        )
+        state.save_bucket_status("b2", 1, SMALL_TOTAL_SIZE, {"STANDARD": 1}, scan_complete=True)
+        state.save_bucket_status(
+            "b3",
+            INCOMPLETE_FILE_COUNT,
+            INCOMPLETE_TOTAL_SIZE,
+            {"STANDARD": INCOMPLETE_FILE_COUNT},
+            scan_complete=False,
+        )
 
         summary = state.get_scan_summary()
 
-        assert summary["bucket_count"] == 2
-        assert summary["total_files"] == 3
-        assert summary["total_size"] == 300
-        assert summary["storage_classes"]["STANDARD"] == 2
-        assert summary["storage_classes"]["GLACIER"] == 1
+        assert summary["bucket_count"] == COMPLETED_BUCKET_COUNT
+        assert summary["total_files"] == SUMMARY_FILE_TOTAL
+        assert summary["total_size"] == 3 * SMALL_TOTAL_SIZE
+        assert summary["storage_classes"]["STANDARD"] == SUMMARY_STANDARD_COUNT
+        assert summary["storage_classes"]["GLACIER"] == SUMMARY_GLACIER_COUNT
 
 
 class TestPhaseDefaultState:

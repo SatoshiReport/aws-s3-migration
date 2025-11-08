@@ -6,8 +6,6 @@ import builtins
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
-
 import migrate_v2_smoke_real as real
 from migrate_v2_smoke_shared import SmokeTestDeps, materialize_sample_tree
 
@@ -160,7 +158,7 @@ def test_context_restore_resets_state(tmp_path):
         deps=SmokeTestDeps(
             config=config,
             drive_checker_cls=_FakeDriveChecker,
-            create_migrator=lambda: _FakeMigrator(),
+            create_migrator=_FakeMigrator,
         ),
         temp_dir=temp_dir,
         bucket_name="bucket",

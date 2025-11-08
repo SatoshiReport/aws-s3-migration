@@ -39,11 +39,12 @@ def delete_health_check(health_check_id):
         print(f"  ✅ Health check {health_check_id} deleted successfully")
         print(f"  💰 Monthly savings: $0.50")
 
-        return True
-
     except ClientError as e:
         print(f"  ❌ Error deleting health check {health_check_id}: {e}")
         return False
+
+    else:
+        return True
 
 
 def delete_hosted_zone(zone_name, zone_id):
@@ -119,14 +120,15 @@ def delete_hosted_zone(zone_name, zone_id):
         print(f"  ✅ Hosted zone {zone_name} deleted successfully")
         print(f"  💰 Monthly savings: $0.50")
 
-        return True
-
     except ClientError as e:
         print(f"  ❌ Error deleting hosted zone {zone_name}: {e}")
         return False
 
+    else:
+        return True
 
-def main():
+
+def main():  # noqa: PLR0915
     print("AWS Route 53 Cleanup")
     print("=" * 80)
     print("Removing health check and specified hosted zones...")

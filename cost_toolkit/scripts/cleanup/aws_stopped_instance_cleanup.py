@@ -19,7 +19,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -72,11 +72,12 @@ def get_instance_details(region_name, instance_id, aws_access_key_id, aws_secret
             ],
         }
 
-        return instance_info
-
     except Exception as e:
         print(f"❌ Error getting instance details for {instance_id}: {str(e)}")
         return None
+
+    else:
+        return instance_info
 
 
 def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
@@ -96,14 +97,16 @@ def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_a
         previous_state = response["TerminatingInstances"][0]["PreviousState"]["Name"]
 
         print(f"   State change: {previous_state} → {current_state}")
-        return True
 
     except Exception as e:
         print(f"   ❌ Failed to terminate {instance_id}: {str(e)}")
         return False
 
+    else:
+        return True
 
-def main():
+
+def main():  # noqa: C901, PLR0912, PLR0915
     """Main execution function"""
     print("AWS Stopped Instance Cleanup")
     print("=" * 50)

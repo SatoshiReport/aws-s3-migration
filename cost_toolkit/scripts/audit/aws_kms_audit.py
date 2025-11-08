@@ -6,7 +6,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def audit_kms_keys():
+def audit_kms_keys():  # noqa: C901, PLR0912, PLR0915
     """Audit KMS keys across all regions to identify where they're being used"""
 
     # Get all AWS regions

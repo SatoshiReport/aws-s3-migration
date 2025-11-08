@@ -7,6 +7,7 @@ preventing deletion. This script removes the cross-references first, then delete
 """
 
 import os
+import sys
 
 import boto3
 from dotenv import load_dotenv
@@ -20,7 +21,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
@@ -33,10 +34,12 @@ def remove_security_group_rule(ec2_client, group_id, rule_type, rule_data):
             ec2_client.revoke_security_group_ingress(GroupId=group_id, IpPermissions=[rule_data])
         else:  # outbound
             ec2_client.revoke_security_group_egress(GroupId=group_id, IpPermissions=[rule_data])
-        return True
     except Exception as e:
         print(f"   ❌ Error removing rule: {e}")
         return False
+
+    else:
+        return True
 
 
 def get_security_group_rules_referencing_group(ec2_client, target_group_id):
@@ -76,10 +79,12 @@ def get_security_group_rules_referencing_group(ec2_client, target_group_id):
                             }
                         )
 
-        return rules_to_remove
     except Exception as e:
         print(f"❌ Error getting security group rules: {e}")
         return []
+
+    else:
+        return rules_to_remove
 
 
 def delete_security_group(ec2_client, group_id, group_name):
@@ -88,13 +93,15 @@ def delete_security_group(ec2_client, group_id, group_name):
         print(f"   🗑️  Deleting security group: {group_id} ({group_name})")
         ec2_client.delete_security_group(GroupId=group_id)
         print(f"   ✅ Successfully deleted {group_id}")
-        return True
     except Exception as e:
         print(f"   ❌ Error deleting {group_id}: {e}")
         return False
 
+    else:
+        return True
 
-def cleanup_circular_security_groups():
+
+def cleanup_circular_security_groups():  # noqa: C901, PLR0912, PLR0915
     """Clean up security groups with circular dependencies"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -247,4 +254,4 @@ if __name__ == "__main__":
         cleanup_circular_security_groups()
     except Exception as e:
         print(f"❌ Script failed: {e}")
-        exit(1)
+        sys.exit(1)

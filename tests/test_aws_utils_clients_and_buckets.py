@@ -3,6 +3,7 @@ from unittest import mock
 import pytest
 
 import aws_utils
+from tests.assertions import assert_equal
 
 # ============================================================================
 # Tests for get_boto3_clients
@@ -27,9 +28,9 @@ def test_get_boto3_clients_creates_s3_sts_iam():
         mock_s3, mock_sts, mock_iam = mock.Mock(), mock.Mock(), mock.Mock()
         mock_client.side_effect = [mock_s3, mock_sts, mock_iam]
 
-        s3, sts, iam = aws_utils.get_boto3_clients()
+        _s3, _sts, _iam = aws_utils.get_boto3_clients()
 
-        assert mock_client.call_count == 3
+        assert_equal(mock_client.call_count, 3)
         calls = mock_client.call_args_list
         assert calls[0] == mock.call("s3")
         assert calls[1] == mock.call("sts")
@@ -44,7 +45,7 @@ def test_get_boto3_clients_returns_tuple():
         result = aws_utils.get_boto3_clients()
 
         assert isinstance(result, tuple)
-        assert len(result) == 3
+        assert_equal(len(result), 3)
 
 
 # ============================================================================
@@ -103,7 +104,7 @@ def test_list_s3_buckets_with_many_buckets():
     ):
         buckets = aws_utils.list_s3_buckets()
 
-    assert len(buckets) == 100
+    assert_equal(len(buckets), 100)
     assert buckets[0] == "bucket-0"
     assert buckets[99] == "bucket-99"
 

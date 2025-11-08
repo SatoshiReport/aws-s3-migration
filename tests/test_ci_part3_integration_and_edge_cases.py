@@ -10,10 +10,9 @@ Tests verify:
 import sys
 from unittest.mock import patch
 
-import pytest
-
 # Import the module under test
 import ci
+from tests.assertions import assert_equal
 
 
 class TestIntegrationScenarios:
@@ -60,14 +59,14 @@ class TestIntegrationScenarios:
 
         # Second call
         result2 = ci.run()
-        assert result2 == 1
+        assert_equal(result2, 1)
 
         # Third call
         result3 = ci.run()
-        assert result3 == 0
+        assert_equal(result3, 0)
 
         # Verify all three calls were made
-        assert mock_ci_main.call_count == 3
+        assert_equal(mock_ci_main.call_count, 3)
 
 
 class TestEdgeCases:
@@ -80,7 +79,7 @@ class TestEdgeCases:
         with patch.object(sys, "argv", ["ci.py", ""]):
             ci.run()
         argv = mock_ci_main.call_args[0][0]
-        assert argv == ["ci.py", "--command", "./scripts/ci.sh", ""]
+        assert_equal(argv, ["ci.py", "--command", "./scripts/ci.sh", ""])
 
     @patch("ci.ci_main")
     def test_run_with_special_characters_in_args(self, mock_ci_main):
@@ -89,7 +88,7 @@ class TestEdgeCases:
         with patch.object(sys, "argv", ["ci.py", "--file=/path/with spaces/file.txt"]):
             ci.run()
         argv = mock_ci_main.call_args[0][0]
-        assert argv[-1] == "--file=/path/with spaces/file.txt"
+        assert_equal(argv[-1], "--file=/path/with spaces/file.txt")
 
     @patch("ci.ci_main")
     def test_run_with_equals_sign_in_args(self, mock_ci_main):
@@ -98,7 +97,7 @@ class TestEdgeCases:
         with patch.object(sys, "argv", ["ci.py", "--param=value=something"]):
             ci.run()
         argv = mock_ci_main.call_args[0][0]
-        assert argv[-1] == "--param=value=something"
+        assert_equal(argv[-1], "--param=value=something")
 
     @patch("ci.ci_main")
     def test_run_with_many_arguments(self, mock_ci_main):
@@ -109,7 +108,7 @@ class TestEdgeCases:
             ci.run()
         argv = mock_ci_main.call_args[0][0]
         # Should have base 3 args + 100 additional args
-        assert len(argv) == 103
+        assert_equal(len(argv), 103)
 
     @patch("ci.ci_main")
     def test_run_argv_is_list_not_tuple(self, mock_ci_main):
@@ -117,7 +116,7 @@ class TestEdgeCases:
         mock_ci_main.return_value = 0
         ci.run()
         argv = mock_ci_main.call_args[0][0]
-        assert type(argv) is list
+        assert isinstance(argv, list)
 
 
 class TestDocumentationAndReadability:

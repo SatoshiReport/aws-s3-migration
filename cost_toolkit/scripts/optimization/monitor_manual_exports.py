@@ -21,7 +21,7 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     return aws_access_key_id, aws_secret_access_key
 
@@ -73,11 +73,12 @@ def check_export_status(region, ami_id=None):
                 print(f"         Message: {message}")
             print()
 
-        return tasks
-
     except Exception as e:
         print(f"   ❌ Error checking exports in {region}: {e}")
         return []
+
+    else:
+        return tasks
 
 
 def check_s3_files(region, bucket_name=None):
@@ -127,14 +128,15 @@ def check_s3_files(region, bucket_name=None):
         else:
             print(f"      📭 No VMDK files found in bucket")
 
-        return files
-
     except s3_client.exceptions.NoSuchBucket:
         print(f"      ❌ Bucket {bucket_name} does not exist")
         return []
     except Exception as e:
         print(f"      ❌ Error checking S3: {e}")
         return []
+
+    else:
+        return files
 
 
 def monitor_all_regions():

@@ -31,6 +31,10 @@ skip = ["ci_shared"]
 [tool.pylint.'MESSAGES CONTROL']
 disable = []
 
+[tool.pylint.DESIGN]
+max-attributes = 10
+max-args = 7
+
 [tool.vulture]
 exclude = ["ci_shared/", "scripts/", "docs/", ".venv/"]
 

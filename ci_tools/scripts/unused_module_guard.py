@@ -56,6 +56,10 @@ class GuardModule(Protocol):
         """Return unused module metadata."""
         raise NotImplementedError
 
+    def find_suspicious_duplicates(self, root):  # pragma: no cover - type hints only
+        """Return suspicious duplicate metadata."""
+        raise NotImplementedError
+
     def main(self) -> int:  # pragma: no cover - type hints only
         """Execute the guard CLI."""
         raise NotImplementedError
@@ -78,25 +82,27 @@ def _load_shared_guard() -> GuardModule:
     return cast(GuardModule, module)
 
 
-def _load_config() -> tuple[list[str], list[str]]:
+def _load_config() -> tuple[list[str], list[str], list[str]]:
     """Load repo-specific config providing excludes and allow-lists."""
     if not _CONFIG_FILE.exists():
-        return [], []
+        return [], [], []
 
     try:
         data = json.loads(_CONFIG_FILE.read_text())
     except (OSError, json.JSONDecodeError):
-        return [], []
+        return [], [], []
 
     excludes = [str(pattern) for pattern in data.get("exclude_patterns", [])]
     allow_list = [str(pattern) for pattern in data.get("suspicious_allow_patterns", [])]
-    return excludes, allow_list
+    duplicate_excludes = [str(pattern) for pattern in data.get("duplicate_exclude_patterns", [])]
+    return excludes, allow_list, duplicate_excludes
 
 
 def _apply_config_overrides(
     guard: GuardModule,
     extra_excludes: Sequence[str],
     allowed_patterns: Sequence[str],
+    duplicate_excludes: Sequence[str],
 ) -> None:
     """Patch the shared guard module with repo-specific behavior."""
     if allowed_patterns:
@@ -114,13 +120,35 @@ def _apply_config_overrides(
 
         guard.find_unused_modules = find_unused_with_config  # type: ignore[assignment]
 
+    combined_duplicate_excludes = list(extra_excludes)
+    combined_duplicate_excludes.extend(duplicate_excludes)
+    if combined_duplicate_excludes:
+        original_find_duplicates = getattr(guard, "find_suspicious_duplicates", None)
+
+        if original_find_duplicates is not None:
+
+            def find_duplicates_with_config(root):
+                results = original_find_duplicates(root)
+                filtered = []
+                for file_path, reason in results:
+                    if any(pattern in str(file_path) for pattern in combined_duplicate_excludes):
+                        continue
+                    filtered.append((file_path, reason))
+                return filtered
+
+            guard.find_suspicious_duplicates = find_duplicates_with_config  # type: ignore[assignment]
+
 
 def _bootstrap() -> Callable[[], int]:
     """Load shared module, apply overrides, and mirror its namespace."""
     guard = _load_shared_guard()
-    extra_excludes, allowed_patterns = _load_config()
-    _apply_config_overrides(guard, extra_excludes, allowed_patterns)
-    globals()["CONFIG_OVERRIDES"] = (tuple(extra_excludes), tuple(allowed_patterns))
+    extra_excludes, allowed_patterns, duplicate_excludes = _load_config()
+    _apply_config_overrides(guard, extra_excludes, allowed_patterns, duplicate_excludes)
+    globals()["CONFIG_OVERRIDES"] = (
+        tuple(extra_excludes),
+        tuple(allowed_patterns),
+        tuple(duplicate_excludes),
+    )
 
     globals().update(guard.__dict__)
     globals()["__file__"] = str(_LOCAL_MODULE_PATH)

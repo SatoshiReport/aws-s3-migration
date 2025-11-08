@@ -12,6 +12,7 @@ from migration_verify import (
     FileChecksumVerifier,
     FileInventoryChecker,
 )
+from tests.assertions import assert_equal
 
 
 class TestInventoryEdgeCasesManyFiles:
@@ -87,7 +88,7 @@ class TestScanningEdgeCases:
 
         local_files = checker.scan_local_files("test-bucket", 5)
 
-        assert len(local_files) == 5
+        assert_equal(len(local_files), 5)
 
     def test_scan_files_with_equal_expected_files(self, tmp_path):
         """Test scanning when actual files equal expected files"""
@@ -104,7 +105,7 @@ class TestScanningEdgeCases:
         # Tell it to expect exactly 100 files
         local_files = checker.scan_local_files("test-bucket", 100)
 
-        assert len(local_files) == 100
+        assert_equal(len(local_files), 100)
 
 
 class TestBucketVerificationEdgeCases:
@@ -162,8 +163,8 @@ class TestMultipartFileEdgeCases:
         verifier = FileChecksumVerifier()
         verifier._verify_multipart_file("file1.txt", file1, stats)
 
-        assert stats["verified_count"] == 1
-        assert stats["checksum_verified"] == 1
+        assert_equal(stats["verified_count"], 1)
+        assert_equal(stats["checksum_verified"], 1)
 
 
 class TestEtagComputationEdgeCases:
@@ -215,8 +216,8 @@ class TestMixedFileTypeVerification:
             expected_size=15,
         )
 
-        assert results["verified_count"] == 2
-        assert results["checksum_verified"] == 2
+        assert_equal(results["verified_count"], 2)
+        assert_equal(results["checksum_verified"], 2)
 
 
 class TestBucketDeletionLargeBatch:
@@ -241,7 +242,7 @@ class TestBucketDeletionLargeBatch:
 
         # Verify delete_objects was called with all objects
         call_args = mock_s3.delete_objects.call_args
-        assert len(call_args[1]["Delete"]["Objects"]) == 1500
+        assert_equal(len(call_args[1]["Delete"]["Objects"]), 1500)
 
 
 class TestBucketDeletionProgressDisplay:
@@ -273,4 +274,4 @@ class TestBucketDeletionProgressDisplay:
         deleter.delete_bucket("test-bucket")
 
         # Should have called delete_objects for each page
-        assert mock_s3.delete_objects.call_count == 5
+        assert_equal(mock_s3.delete_objects.call_count, 5)

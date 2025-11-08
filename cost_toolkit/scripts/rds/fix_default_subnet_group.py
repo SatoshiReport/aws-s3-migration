@@ -48,7 +48,7 @@ def fix_default_subnet_group():
             if "already exists" in str(e).lower():
                 print(f"✅ Subnet group {subnet_group_name} already exists")
             else:
-                raise e
+                raise
 
         # Since we can't modify the subnet group directly, let's try a different approach
         # We'll create a snapshot and restore to a new instance in the public subnet group
@@ -100,7 +100,7 @@ def fix_default_subnet_group():
             if "already exists" in str(e).lower():
                 print(f"✅ Snapshot {snapshot_id} already exists, proceeding...")
             else:
-                raise e
+                raise
 
     except Exception as e:
         print(f"❌ Error: {e}")

@@ -14,6 +14,7 @@ import pytest
 
 # Import the module under test
 import ci
+from tests.assertions import assert_equal
 
 
 class TestReturnValuePropagation:
@@ -24,14 +25,14 @@ class TestReturnValuePropagation:
         """Verify run() returns 0 when ci_main returns 0."""
         mock_ci_main.return_value = 0
         result = ci.run()
-        assert result == 0
+        assert_equal(result, 0)
 
     @patch("ci.ci_main")
     def test_run_returns_nonzero_on_failure(self, mock_ci_main):
         """Verify run() returns non-zero when ci_main returns error code."""
         mock_ci_main.return_value = 1
         result = ci.run()
-        assert result == 1
+        assert_equal(result, 1)
 
     @patch("ci.ci_main")
     def test_run_returns_arbitrary_error_codes(self, mock_ci_main):
@@ -39,14 +40,14 @@ class TestReturnValuePropagation:
         for error_code in [1, 2, 127, 255]:
             mock_ci_main.return_value = error_code
             result = ci.run()
-            assert result == error_code
+            assert_equal(result, error_code)
 
     @patch("ci.ci_main")
     def test_run_returns_positive_error_codes(self, mock_ci_main):
         """Verify run() handles various positive error codes."""
         mock_ci_main.return_value = 42
         result = ci.run()
-        assert result == 42
+        assert_equal(result, 42)
 
     @patch("ci.ci_main")
     def test_run_return_value_matches_ci_main_exactly(self, mock_ci_main):
@@ -54,7 +55,7 @@ class TestReturnValuePropagation:
         expected_value = 99
         mock_ci_main.return_value = expected_value
         result = ci.run()
-        assert result == expected_value
+        assert_equal(result, expected_value)
 
 
 class TestCiMainMockBehavior:
@@ -120,7 +121,7 @@ class TestMainBlock:
         mock_run.return_value = 42
         with pytest.raises(SystemExit) as exc_info:
             raise SystemExit(ci.run())
-        assert exc_info.value.code == 42
+        assert_equal(exc_info.value.code, 42)
 
 
 class TestMainBlockExecution:
@@ -134,7 +135,7 @@ class TestMainBlockExecution:
         exit_code = mock_run.return_value
         with pytest.raises(SystemExit) as exc_info:
             raise SystemExit(exit_code)
-        assert exc_info.value.code == 0
+        assert_equal(exc_info.value.code, 0)
 
     @patch("ci.run")
     def test_main_block_execution_failure(self, mock_run):
@@ -143,7 +144,7 @@ class TestMainBlockExecution:
         exit_code = mock_run.return_value
         with pytest.raises(SystemExit) as exc_info:
             raise SystemExit(exit_code)
-        assert exc_info.value.code == 1
+        assert_equal(exc_info.value.code, 1)
 
     def test_main_block_execution_pattern(self):
         """Test the __main__ block execution pattern with real run()."""
@@ -155,16 +156,18 @@ class TestMainBlockExecution:
             # Verify ci_main was called
             assert mock_ci_main.called
             # Verify result is what would be passed to SystemExit
-            assert result == 0
+            assert_equal(result, 0)
 
     def test_module_can_be_imported(self):
         """Verify ci module can be imported without errors."""
+        # pylint: disable=import-outside-toplevel,reimported
         import ci as ci_module
 
         assert ci_module is not None
 
     def test_ci_main_available_after_import(self):
         """Verify ci_main is accessible after importing ci module."""
+        # pylint: disable=import-outside-toplevel,reimported
         import ci as ci_module
 
         assert hasattr(ci_module, "ci_main")

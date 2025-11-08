@@ -23,13 +23,15 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")
+        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
 
 
-def check_active_exports(region, aws_access_key_id, aws_secret_access_key):
+def check_active_exports(  # noqa: PLR0912, PLR0915
+    region, aws_access_key_id, aws_secret_access_key
+):  # noqa: PLR0912, PLR0915
     """Check all active export tasks in a region"""
     ec2_client = boto3.client(
         "ec2",

@@ -1,9 +1,12 @@
+"""Tests for aws_utils file operations."""
+
 import json
 from pathlib import Path
 
 import pytest
 
 import aws_utils
+from tests.assertions import assert_equal
 
 # ============================================================================
 # Tests for save_policy_to_file and load_policy_from_file
@@ -96,7 +99,7 @@ def test_save_policy_to_file_overwrites_existing(tmp_path: Path):
     raw = aws_utils.load_policy_from_file(path)
     loaded = json.loads(raw)
 
-    assert loaded["version"] == 2
+    assert_equal(loaded["version"], 2)
     assert "updated" in loaded
 
 

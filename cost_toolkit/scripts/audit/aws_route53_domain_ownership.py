@@ -7,7 +7,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def check_route53_registered_domains():
+def check_route53_registered_domains():  # noqa: C901, PLR0912
     """Check domains registered through Route 53"""
     print(f"\n🏠 Checking Route 53 Registered Domains")
     print("=" * 80)
@@ -89,11 +89,12 @@ def check_route53_registered_domains():
         print(f"  Total registered domains: {len(domains)}")
         print(f"  Estimated total annual cost: ${total_annual_cost:.2f}")
 
-        return domain_details
-
     except ClientError as e:
         print(f"❌ Error checking registered domains: {e}")
         return []
+
+    else:
+        return domain_details
 
 
 def check_current_hosted_zones():
@@ -140,14 +141,15 @@ def check_current_hosted_zones():
         print(f"  Total zones: {len(hosted_zones)}")
         print(f"  Monthly cost: ${len(hosted_zones) * 0.50:.2f}")
 
-        return zone_details
-
     except ClientError as e:
         print(f"❌ Error checking hosted zones: {e}")
         return []
 
+    else:
+        return zone_details
 
-def main():
+
+def main():  # noqa: PLR0912
     print("AWS Route 53 Domain Ownership Analysis")
     print("=" * 80)
     print("Checking domain registration vs DNS hosting...")

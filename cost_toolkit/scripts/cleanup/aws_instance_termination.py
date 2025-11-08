@@ -107,7 +107,7 @@ def get_volume_details(volume_id, region):
         return None
 
 
-def terminate_instance_safely(instance_id, region):
+def terminate_instance_safely(instance_id, region):  # noqa: C901, PLR0912, PLR0915
     """
     Safely terminate an EC2 instance with proper checks and volume handling.
 
@@ -210,11 +210,12 @@ def terminate_instance_safely(instance_id, region):
                         print(f"     ❌ Error deleting volume {volume_id}: {str(e)}")
             print()
 
-        return True
-
     except Exception as e:
         print(f"❌ Error terminating instance {instance_id}: {str(e)}")
         return False
+
+    else:
+        return True
 
 
 def main():
