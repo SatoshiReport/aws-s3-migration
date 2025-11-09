@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import importlib.util
 import sys
 from pathlib import Path
 
@@ -19,6 +20,7 @@ def _clear_guard_modules() -> None:
         "_ci_shared_unused_module_guard",
     ]:
         sys.modules.pop(name, None)
+    importlib.invalidate_caches()
 
 
 def _write_shared_guard(shared_root: Path, body: str) -> None:
@@ -39,7 +41,18 @@ def _cleanup_modules():
 def _import_shim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, shared_code: str):
     _write_shared_guard(tmp_path, shared_code)
     monkeypatch.setenv("CI_SHARED_ROOT", str(tmp_path))
-    return importlib.import_module("ci_tools.scripts.unused_module_guard")
+
+    # Import the local shim directly, bypassing the ci_tools proxy
+    shim_path = Path(__file__).parent.parent / "ci_tools" / "scripts" / "unused_module_guard.py"
+    spec = importlib.util.spec_from_file_location("ci_tools.scripts.unused_module_guard", shim_path)
+    if spec is None or spec.loader is None:
+        msg = f"Unable to load shim from {shim_path}"
+        raise ImportError(msg)
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["ci_tools.scripts.unused_module_guard"] = module
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_shim_applies_config_and_delegates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

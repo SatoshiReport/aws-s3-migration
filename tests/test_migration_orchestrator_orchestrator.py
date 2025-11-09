@@ -222,7 +222,9 @@ class TestErrorHandlers:
 
     def test_handle_drive_error_prints_error_message(self, mock_dependencies):
         """Test handle_drive_error prints proper error message"""
-        from migration_orchestrator import handle_drive_error  # pylint: disable=import-outside-toplevel
+        from migration_orchestrator import (
+            handle_drive_error,  # pylint: disable=import-outside-toplevel
+        )
 
         error = FileNotFoundError("Drive not found")
 
@@ -237,7 +239,9 @@ class TestErrorHandlers:
 
     def test_handle_migration_error_prints_error_details(self, mock_dependencies):
         """Test handle_migration_error prints error details"""
-        from migration_orchestrator import handle_migration_error  # pylint: disable=import-outside-toplevel
+        from migration_orchestrator import (
+            handle_migration_error,  # pylint: disable=import-outside-toplevel
+        )
 
         error = RuntimeError("Sync failed")
         bucket = "test-bucket"
