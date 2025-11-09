@@ -48,6 +48,34 @@ make check
 - Keep secrets out of git. Store overrides in `config_local.py`, never in tracked files. Generated artifacts (`s3_migration_state.db`, real policies, logs) stay uncommitted.
 - If a linter or guard needs exceptions, update the appropriate entry in `shared-tool-config.toml` or guard-specific config instead of scattering ignores.
 
+## CI Pipeline Compliance - CRITICAL
+
+When CI checks fail, you MUST fix the underlying code issues. This is non-negotiable.
+
+**NEVER:**
+- Add ignore statements (`# noqa`, `# pylint: disable`, `# type: ignore`, etc.)
+- Add suppression comments (`policy_guard: allow-*`, etc.)
+- Modify CI pipeline configuration to skip or weaken tests
+- Modify guard scripts to relax thresholds
+- Add entries to ignore lists or allowlists to bypass checks
+- Disable or comment out failing tests
+
+**ALWAYS:**
+- Change the code to fix the actual issue
+- Refactor to meet complexity/size limits
+- Fix type errors by correcting types
+- Resolve linting issues by improving code quality
+- Ask the user for guidance if the fix approach is unclear
+
+**Examples:**
+- ❌ `# pylint: disable=too-many-arguments` → ✅ Refactor to use a config object
+- ❌ `# type: ignore` → ✅ Fix the type annotation
+- ❌ Adding to `.gitleaks.toml` → ✅ Remove the hardcoded credential
+- ❌ `policy_guard: allow-broad-except` → ✅ Catch specific exceptions
+- ❌ Lowering coverage threshold → ✅ Write tests to increase coverage
+
+If you're unsure how to fix a CI failure, ask the user for direction before proceeding.
+
 ## Quick Reference
 
 | Topic               | Command / Rule                                                                    |

@@ -8,6 +8,39 @@ Everything an automation agent needs to keep the AWS S3 management toolkit healt
 2. **Keep changes surgical.** Never revert user edits you did not make. Favor `apply_patch` for single-file edits and isolate unrelated fixes into follow-up PRs.
 3. **Validate early.** Run formatters, linters, and the smallest useful slice of tests before handing work back--CI should be a formality.
 
+## CI Pipeline Enforcement - Non-Negotiable Rules
+
+Agents working in this repository must pass all CI checks by fixing code, not by bypassing checks.
+
+### Prohibited Actions
+1. Adding ignore/suppression directives (`# noqa`, `# pylint: disable`, `# type: ignore`, `policy_guard: allow-*`)
+2. Modifying CI pipeline configuration to skip tests or weaken checks
+3. Editing guard scripts to relax enforcement thresholds
+4. Adding entries to ignore lists, allowlists, or exclusion files to bypass failures
+5. Disabling, skipping, or commenting out failing tests
+
+### Required Actions
+1. Fix the root cause in the code
+2. Refactor to meet architectural constraints (complexity, size, structure)
+3. Correct type errors with proper type annotations
+4. Improve code quality to satisfy linting rules
+5. Increase test coverage by writing additional tests
+6. Ask for human guidance when the correct fix approach is ambiguous
+
+### Enforcement Examples
+
+| CI Failure | ❌ Wrong Approach | ✅ Correct Approach |
+|------------|------------------|---------------------|
+| Too many arguments (>7) | Add `# pylint: disable` | Refactor to use dataclass/config object |
+| Type error | Add `# type: ignore` | Fix the type annotation or refactor |
+| Hardcoded secret detected | Add to `.gitleaks.toml` | Move to environment variable/config |
+| Broad exception handler | Add `policy_guard: allow-broad-except` | Catch specific exception types |
+| Coverage below 80% | Lower threshold in config | Write tests for uncovered code |
+| Function too complex | Add complexity ignore | Extract smaller functions |
+| Class too large (>100 lines) | Increase structure guard limit | Split into multiple classes |
+
+If fixing a CI failure requires architectural changes and you're uncertain about the approach, stop and request human guidance before proceeding.
+
 ```bash
 # Pre-flight you can paste before coding
 set -euo pipefail

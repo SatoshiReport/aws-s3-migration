@@ -3,22 +3,35 @@
 CI_SHARED_ROOT ?= $(HOME)/ci_shared
 export PYTHONPATH := $(CI_SHARED_ROOT)$(if $(PYTHONPATH),:$(PYTHONPATH))
 
-# Repository layout overrides for shared CI targets
+# ============================================================================
+# AWS REPOSITORY CONFIGURATION
+# ============================================================================
+# This repo uses a flat structure (source at root, not in src/)
 SHARED_SOURCE_ROOT := .
 SHARED_TEST_ROOT := tests
 SHARED_DOC_ROOT := .
-FORMAT_TARGETS := $(SHARED_SOURCE_ROOT) $(SHARED_TEST_ROOT)
-SHARED_PYRIGHT_TARGETS := tests
-SHARED_PYLINT_TARGETS := tests
-PYLINT_ARGS := --disable=R0801
-RUFF_TARGETS := tests
-COMPLEXITY_GUARD_ARGS := --root $(SHARED_SOURCE_ROOT) --max-cyclomatic 35 --max-cognitive 60 --exclude cost_toolkit/scripts
-MODULE_GUARD_ARGS := --root $(SHARED_SOURCE_ROOT) --max-module-lines 900
-FUNCTION_GUARD_ARGS := --root $(SHARED_SOURCE_ROOT) --max-function-lines 400
-UNUSED_MODULE_GUARD_ARGS := --root $(SHARED_SOURCE_ROOT) --exclude tests cost_toolkit/scripts duplicate_tree_cli_exports.py conftest.py __init__.py
-ENABLE_PYLINT := 0
-COVERAGE_GUARD_THRESHOLD := 0
-SHARED_PYTEST_THRESHOLD := 0
+
+# ============================================================================
+# STRICT STANDARDS ARE ENFORCED - THESE CANNOT BE OVERRIDDEN
+# ============================================================================
+# The following settings are MANDATORY and defined in ci_shared.mk:
+# - SHARED_PYTEST_THRESHOLD := 80          (80% coverage required)
+# - COVERAGE_GUARD_THRESHOLD := 80         (coverage guard enforced)
+# - ENABLE_PYLINT := 1                     (pylint always runs)
+# - COMPLEXITY_MAX_CYCLOMATIC := 10        (max cyclomatic complexity)
+# - COMPLEXITY_MAX_COGNITIVE := 15         (max cognitive complexity)
+# - MODULE_MAX_LINES := 400                (max module size)
+# - FUNCTION_MAX_LINES := 80               (max function size)
+# - SHARED_PYRIGHT_TARGETS := . tests      (type check ALL code)
+# - SHARED_PYLINT_TARGETS := . tests       (lint ALL code)
+#
+# If CI fails, FIX THE CODE to meet these standards.
+# Do not try to override these values - they will be ignored.
+
+# ============================================================================
+# ALLOWED CUSTOMIZATIONS
+# ============================================================================
+PYLINT_ARGS := --disable=R0801  # Disable duplicate code check (allowed)
 
 include ci_shared.mk
 
