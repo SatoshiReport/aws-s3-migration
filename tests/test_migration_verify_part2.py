@@ -126,7 +126,7 @@ class TestFileChecksumVerifierSingleFileSizeMismatch:
         assert stats["verified_count"] == 0
 
 
-class TestFileChecksumVerifierSingleFileChecksumMismatch:
+class TestSingleFileChecksumMismatch:
     """Tests for FileChecksumVerifier._verify_single_file() checksum mismatch"""
 
     def test_verify_single_file_with_checksum_mismatch(self, tmp_path):
