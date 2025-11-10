@@ -34,10 +34,11 @@ def _calculate_cpu_metrics(cloudwatch, instance_id):
             avg_cpu = sum(dp["Average"] for dp in datapoints) / len(datapoints)
             max_cpu = max(dp["Maximum"] for dp in datapoints)
             return avg_cpu, max_cpu, latest_datapoint
-        return None, None, None
 
     except ClientError as e:
         print(f"  ❌ Error getting metrics: {e}")
+        return None, None, None
+    else:
         return None, None, None
 
 
