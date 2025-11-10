@@ -83,6 +83,9 @@ skips = [
 omit = [
     "*/vendor/*",
     "*/__main__.py",
+    "tests/*",
+    "*/tests/*",
+    "*_test_*.py",
 ]
 
 [tool.pytest]
