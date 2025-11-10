@@ -7,9 +7,9 @@ This script will deregister 7 unused AMIs, preserving only the one currently in 
 
 import os
 import sys
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -33,20 +33,16 @@ def deregister_ami(ec2_client, ami_id, region):
         print(f"🗑️  Deregistering AMI: {ami_id} in {region}")
         ec2_client.deregister_image(ImageId=ami_id)
         print(f"   ✅ Successfully deregistered {ami_id}")
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error deregistering {ami_id}: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
-def bulk_deregister_unused_amis():  # noqa: PLR0915
-    """Deregister all unused AMIs that are preventing snapshot deletion"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
-
-    # AMIs to deregister (excluding ami-05d0a30507ebee9d6 which is used by mufasa)
-    amis_to_deregister = [
+def get_amis_to_deregister():
+    """Get list of AMIs to deregister with their metadata"""
+    return [
         {
             "ami_id": "ami-0cb04cf30dc50a00e",
             "region": "eu-west-2",
@@ -98,6 +94,9 @@ def bulk_deregister_unused_amis():  # noqa: PLR0915
         },
     ]
 
+
+def print_deregistration_warning(amis_to_deregister):
+    """Print warning message about AMI deregistration"""
     print("AWS AMI Bulk Deregistration Script")
     print("=" * 80)
     print("Deregistering unused AMIs to enable snapshot deletion...")
@@ -114,16 +113,15 @@ def bulk_deregister_unused_amis():  # noqa: PLR0915
     print(f"   - Total potential monthly savings: ${total_potential_savings:.2f}")
     print()
 
+
+def confirm_deregistration():
+    """Prompt user for deregistration confirmation"""
     confirmation = input("Type 'DEREGISTER ALL AMIS' to confirm bulk deregistration: ")
+    return confirmation == "DEREGISTER ALL AMIS"
 
-    if confirmation != "DEREGISTER ALL AMIS":
-        print("❌ Operation cancelled by user")
-        return
 
-    print()
-    print("🚨 Proceeding with bulk AMI deregistration...")
-    print("=" * 80)
-
+def process_ami_deregistrations(amis_to_deregister, aws_access_key_id, aws_secret_access_key):
+    """Process deregistration for all AMIs"""
     successful_deregistrations = 0
     failed_deregistrations = 0
     total_savings = 0
@@ -140,7 +138,6 @@ def bulk_deregister_unused_amis():  # noqa: PLR0915
         print(f"   Associated snapshot: {snapshot}")
         print(f"   Potential monthly savings: ${savings:.2f}")
 
-        # Create EC2 client for the specific region
         ec2_client = boto3.client(
             "ec2",
             region_name=region,
@@ -156,6 +153,11 @@ def bulk_deregister_unused_amis():  # noqa: PLR0915
 
         print()
 
+    return successful_deregistrations, failed_deregistrations, total_savings
+
+
+def print_deregistration_summary(successful_deregistrations, failed_deregistrations, total_savings):
+    """Print summary of deregistration results"""
     print("=" * 80)
     print("🎯 BULK DEREGISTRATION SUMMARY")
     print("=" * 80)
@@ -177,9 +179,31 @@ def bulk_deregister_unused_amis():  # noqa: PLR0915
         print("❌ No AMIs were successfully deregistered")
 
 
+def bulk_deregister_unused_amis():
+    """Deregister all unused AMIs that are preventing snapshot deletion"""
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    amis_to_deregister = get_amis_to_deregister()
+
+    print_deregistration_warning(amis_to_deregister)
+
+    if not confirm_deregistration():
+        print("❌ Operation cancelled by user")
+        return
+
+    print()
+    print("🚨 Proceeding with bulk AMI deregistration...")
+    print("=" * 80)
+
+    successful, failed, savings = process_ami_deregistrations(
+        amis_to_deregister, aws_access_key_id, aws_secret_access_key
+    )
+
+    print_deregistration_summary(successful, failed, savings)
+
+
 if __name__ == "__main__":
     try:
         bulk_deregister_unused_amis()
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)

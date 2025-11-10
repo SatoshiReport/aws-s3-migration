@@ -14,7 +14,15 @@ import os
 import sys
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
+
+
+class AWSCredentialsError(Exception):
+    """Raised when AWS credentials are not found in the environment file."""
+
+    def __init__(self):
+        super().__init__("AWS credentials not found in ~/.env file")
 
 
 def load_aws_credentials():
@@ -25,13 +33,136 @@ def load_aws_credentials():
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
 
     if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
+        raise AWSCredentialsError
 
     print("✅ AWS credentials loaded from ~/.env")
     return aws_access_key_id, aws_secret_access_key
 
 
-def check_security_group_dependencies(ec2_client, group_id, region):  # noqa: C901, PLR0912
+def _collect_network_interface_deps(ec2_client, group_id):
+    """Collect network interfaces using the security group."""
+    eni_response = ec2_client.describe_network_interfaces(
+        Filters=[{"Name": "group-id", "Values": [group_id]}]
+    )
+    network_interfaces = []
+    for eni in eni_response.get("NetworkInterfaces", []):
+        network_interfaces.append(
+            {
+                "interface_id": eni["NetworkInterfaceId"],
+                "status": eni["Status"],
+                "description": eni.get("Description", "N/A"),
+                "attachment": eni.get("Attachment", {}),
+                "vpc_id": eni["VpcId"],
+                "subnet_id": eni["SubnetId"],
+            }
+        )
+    return network_interfaces
+
+
+def _collect_instance_deps(ec2_client, group_id):
+    """Collect instances using the security group."""
+    instances_response = ec2_client.describe_instances(
+        Filters=[{"Name": "instance.group-id", "Values": [group_id]}]
+    )
+    instances = []
+    for reservation in instances_response["Reservations"]:
+        for instance in reservation["Instances"]:
+            instances.append(
+                {
+                    "instance_id": instance["InstanceId"],
+                    "state": instance["State"]["Name"],
+                    "instance_type": instance["InstanceType"],
+                    "vpc_id": instance.get("VpcId"),
+                    "name": next(
+                        (tag["Value"] for tag in instance.get("Tags", []) if tag["Key"] == "Name"),
+                        "Unnamed",
+                    ),
+                }
+            )
+    return instances
+
+
+def _check_inbound_rules(sg, group_id):
+    """Check inbound rules for references to target group."""
+    rules = []
+    for rule in sg.get("IpPermissions", []):
+        for group_pair in rule.get("UserIdGroupPairs", []):
+            if group_pair.get("GroupId") == group_id:
+                rules.append(
+                    {
+                        "referencing_sg": sg["GroupId"],
+                        "referencing_sg_name": sg["GroupName"],
+                        "rule_type": "inbound",
+                        "protocol": rule.get("IpProtocol"),
+                        "port_range": f"{rule.get('FromPort', 'N/A')}-{rule.get('ToPort', 'N/A')}",
+                    }
+                )
+    return rules
+
+
+def _check_outbound_rules(sg, group_id):
+    """Check outbound rules for references to target group."""
+    rules = []
+    for rule in sg.get("IpPermissionsEgress", []):
+        for group_pair in rule.get("UserIdGroupPairs", []):
+            if group_pair.get("GroupId") == group_id:
+                rules.append(
+                    {
+                        "referencing_sg": sg["GroupId"],
+                        "referencing_sg_name": sg["GroupName"],
+                        "rule_type": "outbound",
+                        "protocol": rule.get("IpProtocol"),
+                        "port_range": f"{rule.get('FromPort', 'N/A')}-{rule.get('ToPort', 'N/A')}",
+                    }
+                )
+    return rules
+
+
+def _collect_sg_rule_refs(ec2_client, group_id):
+    """Collect security group rules referencing this group."""
+    all_sgs_response = ec2_client.describe_security_groups()
+    rules = []
+    for sg in all_sgs_response.get("SecurityGroups", []):
+        if sg["GroupId"] == group_id:
+            continue
+
+        rules.extend(_check_inbound_rules(sg, group_id))
+        rules.extend(_check_outbound_rules(sg, group_id))
+    return rules
+
+
+def _collect_rds_deps(group_id, region, aws_access_key_id, aws_secret_access_key):
+    """Collect RDS instances using the security group."""
+    try:
+        rds_client = boto3.client(
+            "rds",
+            region_name=region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+
+        rds_response = rds_client.describe_db_instances()
+        rds_instances = []
+        for db in rds_response.get("DBInstances", []):
+            for sg in db.get("VpcSecurityGroups", []):
+                if sg["VpcSecurityGroupId"] == group_id:
+                    rds_instances.append(
+                        {
+                            "db_instance_id": db["DBInstanceIdentifier"],
+                            "db_instance_status": db["DBInstanceStatus"],
+                            "engine": db["Engine"],
+                            "vpc_id": db.get("DbSubnetGroup", {}).get("VpcId"),
+                        }
+                    )
+    except ClientError as e:
+        print(f"   ⚠️  Could not check RDS dependencies: {e}")
+        return []
+    return rds_instances
+
+
+def check_security_group_dependencies(
+    ec2_client, group_id, region, aws_access_key_id, aws_secret_access_key
+):
     """Check what's preventing a security group from being deleted"""
     dependencies = {
         "network_interfaces": [],
@@ -43,114 +174,81 @@ def check_security_group_dependencies(ec2_client, group_id, region):  # noqa: C9
     }
 
     try:
-        # Check network interfaces
-        eni_response = ec2_client.describe_network_interfaces(
-            Filters=[{"Name": "group-id", "Values": [group_id]}]
+        dependencies["network_interfaces"] = _collect_network_interface_deps(ec2_client, group_id)
+        dependencies["instances"] = _collect_instance_deps(ec2_client, group_id)
+        dependencies["security_group_rules"] = _collect_sg_rule_refs(ec2_client, group_id)
+        dependencies["rds_instances"] = _collect_rds_deps(
+            group_id, region, aws_access_key_id, aws_secret_access_key
         )
-        for eni in eni_response.get("NetworkInterfaces", []):
-            dependencies["network_interfaces"].append(
-                {
-                    "interface_id": eni["NetworkInterfaceId"],
-                    "status": eni["Status"],
-                    "description": eni.get("Description", "N/A"),
-                    "attachment": eni.get("Attachment", {}),
-                    "vpc_id": eni["VpcId"],
-                    "subnet_id": eni["SubnetId"],
-                }
-            )
 
-        # Check instances using this security group
-        instances_response = ec2_client.describe_instances(
-            Filters=[{"Name": "instance.group-id", "Values": [group_id]}]
-        )
-        for reservation in instances_response["Reservations"]:
-            for instance in reservation["Instances"]:
-                dependencies["instances"].append(
-                    {
-                        "instance_id": instance["InstanceId"],
-                        "state": instance["State"]["Name"],
-                        "instance_type": instance["InstanceType"],
-                        "vpc_id": instance.get("VpcId"),
-                        "name": next(
-                            (
-                                tag["Value"]
-                                for tag in instance.get("Tags", [])
-                                if tag["Key"] == "Name"
-                            ),
-                            "Unnamed",
-                        ),
-                    }
-                )
-
-        # Check if other security groups reference this one
-        all_sgs_response = ec2_client.describe_security_groups()
-        for sg in all_sgs_response.get("SecurityGroups", []):
-            if sg["GroupId"] != group_id:
-                # Check inbound rules
-                for rule in sg.get("IpPermissions", []):
-                    for group_pair in rule.get("UserIdGroupPairs", []):
-                        if group_pair.get("GroupId") == group_id:
-                            dependencies["security_group_rules"].append(
-                                {
-                                    "referencing_sg": sg["GroupId"],
-                                    "referencing_sg_name": sg["GroupName"],
-                                    "rule_type": "inbound",
-                                    "protocol": rule.get("IpProtocol"),
-                                    "port_range": f"{rule.get('FromPort', 'N/A')}-{rule.get('ToPort', 'N/A')}",
-                                }
-                            )
-
-                # Check outbound rules
-                for rule in sg.get("IpPermissionsEgress", []):
-                    for group_pair in rule.get("UserIdGroupPairs", []):
-                        if group_pair.get("GroupId") == group_id:
-                            dependencies["security_group_rules"].append(
-                                {
-                                    "referencing_sg": sg["GroupId"],
-                                    "referencing_sg_name": sg["GroupName"],
-                                    "rule_type": "outbound",
-                                    "protocol": rule.get("IpProtocol"),
-                                    "port_range": f"{rule.get('FromPort', 'N/A')}-{rule.get('ToPort', 'N/A')}",
-                                }
-                            )
-
-        # Check RDS instances (requires RDS client)
-        try:
-            rds_client = boto3.client(
-                "rds",
-                region_name=region,
-                aws_access_key_id=ec2_client._client_config.__dict__["_user_provided_options"][
-                    "aws_access_key_id"
-                ],
-                aws_secret_access_key=ec2_client._client_config.__dict__["_user_provided_options"][
-                    "aws_secret_access_key"
-                ],
-            )
-
-            rds_response = rds_client.describe_db_instances()
-            for db in rds_response.get("DBInstances", []):
-                for sg in db.get("VpcSecurityGroups", []):
-                    if sg["VpcSecurityGroupId"] == group_id:
-                        dependencies["rds_instances"].append(
-                            {
-                                "db_instance_id": db["DBInstanceIdentifier"],
-                                "db_instance_status": db["DBInstanceStatus"],
-                                "engine": db["Engine"],
-                                "vpc_id": db.get("DbSubnetGroup", {}).get("VpcId"),
-                            }
-                        )
-        except Exception as e:
-            print(f"   ⚠️  Could not check RDS dependencies: {e}")
-
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error checking dependencies for {group_id}: {e}")
         return dependencies
 
-    else:
-        return dependencies
+    return dependencies
 
 
-def audit_security_group_dependencies():  # noqa: C901, PLR0912
+def _print_network_interfaces(network_interfaces):
+    """Print network interface dependencies."""
+    print(f"🔗 Network Interfaces ({len(network_interfaces)}):")
+    for eni in network_interfaces:
+        attachment_info = "Unattached"
+        if eni["attachment"]:
+            attachment_info = f"Attached to {eni['attachment'].get('InstanceId', 'Unknown')}"
+        print(f"   • {eni['interface_id']} - {eni['status']} - {attachment_info}")
+        print(f"     Description: {eni['description']}")
+
+
+def _print_instances(instances):
+    """Print EC2 instance dependencies."""
+    print(f"🖥️  Instances ({len(instances)}):")
+    for instance in instances:
+        print(f"   • {instance['instance_id']} ({instance['name']}) - {instance['state']}")
+
+
+def _print_rds_instances(rds_instances):
+    """Print RDS instance dependencies."""
+    print(f"🗄️  RDS Instances ({len(rds_instances)}):")
+    for rds in rds_instances:
+        print(f"   • {rds['db_instance_id']} - {rds['engine']} - {rds['db_instance_status']}")
+
+
+def _print_security_group_rules(security_group_rules):
+    """Print security group rule dependencies."""
+    print(f"🔒 Referenced by Security Group Rules ({len(security_group_rules)}):")
+    for rule in security_group_rules:
+        print(
+            f"   • {rule['referencing_sg']} ({rule['referencing_sg_name']}) - "
+            f"{rule['rule_type']} rule"
+        )
+        print(f"     Protocol: {rule['protocol']}, Ports: {rule['port_range']}")
+
+
+def _print_dependency_details(dependencies):
+    """Print detailed dependency information."""
+    has_dependencies = False
+
+    if dependencies["network_interfaces"]:
+        has_dependencies = True
+        _print_network_interfaces(dependencies["network_interfaces"])
+
+    if dependencies["instances"]:
+        has_dependencies = True
+        _print_instances(dependencies["instances"])
+
+    if dependencies["rds_instances"]:
+        has_dependencies = True
+        _print_rds_instances(dependencies["rds_instances"])
+
+    if dependencies["security_group_rules"]:
+        has_dependencies = True
+        _print_security_group_rules(dependencies["security_group_rules"])
+
+    if not has_dependencies:
+        print("❓ No obvious dependencies found - may be a transient issue")
+
+
+def audit_security_group_dependencies():
     """Audit dependencies for security groups that couldn't be deleted"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
@@ -211,50 +309,11 @@ def audit_security_group_dependencies():  # noqa: C901, PLR0912
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        dependencies = check_security_group_dependencies(ec2_client, group_id, region)
+        dependencies = check_security_group_dependencies(
+            ec2_client, group_id, region, aws_access_key_id, aws_secret_access_key
+        )
 
-        # Report findings
-        has_dependencies = False
-
-        if dependencies["network_interfaces"]:
-            has_dependencies = True
-            print(f"🔗 Network Interfaces ({len(dependencies['network_interfaces'])}):")
-            for eni in dependencies["network_interfaces"]:
-                attachment_info = "Unattached"
-                if eni["attachment"]:
-                    attachment_info = (
-                        f"Attached to {eni['attachment'].get('InstanceId', 'Unknown')}"
-                    )
-                print(f"   • {eni['interface_id']} - {eni['status']} - {attachment_info}")
-                print(f"     Description: {eni['description']}")
-
-        if dependencies["instances"]:
-            has_dependencies = True
-            print(f"🖥️  Instances ({len(dependencies['instances'])}):")
-            for instance in dependencies["instances"]:
-                print(f"   • {instance['instance_id']} ({instance['name']}) - {instance['state']}")
-
-        if dependencies["rds_instances"]:
-            has_dependencies = True
-            print(f"🗄️  RDS Instances ({len(dependencies['rds_instances'])}):")
-            for rds in dependencies["rds_instances"]:
-                print(
-                    f"   • {rds['db_instance_id']} - {rds['engine']} - {rds['db_instance_status']}"
-                )
-
-        if dependencies["security_group_rules"]:
-            has_dependencies = True
-            print(
-                f"🔒 Referenced by Security Group Rules ({len(dependencies['security_group_rules'])}):"
-            )
-            for rule in dependencies["security_group_rules"]:
-                print(
-                    f"   • {rule['referencing_sg']} ({rule['referencing_sg_name']}) - {rule['rule_type']} rule"
-                )
-                print(f"     Protocol: {rule['protocol']}, Ports: {rule['port_range']}")
-
-        if not has_dependencies:
-            print("❓ No obvious dependencies found - may be a transient issue")
+        _print_dependency_details(dependencies)
 
         print()
 
@@ -272,6 +331,6 @@ def audit_security_group_dependencies():  # noqa: C901, PLR0912
 if __name__ == "__main__":
     try:
         audit_security_group_dependencies()
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)

@@ -33,11 +33,11 @@ except ImportError:  # pragma: no cover - allow running as standalone script
 
 def run_real_smoke_test(deps: SmokeTestDeps):
     """Seed real S3 data and run the full migrator."""
-    ctx = _RealSmokeContext.create(deps)
+    ctx = RealSmokeContext.create(deps)
     try:
-        stats = _seed_real_bucket(ctx)
-        _run_real_workflow(ctx, stats)
-        _print_real_report(ctx, stats)
+        stats = seed_real_bucket(ctx)
+        run_real_workflow(ctx, stats)
+        print_real_report(ctx, stats)
     except Exception:  # pragma: no cover - diagnostic helper
         ctx.should_cleanup = False
         print("\nSmoke test failed!")
@@ -77,7 +77,7 @@ def _delete_bucket_and_contents(s3_client, bucket: str):
 
 
 @dataclass
-class _RealSmokeContext:
+class RealSmokeContext:
     """Tracks resources allocated for the real S3 smoke test."""
 
     deps: SmokeTestDeps
@@ -139,7 +139,7 @@ class _RealSmokeContext:
 
 
 @dataclass(frozen=True)
-class _RealSmokeStats:
+class RealSmokeStats:
     """Captures the generated sample data for the real smoke test."""
 
     files_created: int
@@ -148,7 +148,7 @@ class _RealSmokeStats:
     manifest_expected: dict[str, str]
 
 
-def _seed_real_bucket(ctx: _RealSmokeContext) -> _RealSmokeStats:
+def seed_real_bucket(ctx: RealSmokeContext) -> RealSmokeStats:
     """Create a real S3 bucket with sample data."""
     print("Step 1/3: Creating sample data directly in S3...")
     _create_bucket(ctx.s3, ctx.bucket_name, ctx.region)
@@ -161,7 +161,7 @@ def _seed_real_bucket(ctx: _RealSmokeContext) -> _RealSmokeStats:
     ctx.deps.config.EXCLUDED_BUCKETS = [b for b in existing_buckets if b != ctx.bucket_name]
     ctx.deps.config.STATE_DB_PATH = str(ctx.state_db_path)
     builtins.input = lambda _prompt="": "yes"
-    return _RealSmokeStats(
+    return RealSmokeStats(
         files_created=files_created,
         dirs_created=dirs_created,
         total_bytes=total_bytes,
@@ -169,7 +169,7 @@ def _seed_real_bucket(ctx: _RealSmokeContext) -> _RealSmokeStats:
     )
 
 
-def _run_real_workflow(ctx: _RealSmokeContext, stats: _RealSmokeStats):
+def run_real_workflow(ctx: RealSmokeContext, stats: RealSmokeStats):
     """Execute the real migrator and clean up local artifacts."""
     print()
     print("Step 2/3: Running migrate_v2.py against the real S3 bucket...")
@@ -187,7 +187,7 @@ def _run_real_workflow(ctx: _RealSmokeContext, stats: _RealSmokeStats):
     print(f"  Deleted {ctx.local_bucket_path}")
 
 
-def _print_real_report(ctx: _RealSmokeContext, stats: _RealSmokeStats):
+def print_real_report(ctx: RealSmokeContext, stats: RealSmokeStats):
     """Display the final real smoke-test report."""
     print("\nSmoke test completed successfully!")
     print("=" * 70)

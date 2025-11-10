@@ -10,6 +10,7 @@ import os
 import sys
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -34,12 +35,47 @@ def remove_security_group_rule(ec2_client, group_id, rule_type, rule_data):
             ec2_client.revoke_security_group_ingress(GroupId=group_id, IpPermissions=[rule_data])
         else:  # outbound
             ec2_client.revoke_security_group_egress(GroupId=group_id, IpPermissions=[rule_data])
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error removing rule: {e}")
         return False
 
-    else:
-        return True
+    return True
+
+
+def _check_inbound_rules(sg, target_group_id):
+    """Check inbound rules for references to target group."""
+    rules = []
+    for rule in sg.get("IpPermissions", []):
+        for group_pair in rule.get("UserIdGroupPairs", []):
+            if group_pair.get("GroupId") == target_group_id:
+                rules.append(
+                    {
+                        "source_sg_id": sg["GroupId"],
+                        "source_sg_name": sg["GroupName"],
+                        "rule_type": "inbound",
+                        "rule_data": rule,
+                        "target_group_id": target_group_id,
+                    }
+                )
+    return rules
+
+
+def _check_outbound_rules(sg, target_group_id):
+    """Check outbound rules for references to target group."""
+    rules = []
+    for rule in sg.get("IpPermissionsEgress", []):
+        for group_pair in rule.get("UserIdGroupPairs", []):
+            if group_pair.get("GroupId") == target_group_id:
+                rules.append(
+                    {
+                        "source_sg_id": sg["GroupId"],
+                        "source_sg_name": sg["GroupName"],
+                        "rule_type": "outbound",
+                        "rule_data": rule,
+                        "target_group_id": target_group_id,
+                    }
+                )
+    return rules
 
 
 def get_security_group_rules_referencing_group(ec2_client, target_group_id):
@@ -49,42 +85,14 @@ def get_security_group_rules_referencing_group(ec2_client, target_group_id):
     try:
         response = ec2_client.describe_security_groups()
         for sg in response.get("SecurityGroups", []):
-            sg_id = sg["GroupId"]
+            rules_to_remove.extend(_check_inbound_rules(sg, target_group_id))
+            rules_to_remove.extend(_check_outbound_rules(sg, target_group_id))
 
-            # Check inbound rules
-            for rule in sg.get("IpPermissions", []):
-                for group_pair in rule.get("UserIdGroupPairs", []):
-                    if group_pair.get("GroupId") == target_group_id:
-                        rules_to_remove.append(
-                            {
-                                "source_sg_id": sg_id,
-                                "source_sg_name": sg["GroupName"],
-                                "rule_type": "inbound",
-                                "rule_data": rule,
-                                "target_group_id": target_group_id,
-                            }
-                        )
-
-            # Check outbound rules
-            for rule in sg.get("IpPermissionsEgress", []):
-                for group_pair in rule.get("UserIdGroupPairs", []):
-                    if group_pair.get("GroupId") == target_group_id:
-                        rules_to_remove.append(
-                            {
-                                "source_sg_id": sg_id,
-                                "source_sg_name": sg["GroupName"],
-                                "rule_type": "outbound",
-                                "rule_data": rule,
-                                "target_group_id": target_group_id,
-                            }
-                        )
-
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error getting security group rules: {e}")
         return []
 
-    else:
-        return rules_to_remove
+    return rules_to_remove
 
 
 def delete_security_group(ec2_client, group_id, group_name):
@@ -93,33 +101,28 @@ def delete_security_group(ec2_client, group_id, group_name):
         print(f"   🗑️  Deleting security group: {group_id} ({group_name})")
         ec2_client.delete_security_group(GroupId=group_id)
         print(f"   ✅ Successfully deleted {group_id}")
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error deleting {group_id}: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
-def cleanup_circular_security_groups():  # noqa: C901, PLR0912, PLR0915
-    """Clean up security groups with circular dependencies"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
-
-    # Security groups with circular dependencies identified in the audit
-    circular_security_groups = [
-        # us-east-1 region - NFS groups (circular)
+def _get_circular_security_groups():
+    """Return list of security groups with circular dependencies."""
+    return [
         {
             "group_id": "sg-0423403672ae41d94",
-            "name": "security-group-for-outbound-nfs-d-jbqwgqwiy4df",
+            "name": "security-group-for-outbound-nfs-d-jbqwgqwiy4d",
             "region": "us-east-1",
         },
         {
             "group_id": "sg-0dfa7bedc21d91798",
-            "name": "security-group-for-inbound-nfs-d-jbqwgqwiy4df",
+            "name": "security-group-for-inbound-nfs-d-jbqwgqwiy4d",
             "region": "us-east-1",
         },
         {
-            "group_id": "sg-049977ce080d9ab0f",
+            "group_id": "sg-049977ce080d9ab0",
             "name": "security-group-for-inbound-nfs-d-ujcvqjdoyu70",
             "region": "us-east-1",
         },
@@ -128,10 +131,8 @@ def cleanup_circular_security_groups():  # noqa: C901, PLR0912, PLR0915
             "name": "security-group-for-outbound-nfs-d-ujcvqjdoyu70",
             "region": "us-east-1",
         },
-        # us-east-1 region - RDS groups (circular)
         {"group_id": "sg-0bf8a0d06a121f4a0", "name": "rds-ec2-1", "region": "us-east-1"},
         {"group_id": "sg-044777fbbcdee8f28", "name": "ec2-rds-1", "region": "us-east-1"},
-        # us-east-2 region - NFS groups (circular)
         {
             "group_id": "sg-09e291dc61da97af1",
             "name": "security-group-for-outbound-nfs-d-ki8zr9k0yt95",
@@ -144,37 +145,49 @@ def cleanup_circular_security_groups():  # noqa: C901, PLR0912, PLR0915
         },
     ]
 
-    print("AWS Security Group Circular Dependencies Cleanup")
-    print("=" * 60)
-    print("Resolving circular dependencies and cleaning up security groups...")
-    print()
-    print(f"🎯 Target: {len(circular_security_groups)} security groups with circular dependencies")
-    print()
 
-    print("⚠️  PROCESS:")
-    print("   1. Remove all cross-references between security groups")
-    print("   2. Delete the now-unreferenced security groups")
-    print("   3. Improve security hygiene and reduce clutter")
-    print()
+def _remove_cross_references(ec2_client, sgs):
+    """Remove cross-references between security groups."""
+    total_rules_removed = 0
+    print("🔗 Step 1: Removing cross-references...")
+    for sg in sgs:
+        group_id = sg["group_id"]
+        group_name = sg["name"]
+        print(f"   🔍 Checking references to {group_id} ({group_name})")
 
-    confirmation = input("Type 'RESOLVE CIRCULAR DEPENDENCIES' to proceed: ")
+        rules_to_remove = get_security_group_rules_referencing_group(ec2_client, group_id)
 
-    if confirmation != "RESOLVE CIRCULAR DEPENDENCIES":
-        print("❌ Operation cancelled by user")
-        return
+        for rule_info in rules_to_remove:
+            source_sg_id = rule_info["source_sg_id"]
+            source_sg_name = rule_info["source_sg_name"]
+            rule_type = rule_info["rule_type"]
+            rule_data = rule_info["rule_data"]
 
-    print()
-    print("🚨 Proceeding with circular dependency resolution...")
-    print("=" * 60)
+            print(f"     🔧 Removing {rule_type} rule from {source_sg_id} ({source_sg_name})")
 
-    # Group by region for efficiency
-    regions = {}
-    for sg in circular_security_groups:
-        region = sg["region"]
-        if region not in regions:
-            regions[region] = []
-        regions[region].append(sg)
+            if remove_security_group_rule(ec2_client, source_sg_id, rule_type, rule_data):
+                total_rules_removed += 1
+                print("     ✅ Removed rule successfully")
+            else:
+                print("     ❌ Failed to remove rule")
 
+    return total_rules_removed
+
+
+def _delete_security_groups(ec2_client, sgs):
+    """Delete security groups."""
+    total_groups_deleted = 0
+    print("🗑️  Step 2: Deleting security groups...")
+    for sg in sgs:
+        group_id = sg["group_id"]
+        group_name = sg["name"]
+        if delete_security_group(ec2_client, group_id, group_name):
+            total_groups_deleted += 1
+    return total_groups_deleted
+
+
+def _process_regions(regions, aws_access_key_id, aws_secret_access_key):
+    """Process security groups by region."""
     total_rules_removed = 0
     total_groups_deleted = 0
 
@@ -182,7 +195,6 @@ def cleanup_circular_security_groups():  # noqa: C901, PLR0912, PLR0915
         print(f"🔍 Processing region: {region}")
         print()
 
-        # Create EC2 client for the specific region
         ec2_client = boto3.client(
             "ec2",
             region_name=region,
@@ -190,49 +202,22 @@ def cleanup_circular_security_groups():  # noqa: C901, PLR0912, PLR0915
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        # Step 1: Remove all cross-references
-        print("🔗 Step 1: Removing cross-references...")
-        for sg in sgs:
-            group_id = sg["group_id"]
-            group_name = sg["name"]
-
-            print(f"   🔍 Checking references to {group_id} ({group_name})")
-
-            rules_to_remove = get_security_group_rules_referencing_group(ec2_client, group_id)
-
-            for rule_info in rules_to_remove:
-                source_sg_id = rule_info["source_sg_id"]
-                source_sg_name = rule_info["source_sg_name"]
-                rule_type = rule_info["rule_type"]
-                rule_data = rule_info["rule_data"]
-
-                print(f"     🔧 Removing {rule_type} rule from {source_sg_id} ({source_sg_name})")
-
-                if remove_security_group_rule(ec2_client, source_sg_id, rule_type, rule_data):
-                    total_rules_removed += 1
-                    print(f"     ✅ Removed rule successfully")
-                else:
-                    print(f"     ❌ Failed to remove rule")
-
+        total_rules_removed += _remove_cross_references(ec2_client, sgs)
+        print()
+        total_groups_deleted += _delete_security_groups(ec2_client, sgs)
         print()
 
-        # Step 2: Delete the security groups
-        print("🗑️  Step 2: Deleting security groups...")
-        for sg in sgs:
-            group_id = sg["group_id"]
-            group_name = sg["name"]
+    return total_rules_removed, total_groups_deleted
 
-            if delete_security_group(ec2_client, group_id, group_name):
-                total_groups_deleted += 1
 
-        print()
-
+def _print_final_summary(total_rules_removed, total_groups_deleted, total_groups):
+    """Print final cleanup summary."""
     print("=" * 60)
     print("🎯 CIRCULAR DEPENDENCY CLEANUP SUMMARY")
     print("=" * 60)
     print(f"🔗 Security group rules removed: {total_rules_removed}")
     print(f"🗑️  Security groups deleted: {total_groups_deleted}")
-    print(f"📊 Success rate: {total_groups_deleted}/{len(circular_security_groups)} groups")
+    print(f"📊 Success rate: {total_groups_deleted}/{total_groups} groups")
     print()
 
     if total_groups_deleted > 0:
@@ -249,9 +234,49 @@ def cleanup_circular_security_groups():  # noqa: C901, PLR0912, PLR0915
         print("   Some dependencies may still exist or require manual intervention")
 
 
+def cleanup_circular_security_groups():
+    """Clean up security groups with circular dependencies"""
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    circular_security_groups = _get_circular_security_groups()
+
+    print("AWS Security Group Circular Dependencies Cleanup")
+    print("=" * 60)
+    print("Resolving circular dependencies and cleaning up security groups...")
+    print()
+    print(f"🎯 Target: {len(circular_security_groups)} security groups with circular dependencies")
+    print()
+    print("⚠️  PROCESS:")
+    print("   1. Remove all cross-references between security groups")
+    print("   2. Delete the now-unreferenced security groups")
+    print("   3. Improve security hygiene and reduce clutter")
+    print()
+
+    confirmation = input("Type 'RESOLVE CIRCULAR DEPENDENCIES' to proceed: ")
+    if confirmation != "RESOLVE CIRCULAR DEPENDENCIES":
+        print("❌ Operation cancelled by user")
+        return
+
+    print()
+    print("🚨 Proceeding with circular dependency resolution...")
+    print("=" * 60)
+
+    regions = {}
+    for sg in circular_security_groups:
+        region = sg["region"]
+        if region not in regions:
+            regions[region] = []
+        regions[region].append(sg)
+
+    total_rules_removed, total_groups_deleted = _process_regions(
+        regions, aws_access_key_id, aws_secret_access_key
+    )
+
+    _print_final_summary(total_rules_removed, total_groups_deleted, len(circular_security_groups))
+
+
 if __name__ == "__main__":
     try:
         cleanup_circular_security_groups()
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)

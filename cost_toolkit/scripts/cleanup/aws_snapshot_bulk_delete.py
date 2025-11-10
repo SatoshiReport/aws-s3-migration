@@ -4,15 +4,11 @@ AWS Snapshot Bulk Deletion Script
 Deletes multiple EBS snapshots across regions.
 """
 
-import os
-import sys
-from datetime import datetime, timezone
 
 import boto3
+from botocore.exceptions import ClientError
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from aws_utils import setup_aws_credentials
+from ..aws_utils import setup_aws_credentials
 
 
 def find_snapshot_region(snapshot_id):
@@ -70,7 +66,7 @@ def get_snapshot_details(snapshot_id, region):
                 "description": snapshot.get("Description", "No description"),
                 "encrypted": snapshot.get("Encrypted", False),
             }
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error getting details for {snapshot_id}: {str(e)}")
         return None
 
@@ -106,30 +102,21 @@ def delete_snapshot_safely(snapshot_id, region):
         # Delete the snapshot
         ec2_client.delete_snapshot(SnapshotId=snapshot_id)
 
-        print(f"   ✅ Successfully deleted")
+        print("   ✅ Successfully deleted")
         print(f"   💰 Monthly savings: ${monthly_savings:.2f}")
         print()
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error deleting snapshot {snapshot_id}: {str(e)}")
         print()
         return False
 
-    else:
-        return True
+    return True
 
 
-def main():  # noqa: PLR0915
-    """Main function to delete specified snapshots."""
-    setup_aws_credentials()
-
-    print("AWS Snapshot Bulk Deletion Script")
-    print("=" * 80)
-    print("Deleting specified EBS snapshots...")
-    print()
-
-    # List of snapshots to delete (from user request)
-    snapshots_to_delete = [
+def get_bulk_deletion_snapshots():
+    """Get list of snapshot IDs to delete"""
+    return [
         "snap-03490193a42293c87",  # 1024 GB - snapshot 2
         "snap-09e90c64db692f884",  # 1024 GB - CreateImage
         "snap-0e4a9793f5a9ac3fb",  # 1024 GB - Final Large Sized Snapshot
@@ -144,26 +131,30 @@ def main():  # noqa: PLR0915
         "snap-0c81e260dcafb8968",  # 8 GB - Snapshot of Unnamed (mufasa backup)
     ]
 
+
+def print_bulk_deletion_warning(snapshots_to_delete):
+    """Print warning message about bulk deletion"""
+    print("AWS Snapshot Bulk Deletion Script")
+    print("=" * 80)
+    print("Deleting specified EBS snapshots...")
+    print()
     print(f"🎯 Target: {len(snapshots_to_delete)} snapshots for deletion")
     print()
-
-    # Safety confirmation
     print("⚠️  FINAL WARNING: This will permanently delete these snapshots!")
     print("   - All snapshot data will be lost")
     print("   - This action cannot be undone")
     print("   - You will lose the ability to restore from these snapshots")
     print()
 
+
+def confirm_bulk_deletion():
+    """Prompt user for bulk deletion confirmation"""
     confirmation = input("Type 'DELETE ALL SNAPSHOTS' to confirm bulk deletion: ")
-    if confirmation != "DELETE ALL SNAPSHOTS":
-        print("❌ Deletion cancelled")
-        return
+    return confirmation == "DELETE ALL SNAPSHOTS"
 
-    print()
-    print("🚨 Proceeding with bulk snapshot deletion...")
-    print("=" * 80)
 
-    # Process each snapshot
+def process_bulk_deletions(snapshots_to_delete):
+    """Process deletion for all snapshots"""
     successful_deletions = 0
     failed_deletions = 0
     total_savings = 0
@@ -171,7 +162,6 @@ def main():  # noqa: PLR0915
     for snapshot_id in snapshots_to_delete:
         print(f"🔍 Processing {snapshot_id}...")
 
-        # Find which region the snapshot is in
         region = find_snapshot_region(snapshot_id)
 
         if not region:
@@ -180,19 +170,21 @@ def main():  # noqa: PLR0915
             print()
             continue
 
-        # Get snapshot details for cost calculation
         snapshot_info = get_snapshot_details(snapshot_id, region)
         if snapshot_info:
             monthly_savings = snapshot_info["size_gb"] * 0.05
             total_savings += monthly_savings
 
-        # Delete the snapshot
         if delete_snapshot_safely(snapshot_id, region):
             successful_deletions += 1
         else:
             failed_deletions += 1
 
-    # Summary
+    return successful_deletions, failed_deletions, total_savings
+
+
+def print_bulk_deletion_summary(successful_deletions, failed_deletions, total_savings):
+    """Print summary of bulk deletion results"""
     print("=" * 80)
     print("🎯 BULK DELETION SUMMARY")
     print("=" * 80)
@@ -212,6 +204,25 @@ def main():  # noqa: PLR0915
     print()
     print("📝 Remaining snapshots can be verified with:")
     print("   python3 scripts/audit/aws_ebs_audit.py")
+
+
+def main():
+    """Main function to delete specified snapshots."""
+    setup_aws_credentials()
+
+    snapshots_to_delete = get_bulk_deletion_snapshots()
+    print_bulk_deletion_warning(snapshots_to_delete)
+
+    if not confirm_bulk_deletion():
+        print("❌ Deletion cancelled")
+        return
+
+    print()
+    print("🚨 Proceeding with bulk snapshot deletion...")
+    print("=" * 80)
+
+    successful, failed, savings = process_bulk_deletions(snapshots_to_delete)
+    print_bulk_deletion_summary(successful, failed, savings)
 
 
 if __name__ == "__main__":

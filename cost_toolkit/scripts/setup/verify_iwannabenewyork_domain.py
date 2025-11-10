@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
+"""Verify iwannabenewyork domain DNS and certificate configuration."""
 
 import datetime
 import socket
 import ssl
 import subprocess
 import sys
-from urllib.parse import urlparse
 
 import requests
+from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.setup.exceptions import CertificateInfoError
 
 # HTTP status codes
 HTTP_STATUS_MOVED_PERMANENTLY = 301
@@ -38,8 +41,7 @@ def test_dns_resolution(domain):
         print(f"  ❌ DNS resolution failed: {e}")
         return False, None
 
-    else:
-        return True, ip_address
+    return True, ip_address
 
 
 def test_http_connectivity(domain):
@@ -56,7 +58,8 @@ def test_http_connectivity(domain):
             and "https://" in response.headers.get("Location", "")
         ):
             print(
-                f"  ✅ HTTP redirects to HTTPS ({HTTP_STATUS_MOVED_PERMANENTLY}): {response.headers['Location']}"
+                f"  ✅ HTTP redirects to HTTPS ({HTTP_STATUS_MOVED_PERMANENTLY}): "
+                f"{response.headers['Location']}"
             )
         else:
             print(f"  ⚠️  HTTP response: {response.status_code}")
@@ -65,8 +68,7 @@ def test_http_connectivity(domain):
         print(f"  ❌ HTTP test failed: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
 def test_https_connectivity(domain):
@@ -85,71 +87,79 @@ def test_https_connectivity(domain):
             # Check if it's served by Cloudflare (Canva uses Cloudflare)
             server = response.headers.get("Server", "")
             if "cloudflare" in server.lower():
-                print(f"  ✅ Served by Cloudflare (Canva infrastructure)")
+                print("  ✅ Served by Cloudflare (Canva infrastructure)")
 
             return True
-        else:
-            print(f"  ⚠️  HTTPS response: {response.status_code}")
-            return False
 
     except requests.RequestException as e:
         print(f"  ❌ HTTPS test failed: {e}")
         return False
+    else:
+        print(f"  ⚠️  HTTPS response: {response.status_code}")
+        return False
 
 
-def check_ssl_certificate(domain):  # noqa: PLR0912
+def _extract_cert_dict(cert_items):
+    """Extract dictionary from certificate tuple structure"""
+    cert_dict = {}
+    if cert_items:
+        for item in cert_items:
+            if len(item) >= 1 and len(item[0]) >= CERT_TUPLE_MIN_LENGTH:
+                cert_dict[item[0][0]] = item[0][1]
+    return cert_dict
+
+
+def _parse_cert_dates(cert):
+    """Parse certificate dates"""
+    if not cert or "notBefore" not in cert or "notAfter" not in cert:
+        raise CertificateInfoError()
+
+    not_before = datetime.datetime.strptime(str(cert["notBefore"]), "%b %d %H:%M:%S %Y %Z")
+    not_after = datetime.datetime.strptime(str(cert["notAfter"]), "%b %d %H:%M:%S %Y %Z")
+    return not_before, not_after
+
+
+def _print_cert_info(subject_dict, issuer_dict, not_before, not_after):
+    """Print certificate information"""
+    print(f"  ✅ Certificate Subject: {subject_dict.get('commonName', 'Unknown')}")
+    print(f"  ✅ Certificate Issuer: {issuer_dict.get('organizationName', 'Unknown')}")
+    print(f"  ✅ Valid From: {not_before.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print(f"  ✅ Valid Until: {not_after.strftime('%Y-%m-%d %H:%M:%S UTC')}")
+
+
+def _check_cert_validity(not_before, not_after):
+    """Check if certificate is currently valid"""
+    now = datetime.datetime.utcnow()
+    if not_before <= now <= not_after:
+        days_until_expiry = (not_after - now).days
+        print(f"  ✅ Certificate is valid ({days_until_expiry} days until expiry)")
+        return True
+    print("  ❌ Certificate is not valid for current date")
+    return False
+
+
+def check_ssl_certificate(domain):
     """Check SSL certificate details"""
     print(f"\n🛡️  Checking SSL certificate for {domain}")
 
     try:
-        # Get SSL certificate info
         context = ssl.create_default_context()
         with socket.create_connection((domain, 443), timeout=10) as sock:
             with context.wrap_socket(sock, server_hostname=domain) as ssock:
                 cert = ssock.getpeercert()
 
-                # Extract certificate details safely
-                subject_dict = {}
-                if cert and "subject" in cert and cert["subject"]:
-                    for item in cert["subject"]:
-                        if len(item) >= 1 and len(item[0]) >= CERT_TUPLE_MIN_LENGTH:
-                            subject_dict[item[0][0]] = item[0][1]
-
-                issuer_dict = {}
-                if cert and "issuer" in cert and cert["issuer"]:
-                    for item in cert["issuer"]:
-                        if len(item) >= 1 and len(item[0]) >= CERT_TUPLE_MIN_LENGTH:
-                            issuer_dict[item[0][0]] = item[0][1]
-
-                # Parse dates safely
-                if cert and "notBefore" in cert and "notAfter" in cert:
-                    not_before = datetime.datetime.strptime(
-                        str(cert["notBefore"]), "%b %d %H:%M:%S %Y %Z"
-                    )
-                    not_after = datetime.datetime.strptime(
-                        str(cert["notAfter"]), "%b %d %H:%M:%S %Y %Z"
-                    )
-                else:
-                    raise Exception(  # noqa: TRY003, TRY002, TRY301
-                        "Certificate date information not available"
-                    )
-
-                print(f"  ✅ Certificate Subject: {subject_dict.get('commonName', 'Unknown')}")
-                print(f"  ✅ Certificate Issuer: {issuer_dict.get('organizationName', 'Unknown')}")
-                print(f"  ✅ Valid From: {not_before.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-                print(f"  ✅ Valid Until: {not_after.strftime('%Y-%m-%d %H:%M:%S UTC')}")
-
-                # Check if certificate is valid
-                now = datetime.datetime.utcnow()
-                if not_before <= now <= not_after:
-                    days_until_expiry = (not_after - now).days
-                    print(f"  ✅ Certificate is valid ({days_until_expiry} days until expiry)")
-                    return True
-                else:
-                    print(f"  ❌ Certificate is not valid for current date")
+                if cert is None:
+                    print("  ❌ No certificate received")
                     return False
 
-    except Exception as e:
+                subject_dict = _extract_cert_dict(cert.get("subject"))
+                issuer_dict = _extract_cert_dict(cert.get("issuer"))
+                not_before, not_after = _parse_cert_dates(cert)
+
+                _print_cert_info(subject_dict, issuer_dict, not_before, not_after)
+                return _check_cert_validity(not_before, not_after)
+
+    except ClientError as e:
         print(f"  ❌ SSL certificate check failed: {e}")
         return False
 
@@ -171,13 +181,38 @@ def test_canva_verification(domain):
             txt_record = result.stdout.strip().replace('"', "")
             print(f"  ✅ Canva verification TXT record found: {txt_record}")
             return True
-        else:
-            print(f"  ❌ No Canva verification TXT record found")
-            return False
 
-    except Exception as e:
+    except ClientError as e:
         print(f"  ❌ Canva verification check failed: {e}")
         return False
+    else:
+        print("  ❌ No Canva verification TXT record found")
+        return False
+
+
+def _find_hosted_zone_for_domain(route53, domain):
+    """Find the Route53 hosted zone for a domain"""
+    response = route53.list_hosted_zones()
+    hosted_zones = response.get("HostedZones", [])
+
+    for zone in hosted_zones:
+        if zone["Name"] == f"{domain}.":
+            return zone
+    return None
+
+
+def _print_nameservers(route53, zone_id, domain):
+    """Print nameservers for the zone"""
+    records_response = route53.list_resource_record_sets(HostedZoneId=zone_id)
+    records = records_response.get("ResourceRecordSets", [])
+
+    for record in records:
+        if record.get("Type") == "NS" and record.get("Name") == f"{domain}.":
+            nameservers = [rr.get("Value") for rr in record.get("ResourceRecords", [])]
+            print("  ✅ Nameservers configured:")
+            for ns in nameservers:
+                print(f"    - {ns}")
+            break
 
 
 def check_route53_configuration(domain):
@@ -186,19 +221,10 @@ def check_route53_configuration(domain):
 
     try:
         import boto3
-        from botocore.exceptions import ClientError
 
         route53 = boto3.client("route53")
 
-        # Find the hosted zone
-        response = route53.list_hosted_zones()
-        hosted_zones = response.get("HostedZones", [])
-
-        target_zone = None
-        for zone in hosted_zones:
-            if zone["Name"] == f"{domain}.":
-                target_zone = zone
-                break
+        target_zone = _find_hosted_zone_for_domain(route53, domain)
 
         if not target_zone:
             print(f"  ❌ No Route53 hosted zone found for {domain}")
@@ -207,40 +233,20 @@ def check_route53_configuration(domain):
         zone_id = target_zone["Id"].split("/")[-1]
         print(f"  ✅ Route53 hosted zone found: {zone_id}")
 
-        # Check nameservers
-        records_response = route53.list_resource_record_sets(HostedZoneId=target_zone["Id"])
-        records = records_response.get("ResourceRecordSets", [])
-
-        for record in records:
-            if record.get("Type") == "NS" and record.get("Name") == f"{domain}.":
-                nameservers = [rr.get("Value") for rr in record.get("ResourceRecords", [])]
-                print(f"  ✅ Nameservers configured:")
-                for ns in nameservers:
-                    print(f"    - {ns}")
-                break
+        _print_nameservers(route53, target_zone["Id"], domain)
 
     except ImportError:
-        print(f"  ⚠️  boto3 not available, skipping Route53 check")
+        print("  ⚠️  boto3 not available, skipping Route53 check")
         return True
-    except Exception as e:
+    except ClientError as e:
         print(f"  ❌ Route53 check failed: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
-def main():
-    domain = "iwannabenewyork.com"
-
-    print("🚀 Domain Verification for iwannabenewyork.com")
-    print("=" * 80)
-    print(f"Testing domain: {domain}")
-    print(f"Target: Canva website")
-    print(f"Timestamp: {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
-    print("=" * 80)
-
-    # Run all tests
+def _run_tests(domain):
+    """Run all verification tests"""
     tests = [
         ("DNS Resolution", lambda: test_dns_resolution(domain)),
         ("HTTP Connectivity", lambda: test_http_connectivity(domain)),
@@ -255,17 +261,21 @@ def main():
     for test_name, test_func in tests:
         try:
             if test_name == "DNS Resolution":
-                success, ip = test_func()
+                success, _ = test_func()
                 results.append((test_name, success))
             else:
                 success = test_func()
                 results.append((test_name, success))
-        except Exception as e:
+        except ClientError as e:
             print(f"  ❌ {test_name} failed with error: {e}")
             results.append((test_name, False))
 
-    # Summary
-    print(f"\n" + "=" * 80)
+    return results
+
+
+def _print_summary(results, domain):
+    """Print verification summary"""
+    print("\n" + "=" * 80)
     print("🎯 VERIFICATION SUMMARY")
     print("=" * 80)
 
@@ -281,19 +291,39 @@ def main():
         for test_name in failed_tests:
             print(f"  ❌ {test_name}")
 
-    # Overall status
-    if len(passed_tests) == len(results):
+    return passed_tests, failed_tests
+
+
+def _print_overall_status(domain, passed_tests, failed_tests, total_tests):
+    """Print overall verification status"""
+    if len(passed_tests) == total_tests:
         print(f"\n🎉 SUCCESS: {domain} is fully configured and working!")
         print(f"🌐 Your Canva website is accessible at: https://{domain}")
-        print(f"🔒 SSL certificate is valid and secure")
-        print(f"☁️  DNS is properly configured through Route53")
-    elif len(passed_tests) >= MIN_TESTS_FOR_MOSTLY_WORKING:  # Core functionality working
+        print("🔒 SSL certificate is valid and secure")
+        print("☁️  DNS is properly configured through Route53")
+    elif len(passed_tests) >= MIN_TESTS_FOR_MOSTLY_WORKING:
         print(f"\n✅ MOSTLY WORKING: {domain} is functional with minor issues")
         print(f"🌐 Your Canva website should be accessible at: https://{domain}")
-        print(f"⚠️  Some non-critical tests failed - check details above")
+        print("⚠️  Some non-critical tests failed - check details above")
     else:
         print(f"\n❌ ISSUES DETECTED: {domain} has significant problems")
-        print(f"🔧 Please review the failed tests and fix the issues")
+        print("🔧 Please review the failed tests and fix the issues")
+
+
+def main():
+    """Run domain verification tests and report results."""
+    domain = "iwannabenewyork.com"
+
+    print("🚀 Domain Verification for iwannabenewyork.com")
+    print("=" * 80)
+    print(f"Testing domain: {domain}")
+    print("Target: Canva website")
+    print(f"Timestamp: {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print("=" * 80)
+
+    results = _run_tests(domain)
+    passed_tests, failed_tests = _print_summary(results, domain)
+    _print_overall_status(domain, passed_tests, failed_tests, len(results))
 
     print(f"\n💡 To run this verification again: python3 {__file__}")
 

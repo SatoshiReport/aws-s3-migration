@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-
-import json
+"""Clean up unused VPC resources."""
 
 import boto3
 from botocore.exceptions import ClientError
@@ -35,12 +34,12 @@ def release_elastic_ips_in_region(region_name):
             try:
                 # If the IP is associated with an instance, disassociate it first
                 if association_id:
-                    print(f"  🔗 Disassociating from instance...")
+                    print("  🔗 Disassociating from instance...")
                     ec2.disassociate_address(AssociationId=association_id)
-                    print(f"  ✅ Disassociated successfully")
+                    print("  ✅ Disassociated successfully")
 
                 # Release the Elastic IP
-                print(f"  🗑️  Releasing Elastic IP...")
+                print("  🗑️  Releasing Elastic IP...")
                 ec2.release_address(AllocationId=allocation_id)
                 print(f"  ✅ Released {public_ip} successfully")
 
@@ -69,11 +68,11 @@ def release_elastic_ips_in_region(region_name):
         print(f"❌ Error accessing {region_name}: {e}")
         return 0
 
-    else:
-        return monthly_savings
+    return monthly_savings
 
 
 def main():
+    """Release all unassociated Elastic IP addresses."""
     print("AWS VPC Cleanup - Elastic IP Release")
     print("=" * 80)
     print("⚠️  WARNING: This will permanently release all Elastic IP addresses!")
@@ -103,23 +102,23 @@ def main():
     print(f"Total monthly savings: ${total_savings:.2f}")
 
     if total_savings > 0:
-        print(f"\n✅ SUCCESS: Elastic IP cleanup completed!")
+        print("\n✅ SUCCESS: Elastic IP cleanup completed!")
         print(f"💰 You will save approximately ${total_savings:.2f} per month")
         print(f"💰 Annual savings: ${total_savings * 12:.2f}")
 
-        print(f"\n📋 NEXT STEPS:")
-        print(f"  1. Your instances can still be started normally")
-        print(f"  2. They will get new public IPs when started")
-        print(f"  3. Update any DNS records or configurations with new IPs")
-        print(f"  4. Consider using a load balancer if you need stable IPs")
+        print("\n📋 NEXT STEPS:")
+        print("  1. Your instances can still be started normally")
+        print("  2. They will get new public IPs when started")
+        print("  3. Update any DNS records or configurations with new IPs")
+        print("  4. Consider using a load balancer if you need stable IPs")
     else:
-        print(f"ℹ️  No Elastic IPs were found or released.")
+        print("ℹ️  No Elastic IPs were found or released.")
 
-    print(f"\n⚠️  IMPORTANT REMINDERS:")
-    print(f"  - Released IP addresses cannot be recovered")
-    print(f"  - Instances will get new public IPs when restarted")
-    print(f"  - Update any hardcoded IP references in your applications")
-    print(f"  - Consider using DNS names instead of IP addresses")
+    print("\n⚠️  IMPORTANT REMINDERS:")
+    print("  - Released IP addresses cannot be recovered")
+    print("  - Instances will get new public IPs when restarted")
+    print("  - Update any hardcoded IP references in your applications")
+    print("  - Consider using DNS names instead of IP addresses")
 
 
 if __name__ == "__main__":

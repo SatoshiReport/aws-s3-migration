@@ -8,322 +8,293 @@ from migration_verify import FileChecksumVerifier
 from tests.assertions import assert_equal
 
 
-class TestFileChecksumVerifierValidFiles:
-    """Integration tests for FileChecksumVerifier with valid files"""
+def test_verify_files_integration_with_valid_files(tmp_path):
+    """Test verification of valid single-part files"""
+    # Create test files
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"test content 1")
+    file2 = tmp_path / "file2.txt"
+    file2.write_bytes(b"test content 2")
 
-    def test_verify_files_integration_with_valid_files(self, tmp_path):
-        """Test verification of valid single-part files"""
-        # Create test files
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"test content 1")
-        file2 = tmp_path / "file2.txt"
-        file2.write_bytes(b"test content 2")
+    # Calculate MD5 hashes
+    md5_1 = hashlib.md5(b"test content 1", usedforsecurity=False).hexdigest()
+    md5_2 = hashlib.md5(b"test content 2", usedforsecurity=False).hexdigest()
 
-        # Calculate MD5 hashes
-        md5_1 = hashlib.md5(b"test content 1", usedforsecurity=False).hexdigest()
-        md5_2 = hashlib.md5(b"test content 2", usedforsecurity=False).hexdigest()
+    local_files = {"file1.txt": file1, "file2.txt": file2}
+    expected_file_map = {
+        "file1.txt": {"size": 14, "etag": md5_1},
+        "file2.txt": {"size": 14, "etag": md5_2},
+    }
 
-        local_files = {"file1.txt": file1, "file2.txt": file2}
-        expected_file_map = {
-            "file1.txt": {"size": 14, "etag": md5_1},
-            "file2.txt": {"size": 14, "etag": md5_2},
-        }
+    verifier = FileChecksumVerifier()
+    results = verifier.verify_files(
+        local_files=local_files,
+        expected_file_map=expected_file_map,
+        expected_files=2,
+        expected_size=28,
+    )
 
-        verifier = FileChecksumVerifier()
-        results = verifier.verify_files(
-            local_files=local_files,
-            expected_file_map=expected_file_map,
-            expected_files=2,
-            expected_size=28,
-        )
-
-        assert_equal(results["verified_count"], 2)
-        assert_equal(results["size_verified"], 2)
-        assert_equal(results["checksum_verified"], 2)
-        assert_equal(results["total_bytes_verified"], 28)
+    assert_equal(results["verified_count"], 2)
+    assert_equal(results["size_verified"], 2)
+    assert_equal(results["checksum_verified"], 2)
+    assert_equal(results["total_bytes_verified"], 28)
 
 
-class TestFileChecksumVerifierErrors:
-    """Integration tests for FileChecksumVerifier error handling"""
+def test_verify_files_raises_on_verification_errors(tmp_path):
+    """Test verify_files raises exception on verification errors"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"content")
 
-    def test_verify_files_raises_on_verification_errors(self, tmp_path):
-        """Test verify_files raises exception on verification errors"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"content")
+    local_files = {"file1.txt": file1}
+    expected_file_map = {"file1.txt": {"size": 999, "etag": "abc123"}}
 
-        local_files = {"file1.txt": file1}
-        expected_file_map = {"file1.txt": {"size": 999, "etag": "abc123"}}
+    verifier = FileChecksumVerifier()
 
-        verifier = FileChecksumVerifier()
-
-        with pytest.raises(ValueError) as exc_info:
-            verifier.verify_files(
-                local_files=local_files,
-                expected_file_map=expected_file_map,
-                expected_files=1,
-                expected_size=999,
-            )
-
-        assert "Verification failed" in str(exc_info.value)
-
-
-class TestFileChecksumVerifierLargeFiles:
-    """Integration tests for FileChecksumVerifier with large files"""
-
-    def test_verify_files_handles_large_files(self, tmp_path):
-        """Test verification handles large files with chunked reading"""
-        # Create a 20 MB file (will be read in 8 MB chunks)
-        file1 = tmp_path / "large_file.txt"
-        chunk_size = 8 * 1024 * 1024
-        file1.write_bytes(b"x" * (chunk_size * 2 + 1000))
-
-        md5_hash = hashlib.md5(usedforsecurity=False)
-        with open(file1, "rb") as f:
-            for chunk in iter(lambda: f.read(chunk_size), b""):
-                md5_hash.update(chunk)
-        computed_hash = md5_hash.hexdigest()
-
-        local_files = {"large_file.txt": file1}
-        expected_file_map = {
-            "large_file.txt": {"size": chunk_size * 2 + 1000, "etag": computed_hash}
-        }
-
-        verifier = FileChecksumVerifier()
-        results = verifier.verify_files(
+    with pytest.raises(ValueError) as exc_info:
+        verifier.verify_files(
             local_files=local_files,
             expected_file_map=expected_file_map,
             expected_files=1,
-            expected_size=chunk_size * 2 + 1000,
+            expected_size=999,
         )
 
-        assert results["verified_count"] == 1
-        assert results["checksum_verified"] == 1
+    assert "Verification failed" in str(exc_info.value)
 
 
-class TestFileChecksumVerifierSingleFileSizeMismatch:
-    """Tests for FileChecksumVerifier._verify_single_file() size mismatch"""
+def test_verify_files_handles_large_files(tmp_path):
+    """Test verification handles large files with chunked reading"""
+    # Create a 20 MB file (will be read in 8 MB chunks)
+    file1 = tmp_path / "large_file.txt"
+    chunk_size = 8 * 1024 * 1024
+    file1.write_bytes(b"x" * (chunk_size * 2 + 1000))
 
-    def test_verify_single_file_with_size_mismatch(self, tmp_path):
-        """Test verification fails on size mismatch"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"content")
+    md5_hash = hashlib.md5(usedforsecurity=False)
+    with open(file1, "rb") as f:
+        for chunk in iter(lambda: f.read(chunk_size), b""):
+            md5_hash.update(chunk)
+    computed_hash = md5_hash.hexdigest()
 
-        local_files = {"file1.txt": file1}
-        expected_file_map = {"file1.txt": {"size": 999, "etag": "abc123"}}
-        stats = {
-            "verified_count": 0,
-            "size_verified": 0,
-            "checksum_verified": 0,
-            "total_bytes_verified": 0,
-            "verification_errors": [],
-        }
+    local_files = {"large_file.txt": file1}
+    expected_file_map = {"large_file.txt": {"size": chunk_size * 2 + 1000, "etag": computed_hash}}
 
-        verifier = FileChecksumVerifier()
-        verifier._verify_single_file("file1.txt", local_files, expected_file_map, stats)
+    verifier = FileChecksumVerifier()
+    results = verifier.verify_files(
+        local_files=local_files,
+        expected_file_map=expected_file_map,
+        expected_files=1,
+        expected_size=chunk_size * 2 + 1000,
+    )
 
-        assert len(stats["verification_errors"]) == 1
-        assert "size mismatch" in stats["verification_errors"][0]
-        assert stats["verified_count"] == 0
-
-
-class TestSingleFileChecksumMismatch:
-    """Tests for FileChecksumVerifier._verify_single_file() checksum mismatch"""
-
-    def test_verify_single_file_with_checksum_mismatch(self, tmp_path):
-        """Test verification fails on checksum mismatch"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"content")
-
-        wrong_hash = "0" * 32
-
-        local_files = {"file1.txt": file1}
-        expected_file_map = {"file1.txt": {"size": 7, "etag": wrong_hash}}
-        stats = {
-            "verified_count": 0,
-            "size_verified": 0,
-            "checksum_verified": 0,
-            "total_bytes_verified": 0,
-            "verification_errors": [],
-        }
-
-        verifier = FileChecksumVerifier()
-        verifier._verify_single_file("file1.txt", local_files, expected_file_map, stats)
-
-        assert len(stats["verification_errors"]) == 1
-        assert "checksum mismatch" in stats["verification_errors"][0]
-        assert stats["size_verified"] == 1
-        assert stats["verified_count"] == 0
+    assert results["verified_count"] == 1
+    assert results["checksum_verified"] == 1
 
 
-class TestFileChecksumVerifierMultipartSuccess:
-    """Tests for FileChecksumVerifier multipart file success cases"""
+def test_verify_single_file_with_size_mismatch(tmp_path):
+    """Test verification fails on size mismatch"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"content")
 
-    def test_verify_multipart_file_with_hyphen_in_etag(self, tmp_path):
-        """Test verification of multipart file (contains hyphen)"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"multipart content")
+    local_files = {"file1.txt": file1}
+    expected_file_map = {"file1.txt": {"size": 999, "etag": "abc123"}}
+    stats = {
+        "verified_count": 0,
+        "size_verified": 0,
+        "checksum_verified": 0,
+        "total_bytes_verified": 0,
+        "verification_errors": [],
+    }
 
-        local_files = {"file1.txt": file1}
-        expected_file_map = {
-            "file1.txt": {"size": 17, "etag": "abc123-2"}
-        }  # Hyphen indicates multipart
-        stats = {
-            "verified_count": 0,
-            "size_verified": 0,
-            "checksum_verified": 0,
-            "total_bytes_verified": 0,
-            "verification_errors": [],
-        }
+    verifier = FileChecksumVerifier()
+    verifier.verify_single_file("file1.txt", local_files, expected_file_map, stats)
 
-        verifier = FileChecksumVerifier()
-        verifier._verify_single_file("file1.txt", local_files, expected_file_map, stats)
-
-        # Multipart files are verified via SHA256 health check
-        assert stats["verified_count"] == 1
-        assert stats["checksum_verified"] == 1
+    assert len(stats["verification_errors"]) == 1
+    assert "size mismatch" in stats["verification_errors"][0]
+    assert stats["verified_count"] == 0
 
 
-class TestFileChecksumVerifierMultipartErrors:
-    """Tests for FileChecksumVerifier multipart file error handling"""
+def test_verify_single_file_with_checksum_mismatch(tmp_path):
+    """Test verification fails on checksum mismatch"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"content")
 
-    def test_verify_multipart_file_handles_read_error(self, tmp_path):
-        """Test multipart verification handles file read errors"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"test")
+    wrong_hash = "0" * 32
 
-        # Make file unreadable
-        file1.chmod(0o000)
+    local_files = {"file1.txt": file1}
+    expected_file_map = {"file1.txt": {"size": 7, "etag": wrong_hash}}
+    stats = {
+        "verified_count": 0,
+        "size_verified": 0,
+        "checksum_verified": 0,
+        "total_bytes_verified": 0,
+        "verification_errors": [],
+    }
 
-        stats = {
-            "verified_count": 0,
-            "size_verified": 0,
-            "checksum_verified": 0,
-            "total_bytes_verified": 0,
-            "verification_errors": [],
-        }
+    verifier = FileChecksumVerifier()
+    verifier.verify_single_file("file1.txt", local_files, expected_file_map, stats)
 
-        verifier = FileChecksumVerifier()
-        verifier._verify_multipart_file("file1.txt", file1, stats)
-
-        # Restore permissions for cleanup
-        file1.chmod(0o644)
-
-        assert len(stats["verification_errors"]) == 1
-        assert "file health check failed" in stats["verification_errors"][0]
+    assert len(stats["verification_errors"]) == 1
+    assert "checksum mismatch" in stats["verification_errors"][0]
+    assert stats["size_verified"] == 1
+    assert stats["verified_count"] == 0
 
 
-class TestFileChecksumVerifierSinglepartSuccess:
-    """Tests for FileChecksumVerifier._verify_singlepart_file() success cases"""
+def test_verify_multipart_file_with_hyphen_in_etag(tmp_path):
+    """Test verification of multipart file (contains hyphen)"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"multipart content")
 
-    def test_verify_singlepart_file_succeeds(self, tmp_path):
-        """Test verification of single-part file succeeds"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"test")
+    local_files = {"file1.txt": file1}
+    expected_file_map = {
+        "file1.txt": {"size": 17, "etag": "abc123-2"}
+    }  # Hyphen indicates multipart
+    stats = {
+        "verified_count": 0,
+        "size_verified": 0,
+        "checksum_verified": 0,
+        "total_bytes_verified": 0,
+        "verification_errors": [],
+    }
 
-        md5_hash = hashlib.md5(b"test", usedforsecurity=False).hexdigest()
-        stats = {
-            "verified_count": 0,
-            "size_verified": 0,
-            "checksum_verified": 0,
-            "total_bytes_verified": 0,
-            "verification_errors": [],
-        }
+    verifier = FileChecksumVerifier()
+    verifier.verify_single_file("file1.txt", local_files, expected_file_map, stats)
 
-        verifier = FileChecksumVerifier()
-        verifier._verify_singlepart_file("file1.txt", file1, md5_hash, stats)
-
-        assert stats["verified_count"] == 1
-        assert stats["checksum_verified"] == 1
-
-
-class TestFileChecksumVerifierSinglepartFailures:
-    """Tests for FileChecksumVerifier._verify_singlepart_file() failure cases"""
-
-    def test_verify_singlepart_file_fails_on_checksum_mismatch(self, tmp_path):
-        """Test single-part verification fails on checksum mismatch"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"test")
-
-        wrong_hash = "0" * 32
-        stats = {
-            "verified_count": 0,
-            "size_verified": 0,
-            "checksum_verified": 0,
-            "total_bytes_verified": 0,
-            "verification_errors": [],
-        }
-
-        verifier = FileChecksumVerifier()
-        verifier._verify_singlepart_file("file1.txt", file1, wrong_hash, stats)
-
-        assert len(stats["verification_errors"]) == 1
-        assert "checksum mismatch" in stats["verification_errors"][0]
-        assert stats["verified_count"] == 0
-
-    def test_verify_singlepart_file_handles_read_error(self, tmp_path):
-        """Test single-part verification handles file read errors"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"test")
-
-        # Make file unreadable (remove read permissions)
-        file1.chmod(0o000)
-
-        stats = {
-            "verified_count": 0,
-            "size_verified": 0,
-            "checksum_verified": 0,
-            "total_bytes_verified": 0,
-            "verification_errors": [],
-        }
-
-        verifier = FileChecksumVerifier()
-        verifier._verify_singlepart_file("file1.txt", file1, "abc123", stats)
-
-        # Restore permissions for cleanup
-        file1.chmod(0o644)
-
-        assert len(stats["verification_errors"]) == 1
-        assert "checksum computation failed" in stats["verification_errors"][0]
+    # Multipart files are verified via SHA256 health check
+    assert stats["verified_count"] == 1
+    assert stats["checksum_verified"] == 1
 
 
-class TestFileChecksumVerifierComputeEtag:
-    """Tests for FileChecksumVerifier._compute_etag()"""
+def test_verify_multipart_file_handles_read_error(tmp_path):
+    """Test multipart verification handles file read errors"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"test")
 
-    def test_compute_etag_matches_valid_hash(self, tmp_path):
-        """Test ETag computation matches provided hash"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"test content")
+    # Make file unreadable
+    file1.chmod(0o000)
 
-        md5_hash = hashlib.md5(b"test content", usedforsecurity=False).hexdigest()
+    stats = {
+        "verified_count": 0,
+        "size_verified": 0,
+        "checksum_verified": 0,
+        "total_bytes_verified": 0,
+        "verification_errors": [],
+    }
 
-        verifier = FileChecksumVerifier()
-        computed, is_match = verifier._compute_etag(file1, md5_hash)
+    verifier = FileChecksumVerifier()
+    verifier.verify_multipart_file("file1.txt", file1, stats)
 
-        assert is_match is True
-        assert computed == md5_hash
+    # Restore permissions for cleanup
+    file1.chmod(0o644)
 
-    def test_compute_etag_detects_mismatch(self, tmp_path):
-        """Test ETag computation detects mismatches"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"test content")
+    assert len(stats["verification_errors"]) == 1
+    assert "file health check failed" in stats["verification_errors"][0]
 
-        wrong_hash = "0" * 32
 
-        verifier = FileChecksumVerifier()
-        computed, is_match = verifier._compute_etag(file1, wrong_hash)
+def test_verify_singlepart_file_succeeds(tmp_path):
+    """Test verification of single-part file succeeds"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"test")
 
-        assert is_match is False
-        assert computed != wrong_hash
+    md5_hash = hashlib.md5(b"test", usedforsecurity=False).hexdigest()
+    stats = {
+        "verified_count": 0,
+        "size_verified": 0,
+        "checksum_verified": 0,
+        "total_bytes_verified": 0,
+        "verification_errors": [],
+    }
 
-    def test_compute_etag_strips_quotes_from_etag(self, tmp_path):
-        """Test ETag computation handles quoted ETags from S3"""
-        file1 = tmp_path / "file1.txt"
-        file1.write_bytes(b"test")
+    verifier = FileChecksumVerifier()
+    verifier.verify_singlepart_file("file1.txt", file1, md5_hash, stats)
 
-        md5_hash = hashlib.md5(b"test", usedforsecurity=False).hexdigest()
-        quoted_etag = f'"{md5_hash}"'
+    assert stats["verified_count"] == 1
+    assert stats["checksum_verified"] == 1
 
-        verifier = FileChecksumVerifier()
-        _computed, is_match = verifier._compute_etag(file1, quoted_etag)
 
-        assert is_match is True
+def test_verify_singlepart_file_fails_on_checksum_mismatch(tmp_path):
+    """Test single-part verification fails on checksum mismatch"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"test")
+
+    wrong_hash = "0" * 32
+    stats = {
+        "verified_count": 0,
+        "size_verified": 0,
+        "checksum_verified": 0,
+        "total_bytes_verified": 0,
+        "verification_errors": [],
+    }
+
+    verifier = FileChecksumVerifier()
+    verifier.verify_singlepart_file("file1.txt", file1, wrong_hash, stats)
+
+    assert len(stats["verification_errors"]) == 1
+    assert "checksum mismatch" in stats["verification_errors"][0]
+    assert stats["verified_count"] == 0
+
+
+def test_verify_singlepart_file_handles_read_error(tmp_path):
+    """Test single-part verification handles file read errors"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"test")
+
+    # Make file unreadable (remove read permissions)
+    file1.chmod(0o000)
+
+    stats = {
+        "verified_count": 0,
+        "size_verified": 0,
+        "checksum_verified": 0,
+        "total_bytes_verified": 0,
+        "verification_errors": [],
+    }
+
+    verifier = FileChecksumVerifier()
+    verifier.verify_singlepart_file("file1.txt", file1, "abc123", stats)
+
+    # Restore permissions for cleanup
+    file1.chmod(0o644)
+
+    assert len(stats["verification_errors"]) == 1
+    assert "checksum computation failed" in stats["verification_errors"][0]
+
+
+def test_compute_etag_matches_valid_hash(tmp_path):
+    """Test ETag computation matches provided hash"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"test content")
+
+    md5_hash = hashlib.md5(b"test content", usedforsecurity=False).hexdigest()
+
+    verifier = FileChecksumVerifier()
+    computed, is_match = verifier.compute_etag(file1, md5_hash)
+
+    assert is_match is True
+    assert computed == md5_hash
+
+
+def test_compute_etag_detects_mismatch(tmp_path):
+    """Test ETag computation detects mismatches"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"test content")
+
+    wrong_hash = "0" * 32
+
+    verifier = FileChecksumVerifier()
+    computed, is_match = verifier.compute_etag(file1, wrong_hash)
+
+    assert is_match is False
+    assert computed != wrong_hash
+
+
+def test_compute_etag_strips_quotes_from_etag(tmp_path):
+    """Test ETag computation handles quoted ETags from S3"""
+    file1 = tmp_path / "file1.txt"
+    file1.write_bytes(b"test")
+
+    md5_hash = hashlib.md5(b"test", usedforsecurity=False).hexdigest()
+    quoted_etag = f'"{md5_hash}"'
+
+    verifier = FileChecksumVerifier()
+    _computed, is_match = verifier.compute_etag(file1, quoted_etag)
+
+    assert is_match is True

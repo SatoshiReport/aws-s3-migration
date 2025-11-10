@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
-import os
-import sys
+"""Fix RDS subnet routing configuration."""
+
 
 import boto3
+from botocore.exceptions import ClientError
 
-SCRIPT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if SCRIPT_ROOT not in sys.path:
-    sys.path.append(SCRIPT_ROOT)
-
-from aws_utils import setup_aws_credentials
+from ..aws_utils import setup_aws_credentials
 
 
 def fix_rds_subnet_routing():
@@ -16,7 +13,7 @@ def fix_rds_subnet_routing():
 
     setup_aws_credentials()
     rds = boto3.client("rds", region_name="us-east-1")
-    ec2 = boto3.client("ec2", region_name="us-east-1")
+    _ = boto3.client("ec2", region_name="us-east-1")
 
     print("🔧 Fixing RDS subnet routing for internet access...")
 
@@ -44,14 +41,14 @@ def fix_rds_subnet_routing():
                 Tags=[{"Key": "Purpose", "Value": "Public RDS access"}],
             )
             print(f"✅ Created new subnet group: {subnet_group_name}")
-        except Exception as e:
+        except ClientError as e:
             if "already exists" in str(e).lower():
                 print(f"✅ Subnet group {subnet_group_name} already exists")
             else:
                 raise
 
         # Modify the RDS instance to use the new subnet group
-        print(f"🔄 Moving RDS instance to public subnet group...")
+        print("🔄 Moving RDS instance to public subnet group...")
 
         rds.modify_db_instance(
             DBInstanceIdentifier="simba-db-restored",
@@ -59,9 +56,9 @@ def fix_rds_subnet_routing():
             ApplyImmediately=True,
         )
 
-        print(f"✅ RDS instance modification initiated!")
-        print(f"⏳ Waiting for modification to complete...")
-        print(f"   This may take 5-10 minutes...")
+        print("✅ RDS instance modification initiated!")
+        print("⏳ Waiting for modification to complete...")
+        print("   This may take 5-10 minutes...")
 
         # Wait for the modification to complete
         waiter = rds.get_waiter("db_instance_available")
@@ -69,10 +66,10 @@ def fix_rds_subnet_routing():
             DBInstanceIdentifier="simba-db-restored", WaiterConfig={"Delay": 30, "MaxAttempts": 20}
         )
 
-        print(f"✅ RDS instance is now in public subnets!")
-        print(f"🔍 You should now be able to connect from the internet")
+        print("✅ RDS instance is now in public subnets!")
+        print("🔍 You should now be able to connect from the internet")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error fixing subnet routing: {e}")
 
 

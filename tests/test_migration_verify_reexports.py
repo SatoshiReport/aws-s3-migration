@@ -10,6 +10,7 @@ from migration_verify_inventory import FileInventoryChecker
 
 
 def test_reexports_match_original_symbols():
+    """Test that migration_verify module reexports original symbols correctly."""
     assert mv.BucketVerifier is BucketVerifier
     assert mv.FileChecksumVerifier is FileChecksumVerifier
     assert mv.BucketDeleter is BucketDeleter

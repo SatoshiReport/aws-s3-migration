@@ -16,9 +16,7 @@ MANUAL (with exact commands provided):
 This approach gives you control over the problematic AWS export service.
 """
 
-import json
 import os
-import time
 from datetime import datetime
 
 import boto3
@@ -61,8 +59,7 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
         print(f"   ✅ Created S3 bucket {bucket_name} with versioning enabled")
         return True
 
-    else:
-        return True
+    return True
 
 
 def create_ami_from_snapshot(ec2_client, snapshot_id, snapshot_description):
@@ -153,7 +150,79 @@ def prepare_snapshot_for_export(snapshot_info, aws_access_key_id, aws_secret_acc
     }
 
 
-def generate_manual_commands(prepared_snapshots):  # noqa: PLR0915
+def _build_export_command(ami_id, bucket_name, region, snapshot_id):
+    """Build AWS CLI export command"""
+    return """aws ec2 export-image \\
+    --image-id {ami_id} \\
+    --disk-image-format VMDK \\
+    --s3-export-location S3Bucket={bucket_name},S3Prefix=ebs-snapshots/{ami_id}/ \\
+    --description "Manual export of {snapshot_id}" \\
+    --region {region}"""
+
+
+def _build_monitor_command(region, ami_id):
+    """Build monitoring command"""
+    return """# Monitor export progress:
+aws ec2 describe-export-image-tasks \\
+    --region {region} \\
+    --query 'ExportImageTasks[?ImageId==`{ami_id}`].[ExportImageTaskId,Status,Progress,StatusMessage]' \\  # pylint: disable=line-too-long
+    --output table"""
+
+
+def _build_s3_check_command(bucket_name, ami_id):
+    """Build S3 verification command"""
+    return """# Check S3 file directly:
+aws s3 ls s3://{bucket_name}/ebs-snapshots/{ami_id}/ --recursive --human-readable
+
+# Check S3 file size (most reliable completion check):
+aws s3api head-object --bucket {bucket_name} --key ebs-snapshots/{ami_id}/{ami_id}.vmdk"""
+
+
+def _build_cleanup_command(ami_id, region):
+    """Build cleanup command"""
+    return """# CLEANUP (run only after successful export):
+aws ec2 deregister-image --image-id {ami_id} --region {region}"""
+
+
+def _print_workflow_and_troubleshooting():
+    """Print workflow instructions and troubleshooting tips"""
+    print("📊 EXPORT WORKFLOW:")
+    print("1. Run each export command above")
+    print("2. Monitor progress with the monitor commands")
+    print("3. If export gets stuck at 80%, wait 2-3 hours and check S3 directly")
+    print("4. Once S3 file appears and is stable, run cleanup commands")
+    print("5. Verify S3 files exist before deleting original snapshots")
+    print()
+
+    print("🔧 TROUBLESHOOTING:")
+    print("- If export fails immediately: Try again in 10-15 minutes")
+    print("- If stuck at 80%: Check S3 directly - file might be complete")
+    print("- If export gets deleted: Try in a different region (eu-west-2 works better)")
+    print()
+
+
+def _print_monitoring_commands(prepared_snapshots):
+    """Print S3 monitoring commands"""
+    print("📊 S3 FILE SIZE MONITORING COMMANDS:")
+    for prep in prepared_snapshots:
+        bucket_name = prep["bucket_name"]
+        ami_id = prep["ami_id"]
+        print(
+            f"aws s3api head-object --bucket {bucket_name} "
+            f"--key ebs-snapshots/{ami_id}/{ami_id}.vmdk"
+        )
+    print()
+
+
+def _print_cost_summary(prepared_snapshots):
+    """Print cost savings summary"""
+    total_savings = sum(prep["monthly_savings"] for prep in prepared_snapshots)
+    print("💰 POTENTIAL SAVINGS:")
+    print(f"   Monthly: ${total_savings:.2f}")
+    print(f"   Annual: ${total_savings * 12:.2f}")
+
+
+def generate_manual_commands(prepared_snapshots):
     """Generate the manual AWS CLI commands for exports"""
     print("\n" + "=" * 80)
     print("📋 MANUAL EXPORT COMMANDS")
@@ -171,42 +240,21 @@ def generate_manual_commands(prepared_snapshots):  # noqa: PLR0915
         region = prep["region"]
         snapshot_id = prep["snapshot_id"]
 
-        # Export command
-        export_cmd = f"""aws ec2 export-image \\
-    --image-id {ami_id} \\
-    --disk-image-format VMDK \\
-    --s3-export-location S3Bucket={bucket_name},S3Prefix=ebs-snapshots/{ami_id}/ \\
-    --description "Manual export of {snapshot_id}" \\
-    --region {region}"""
-
-        # Monitor command
-        monitor_cmd = f"""# Monitor export progress:
-aws ec2 describe-export-image-tasks \\
-    --region {region} \\
-    --query 'ExportImageTasks[?ImageId==`{ami_id}`].[ExportImageTaskId,Status,Progress,StatusMessage]' \\
-    --output table"""
-
-        # S3 check command
-        s3_check_cmd = f"""# Check S3 file directly:
-aws s3 ls s3://{bucket_name}/ebs-snapshots/{ami_id}/ --recursive --human-readable
-
-# Check S3 file size (most reliable completion check):
-aws s3api head-object --bucket {bucket_name} --key ebs-snapshots/{ami_id}/{ami_id}.vmdk"""
-
-        # Cleanup command (run ONLY after successful export)
-        cleanup_cmd = f"""# CLEANUP (run only after successful export):
-aws ec2 deregister-image --image-id {ami_id} --region {region}"""
+        export_cmd = _build_export_command(ami_id, bucket_name, region, snapshot_id)
+        monitor_cmd = _build_monitor_command(region, ami_id)
+        s3_check_cmd = _build_s3_check_command(bucket_name, ami_id)
+        cleanup_cmd = _build_cleanup_command(ami_id, region)
 
         print(f"## Step {i}: Export {snapshot_id} ({prep['size_gb']} GB)")
-        print(f"### Export Command:")
+        print("### Export Command:")
         print(export_cmd)
         print()
-        print(f"### Monitor Progress:")
+        print("### Monitor Progress:")
         print(monitor_cmd)
         print()
         print(s3_check_cmd)
         print()
-        print(f"### Cleanup (ONLY after success):")
+        print("### Cleanup (ONLY after success):")
         print(cleanup_cmd)
         print()
         print("-" * 60)
@@ -216,55 +264,16 @@ aws ec2 deregister-image --image-id {ami_id} --region {region}"""
         monitor_commands.append(monitor_cmd)
         cleanup_commands.append(cleanup_cmd)
 
-    # Summary section
-    print("📊 EXPORT WORKFLOW:")
-    print("1. Run each export command above")
-    print("2. Monitor progress with the monitor commands")
-    print("3. If export gets stuck at 80%, wait 2-3 hours and check S3 directly")
-    print("4. Once S3 file appears and is stable, run cleanup commands")
-    print("5. Verify S3 files exist before deleting original snapshots")
-    print()
-
-    # Troubleshooting
-    print("🔧 TROUBLESHOOTING:")
-    print("- If export fails immediately: Try again in 10-15 minutes")
-    print("- If stuck at 80%: Check S3 directly - file might be complete")
-    print("- If export gets deleted: Try in a different region (eu-west-2 works better)")
-    print()
-    print("📊 S3 FILE SIZE MONITORING COMMANDS:")
-    for prep in prepared_snapshots:
-        bucket_name = prep["bucket_name"]
-        ami_id = prep["ami_id"]
-        print(
-            f"aws s3api head-object --bucket {bucket_name} --key ebs-snapshots/{ami_id}/{ami_id}.vmdk"
-        )
-    print()
-
-    # Cost savings summary
-    total_savings = sum(prep["monthly_savings"] for prep in prepared_snapshots)
-    print(f"💰 POTENTIAL SAVINGS:")
-    print(f"   Monthly: ${total_savings:.2f}")
-    print(f"   Annual: ${total_savings * 12:.2f}")
+    _print_workflow_and_troubleshooting()
+    _print_monitoring_commands(prepared_snapshots)
+    _print_cost_summary(prepared_snapshots)
 
     return export_commands, monitor_commands, cleanup_commands
 
 
-def main():
-    """Main function"""
-    print("AWS EBS Snapshot to S3 Semi-Manual Export Script")
-    print("=" * 80)
-    print("This script will:")
-    print("✅ Create AMIs from your snapshots (automated)")
-    print("✅ Set up S3 buckets (automated)")
-    print("📋 Provide exact manual commands for exports")
-    print("📋 Provide monitoring and cleanup commands")
-    print()
-
-    # Load credentials
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
-
-    # Snapshots to process
-    snapshots = [
+def _get_target_snapshots():
+    """Get list of snapshots to process"""
+    return [
         {
             "snapshot_id": "snap-036eee4a7c291fd26",
             "region": "us-east-2",
@@ -285,17 +294,9 @@ def main():
         },
     ]
 
-    total_size_gb = sum(snap["size_gb"] for snap in snapshots)
-    total_monthly_savings = total_size_gb * (0.05 - 0.023)
 
-    print(f"🎯 Target: {len(snapshots)} snapshots ({total_size_gb} GB total)")
-    print(f"💰 Potential monthly savings: ${total_monthly_savings:.2f}")
-    print(f"💰 Potential annual savings: ${total_monthly_savings * 12:.2f}")
-    print()
-
-    print("\n🚀 Starting automated preparation...")
-
-    # Prepare all snapshots (create AMIs and S3 buckets)
+def _prepare_all_snapshots(snapshots, aws_access_key_id, aws_secret_access_key):
+    """Prepare all snapshots for export"""
     prepared_snapshots = []
     for snapshot in snapshots:
         try:
@@ -306,15 +307,13 @@ def main():
         except Exception as e:
             print(f"   ❌ Failed to prepare {snapshot['snapshot_id']}: {e}")
             raise
+    return prepared_snapshots
 
-    # Generate manual commands
-    export_commands, monitor_commands, cleanup_commands = generate_manual_commands(
-        prepared_snapshots
-    )
 
-    # Save commands to file for easy reference
+def _save_commands_to_file(prepared_snapshots, export_commands, monitor_commands, cleanup_commands):
+    """Save generated commands to a file"""
     commands_file = f"manual_export_commands_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-    with open(commands_file, "w") as f:
+    with open(commands_file, "w", encoding="utf-8") as f:
         f.write("AWS EBS Snapshot to S3 Manual Export Commands\n")
         f.write("=" * 50 + "\n\n")
 
@@ -329,6 +328,40 @@ def main():
             f.write(cleanup_commands[i - 1] + "\n\n")
 
     print(f"\n📄 Commands saved to: {commands_file}")
+
+
+def main():
+    """Main function"""
+    print("AWS EBS Snapshot to S3 Semi-Manual Export Script")
+    print("=" * 80)
+    print("This script will:")
+    print("✅ Create AMIs from your snapshots (automated)")
+    print("✅ Set up S3 buckets (automated)")
+    print("📋 Provide exact manual commands for exports")
+    print("📋 Provide monitoring and cleanup commands")
+    print()
+
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    snapshots = _get_target_snapshots()
+
+    total_size_gb = sum(snap["size_gb"] for snap in snapshots)
+    total_monthly_savings = total_size_gb * (0.05 - 0.023)
+
+    print(f"🎯 Target: {len(snapshots)} snapshots ({total_size_gb} GB total)")
+    print(f"💰 Potential monthly savings: ${total_monthly_savings:.2f}")
+    print(f"💰 Potential annual savings: ${total_monthly_savings * 12:.2f}")
+    print()
+
+    print("\n🚀 Starting automated preparation...")
+
+    prepared_snapshots = _prepare_all_snapshots(snapshots, aws_access_key_id, aws_secret_access_key)
+
+    export_commands, monitor_commands, cleanup_commands = generate_manual_commands(
+        prepared_snapshots
+    )
+
+    _save_commands_to_file(prepared_snapshots, export_commands, monitor_commands, cleanup_commands)
+
     print("\n✅ PREPARATION COMPLETE!")
     print("🎯 Next: Run the manual export commands shown above")
 

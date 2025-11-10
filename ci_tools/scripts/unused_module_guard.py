@@ -136,7 +136,8 @@ def _apply_config_overrides(
                     filtered.append((file_path, reason))
                 return filtered
 
-            guard.find_suspicious_duplicates = find_duplicates_with_config  # type: ignore[assignment]
+            # type: ignore[assignment]
+            guard.find_suspicious_duplicates = find_duplicates_with_config
 
 
 def _bootstrap() -> Callable[[], int]:

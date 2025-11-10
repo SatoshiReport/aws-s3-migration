@@ -4,10 +4,10 @@ AWS Lambda Cleanup Script
 Deletes all Lambda functions across regions to eliminate costs.
 """
 
-import os
 import time
 
 import boto3
+from botocore.exceptions import ClientError
 
 
 def setup_aws_credentials():
@@ -52,13 +52,13 @@ def delete_lambda_functions():
                     total_deleted += 1
                     time.sleep(1)  # Small delay to avoid rate limiting
 
-                except Exception as e:
+                except ClientError as e:
                     print(f"❌ Failed to delete {function_name}: {str(e)}")
 
-        except Exception as e:
+        except ClientError as e:
             print(f"❌ Error accessing Lambda in {region}: {str(e)}")
 
-    print(f"\n=== Lambda Cleanup Summary ===")
+    print("\n=== Lambda Cleanup Summary ===")
     print(f"Total Lambda functions deleted: {total_deleted}")
 
     if total_deleted > 0:

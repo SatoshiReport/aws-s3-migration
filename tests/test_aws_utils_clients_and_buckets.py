@@ -1,3 +1,5 @@
+"""Tests for aws_utils clients and bucket functionality."""
+
 from unittest import mock
 
 import pytest

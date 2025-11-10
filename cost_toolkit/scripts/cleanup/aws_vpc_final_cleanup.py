@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Final VPC cleanup operations."""
 
 import boto3
 from botocore.exceptions import ClientError
@@ -30,12 +31,12 @@ def release_remaining_elastic_ip():
             try:
                 # If associated, disassociate first
                 if association_id:
-                    print(f"  🔗 Disassociating from instance...")
+                    print("  🔗 Disassociating from instance...")
                     ec2.disassociate_address(AssociationId=association_id)
-                    print(f"  ✅ Disassociated successfully")
+                    print("  ✅ Disassociated successfully")
 
                 # Try to release the IP
-                print(f"  🗑️  Attempting to release Elastic IP...")
+                print("  🗑️  Attempting to release Elastic IP...")
                 ec2.release_address(AllocationId=allocation_id)
                 print(f"  ✅ Successfully released {public_ip}")
 
@@ -45,33 +46,32 @@ def release_remaining_elastic_ip():
 
                 if error_code == "InvalidAddress.Locked":
                     print(f"  ❌ IP is locked by AWS: {error_message}")
-                    print(f"  ℹ️  This IP requires AWS Support to unlock")
+                    print("  ℹ️  This IP requires AWS Support to unlock")
                     return False
-                else:
-                    print(f"  ❌ Failed to release {public_ip}: {error_message}")
-                    return False
+                print(f"  ❌ Failed to release {public_ip}: {error_message}")
+                return False
 
     except ClientError as e:
         print(f"❌ Error accessing eu-west-2: {e}")
         return False
-    else:
-        return True
+    return True
 
 
 def main():
+    """Release final remaining Elastic IP address."""
     print("Attempting to release the final remaining Elastic IP...")
 
     success = release_remaining_elastic_ip()
 
     if success:
-        print(f"\n✅ SUCCESS: All Elastic IPs have been released!")
-        print(f"💰 Total monthly savings: $14.40")
-        print(f"💰 Annual savings: $172.80")
+        print("\n✅ SUCCESS: All Elastic IPs have been released!")
+        print("💰 Total monthly savings: $14.40")
+        print("💰 Annual savings: $172.80")
     else:
-        print(f"\n⚠️  PARTIAL SUCCESS: 1 IP remains locked by AWS")
-        print(f"💰 Monthly savings so far: $10.80")
-        print(f"💰 Remaining cost: $3.60/month for locked IP")
-        print(f"📞 Contact AWS Support to unlock the remaining IP")
+        print("\n⚠️  PARTIAL SUCCESS: 1 IP remains locked by AWS")
+        print("💰 Monthly savings so far: $10.80")
+        print("💰 Remaining cost: $3.60/month for locked IP")
+        print("📞 Contact AWS Support to unlock the remaining IP")
 
 
 if __name__ == "__main__":

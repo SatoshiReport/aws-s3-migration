@@ -5,7 +5,9 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-import duplicate_tree_cli as cli
+from duplicate_tree.analysis import ScanFingerprint, build_directory_index_from_db
+from duplicate_tree.cache import load_cached_report, store_cached_report
+from duplicate_tree.cli import main
 from tests.assertions import assert_equal
 
 MIN_DUPLICATE_DIRECTORIES = 2
@@ -46,7 +48,7 @@ def _write_sample_db(tmp_path: Path) -> Path:
 def test_build_directory_index_from_db(tmp_path):
     """Test building directory index from database."""
     db_path = _write_sample_db(tmp_path)
-    index, fingerprint = cli.build_directory_index_from_db(str(db_path))
+    index, fingerprint = build_directory_index_from_db(str(db_path))
     assert_equal(fingerprint.total_files, 6)
     assert len(index.nodes) >= MIN_DUPLICATE_DIRECTORIES
 
@@ -54,14 +56,14 @@ def test_build_directory_index_from_db(tmp_path):
 def test_cache_round_trip(tmp_path):
     """Test caching and loading report."""
     db_path = tmp_path / "cache.db"
-    fingerprint = cli.ScanFingerprint(total_files=4, checksum="abc123")
-    cli.store_cached_report(
+    fingerprint = ScanFingerprint(total_files=4, checksum="abc123")
+    store_cached_report(
         str(db_path),
         fingerprint,
         base_path="/drive",
         clusters=[],
     )
-    cached = cli.load_cached_report(str(db_path), fingerprint, "/drive")
+    cached = load_cached_report(str(db_path), fingerprint, "/drive")
     assert cached is not None
     assert "rows" in cached
 
@@ -71,7 +73,7 @@ def test_cli_main_end_to_end(tmp_path, capsys):
     db_path = _write_sample_db(tmp_path)
     base_path = tmp_path / "drive"
     base_path.mkdir()
-    exit_code = cli.main(
+    exit_code = main(
         [
             "--db-path",
             str(db_path),
@@ -87,7 +89,7 @@ def test_cli_main_end_to_end(tmp_path, capsys):
     assert "dirA/sub" not in captured
     assert "GiB" in captured
 
-    exit_code_cached = cli.main(
+    exit_code_cached = main(
         [
             "--db-path",
             str(db_path),
@@ -127,7 +129,7 @@ def test_threshold_filters_small_clusters(tmp_path, capsys):
     conn.close()
     base_path = tmp_path / "drive_small"
     base_path.mkdir()
-    exit_code = cli.main(
+    exit_code = main(
         [
             "--db-path",
             str(db_path),

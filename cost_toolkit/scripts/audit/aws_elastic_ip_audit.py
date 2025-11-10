@@ -11,9 +11,9 @@ Unassociated Elastic IPs cost $0.005 per hour ($3.65/month each)
 
 import os
 import sys
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -45,7 +45,7 @@ def get_all_regions():
     try:
         response = ec2_client.describe_regions()
         return [region["RegionName"] for region in response["Regions"]]
-    except Exception as e:
+    except ClientError as e:
         print(f"⚠️  Could not get all regions, using common ones: {e}")
         # Fallback to common regions
         return [
@@ -109,12 +109,11 @@ def audit_elastic_ips_in_region(region, aws_access_key_id, aws_secret_access_key
                 region_data["unassociated_eips"].append(eip_data)
                 region_data["total_monthly_cost"] += 3.65
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error auditing region {region}: {e}")
         return None
 
-    else:
-        return region_data
+    return region_data
 
 
 def get_instance_name(ec2_client, instance_id):
@@ -126,23 +125,13 @@ def get_instance_name(ec2_client, instance_id):
                 for tag in instance.get("Tags", []):
                     if tag["Key"] == "Name":
                         return tag["Value"]
-    except:
+    except Exception:  # noqa: BLE001
         return "Unknown"
-    else:
-        return "Unnamed"
+    return "Unnamed"
 
 
-def audit_all_elastic_ips():  # noqa: C901, PLR0912, PLR0915
-    """Audit Elastic IPs across all AWS regions"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
-
-    print("AWS Elastic IP Audit")
-    print("=" * 80)
-    print("Scanning all regions for Elastic IP addresses...")
-    print("⚠️  Note: Unassociated Elastic IPs cost $0.005/hour ($3.65/month each)")
-    print()
-
-    regions = get_all_regions()
+def _scan_all_regions(regions, aws_access_key_id, aws_secret_access_key):
+    """Scan all regions for Elastic IPs."""
     total_eips = 0
     total_unassociated = 0
     total_monthly_cost = 0
@@ -162,10 +151,95 @@ def audit_all_elastic_ips():  # noqa: C901, PLR0912, PLR0915
             print(f"   📍 Found {region_data['total_eips']} Elastic IP(s)")
             if region_data["unassociated_eips"]:
                 print(
-                    f"   ⚠️  {len(region_data['unassociated_eips'])} unassociated (costing ${region_data['total_monthly_cost']:.2f}/month)"
+                    f"   ⚠️  {len(region_data['unassociated_eips'])} unassociated "
+                    f"(costing ${region_data['total_monthly_cost']:.2f}/month)"
                 )
         else:
-            print(f"   ✅ No Elastic IPs found")
+            print("   ✅ No Elastic IPs found")
+
+    return regions_with_eips, total_eips, total_unassociated, total_monthly_cost
+
+
+def _print_associated_eips(region_data, aws_access_key_id, aws_secret_access_key):
+    """Print associated EIPs for a region."""
+    if not region_data["associated_eips"]:
+        return
+
+    print(f"✅ Associated Elastic IPs ({len(region_data['associated_eips'])}):")
+
+    ec2_client = boto3.client(
+        "ec2",
+        region_name=region_data["region"],
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+
+    for eip in region_data["associated_eips"]:
+        attachment = "Unknown"
+        if eip["instance_id"]:
+            instance_name = get_instance_name(ec2_client, eip["instance_id"])
+            attachment = f"Instance: {eip['instance_id']} ({instance_name})"
+        elif eip["network_interface_id"]:
+            attachment = f"Network Interface: {eip['network_interface_id']}"
+
+        print(f"   • {eip['public_ip']} → {attachment}")
+
+
+def _print_unassociated_eips(region_data):
+    """Print unassociated EIPs for a region."""
+    if not region_data["unassociated_eips"]:
+        return
+
+    print(
+        f"⚠️  Unassociated Elastic IPs ({len(region_data['unassociated_eips'])}) " "- COSTING MONEY:"
+    )
+    for eip in region_data["unassociated_eips"]:
+        tags_str = ""
+        if eip["tags"]:
+            tag_names = [f"{tag['Key']}:{tag['Value']}" for tag in eip["tags"]]
+            tags_str = f" (Tags: {', '.join(tag_names)})"
+
+        print(
+            f"   • {eip['public_ip']} (ID: {eip['allocation_id']}) - "
+            f"${eip['monthly_cost']:.2f}/month{tags_str}"
+        )
+
+
+def _print_cleanup_recommendations(regions_with_eips, total_monthly_cost):
+    """Print cleanup recommendations and commands."""
+    print("💡 RECOMMENDATIONS:")
+    print("=" * 80)
+    print("1. Release unused Elastic IPs to eliminate charges")
+    print("2. Associate Elastic IPs with running instances if needed")
+    print("3. Consider using dynamic public IPs for non-production workloads")
+    print()
+    print("🔧 Commands to release unassociated Elastic IPs:")
+    for region_data in regions_with_eips:
+        if region_data["unassociated_eips"]:
+            for eip in region_data["unassociated_eips"]:
+                print(
+                    f"   aws ec2 release-address --allocation-id {eip['allocation_id']} "
+                    f"--region {region_data['region']}"
+                )
+    print()
+    print(f"💰 Total potential monthly savings: ${total_monthly_cost:.2f}")
+    print(f"💰 Total potential annual savings: ${total_monthly_cost * 12:.2f}")
+
+
+def audit_all_elastic_ips():
+    """Audit Elastic IPs across all AWS regions"""
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+
+    print("AWS Elastic IP Audit")
+    print("=" * 80)
+    print("Scanning all regions for Elastic IP addresses...")
+    print("⚠️  Note: Unassociated Elastic IPs cost $0.005/hour ($3.65/month each)")
+    print()
+
+    regions = get_all_regions()
+    regions_with_eips, total_eips, total_unassociated, total_monthly_cost = _scan_all_regions(
+        regions, aws_access_key_id, aws_secret_access_key
+    )
 
     print()
     print("=" * 80)
@@ -183,73 +257,22 @@ def audit_all_elastic_ips():  # noqa: C901, PLR0912, PLR0915
     print(f"💰 Annual cost from unassociated EIPs: ${total_monthly_cost * 12:.2f}")
     print()
 
-    # Detailed breakdown by region
     for region_data in regions_with_eips:
-        region = region_data["region"]
-        print(f"📍 Region: {region}")
+        print(f"📍 Region: {region_data['region']}")
         print("-" * 40)
 
-        # Show associated EIPs
-        if region_data["associated_eips"]:
-            print(f"✅ Associated Elastic IPs ({len(region_data['associated_eips'])}):")
-
-            ec2_client = boto3.client(
-                "ec2",
-                region_name=region,
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
-            )
-
-            for eip in region_data["associated_eips"]:
-                attachment = "Unknown"
-                if eip["instance_id"]:
-                    instance_name = get_instance_name(ec2_client, eip["instance_id"])
-                    attachment = f"Instance: {eip['instance_id']} ({instance_name})"
-                elif eip["network_interface_id"]:
-                    attachment = f"Network Interface: {eip['network_interface_id']}"
-
-                print(f"   • {eip['public_ip']} → {attachment}")
-
-        # Show unassociated EIPs (these cost money!)
-        if region_data["unassociated_eips"]:
-            print(
-                f"⚠️  Unassociated Elastic IPs ({len(region_data['unassociated_eips'])}) - COSTING MONEY:"
-            )
-            for eip in region_data["unassociated_eips"]:
-                tags_str = ""
-                if eip["tags"]:
-                    tag_names = [f"{tag['Key']}:{tag['Value']}" for tag in eip["tags"]]
-                    tags_str = f" (Tags: {', '.join(tag_names)})"
-
-                print(
-                    f"   • {eip['public_ip']} (ID: {eip['allocation_id']}) - ${eip['monthly_cost']:.2f}/month{tags_str}"
-                )
+        _print_associated_eips(region_data, aws_access_key_id, aws_secret_access_key)
+        _print_unassociated_eips(region_data)
 
         print()
 
-    # Recommendations
     if total_unassociated > 0:
-        print("💡 RECOMMENDATIONS:")
-        print("=" * 80)
-        print("1. Release unused Elastic IPs to eliminate charges")
-        print("2. Associate Elastic IPs with running instances if needed")
-        print("3. Consider using dynamic public IPs for non-production workloads")
-        print()
-        print("🔧 Commands to release unassociated Elastic IPs:")
-        for region_data in regions_with_eips:
-            if region_data["unassociated_eips"]:
-                for eip in region_data["unassociated_eips"]:
-                    print(
-                        f"   aws ec2 release-address --allocation-id {eip['allocation_id']} --region {region_data['region']}"
-                    )
-        print()
-        print(f"💰 Total potential monthly savings: ${total_monthly_cost:.2f}")
-        print(f"💰 Total potential annual savings: ${total_monthly_cost * 12:.2f}")
+        _print_cleanup_recommendations(regions_with_eips, total_monthly_cost)
 
 
 if __name__ == "__main__":
     try:
         audit_all_elastic_ips()
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)

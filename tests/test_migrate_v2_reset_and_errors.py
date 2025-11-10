@@ -83,6 +83,7 @@ class TestRunPhaseSkipping:
         return f"{self.__class__.__name__}()"
 
     def test_run_skips_scanner_in_middle_phases(self, migrator, mock_dependencies):
+        """Test that scanner is skipped when starting in middle phase."""
         mock_state = mock_dependencies["state"]
         mock_state.get_current_phase.side_effect = [Phase.GLACIER_RESTORE, Phase.COMPLETE]
 
@@ -99,6 +100,7 @@ class TestRunPhaseTransitions:
         return f"{self.__class__.__name__}()"
 
     def test_run_completes_all_phase_transitions(self, migrator, mock_dependencies):
+        """Test that all migration phases are executed in correct order."""
         mock_state = mock_dependencies["state"]
         mock_state.get_current_phase.side_effect = [
             Phase.SCANNING,
@@ -123,6 +125,7 @@ class TestS3MigrationV2ErrorHandling:
         return f"{self.__class__.__name__}()"
 
     def test_run_with_drive_check_failure(self, migrator, mock_dependencies):
+        """Test that SystemExit from drive check is propagated."""
         mock_dependencies["drive_checker"].check_available.side_effect = SystemExit(1)
 
         with pytest.raises(SystemExit):

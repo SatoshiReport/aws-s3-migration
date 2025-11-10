@@ -1,15 +1,27 @@
 #!/usr/bin/env python3
+"""Verify Route53 domain ownership."""
 
-import json
-from datetime import datetime, timezone
 
 import boto3
 from botocore.exceptions import ClientError
 
 
-def check_route53_registered_domains():  # noqa: C901, PLR0912
+def _get_domain_annual_cost(domain_name):
+    """Get estimated annual cost for a domain based on TLD."""
+    if domain_name.endswith(".com"):
+        return 12.00
+    if domain_name.endswith(".org"):
+        return 12.00
+    if domain_name.endswith(".net"):
+        return 12.00
+    if domain_name.endswith(".report"):
+        return 25.00
+    return 15.00
+
+
+def check_route53_registered_domains():
     """Check domains registered through Route 53"""
-    print(f"\n🏠 Checking Route 53 Registered Domains")
+    print("\n🏠 Checking Route 53 Registered Domains")
     print("=" * 80)
 
     try:
@@ -37,7 +49,6 @@ def check_route53_registered_domains():  # noqa: C901, PLR0912
             print(f"  Expiry: {expiry}")
             print(f"  Auto-renew: {auto_renew}")
 
-            # Get more details about the domain
             try:
                 detail_response = route53domains.get_domain_detail(DomainName=domain_name)
                 domain_detail = detail_response
@@ -48,23 +59,12 @@ def check_route53_registered_domains():  # noqa: C901, PLR0912
 
                 print(f"  Registrar: {registrar}")
                 print(f"  Status: {', '.join(status) if status else 'Unknown'}")
-                print(f"  Nameservers:")
+                print("  Nameservers:")
                 for ns in nameservers:
                     ns_name = ns.get("Name", "")
                     print(f"    {ns_name}")
 
-                # Estimate annual cost (varies by TLD)
-                if domain_name.endswith(".com"):
-                    annual_cost = 12.00
-                elif domain_name.endswith(".org"):
-                    annual_cost = 12.00
-                elif domain_name.endswith(".net"):
-                    annual_cost = 12.00
-                elif domain_name.endswith(".report"):
-                    annual_cost = 25.00  # Premium TLD
-                else:
-                    annual_cost = 15.00  # Estimate for other TLDs
-
+                annual_cost = _get_domain_annual_cost(domain_name)
                 total_annual_cost += annual_cost
                 print(f"  Estimated annual cost: ${annual_cost:.2f}")
 
@@ -85,7 +85,7 @@ def check_route53_registered_domains():  # noqa: C901, PLR0912
 
             print()
 
-        print(f"📊 Domain Registration Summary:")
+        print("📊 Domain Registration Summary:")
         print(f"  Total registered domains: {len(domains)}")
         print(f"  Estimated total annual cost: ${total_annual_cost:.2f}")
 
@@ -93,13 +93,12 @@ def check_route53_registered_domains():  # noqa: C901, PLR0912
         print(f"❌ Error checking registered domains: {e}")
         return []
 
-    else:
-        return domain_details
+    return domain_details
 
 
 def check_current_hosted_zones():
     """Check current hosted zones (after cleanup)"""
-    print(f"\n🌐 Current Route 53 Hosted Zones")
+    print("\n🌐 Current Route 53 Hosted Zones")
     print("=" * 80)
 
     try:
@@ -125,7 +124,7 @@ def check_current_hosted_zones():
             print(f"  Zone ID: {zone_id}")
             print(f"  Type: {'Private' if is_private else 'Public'}")
             print(f"  Record Count: {record_count}")
-            print(f"  Monthly Cost: $0.50")
+            print("  Monthly Cost: $0.50")
 
             zone_details.append(
                 {
@@ -137,7 +136,7 @@ def check_current_hosted_zones():
             )
             print()
 
-        print(f"📊 Hosted Zones Summary:")
+        print("📊 Hosted Zones Summary:")
         print(f"  Total zones: {len(hosted_zones)}")
         print(f"  Monthly cost: ${len(hosted_zones) * 0.50:.2f}")
 
@@ -145,67 +144,74 @@ def check_current_hosted_zones():
         print(f"❌ Error checking hosted zones: {e}")
         return []
 
-    else:
-        return zone_details
+    return zone_details
 
 
-def main():  # noqa: PLR0912
-    print("AWS Route 53 Domain Ownership Analysis")
-    print("=" * 80)
-    print("Checking domain registration vs DNS hosting...")
-
-    # Check registered domains
-    registered_domains = check_route53_registered_domains()
-
-    # Check current hosted zones
-    hosted_zones = check_current_hosted_zones()
-
-    # Analysis
+def _print_ownership_analysis(registered_domains, hosted_zones):
+    """Print domain ownership analysis."""
     print("\n" + "=" * 80)
     print("🎯 DOMAIN OWNERSHIP ANALYSIS")
     print("=" * 80)
 
     if registered_domains:
-        print(f"✅ You OWN these domains through Route 53:")
+        print("✅ You OWN these domains through Route 53:")
         for domain in registered_domains:
             print(f"  {domain['domain_name']} (expires: {domain['expiry']})")
     else:
-        print(f"❌ No domains registered through Route 53")
-        print(f"   Your domains may be registered elsewhere (GoDaddy, Namecheap, etc.)")
+        print("❌ No domains registered through Route 53")
+        print("   Your domains may be registered elsewhere (GoDaddy, Namecheap, etc.)")
 
     if hosted_zones:
-        print(f"\n🌐 You have DNS hosting for:")
+        print("\n🌐 You have DNS hosting for:")
         for zone in hosted_zones:
             print(f"  {zone['zone_name']} (Route 53 hosted zone)")
 
-    # Cost breakdown
-    print(f"\n💰 COST BREAKDOWN:")
+
+def _print_cost_breakdown(registered_domains, hosted_zones):
+    """Print cost breakdown."""
+    print("\n💰 COST BREAKDOWN:")
 
     if registered_domains:
         total_registration_cost = sum(d["annual_cost"] for d in registered_domains)
         print(f"  Domain registration: ${total_registration_cost:.2f}/year")
     else:
-        print(f"  Domain registration: $0/year (registered elsewhere)")
+        print("  Domain registration: $0/year (registered elsewhere)")
 
     if hosted_zones:
         monthly_hosting_cost = len(hosted_zones) * 0.50
         annual_hosting_cost = monthly_hosting_cost * 12
         print(f"  DNS hosting: ${monthly_hosting_cost:.2f}/month (${annual_hosting_cost:.2f}/year)")
     else:
-        print(f"  DNS hosting: $0/month")
+        print("  DNS hosting: $0/month")
 
-    # Recommendations
-    print(f"\n📋 RECOMMENDATIONS:")
+
+def _print_recommendations(registered_domains, hosted_zones):
+    """Print recommendations."""
+    print("\n📋 RECOMMENDATIONS:")
 
     if not registered_domains and hosted_zones:
-        print(f"  🔍 Your domains are likely registered elsewhere")
-        print(f"  💡 You can keep using Route 53 for DNS even if domains are registered elsewhere")
-        print(f"  💰 Consider moving DNS to free providers like Cloudflare to save money")
+        print("  🔍 Your domains are likely registered elsewhere")
+        print("  💡 You can keep using Route 53 for DNS even if domains are registered elsewhere")
+        print("  💰 Consider moving DNS to free providers like Cloudflare to save money")
 
     if registered_domains:
         print(f"  ✅ You own {len(registered_domains)} domain(s) through Route 53")
-        print(f"  🔄 These will auto-renew unless you disable it")
-        print(f"  💡 You can transfer DNS hosting elsewhere while keeping registration here")
+        print("  🔄 These will auto-renew unless you disable it")
+        print("  💡 You can transfer DNS hosting elsewhere while keeping registration here")
+
+
+def main():
+    """Analyze Route53 domain ownership."""
+    print("AWS Route 53 Domain Ownership Analysis")
+    print("=" * 80)
+    print("Checking domain registration vs DNS hosting...")
+
+    registered_domains = check_route53_registered_domains()
+    hosted_zones = check_current_hosted_zones()
+
+    _print_ownership_analysis(registered_domains, hosted_zones)
+    _print_cost_breakdown(registered_domains, hosted_zones)
+    _print_recommendations(registered_domains, hosted_zones)
 
 
 if __name__ == "__main__":

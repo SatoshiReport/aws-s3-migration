@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
+"""Clean up Route53 DNS records and hosted zones."""
 
-import json
 import time
-from datetime import datetime, timezone
 
 import boto3
 from botocore.exceptions import ClientError
@@ -37,14 +36,13 @@ def delete_health_check(health_check_id):
         # Delete the health check
         route53.delete_health_check(HealthCheckId=health_check_id)
         print(f"  ✅ Health check {health_check_id} deleted successfully")
-        print(f"  💰 Monthly savings: $0.50")
+        print("  💰 Monthly savings: $0.50")
 
     except ClientError as e:
         print(f"  ❌ Error deleting health check {health_check_id}: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
 def delete_hosted_zone(zone_name, zone_id):
@@ -59,12 +57,12 @@ def delete_hosted_zone(zone_name, zone_id):
         print(f"  Zone Name: {zone_name}")
 
         # Step 1: Get all records in the zone
-        print(f"  Step 1: Getting all DNS records...")
+        print("  Step 1: Getting all DNS records...")
         records_response = route53.list_resource_record_sets(HostedZoneId=f"/hostedzone/{zone_id}")
         records = records_response.get("ResourceRecordSets", [])
 
         # Step 2: Delete all records except NS and SOA (which can't be deleted)
-        print(f"  Step 2: Deleting DNS records...")
+        print("  Step 2: Deleting DNS records...")
         records_to_delete = []
 
         for record in records:
@@ -90,7 +88,7 @@ def delete_hosted_zone(zone_name, zone_id):
 
             # Submit the change batch
             change_batch = {
-                "Comment": f"Deleting all records before zone deletion",
+                "Comment": "Deleting all records before zone deletion",
                 "Changes": changes,
             }
 
@@ -103,122 +101,154 @@ def delete_hosted_zone(zone_name, zone_id):
                 print(f"    Change submitted: {change_id}")
 
                 # Wait for changes to propagate
-                print(f"    Waiting for DNS changes to propagate...")
+                print("    Waiting for DNS changes to propagate...")
                 waiter = route53.get_waiter("resource_record_sets_changed")
                 waiter.wait(Id=change_id, WaiterConfig={"Delay": 10, "MaxAttempts": 30})
-                print(f"    ✅ DNS records deleted successfully")
+                print("    ✅ DNS records deleted successfully")
 
             except ClientError as e:
                 print(f"    ❌ Error deleting DNS records: {e}")
                 return False
         else:
-            print(f"  No custom DNS records to delete")
+            print("  No custom DNS records to delete")
 
         # Step 3: Delete the hosted zone
-        print(f"  Step 3: Deleting hosted zone...")
+        print("  Step 3: Deleting hosted zone...")
         route53.delete_hosted_zone(Id=f"/hostedzone/{zone_id}")
         print(f"  ✅ Hosted zone {zone_name} deleted successfully")
-        print(f"  💰 Monthly savings: $0.50")
+        print("  💰 Monthly savings: $0.50")
 
     except ClientError as e:
         print(f"  ❌ Error deleting hosted zone {zone_name}: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
-def main():  # noqa: PLR0915
-    print("AWS Route 53 Cleanup")
-    print("=" * 80)
-    print("Removing health check and specified hosted zones...")
+def _print_cleanup_warning():
+    """Print warning about what will be deleted."""
+    print("\n⚠️  WARNING: This will delete:")
+    print("  - 1 health check (monitoring satoshi.report)")
+    print("  - 2 hosted zones (lucasahrens.com, iwannabenewyork.com)")
+    print("  - All DNS records in those zones")
+    print("")
+    print("💰 Total monthly savings: $1.50")
+    print("")
+    print("🚨 IMPORTANT:")
+    print("  - lucasahrens.com and iwannabenewyork.com will stop working")
+    print("  - You'll need to set up DNS elsewhere if you want to use these domains")
+    print("  - satoshi.report will remain fully functional")
 
-    # Resources to delete based on the audit
-    health_check_id = "ba40de25-4233-4d5c-83ee-2aa058f62fde"
 
-    zones_to_delete = [
-        ("lucasahrens.com.", "Z2UJB81SP0DSN5"),
-        ("iwannabenewyork.com.", "Z02247451EYLYTZRVX4QB"),
-    ]
-
-    print(f"\n⚠️  WARNING: This will delete:")
-    print(f"  - 1 health check (monitoring satoshi.report)")
-    print(f"  - 2 hosted zones (lucasahrens.com, iwannabenewyork.com)")
-    print(f"  - All DNS records in those zones")
-    print(f"")
-    print(f"💰 Total monthly savings: $1.50")
-    print(f"")
-    print(f"🚨 IMPORTANT:")
-    print(f"  - lucasahrens.com and iwannabenewyork.com will stop working")
-    print(f"  - You'll need to set up DNS elsewhere if you want to use these domains")
-    print(f"  - satoshi.report will remain fully functional")
-
-    results = []
-
-    # Delete health check
-    print(f"\n" + "=" * 80)
+def _delete_health_checks(health_check_id):
+    """Delete health check and return results."""
+    print("\n" + "=" * 80)
     print("DELETING HEALTH CHECK")
     print("=" * 80)
-
     hc_success = delete_health_check(health_check_id)
-    results.append(("Health Check", hc_success))
+    return [("Health Check", hc_success)]
 
-    # Delete hosted zones
-    print(f"\n" + "=" * 80)
+
+def _delete_zones(zones_to_delete):
+    """Delete hosted zones and return results."""
+    print("\n" + "=" * 80)
     print("DELETING HOSTED ZONES")
     print("=" * 80)
 
-    for zone_name, zone_id in zones_to_delete:
-        zone_success = delete_hosted_zone(zone_name, zone_id)
+    results = []
+    for zone_name, _ in zones_to_delete:
+        zone_success = delete_hosted_zone(zone_name, _)
         results.append((zone_name, zone_success))
-
-        # Small delay between zone deletions
         if zone_success:
             time.sleep(5)
 
-    # Summary
-    print(f"\n" + "=" * 80)
+    return results
+
+
+def _print_successful_deletions(successful_deletions):
+    """Print successful deletions."""
+    print(f"✅ Successfully deleted: {len(successful_deletions)}")
+    for item in successful_deletions:
+        print(f"  {item}")
+
+
+def _print_failed_deletions(failed_deletions):
+    """Print failed deletions if any."""
+    if not failed_deletions:
+        return
+
+    print(f"\n❌ Failed to delete: {len(failed_deletions)}")
+    for item in failed_deletions:
+        print(f"  {item}")
+
+
+def _calculate_total_savings(results, zones_to_delete):
+    """Calculate total monthly savings from deletions."""
+    total_savings = 0
+
+    if ("Health Check", True) in results:
+        total_savings += 0.50
+
+    for zone_name, _ in zones_to_delete:
+        if (zone_name, True) in results:
+            total_savings += 0.50
+
+    return total_savings
+
+
+def _print_summary(results, zones_to_delete):
+    """Print cleanup summary."""
+    print("\n" + "=" * 80)
     print("🎯 CLEANUP SUMMARY")
     print("=" * 80)
 
     successful_deletions = [item for item, success in results if success]
     failed_deletions = [item for item, success in results if not success]
 
-    print(f"✅ Successfully deleted: {len(successful_deletions)}")
-    for item in successful_deletions:
-        print(f"  {item}")
+    _print_successful_deletions(successful_deletions)
+    _print_failed_deletions(failed_deletions)
 
-    if failed_deletions:
-        print(f"\n❌ Failed to delete: {len(failed_deletions)}")
-        for item in failed_deletions:
-            print(f"  {item}")
+    return _calculate_total_savings(results, zones_to_delete)
 
-    # Calculate savings
-    total_savings = 0
-    if ("Health Check", True) in results:
-        total_savings += 0.50
 
-    for zone_name, zone_id in zones_to_delete:
-        if (zone_name, True) in results:
-            total_savings += 0.50
+def main():
+    """Clean up Route53 DNS records."""
+    print("AWS Route 53 Cleanup")
+    print("=" * 80)
+    print("Removing health check and specified hosted zones...")
 
-    print(f"\n💰 COST SAVINGS:")
+    health_check_id = "ba40de25-4233-4d5c-83ee-2aa058f62fde"
+    zones_to_delete = [
+        ("lucasahrens.com.", "Z2UJB81SP0DSN5"),
+        ("iwannabenewyork.com.", "Z02247451EYLYTZRVX4QB"),
+    ]
+
+    _print_cleanup_warning()
+
+    results = []
+    results.extend(_delete_health_checks(health_check_id))
+    results.extend(_delete_zones(zones_to_delete))
+
+    total_savings = _print_summary(results, zones_to_delete)
+    successful_deletions = [item for item, success in results if success]
+
+    print("\n💰 COST SAVINGS:")
     print(f"  Monthly savings: ${total_savings:.2f}")
     print(f"  Annual savings: ${total_savings * 12:.2f}")
 
-    print(f"\n📊 REMAINING ROUTE 53 COSTS:")
-    print(f"  satoshi.report hosted zone: $0.50/month")
-    print(f"  DNS queries: ~$0.07/month")
-    print(f"  New estimated total: ~$0.57/month (down from $1.57)")
+    print("\n📊 REMAINING ROUTE 53 COSTS:")
+    print("  satoshi.report hosted zone: $0.50/month")
+    print("  DNS queries: ~$0.07/month")
+    print("  New estimated total: ~$0.57/month (down from $1.57)")
 
-    print(f"\n🔧 NEXT STEPS:")
+    print("\n🔧 NEXT STEPS:")
     if successful_deletions:
-        print(f"  1. lucasahrens.com and iwannabenewyork.com will stop resolving")
-        print(f"  2. If you need these domains to work, set up DNS elsewhere:")
-        print(f"     - Cloudflare (free)")
-        print(f"     - Your domain registrar's DNS")
-        print(f"     - Other DNS providers")
-        print(f"  3. satoshi.report remains fully functional")
+        print("  1. lucasahrens.com and iwannabenewyork.com will stop resolving")
+        print("  2. If you need these domains to work, set up DNS elsewhere:")
+        print("     - Cloudflare (free)")
+        print("     - Your domain registrar's DNS")
+        print("     - Other DNS providers")
+        print("  3. satoshi.report remains fully functional")
 
 
 if __name__ == "__main__":

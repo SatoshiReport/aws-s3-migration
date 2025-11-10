@@ -56,6 +56,7 @@ def _import_shim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, shared_code: s
 
 
 def test_shim_applies_config_and_delegates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Test that guard shim applies config and delegates correctly."""
     shared_code = """
 SUSPICIOUS_PATTERNS = ("_v2", "_temp")
 LAST_EXCLUDES = None
@@ -80,6 +81,7 @@ def main():
 
 
 def test_missing_shared_guard_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Test that ImportError is raised when shared guard module is missing."""
     monkeypatch.setenv("CI_SHARED_ROOT", str(tmp_path))
     with pytest.raises(ImportError):
         importlib.import_module("ci_tools.scripts.unused_module_guard")

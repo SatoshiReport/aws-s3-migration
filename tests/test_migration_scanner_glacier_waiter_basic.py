@@ -62,7 +62,7 @@ class TestGlacierWaiterBasicWaiting:
     def test_wait_for_restores_with_sleep(self, waiter, mock_s3, mock_state):
         """Test that wait_for_restores sleeps between checks"""
         # Mock _check_restore_status to avoid side_effect issues
-        waiter._check_restore_status = mock.Mock(return_value=False)
+        waiter.check_restore_status = mock.Mock(return_value=False)
 
         mock_state.get_files_restoring.side_effect = [
             [{"bucket": "test-bucket", "key": "file.txt"}],
@@ -115,12 +115,12 @@ class TestGlacierWaiterInterruption:
             waiter.interrupted = True
             return False
 
-        waiter._check_restore_status = mock.Mock(side_effect=interrupt_on_second_file)
+        waiter.check_restore_status = mock.Mock(side_effect=interrupt_on_second_file)
 
         waiter.wait_for_restores()
 
         # Should only check first file before interrupt
-        assert waiter._check_restore_status.call_count == 1
+        assert waiter.check_restore_status.call_count == 1
 
 
 class TestGlacierWaiterLooping:
@@ -144,7 +144,7 @@ class TestGlacierWaiterLooping:
     def test_wait_for_restores_loops_until_complete(self, waiter, mock_s3, mock_state):
         """Test that wait_for_restores loops multiple times"""
         # Mock _check_restore_status to avoid complications
-        waiter._check_restore_status = mock.Mock(return_value=False)
+        waiter.check_restore_status = mock.Mock(return_value=False)
 
         # Simulate 2 check cycles
         mock_state.get_files_restoring.side_effect = [

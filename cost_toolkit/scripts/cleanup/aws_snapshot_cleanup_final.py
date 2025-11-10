@@ -8,9 +8,9 @@ This script targets the 7 specific snapshots that should now be deletable.
 import os
 import sys
 import time
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -34,20 +34,16 @@ def delete_snapshot(ec2_client, snapshot_id, region):
         print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
         ec2_client.delete_snapshot(SnapshotId=snapshot_id)
         print(f"   ✅ Successfully deleted {snapshot_id}")
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error deleting {snapshot_id}: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
-def delete_freed_snapshots():  # noqa: PLR0915
-    """Delete snapshots that were freed after AMI deregistration"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
-
-    # Snapshots that should now be deletable after AMI deregistration
-    snapshots_to_delete = [
+def get_snapshots_to_delete():
+    """Get list of snapshots to delete after AMI deregistration"""
+    return [
         {
             "snapshot_id": "snap-09e90c64db692f884",
             "region": "eu-west-2",
@@ -92,6 +88,9 @@ def delete_freed_snapshots():  # noqa: PLR0915
         },
     ]
 
+
+def print_deletion_warning(snapshots_to_delete):
+    """Print warning message about snapshot deletion"""
     print("AWS Final Snapshot Cleanup Script")
     print("=" * 80)
     print("Deleting snapshots freed after AMI deregistration...")
@@ -108,16 +107,15 @@ def delete_freed_snapshots():  # noqa: PLR0915
     print(f"   - Total monthly savings: ${total_potential_savings:.2f}")
     print()
 
+
+def confirm_snapshot_deletion():
+    """Prompt user for snapshot deletion confirmation"""
     confirmation = input("Type 'DELETE FREED SNAPSHOTS' to confirm deletion: ")
+    return confirmation == "DELETE FREED SNAPSHOTS"
 
-    if confirmation != "DELETE FREED SNAPSHOTS":
-        print("❌ Operation cancelled by user")
-        return
 
-    print()
-    print("🚨 Proceeding with freed snapshot deletion...")
-    print("=" * 80)
-
+def process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secret_access_key):
+    """Process deletion for all snapshots"""
     successful_deletions = 0
     failed_deletions = 0
     total_savings = 0
@@ -135,7 +133,6 @@ def delete_freed_snapshots():  # noqa: PLR0915
         print(f"   Description: {description}")
         print(f"   Monthly cost: ${monthly_cost:.2f}")
 
-        # Create EC2 client for the specific region
         ec2_client = boto3.client(
             "ec2",
             region_name=region,
@@ -150,10 +147,13 @@ def delete_freed_snapshots():  # noqa: PLR0915
             failed_deletions += 1
 
         print()
-
-        # Small delay between deletions to avoid rate limiting
         time.sleep(1)
 
+    return successful_deletions, failed_deletions, total_savings
+
+
+def print_cleanup_summary(successful_deletions, failed_deletions, total_savings):
+    """Print summary of cleanup results"""
     print("=" * 80)
     print("🎯 FINAL CLEANUP SUMMARY")
     print("=" * 80)
@@ -175,9 +175,31 @@ def delete_freed_snapshots():  # noqa: PLR0915
         print("   Try again in a few minutes")
 
 
+def delete_freed_snapshots():
+    """Delete snapshots that were freed after AMI deregistration"""
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    snapshots_to_delete = get_snapshots_to_delete()
+
+    print_deletion_warning(snapshots_to_delete)
+
+    if not confirm_snapshot_deletion():
+        print("❌ Operation cancelled by user")
+        return
+
+    print()
+    print("🚨 Proceeding with freed snapshot deletion...")
+    print("=" * 80)
+
+    successful, failed, savings = process_snapshot_deletions(
+        snapshots_to_delete, aws_access_key_id, aws_secret_access_key
+    )
+
+    print_cleanup_summary(successful, failed, savings)
+
+
 if __name__ == "__main__":
     try:
         delete_freed_snapshots()
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)

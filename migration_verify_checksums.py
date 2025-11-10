@@ -55,7 +55,8 @@ class VerificationProgressTracker:  # pylint: disable=too-few-public-methods
         print(f"\r  {progress_str}", end="", flush=True)
 
 
-def _verify_multipart_file(s3_key: str, file_path: Path, stats: Dict) -> None:
+def verify_multipart_file(s3_key: str, file_path: Path, stats: Dict) -> None:
+    """Verify SHA256 hash for multipart uploaded files."""
     try:
         sha256_hash = hashlib.sha256()
         hash_file_in_chunks(file_path, sha256_hash)
@@ -66,7 +67,8 @@ def _verify_multipart_file(s3_key: str, file_path: Path, stats: Dict) -> None:
         stats["verification_errors"].append(f"{s3_key}: file health check failed: {exc}")
 
 
-def _compute_etag(file_path: Path, s3_etag: str) -> Tuple[str, bool]:
+def compute_etag(file_path: Path, s3_etag: str) -> Tuple[str, bool]:
+    """Compute file's MD5 ETag and compare with S3 ETag."""
     s3_etag = s3_etag.strip('"')
     md5_hash = hashlib.md5(usedforsecurity=False)
     hash_file_in_chunks(file_path, md5_hash)
@@ -74,9 +76,10 @@ def _compute_etag(file_path: Path, s3_etag: str) -> Tuple[str, bool]:
     return computed_etag, computed_etag == s3_etag
 
 
-def _verify_singlepart_file(s3_key: str, file_path: Path, expected_etag: str, stats: Dict) -> None:
+def verify_singlepart_file(s3_key: str, file_path: Path, expected_etag: str, stats: Dict) -> None:
+    """Verify MD5 ETag for single-part uploaded files."""
     try:
-        computed_etag, is_match = _compute_etag(file_path, expected_etag)
+        computed_etag, is_match = compute_etag(file_path, expected_etag)
         if not is_match:
             stats["verification_errors"].append(
                 f"{s3_key}: checksum mismatch (expected {expected_etag}, got {computed_etag})"
@@ -88,9 +91,10 @@ def _verify_singlepart_file(s3_key: str, file_path: Path, expected_etag: str, st
         stats["verification_errors"].append(f"{s3_key}: checksum computation failed: {exc}")
 
 
-def _verify_single_file(
+def verify_single_file(
     s3_key: str, local_files: Dict, expected_file_map: Dict, stats: Dict
 ) -> None:
+    """Verify size and checksum for a single file."""
     file_path = local_files[s3_key]
     expected_meta = expected_file_map[s3_key]
     expected_file_size = expected_meta["size"]
@@ -106,9 +110,9 @@ def _verify_single_file(
     stats["size_verified"] += 1
     stats["total_bytes_verified"] += actual_size
     if "-" in expected_etag:
-        _verify_multipart_file(s3_key, file_path, stats)
+        verify_multipart_file(s3_key, file_path, stats)
     else:
-        _verify_singlepart_file(s3_key, file_path, expected_etag, stats)
+        verify_singlepart_file(s3_key, file_path, expected_etag, stats)
 
 
 class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
@@ -136,7 +140,7 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
         }
         start_time = time.time()
         for s3_key in sorted(expected_file_map.keys()):
-            _verify_single_file(s3_key, local_files, expected_file_map, stats)
+            verify_single_file(s3_key, local_files, expected_file_map, stats)
             self.progress.update_progress(
                 start_time,
                 stats["verified_count"],
@@ -148,11 +152,11 @@ class FileChecksumVerifier:  # pylint: disable=too-few-public-methods
         check_verification_errors(stats["verification_errors"])
         return {k: v for k, v in stats.items() if k != "verification_errors"}
 
-    # Backwards compatible accessors for targeted patching/tests.
-    _verify_single_file = staticmethod(_verify_single_file)
-    _verify_multipart_file = staticmethod(_verify_multipart_file)
-    _verify_singlepart_file = staticmethod(_verify_singlepart_file)
-    _compute_etag = staticmethod(_compute_etag)
+    # Public accessors for testing.
+    verify_single_file = staticmethod(verify_single_file)
+    verify_multipart_file = staticmethod(verify_multipart_file)
+    verify_singlepart_file = staticmethod(verify_singlepart_file)
+    compute_etag = staticmethod(compute_etag)
 
 
 __all__ = ["FileChecksumVerifier", "VerificationProgressTracker"]

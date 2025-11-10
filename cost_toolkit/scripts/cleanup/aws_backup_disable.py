@@ -4,15 +4,55 @@ AWS Backup Disable Script
 Safely disables all automated backup services while preserving existing data.
 """
 
-import os
-import sys
-from datetime import datetime, timezone
 
 import boto3
+from botocore.exceptions import ClientError
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from aws_utils import setup_aws_credentials
+from ..aws_utils import setup_aws_credentials
+
+
+def _delete_backup_selection(backup_client, plan_id, selection):
+    """Delete a single backup selection."""
+    selection_id = selection["SelectionId"]
+    selection_name = selection["SelectionName"]
+
+    print(f"      Removing selection: {selection_name} ({selection_id})")
+
+    try:
+        backup_client.delete_backup_selection(BackupPlanId=plan_id, SelectionId=selection_id)
+        print(f"      ✅ Successfully removed backup selection: {selection_name}")
+    except ClientError as e:
+        print(f"      ❌ Error removing backup selection {selection_name}: {e}")
+
+
+def _delete_plan_selections(backup_client, plan_id):
+    """Delete all selections for a backup plan."""
+    selections_response = backup_client.list_backup_selections(BackupPlanId=plan_id)
+    selections = selections_response.get("BackupSelectionsList", [])
+
+    if selections:
+        print(f"    🔍 Found {len(selections)} backup selection(s) to remove first")
+        for selection in selections:
+            _delete_backup_selection(backup_client, plan_id, selection)
+
+
+def _delete_single_backup_plan(backup_client, plan):
+    """Delete a single backup plan and its selections."""
+    plan_id = plan["BackupPlanId"]
+    plan_name = plan["BackupPlanName"]
+    creation_date = plan["CreationDate"]
+
+    print(f"  Plan: {plan_name} ({plan_id})")
+    print(f"    Created: {creation_date}")
+
+    try:
+        _delete_plan_selections(backup_client, plan_id)
+        backup_client.delete_backup_plan(BackupPlanId=plan_id)
+        print(f"    ✅ Successfully deleted backup plan: {plan_name}")
+    except ClientError as e:
+        print(f"    ❌ Error deleting backup plan {plan_name}: {e}")
+
+    print()
 
 
 def disable_aws_backup_plans(region):
@@ -20,59 +60,17 @@ def disable_aws_backup_plans(region):
     try:
         backup_client = boto3.client("backup", region_name=region)
 
-        # List backup plans
         plans_response = backup_client.list_backup_plans()
         backup_plans = plans_response.get("BackupPlansList", [])
 
         if backup_plans:
             print(f"🔍 Found {len(backup_plans)} AWS Backup plan(s) in {region}")
-
             for plan in backup_plans:
-                plan_id = plan["BackupPlanId"]
-                plan_name = plan["BackupPlanName"]
-                creation_date = plan["CreationDate"]
-
-                print(f"  Plan: {plan_name} ({plan_id})")
-                print(f"    Created: {creation_date}")
-
-                # First, delete all backup selections for this plan
-                try:
-                    selections_response = backup_client.list_backup_selections(BackupPlanId=plan_id)
-                    selections = selections_response.get("BackupSelectionsList", [])
-
-                    if selections:
-                        print(f"    🔍 Found {len(selections)} backup selection(s) to remove first")
-
-                        for selection in selections:
-                            selection_id = selection["SelectionId"]
-                            selection_name = selection["SelectionName"]
-
-                            print(f"      Removing selection: {selection_name} ({selection_id})")
-
-                            try:
-                                backup_client.delete_backup_selection(
-                                    BackupPlanId=plan_id, SelectionId=selection_id
-                                )
-                                print(
-                                    f"      ✅ Successfully removed backup selection: {selection_name}"
-                                )
-                            except Exception as e:
-                                print(
-                                    f"      ❌ Error removing backup selection {selection_name}: {e}"
-                                )
-
-                    # Now delete the backup plan
-                    backup_client.delete_backup_plan(BackupPlanId=plan_id)
-                    print(f"    ✅ Successfully deleted backup plan: {plan_name}")
-
-                except Exception as e:
-                    print(f"    ❌ Error deleting backup plan {plan_name}: {e}")
-
-                print()
+                _delete_single_backup_plan(backup_client, plan)
         else:
             print(f"  No AWS Backup plans found in {region}")
 
-    except Exception as e:
+    except ClientError as e:
         if "UnrecognizedClientException" in str(e):
             print(f"  AWS Backup service not available in {region}")
             return
@@ -103,21 +101,21 @@ def disable_dlm_policies(region):
                 if state == "ENABLED":
                     try:
                         # Update policy to DISABLED state
-                        policy_details = dlm_client.get_lifecycle_policy(PolicyId=policy_id)
+                        _ = dlm_client.get_lifecycle_policy(PolicyId=policy_id)
 
                         # Update the policy state to DISABLED
                         dlm_client.update_lifecycle_policy(PolicyId=policy_id, State="DISABLED")
                         print(f"    ✅ Successfully disabled DLM policy: {policy_id}")
-                    except Exception as e:
+                    except ClientError as e:
                         print(f"    ❌ Error disabling DLM policy {policy_id}: {e}")
                 else:
-                    print(f"    ℹ️  Policy already disabled")
+                    print("    ℹ️  Policy already disabled")
 
                 print()
         else:
             print(f"  No Data Lifecycle Manager policies found in {region}")
 
-    except Exception as e:
+    except ClientError as e:
         if "UnrecognizedClientException" in str(e):
             print(f"  Data Lifecycle Manager service not available in {region}")
             return
@@ -165,16 +163,16 @@ def disable_eventbridge_backup_rules(region):
                         # Disable the rule
                         events_client.disable_rule(Name=rule_name)
                         print(f"    ✅ Successfully disabled EventBridge rule: {rule_name}")
-                    except Exception as e:
+                    except ClientError as e:
                         print(f"    ❌ Error disabling EventBridge rule {rule_name}: {e}")
                 else:
-                    print(f"    ℹ️  Rule already disabled")
+                    print("    ℹ️  Rule already disabled")
 
                 print()
         else:
             print(f"  No backup-related EventBridge rules found in {region}")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"  Error checking EventBridge rules in {region}: {e}")
 
 
@@ -205,18 +203,18 @@ def check_backup_vault_policies(region):
 
                     point_count = len(recovery_points.get("RecoveryPoints", []))
                     if point_count > 0:
-                        print(f"    ℹ️  Vault contains recovery points - keeping vault")
+                        print("    ℹ️  Vault contains recovery points - keeping vault")
                     else:
-                        print(f"    ℹ️  Vault is empty - could be deleted if desired")
+                        print("    ℹ️  Vault is empty - could be deleted if desired")
 
-                except Exception as e:
+                except ClientError as e:
                     print(f"    ⚠️  Error checking vault contents: {e}")
 
                 print()
         else:
             print(f"  No backup vaults found in {region}")
 
-    except Exception as e:
+    except ClientError as e:
         if "UnrecognizedClientException" in str(e):
             return
         print(f"  Error checking backup vaults in {region}: {e}")

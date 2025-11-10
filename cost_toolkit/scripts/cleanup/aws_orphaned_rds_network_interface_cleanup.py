@@ -5,9 +5,9 @@ Deletes RDS network interfaces that are no longer attached to any RDS instances.
 """
 
 import os
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 # Constants
@@ -99,7 +99,7 @@ def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_
                 print(f"   ❌ Failed to delete {interface_id}: {error_message}")
                 failed_deletions.append({"interface": interface, "reason": error_message})
 
-        except Exception as e:
+        except ClientError as e:
             print(f"   ❌ Unexpected error deleting {interface_id}: {str(e)}")
             failed_deletions.append({"interface": interface, "reason": str(e)})
 
@@ -152,7 +152,8 @@ def main():
             print("✅ Successfully deleted interfaces:")
             for interface in deleted_interfaces:
                 print(
-                    f"   🗑️  {interface['interface_id']} ({interface['region']}) - {interface['public_ip']}"
+                    f"   🗑️  {interface['interface_id']} ({interface['region']}) - "
+                    f"{interface['public_ip']}"
                 )
 
         if failed_deletions:
@@ -168,7 +169,7 @@ def main():
             print("   • Improved account security hygiene")
             print("   • Cleaned up remnants from deleted RDS instances")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Critical error during cleanup: {str(e)}")
         raise
 

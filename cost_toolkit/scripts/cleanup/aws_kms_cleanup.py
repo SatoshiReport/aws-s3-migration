@@ -1,19 +1,13 @@
 #!/usr/bin/env python3
-
-import time
+"""Clean up unused KMS encryption keys."""
 
 import boto3
 from botocore.exceptions import ClientError
 
 
-def cleanup_kms_keys():
-    """Remove customer-managed KMS keys to eliminate costs"""
-
-    print("AWS KMS Key Cleanup")
-    print("=" * 50)
-
-    # Keys to remove based on audit
-    keys_to_remove = [
+def get_keys_to_remove():
+    """Return list of KMS keys to remove based on audit"""
+    return [
         {
             "region": "us-west-1",
             "key_id": "09e32e6e-12cf-4dd1-ad49-b651bf81e152",
@@ -36,57 +30,80 @@ def cleanup_kms_keys():
         },
     ]
 
+
+def schedule_key_deletion(kms_client, key_id, current_state):
+    """Schedule a KMS key for deletion based on its current state"""
+    if current_state in ["Enabled", "Disabled"]:
+        try:
+            # Schedule deletion with minimum waiting period (7 days)
+            response = kms_client.schedule_key_deletion(KeyId=key_id, PendingWindowInDays=7)
+
+            deletion_date = response["DeletionDate"]
+            print(f"  ✅ Scheduled for deletion on: {deletion_date}")
+            print("  💰 Will save: $1.00/month after deletion")
+
+        except ClientError as e:
+            if "already scheduled" in str(e).lower():
+                print("  ⚠️  Already scheduled for deletion")
+                return True
+
+            print(f"  ❌ Error scheduling deletion: {e}")
+            return False
+
+        return True
+
+    if current_state == "PendingDeletion":
+        print("  ⚠️  Already pending deletion")
+        return True
+
+    print(f"  ⚠️  Key state '{current_state}' - cannot delete")
+    return False
+
+
+def process_single_key(key_info):
+    """Process a single KMS key for deletion"""
+    region = key_info["region"]
+    key_id = key_info["key_id"]
+    description = key_info["description"]
+
+    print(f"\nProcessing {description} in {region}...")
+
+    try:
+        kms = boto3.client("kms", region_name=region)
+
+        # Check current key state
+        key_details = kms.describe_key(KeyId=key_id)
+        current_state = key_details["KeyMetadata"]["KeyState"]
+
+        print(f"  Current state: {current_state}")
+
+        # Schedule key for deletion (7-30 day waiting period)
+        return schedule_key_deletion(kms, key_id, current_state)
+
+    except ClientError as e:
+        print(f"  ❌ Error accessing key: {e}")
+        return False
+
+
+def cleanup_kms_keys():
+    """Remove customer-managed KMS keys to eliminate costs"""
+
+    print("AWS KMS Key Cleanup")
+    print("=" * 50)
+
+    keys_to_remove = get_keys_to_remove()
     total_savings = 0
 
     for key_info in keys_to_remove:
-        region = key_info["region"]
-        key_id = key_info["key_id"]
-        description = key_info["description"]
+        if process_single_key(key_info):
+            total_savings += 1
 
-        print(f"\nProcessing {description} in {region}...")
-
-        try:
-            kms = boto3.client("kms", region_name=region)
-
-            # Check current key state
-            key_details = kms.describe_key(KeyId=key_id)
-            current_state = key_details["KeyMetadata"]["KeyState"]
-
-            print(f"  Current state: {current_state}")
-
-            # Schedule key for deletion (7-30 day waiting period)
-            if current_state in ["Enabled", "Disabled"]:
-                try:
-                    # Schedule deletion with minimum waiting period (7 days)
-                    response = kms.schedule_key_deletion(KeyId=key_id, PendingWindowInDays=7)
-
-                    deletion_date = response["DeletionDate"]
-                    print(f"  ✅ Scheduled for deletion on: {deletion_date}")
-                    print(f"  💰 Will save: $1.00/month after deletion")
-                    total_savings += 1
-
-                except ClientError as e:
-                    if "already scheduled" in str(e).lower():
-                        print(f"  ⚠️  Already scheduled for deletion")
-                    else:
-                        print(f"  ❌ Error scheduling deletion: {e}")
-
-            elif current_state == "PendingDeletion":
-                print(f"  ⚠️  Already pending deletion")
-                total_savings += 1
-
-            else:
-                print(f"  ⚠️  Key state '{current_state}' - cannot delete")
-
-        except ClientError as e:
-            print(f"  ❌ Error accessing key: {e}")
-
-    print(f"\n" + "=" * 50)
-    print(f"KMS CLEANUP SUMMARY:")
+    print("\n" + "=" * 50)
+    print("KMS CLEANUP SUMMARY:")
     print(f"Keys scheduled for deletion: {total_savings}")
     print(f"Estimated monthly savings: ${total_savings}.00")
-    print(f"Note: Keys will be deleted after 7-day waiting period")
-    print(f"Billing will stop once keys are fully deleted")
+    print("Note: Keys will be deleted after 7-day waiting period")
+    print("Billing will stop once keys are fully deleted")
 
 
 if __name__ == "__main__":

@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
-import os
-import sys
+"""Enable public accessibility for RDS database instances."""
 
 import boto3
+from botocore.exceptions import ClientError
 
-SCRIPT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if SCRIPT_ROOT not in sys.path:
-    sys.path.append(SCRIPT_ROOT)
-
-from aws_utils import setup_aws_credentials
+from ..aws_utils import setup_aws_credentials
 
 
 def enable_public_access():
@@ -22,7 +18,7 @@ def enable_public_access():
 
     try:
         # Modify the instance to be publicly accessible
-        response = rds.modify_db_instance(
+        _ = rds.modify_db_instance(
             DBInstanceIdentifier="simba-db-restored", PubliclyAccessible=True, ApplyImmediately=True
         )
 
@@ -39,7 +35,7 @@ def enable_public_access():
         print("✅ RDS instance is now publicly accessible!")
         print("🔍 You can now connect to explore your data")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error enabling public access: {e}")
 
 

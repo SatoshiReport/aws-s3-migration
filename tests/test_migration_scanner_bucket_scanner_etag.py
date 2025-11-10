@@ -43,7 +43,7 @@ class TestBucketScannerMissingETag:
             }
         ]
 
-        scanner._scan_bucket("test-bucket")
+        scanner.scan_bucket("test-bucket")
 
         # Should still call add_file with empty string etag
         call_args = mock_state.add_file.call_args
@@ -84,7 +84,7 @@ class TestBucketScannerETagQuotes:
             }
         ]
 
-        scanner._scan_bucket("test-bucket")
+        scanner.scan_bucket("test-bucket")
 
         # ETag should be stripped of quotes
         call_args = mock_state.add_file.call_args

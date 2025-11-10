@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-
-import json
-from datetime import datetime, timedelta, timezone
+"""Detailed EC2 compute resource audit."""
 
 import boto3
 from botocore.exceptions import ClientError
@@ -21,15 +19,77 @@ def get_all_regions():
         return ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "eu-west-2"]
 
 
-def analyze_ec2_instances_in_region(region_name):  # noqa: C901, PLR0912, PLR0915
+def _build_instance_info(instance, region_name, hourly_cost, monthly_cost):
+    """Build instance information dictionary"""
+    return {
+        "instance_id": instance["InstanceId"],
+        "instance_type": instance["InstanceType"],
+        "state": instance["State"]["Name"],
+        "launch_time": instance.get("LaunchTime"),
+        "region": region_name,
+        "hourly_cost": hourly_cost,
+        "monthly_cost": monthly_cost,
+        "platform": instance.get("Platform", "Linux/UNIX"),
+        "vpc_id": instance.get("VpcId"),
+        "subnet_id": instance.get("SubnetId"),
+        "public_ip": instance.get("PublicIpAddress"),
+        "private_ip": instance.get("PrivateIpAddress"),
+        "tags": instance.get("Tags", []),
+    }
+
+
+def _print_instance_details(
+    instance_id, instance_type, state, instance_info, hourly_cost, monthly_cost
+):
+    """Print detailed instance information"""
+    print(f"Instance: {instance_id}")
+    print(f"  Type: {instance_type}")
+    print(f"  State: {state}")
+    print(f"  Platform: {instance_info['platform']}")
+    print(f"  Launch Time: {instance_info['launch_time']}")
+    print(f"  Hourly Cost: ${hourly_cost:.4f}")
+
+    if state == "running":
+        print(f"  Monthly Cost (if running 24/7): ${monthly_cost:.2f}")
+    elif state == "stopped":
+        print("  Monthly Cost: $0.00 (stopped - only EBS storage charges)")
+    else:
+        print(f"  Monthly Cost: $0.00 ({state})")
+
+
+def _print_network_and_tags(instance_info):
+    """Print network information and tags"""
+    if instance_info["public_ip"]:
+        print(f"  Public IP: {instance_info['public_ip']}")
+    if instance_info["private_ip"]:
+        print(f"  Private IP: {instance_info['private_ip']}")
+
+    if instance_info["tags"]:
+        print("  Tags:")
+        for tag in instance_info["tags"]:
+            print(f"    {tag['Key']}: {tag['Value']}")
+
+
+def _print_region_summary(region_name, instances_found, total_monthly_cost):
+    """Print region summary statistics"""
+    print(f"📊 Region Summary for {region_name}:")
+    running_instances = [i for i in instances_found if i["state"] == "running"]
+    stopped_instances = [i for i in instances_found if i["state"] == "stopped"]
+    terminated_instances = [i for i in instances_found if i["state"] == "terminated"]
+
+    print(f"  Running instances: {len(running_instances)}")
+    print(f"  Stopped instances: {len(stopped_instances)}")
+    print(f"  Terminated instances: {len(terminated_instances)}")
+    print(f"  Total monthly compute cost: ${total_monthly_cost:.2f}")
+
+
+def analyze_ec2_instances_in_region(region_name):
     """Analyze EC2 instances and their compute costs in a specific region"""
     print(f"\n🖥️  Analyzing EC2 Compute in {region_name}")
     print("=" * 80)
 
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
-
-        # Get all instances (including terminated ones from recent past)
         response = ec2.describe_instances()
 
         instances_found = []
@@ -40,77 +100,34 @@ def analyze_ec2_instances_in_region(region_name):  # noqa: C901, PLR0912, PLR091
                 instance_id = instance["InstanceId"]
                 instance_type = instance["InstanceType"]
                 state = instance["State"]["Name"]
-                launch_time = instance.get("LaunchTime")
 
-                # Get instance pricing (approximate)
                 hourly_cost = get_instance_hourly_cost(instance_type, region_name)
-                monthly_cost = hourly_cost * 24 * 30  # Approximate monthly cost
+                monthly_cost = hourly_cost * 24 * 30
 
-                instance_info = {
-                    "instance_id": instance_id,
-                    "instance_type": instance_type,
-                    "state": state,
-                    "launch_time": launch_time,
-                    "region": region_name,
-                    "hourly_cost": hourly_cost,
-                    "monthly_cost": monthly_cost,
-                    "platform": instance.get("Platform", "Linux/UNIX"),
-                    "vpc_id": instance.get("VpcId"),
-                    "subnet_id": instance.get("SubnetId"),
-                    "public_ip": instance.get("PublicIpAddress"),
-                    "private_ip": instance.get("PrivateIpAddress"),
-                    "tags": instance.get("Tags", []),
-                }
-
-                print(f"Instance: {instance_id}")
-                print(f"  Type: {instance_type}")
-                print(f"  State: {state}")
-                print(f"  Platform: {instance_info['platform']}")
-                print(f"  Launch Time: {launch_time}")
-                print(f"  Hourly Cost: ${hourly_cost:.4f}")
-
-                if state == "running":
-                    print(f"  Monthly Cost (if running 24/7): ${monthly_cost:.2f}")
-                    total_monthly_cost += monthly_cost
-                elif state == "stopped":
-                    print(f"  Monthly Cost: $0.00 (stopped - only EBS storage charges)")
-                else:
-                    print(f"  Monthly Cost: $0.00 ({state})")
-
-                # Show network info
-                if instance_info["public_ip"]:
-                    print(f"  Public IP: {instance_info['public_ip']}")
-                if instance_info["private_ip"]:
-                    print(f"  Private IP: {instance_info['private_ip']}")
-
-                # Show tags
-                if instance_info["tags"]:
-                    print(f"  Tags:")
-                    for tag in instance_info["tags"]:
-                        print(f"    {tag['Key']}: {tag['Value']}")
+                instance_info = _build_instance_info(
+                    instance, region_name, hourly_cost, monthly_cost
+                )
+                _print_instance_details(
+                    instance_id, instance_type, state, instance_info, hourly_cost, monthly_cost
+                )
+                _print_network_and_tags(instance_info)
 
                 print()
                 instances_found.append(instance_info)
 
+                if state == "running":
+                    total_monthly_cost += monthly_cost
+
         if not instances_found:
             print(f"✅ No EC2 instances found in {region_name}")
         else:
-            print(f"📊 Region Summary for {region_name}:")
-            running_instances = [i for i in instances_found if i["state"] == "running"]
-            stopped_instances = [i for i in instances_found if i["state"] == "stopped"]
-            terminated_instances = [i for i in instances_found if i["state"] == "terminated"]
-
-            print(f"  Running instances: {len(running_instances)}")
-            print(f"  Stopped instances: {len(stopped_instances)}")
-            print(f"  Terminated instances: {len(terminated_instances)}")
-            print(f"  Total monthly compute cost: ${total_monthly_cost:.2f}")
+            _print_region_summary(region_name, instances_found, total_monthly_cost)
 
     except ClientError as e:
         print(f"❌ Error analyzing EC2 in {region_name}: {e}")
         return []
 
-    else:
-        return instances_found
+    return instances_found
 
 
 def get_instance_hourly_cost(instance_type, region_name):
@@ -247,8 +264,7 @@ def analyze_ebs_volumes_in_region(region_name):
         print(f"❌ Error analyzing EBS in {region_name}: {e}")
         return []
 
-    else:
-        return volume_details
+    return volume_details
 
 
 def calculate_ebs_monthly_cost(volume_type, size_gb, iops, throughput):
@@ -281,20 +297,87 @@ def calculate_ebs_monthly_cost(volume_type, size_gb, iops, throughput):
     return base_cost
 
 
-def main():  # noqa: PLR0915
+def _print_instance_summary(running_instances, stopped_instances, total_compute_cost):
+    """Print EC2 instance summary"""
+    print("💻 EC2 INSTANCES:")
+    print(f"  Running instances: {len(running_instances)}")
+    print(f"  Stopped instances: {len(stopped_instances)}")
+    print(f"  Monthly compute cost: ${total_compute_cost:.2f}")
+
+    if running_instances:
+        print("\n  Running instance details:")
+        for instance in running_instances:
+            print(
+                f"    {instance['instance_id']} ({instance['instance_type']}) - "
+                f"${instance['monthly_cost']:.2f}/month"
+            )
+
+
+def _print_storage_summary(all_volumes, total_storage_cost):
+    """Print EBS storage summary"""
+    print("\n💾 EBS STORAGE:")
+    print(f"  Total volumes: {len(all_volumes)}")
+    print(f"  Monthly storage cost: ${total_storage_cost:.2f}")
+
+
+def _print_cost_breakdown(total_compute_cost, total_storage_cost):
+    """Print total cost breakdown"""
+    total_ec2_cost = total_compute_cost + total_storage_cost
+    print("\n💰 TOTAL EC2 COSTS:")
+    print(f"  Compute (instances): ${total_compute_cost:.2f}/month")
+    print(f"  Storage (EBS): ${total_storage_cost:.2f}/month")
+    print(f"  Total EC2: ${total_ec2_cost:.2f}/month")
+
+
+def _print_billing_explanation():
+    """Print explanation of billing line items"""
+    print("\n📋 WHAT IS 'AMAZON ELASTIC COMPUTE CLOUD - COMPUTE'?")
+    print("  This billing line item includes:")
+    print("    1. EC2 Instance hours (compute time)")
+    print("    2. EBS storage costs (disk space)")
+    print("    3. EBS IOPS and throughput charges")
+    print("    4. Data transfer within EC2")
+    print("    5. Elastic IP addresses (if any)")
+    print("    6. Load balancer costs (if any)")
+
+
+def _print_optimization_recommendations(
+    stopped_instances, running_instances, total_storage_cost, total_compute_cost
+):
+    """Print cost optimization recommendations"""
+    print("\n💡 COST OPTIMIZATION OPPORTUNITIES:")
+
+    if stopped_instances:
+        print("  🔄 Stopped instances still incur EBS storage costs")
+        print("     Consider terminating unused instances")
+
+    if len(running_instances) > 1:
+        print("  📊 Multiple running instances detected")
+        print("     Review if all instances are necessary")
+
+    if total_storage_cost > total_compute_cost:
+        print("  💾 Storage costs exceed compute costs")
+        print("     Review EBS volumes for optimization opportunities")
+
+    print("\n🔍 NEXT STEPS:")
+    print("  1. Review each running instance's necessity")
+    print("  2. Consider rightsizing instance types")
+    print("  3. Evaluate EBS volume types and sizes")
+    print("  4. Look into Reserved Instances for long-term workloads")
+
+
+def main():
+    """Perform detailed EC2 compute resource audit."""
     print("AWS EC2 Compute Detailed Cost Analysis")
     print("=" * 80)
     print("Analyzing 'Amazon Elastic Compute Cloud - Compute' costs...")
 
-    # Get all regions
-    regions = get_all_regions()
-
+    _ = get_all_regions()
     all_instances = []
     all_volumes = []
     total_compute_cost = 0
     total_storage_cost = 0
 
-    # Focus on regions where we typically see activity
     target_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "eu-west-2"]
 
     for region in target_regions:
@@ -304,76 +387,26 @@ def main():  # noqa: PLR0915
         all_instances.extend(instances)
         all_volumes.extend(volumes)
 
-        # Calculate costs for this region
         region_compute_cost = sum(i["monthly_cost"] for i in instances if i["state"] == "running")
         region_storage_cost = sum(v["monthly_cost"] for v in volumes)
 
         total_compute_cost += region_compute_cost
         total_storage_cost += region_storage_cost
 
-    # Overall summary
     print("\n" + "=" * 80)
     print("🎯 OVERALL EC2 COST BREAKDOWN")
     print("=" * 80)
 
-    # Instance summary
     running_instances = [i for i in all_instances if i["state"] == "running"]
     stopped_instances = [i for i in all_instances if i["state"] == "stopped"]
 
-    print(f"💻 EC2 INSTANCES:")
-    print(f"  Running instances: {len(running_instances)}")
-    print(f"  Stopped instances: {len(stopped_instances)}")
-    print(f"  Monthly compute cost: ${total_compute_cost:.2f}")
-
-    if running_instances:
-        print(f"\n  Running instance details:")
-        for instance in running_instances:
-            print(
-                f"    {instance['instance_id']} ({instance['instance_type']}) - ${instance['monthly_cost']:.2f}/month"
-            )
-
-    # Storage summary
-    print(f"\n💾 EBS STORAGE:")
-    print(f"  Total volumes: {len(all_volumes)}")
-    print(f"  Monthly storage cost: ${total_storage_cost:.2f}")
-
-    # Total EC2 costs
-    total_ec2_cost = total_compute_cost + total_storage_cost
-    print(f"\n💰 TOTAL EC2 COSTS:")
-    print(f"  Compute (instances): ${total_compute_cost:.2f}/month")
-    print(f"  Storage (EBS): ${total_storage_cost:.2f}/month")
-    print(f"  Total EC2: ${total_ec2_cost:.2f}/month")
-
-    # Explain what "Amazon Elastic Compute Cloud - Compute" means
-    print(f"\n📋 WHAT IS 'AMAZON ELASTIC COMPUTE CLOUD - COMPUTE'?")
-    print(f"  This billing line item includes:")
-    print(f"    1. EC2 Instance hours (compute time)")
-    print(f"    2. EBS storage costs (disk space)")
-    print(f"    3. EBS IOPS and throughput charges")
-    print(f"    4. Data transfer within EC2")
-    print(f"    5. Elastic IP addresses (if any)")
-    print(f"    6. Load balancer costs (if any)")
-
-    # Optimization recommendations
-    print(f"\n💡 COST OPTIMIZATION OPPORTUNITIES:")
-
-    if stopped_instances:
-        print(f"  🔄 Stopped instances still incur EBS storage costs")
-        print(f"     Consider terminating unused instances")
-
-    if len(running_instances) > 1:
-        print(f"  📊 Multiple running instances detected")
-        print(f"     Review if all instances are necessary")
-
-    if total_storage_cost > total_compute_cost:
-        print(f"  💾 Storage costs exceed compute costs")
-        print(f"     Review EBS volumes for optimization opportunities")
-
-    print(f"\n🔍 NEXT STEPS:")
-    print(f"  1. Review each running instance's necessity")
-    print(f"  2. Consider rightsizing instance types")
-    print(f"  3. Evaluate EBS volume types and sizes")
-    print(f"  4. Look into Reserved Instances for long-term workloads")
+    _print_instance_summary(running_instances, stopped_instances, total_compute_cost)
+    _print_storage_summary(all_volumes, total_storage_cost)
+    _print_cost_breakdown(total_compute_cost, total_storage_cost)
+    _print_billing_explanation()
+    _print_optimization_recommendations(
+        stopped_instances, running_instances, total_storage_cost, total_compute_cost
+    )
 
 
 if __name__ == "__main__":

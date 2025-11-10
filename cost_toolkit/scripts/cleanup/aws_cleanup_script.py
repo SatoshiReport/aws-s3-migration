@@ -4,7 +4,6 @@ AWS Cleanup Script
 Disables Global Accelerator and stops Lightsail instances to reduce costs.
 """
 
-import os
 import sys
 from pathlib import Path
 
@@ -100,11 +99,96 @@ def disable_global_accelerators():
 
     except ClientError as e:
         print(f"❌ Error accessing Global Accelerator service: {e}")
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
 
 
-def stop_lightsail_instances():  # noqa: C901, PLR0912, PLR0915
+def _stop_instance(lightsail_client, instance):
+    """Stop a single Lightsail instance."""
+    instance_name = instance["name"]
+    state = instance["state"]["name"]
+    bundle_id = instance.get("bundleId")
+
+    print(f"📦 Found instance: {instance_name}")
+    print(f"   State: {state}")
+
+    if state == "running":
+        print(f"🛑 Stopping instance: {instance_name}")
+        try:
+            lightsail_client.stop_instance(instanceName=instance_name)
+            monthly_cost = estimate_instance_cost(bundle_id)
+            if monthly_cost:
+                print(f"✅ Stopped instance {instance_name} (est. ${monthly_cost:.2f}/month)")
+            else:
+                print(f"✅ Stopped instance {instance_name}")
+        except ClientError as exc:
+            print(f"❌ Error stopping instance {instance_name}: {exc}")
+        else:
+            return 1, monthly_cost
+    else:
+        print(f"ℹ️  Instance {instance_name} is already {state}")
+
+    print("-" * 30)
+    return 0, 0.0
+
+
+def _stop_database(lightsail_client, database):
+    """Stop a single Lightsail database."""
+    db_name = database["name"]
+    db_state = database["state"]
+    bundle_id = database.get("relationalDatabaseBundleId")
+
+    print(f"🗄️  Found database: {db_name}")
+    print(f"   State: {db_state}")
+
+    if db_state.lower() == "available":
+        print(f"🛑 Stopping database: {db_name}")
+        try:
+            lightsail_client.stop_relational_database(relationalDatabaseName=db_name)
+            monthly_cost = estimate_database_cost(bundle_id)
+            if monthly_cost:
+                print(f"✅ Stopped database {db_name} (est. ${monthly_cost:.2f}/month)")
+            else:
+                print(f"✅ Stopped database {db_name}")
+        except ClientError as exc:
+            print(f"❌ Error stopping database {db_name}: {exc}")
+        else:
+            return 1, monthly_cost
+    else:
+        print(f"ℹ️  Database {db_name} is already {db_state}")
+
+    print("-" * 30)
+    return 0, 0.0
+
+
+def _process_region(region):
+    """Process Lightsail resources in a single region."""
+    print(f"\n📍 Checking region: {region}")
+    lightsail_client = boto3.client("lightsail", region_name=region)
+
+    instances = lightsail_client.get_instances().get("instances", [])
+    databases = lightsail_client.get_relational_databases().get("relationalDatabases", [])
+
+    if not instances and not databases:
+        print(f"✅ No Lightsail resources found in {region}")
+        return 0, 0, 0.0
+
+    instances_stopped = 0
+    databases_stopped = 0
+    savings = 0.0
+
+    for instance in instances:
+        stopped, cost = _stop_instance(lightsail_client, instance)
+        instances_stopped += stopped
+        savings += cost
+
+    for database in databases:
+        stopped, cost = _stop_database(lightsail_client, database)
+        databases_stopped += stopped
+        savings += cost
+
+    return instances_stopped, databases_stopped, savings
+
+
+def stop_lightsail_instances():
     """Stop all Lightsail instances"""
     setup_aws_credentials()
 
@@ -118,77 +202,15 @@ def stop_lightsail_instances():  # noqa: C901, PLR0912, PLR0915
 
     for region in regions_to_check:
         try:
-            print(f"\n📍 Checking region: {region}")
-            lightsail_client = boto3.client("lightsail", region_name=region)
-
-            instances = lightsail_client.get_instances().get("instances", [])
-            databases = lightsail_client.get_relational_databases().get("relationalDatabases", [])
-
-            if not instances and not databases:
-                print(f"✅ No Lightsail resources found in {region}")
-                continue
-
-            for instance in instances:
-                instance_name = instance["name"]
-                state = instance["state"]["name"]
-                bundle_id = instance.get("bundleId")
-
-                print(f"📦 Found instance: {instance_name}")
-                print(f"   State: {state}")
-
-                if state == "running":
-                    print(f"🛑 Stopping instance: {instance_name}")
-                    try:
-                        lightsail_client.stop_instance(instanceName=instance_name)
-                        total_instances_stopped += 1
-                        monthly_cost = estimate_instance_cost(bundle_id)
-                        estimated_monthly_savings += monthly_cost
-                        if monthly_cost:
-                            print(
-                                f"✅ Stopped instance {instance_name} (est. ${monthly_cost:.2f}/month)"
-                            )
-                        else:
-                            print(f"✅ Stopped instance {instance_name}")
-                    except ClientError as exc:
-                        print(f"❌ Error stopping instance {instance_name}: {exc}")
-                else:
-                    print(f"ℹ️  Instance {instance_name} is already {state}")
-
-                print("-" * 30)
-
-            for database in databases:
-                db_name = database["name"]
-                db_state = database["state"]
-                bundle_id = database.get("relationalDatabaseBundleId")
-
-                print(f"🗄️  Found database: {db_name}")
-                print(f"   State: {db_state}")
-
-                if db_state.lower() == "available":
-                    print(f"🛑 Stopping database: {db_name}")
-                    try:
-                        lightsail_client.stop_relational_database(relationalDatabaseName=db_name)
-                        total_databases_stopped += 1
-                        monthly_cost = estimate_database_cost(bundle_id)
-                        estimated_monthly_savings += monthly_cost
-                        if monthly_cost:
-                            print(f"✅ Stopped database {db_name} (est. ${monthly_cost:.2f}/month)")
-                        else:
-                            print(f"✅ Stopped database {db_name}")
-                    except ClientError as exc:
-                        print(f"❌ Error stopping database {db_name}: {exc}")
-                else:
-                    print(f"ℹ️  Database {db_name} is already {db_state}")
-
-                print("-" * 30)
-
+            instances, databases, savings = _process_region(region)
+            total_instances_stopped += instances
+            total_databases_stopped += databases
+            estimated_monthly_savings += savings
         except ClientError as exc:
             if "InvalidAction" in str(exc) or "not available" in str(exc):
                 print(f"ℹ️  Lightsail not available in {region}")
             else:
                 print(f"❌ Error accessing Lightsail in {region}: {exc}")
-        except Exception as exc:  # noqa: BLE001
-            print(f"❌ Unexpected error in {region}: {exc}")
 
     return total_instances_stopped, total_databases_stopped, estimated_monthly_savings
 

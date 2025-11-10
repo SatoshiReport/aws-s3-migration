@@ -17,6 +17,9 @@ class _FakeS3:
         """Store object metadata."""
         self.objects.append(kwargs)
 
+    def __repr__(self):
+        return f"_FakeS3(objects={len(self.objects)})"
+
 
 def test_materialize_tree_and_manifest(tmp_path):
     """Test materialize_sample_tree creates files and returns metrics."""

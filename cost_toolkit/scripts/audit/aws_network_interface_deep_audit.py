@@ -5,9 +5,9 @@ Investigates network interfaces that appear to be orphaned or attached to non-ex
 """
 
 import os
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -25,7 +25,83 @@ def load_aws_credentials():
     return aws_access_key_id, aws_secret_access_key
 
 
-def investigate_network_interface(  # noqa: PLR0911, PLR0912, PLR0915
+def _print_basic_eni_info(eni):
+    """Print basic ENI information."""
+    status = eni["Status"]
+    interface_type = eni.get("InterfaceType", "interface")
+    description = eni.get("Description", "No description")
+    vpc_id = eni.get("VpcId", "N/A")
+    subnet_id = eni.get("SubnetId", "N/A")
+
+    print(f"   Status: {status}")
+    print(f"   Type: {interface_type}")
+    print(f"   Description: {description}")
+    print(f"   VPC: {vpc_id}")
+    print(f"   Subnet: {subnet_id}")
+
+
+def _check_instance_attachment(ec2, attachment):
+    """Check if attached instance exists and is valid."""
+    instance_id = attachment.get("InstanceId")
+    attachment_status = attachment.get("Status", "detached")
+    attach_time = attachment.get("AttachTime", "Unknown")
+
+    print(f"   Attachment Status: {attachment_status}")
+    print(f"   Attached Instance: {instance_id}")
+    print(f"   Attach Time: {attach_time}")
+
+    if not instance_id:
+        return None
+
+    try:
+        instance_response = ec2.describe_instances(InstanceIds=[instance_id])
+        instance = instance_response["Reservations"][0]["Instances"][0]
+        instance_state = instance["State"]["Name"]
+        instance_type = instance.get("InstanceType", "Unknown")
+
+        print(f"   ✅ Instance exists: {instance_id}")
+        print(f"   Instance State: {instance_state}")
+        print(f"   Instance Type: {instance_type}")
+
+        if instance_state in ["terminated", "shutting-down"]:
+            print(f"   ⚠️  Instance is {instance_state} - ENI may be orphaned")
+            return "orphaned"
+        if instance_state in ["stopped", "stopping"]:
+            print(f"   ⚠️  Instance is {instance_state} - ENI attached to stopped instance")
+            return "attached_stopped"
+
+    except ec2.exceptions.ClientError as e:
+        if "InvalidInstanceID.NotFound" in str(e):
+            print(f"   ❌ Instance {instance_id} does not exist - ENI is orphaned!")
+            return "orphaned"
+        print(f"   ❌ Error checking instance: {str(e)}")
+        return "error"
+    else:
+        print("   ✅ Instance is active")
+        return "active"
+
+
+def _check_detached_eni(eni):
+    """Check status of a detached ENI."""
+    print("   ⚠️  No attachment information - likely detached")
+
+    interface_type = eni.get("InterfaceType", "interface")
+    if interface_type != "interface":
+        print(f"   ℹ️  Special interface type: {interface_type}")
+        return "aws_service"
+
+    association = eni.get("Association", {})
+    if association:
+        public_ip = association.get("PublicIp")
+        allocation_id = association.get("AllocationId")
+        print(f"   🌐 Public IP: {public_ip}")
+        print(f"   🏷️  EIP Allocation: {allocation_id}")
+        return "eip_attached"
+
+    return "detached"
+
+
+def investigate_network_interface(
     region_name, interface_id, aws_access_key_id, aws_secret_access_key
 ):
     """Deep investigation of a specific network interface"""
@@ -37,88 +113,20 @@ def investigate_network_interface(  # noqa: PLR0911, PLR0912, PLR0915
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        # Get detailed network interface information
         response = ec2.describe_network_interfaces(NetworkInterfaceIds=[interface_id])
         eni = response["NetworkInterfaces"][0]
 
         print(f"\n🔍 Deep Analysis: {interface_id}")
         print("-" * 50)
 
-        # Basic info
-        status = eni["Status"]
-        interface_type = eni.get("InterfaceType", "interface")
-        description = eni.get("Description", "No description")
-        vpc_id = eni.get("VpcId", "N/A")
-        subnet_id = eni.get("SubnetId", "N/A")
+        _print_basic_eni_info(eni)
 
-        print(f"   Status: {status}")
-        print(f"   Type: {interface_type}")
-        print(f"   Description: {description}")
-        print(f"   VPC: {vpc_id}")
-        print(f"   Subnet: {subnet_id}")
-
-        # Check attachment details
         attachment = eni.get("Attachment", {})
         if attachment:
-            instance_id = attachment.get("InstanceId")
-            attachment_status = attachment.get("Status", "detached")
-            attach_time = attachment.get("AttachTime", "Unknown")
+            return _check_instance_attachment(ec2, attachment)
+        return _check_detached_eni(eni)
 
-            print(f"   Attachment Status: {attachment_status}")
-            print(f"   Attached Instance: {instance_id}")
-            print(f"   Attach Time: {attach_time}")
-
-            # If attached to an instance, check if instance exists
-            if instance_id:
-                try:
-                    instance_response = ec2.describe_instances(InstanceIds=[instance_id])
-                    instance = instance_response["Reservations"][0]["Instances"][0]
-                    instance_state = instance["State"]["Name"]
-                    instance_type = instance.get("InstanceType", "Unknown")
-
-                    print(f"   ✅ Instance exists: {instance_id}")
-                    print(f"   Instance State: {instance_state}")
-                    print(f"   Instance Type: {instance_type}")
-
-                    if instance_state in ["terminated", "shutting-down"]:
-                        print(f"   ⚠️  Instance is {instance_state} - ENI may be orphaned")
-                        return "orphaned"
-                    elif instance_state in ["stopped", "stopping"]:
-                        print(
-                            f"   ⚠️  Instance is {instance_state} - ENI attached to stopped instance"
-                        )
-                        return "attached_stopped"
-                    else:
-                        print(f"   ✅ Instance is active")
-                        return "active"
-
-                except ec2.exceptions.ClientError as e:
-                    if "InvalidInstanceID.NotFound" in str(e):
-                        print(f"   ❌ Instance {instance_id} does not exist - ENI is orphaned!")
-                        return "orphaned"
-                    else:
-                        print(f"   ❌ Error checking instance: {str(e)}")
-                        return "error"
-        else:
-            print(f"   ⚠️  No attachment information - likely detached")
-
-            # Check if it's a special AWS service interface
-            if interface_type != "interface":
-                print(f"   ℹ️  Special interface type: {interface_type}")
-                return "aws_service"
-
-            # Check if it has public IP (might be EIP-related)
-            association = eni.get("Association", {})
-            if association:
-                public_ip = association.get("PublicIp")
-                allocation_id = association.get("AllocationId")
-                print(f"   🌐 Public IP: {public_ip}")
-                print(f"   🏷️  EIP Allocation: {allocation_id}")
-                return "eip_attached"
-
-            return "detached"
-
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error investigating {interface_id}: {str(e)}")
         return "error"
 
@@ -187,7 +195,7 @@ def main():
             print("🎉 No orphaned network interfaces found!")
             print("   All network interfaces are properly attached and in use.")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Critical error during deep audit: {str(e)}")
         raise
 

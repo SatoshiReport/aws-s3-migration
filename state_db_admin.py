@@ -1,5 +1,7 @@
 """Shared helpers for managing the migrate_v2 SQLite state database."""
 
+# ruff: noqa: TRY003 - library emits contextual error messages
+
 from __future__ import annotations
 
 import os
@@ -31,31 +33,77 @@ def recreate_state_db(db_path: Pathish) -> Path:
     return path
 
 
-def reseed_state_db_from_local_drive(  # noqa: C901 - linear workflow for clarity over brevity
+def _bucket_dirs(base: Path) -> Iterator[tuple[str, Path]]:
+    """Yield bucket name and directory path pairs from base path."""
+    for child in sorted(base.iterdir()):
+        if not child.is_dir():
+            continue
+        yield child.name, child
+
+
+def _iter_files(bucket_dir: Path) -> Iterator[Path]:
+    """Recursively yield all file paths within a bucket directory."""
+    for root, _, files in os.walk(bucket_dir):
+        root_path = Path(root)
+        for name in files:
+            yield root_path / name
+
+
+def _build_file_row(
+    bucket_name: str,
+    file_path: Path,
+    bucket_dir: Path,
+    created_at: str,
+    default_state: str,
+) -> tuple | None:
+    """Build a database row tuple for a single file, or None if file is inaccessible."""
+    try:
+        stat = file_path.stat()
+    except OSError:
+        return None
+    key = file_path.relative_to(bucket_dir).as_posix()
+    last_modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+    return (
+        bucket_name,
+        key,
+        stat.st_size,
+        None,
+        "STANDARD",
+        last_modified,
+        str(file_path),
+        None,
+        default_state,
+        None,
+        None,
+        None,
+        created_at,
+        last_modified,
+    )
+
+
+def _insert_file_rows(
+    conn: sqlite3.Connection,
+    rows: list[tuple],
+    insert_sql: str,
+):
+    """Insert accumulated rows and commit to database."""
+    if rows:
+        conn.executemany(insert_sql, rows)
+        conn.commit()
+
+
+def reseed_state_db_from_local_drive(
     base_path: Pathish,
     db_path: Pathish,
     *,
     default_state: str = "synced",
 ) -> tuple[Path, int, int]:
     """Rebuild the migrate_v2 database by scanning the local drive layout."""
-
     base = Path(base_path).expanduser().resolve()
     if not base.exists():
-        raise FileNotFoundError(f"Base path does not exist: {base}")  # noqa: TRY003
+        raise FileNotFoundError(f"Base path does not exist: {base}")
     db_file = recreate_state_db(db_path)
     created_at = datetime.now(timezone.utc).isoformat()
-
-    def _bucket_dirs() -> Iterator[tuple[str, Path]]:
-        for child in sorted(base.iterdir()):
-            if not child.is_dir():
-                continue
-            yield child.name, child
-
-    def _iter_files(bucket_dir: Path) -> Iterator[Path]:
-        for root, _, files in os.walk(bucket_dir):
-            root_path = Path(root)
-            for name in files:
-                yield root_path / name
 
     insert_sql = """
         INSERT INTO files (
@@ -68,42 +116,20 @@ def reseed_state_db_from_local_drive(  # noqa: C901 - linear workflow for clarit
     total_files = 0
     total_bytes = 0
     rows: list[tuple] = []
+
     with sqlite3.connect(str(db_file)) as conn:
-        for bucket_name, bucket_dir in _bucket_dirs():
+        for bucket_name, bucket_dir in _bucket_dirs(base):
             for file_path in _iter_files(bucket_dir):
-                try:
-                    stat = file_path.stat()
-                except OSError:
+                row = _build_file_row(bucket_name, file_path, bucket_dir, created_at, default_state)
+                if row is None:
                     continue
-                key = file_path.relative_to(bucket_dir).as_posix()
-                last_modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
-                rows.append(
-                    (
-                        bucket_name,
-                        key,
-                        stat.st_size,
-                        None,
-                        "STANDARD",
-                        last_modified,
-                        str(file_path),
-                        None,
-                        default_state,
-                        None,
-                        None,
-                        None,
-                        created_at,
-                        last_modified,
-                    )
-                )
+                rows.append(row)
                 total_files += 1
-                total_bytes += stat.st_size
+                total_bytes += row[2]
                 if len(rows) >= BATCH_INSERT_SIZE:
-                    conn.executemany(insert_sql, rows)
-                    conn.commit()
+                    _insert_file_rows(conn, rows, insert_sql)
                     rows.clear()
-        if rows:
-            conn.executemany(insert_sql, rows)
-            conn.commit()
+        _insert_file_rows(conn, rows, insert_sql)
     return db_file, total_files, total_bytes
 
 

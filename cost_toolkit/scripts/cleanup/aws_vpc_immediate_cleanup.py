@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
-
-import json
-from datetime import datetime, timezone
+"""Immediately clean up unused VPC and networking resources."""
 
 import boto3
 from botocore.exceptions import ClientError
@@ -39,24 +37,26 @@ def release_public_ip_from_instance(instance_id, region_name):
             if association_id:
                 print(f"Disassociating Elastic IP (association: {association_id})")
                 ec2.disassociate_address(AssociationId=association_id)
-                print(f"✅ Elastic IP disassociated from instance")
+                print("✅ Elastic IP disassociated from instance")
 
                 # Ask if we should also release the Elastic IP
                 print(f"⚠️  Elastic IP {current_public_ip} is now idle and will cost $3.60/month")
                 print(
-                    f"To release it completely, run: aws ec2 release-address --allocation-id {allocation_id} --region {region_name}"
+                    f"To release it completely, run: aws ec2 release-address "
+                    f"--allocation-id {allocation_id} --region {region_name}"
                 )
                 return True
         else:
-            print(f"This is an auto-assigned public IP")
-            print(f"To remove it, we need to modify the instance's network interface")
+            print("This is an auto-assigned public IP")
+            print("To remove it, we need to modify the instance's network interface")
 
             # For auto-assigned IPs, we need to modify the instance
             # This requires stopping and starting the instance
             print(
-                f"⚠️  To remove auto-assigned public IP, the instance needs to be stopped and reconfigured"
+                "⚠️  To remove auto-assigned public IP, "
+                "the instance needs to be stopped and reconfigured"
             )
-            print(f"This will cause downtime. Proceed? (This script will not auto-proceed)")
+            print("This will cause downtime. Proceed? (This script will not auto-proceed)")
             return False
 
     except ClientError as e:
@@ -93,11 +93,100 @@ def remove_detached_internet_gateway(igw_id, region_name):
         print(f"❌ Error deleting Internet Gateway: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
-def analyze_vpc_dependencies(region_name):  # noqa: C901, PLR0912, PLR0915
+def _check_vpc_ec2_instances(ec2, vpc_id, analysis):
+    """Check for EC2 instances in a VPC"""
+    instances_response = ec2.describe_instances(
+        Filters=[
+            {"Name": "vpc-id", "Values": [vpc_id]},
+            {
+                "Name": "instance-state-name",
+                "Values": ["running", "stopped", "stopping", "pending"],
+            },
+        ]
+    )
+
+    instances = []
+    for reservation in instances_response["Reservations"]:
+        instances.extend(reservation["Instances"])
+
+    if instances:
+        analysis["blocking_resources"].append(f"{len(instances)} EC2 instances")
+        analysis["can_delete"] = False
+
+
+def _check_vpc_network_resources(ec2, vpc_id, analysis):
+    """Check for network resources (IGW, NAT, Endpoints) in a VPC"""
+    # Check for attached Internet Gateways
+    igw_response = ec2.describe_internet_gateways(
+        Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
+    )
+    igws = igw_response.get("InternetGateways", [])
+    if igws:
+        analysis["dependencies"].append(f"{len(igws)} Internet Gateways")
+
+    # Check for NAT Gateways
+    nat_response = ec2.describe_nat_gateways(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
+    nats = [nat for nat in nat_response.get("NatGateways", []) if nat["State"] != "deleted"]
+    if nats:
+        analysis["blocking_resources"].append(f"{len(nats)} NAT Gateways")
+        analysis["can_delete"] = False
+
+    # Check for VPC Endpoints
+    endpoints_response = ec2.describe_vpc_endpoints(
+        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
+    )
+    endpoints = [
+        ep for ep in endpoints_response.get("VpcEndpoints", []) if ep["State"] != "deleted"
+    ]
+    if endpoints:
+        analysis["blocking_resources"].append(f"{len(endpoints)} VPC Endpoints")
+        analysis["can_delete"] = False
+
+
+def _check_vpc_load_balancers(region_name, vpc_id, analysis):
+    """Check for load balancers in a VPC"""
+    try:
+        elbv2 = boto3.client("elbv2", region_name=region_name)
+        lb_response = elbv2.describe_load_balancers()
+        vpc_lbs = [lb for lb in lb_response.get("LoadBalancers", []) if lb.get("VpcId") == vpc_id]
+        if vpc_lbs:
+            analysis["blocking_resources"].append(f"{len(vpc_lbs)} Load Balancers")
+            analysis["can_delete"] = False
+    except ClientError as e:
+        print(f"  Warning: Could not check load balancers: {e}")
+
+
+def _check_vpc_rds_instances(region_name, vpc_id, analysis):
+    """Check for RDS instances in a VPC"""
+    try:
+        rds = boto3.client("rds", region_name=region_name)
+        db_response = rds.describe_db_instances()
+        vpc_dbs = [
+            db
+            for db in db_response.get("DBInstances", [])
+            if db.get("DBSubnetGroup", {}).get("VpcId") == vpc_id
+        ]
+        if vpc_dbs:
+            analysis["blocking_resources"].append(f"{len(vpc_dbs)} RDS instances")
+            analysis["can_delete"] = False
+    except ClientError as e:
+        print(f"  Warning: Could not check RDS instances: {e}")
+
+
+def _print_vpc_analysis(vpc_id, is_default, analysis):
+    """Print analysis results for a VPC"""
+    print(f"\nVPC: {vpc_id} ({'Default' if is_default else 'Custom'})")
+    print(f"  Can delete: {'✅ Yes' if analysis['can_delete'] else '❌ No'}")
+    if analysis["dependencies"]:
+        print(f"  Dependencies: {', '.join(analysis['dependencies'])}")
+    if analysis["blocking_resources"]:
+        print(f"  Blocking resources: {', '.join(analysis['blocking_resources'])}")
+
+
+def analyze_vpc_dependencies(region_name):
     """Analyze VPC dependencies to determine safe removal order"""
     print(f"\n🔍 Analyzing VPC dependencies in {region_name}")
     print("=" * 80)
@@ -123,100 +212,70 @@ def analyze_vpc_dependencies(region_name):  # noqa: C901, PLR0912, PLR0915
                 "blocking_resources": [],
             }
 
-            # Check for running instances
-            instances_response = ec2.describe_instances(
-                Filters=[
-                    {"Name": "vpc-id", "Values": [vpc_id]},
-                    {
-                        "Name": "instance-state-name",
-                        "Values": ["running", "stopped", "stopping", "pending"],
-                    },
-                ]
-            )
-
-            instances = []
-            for reservation in instances_response["Reservations"]:
-                instances.extend(reservation["Instances"])
-
-            if instances:
-                analysis["blocking_resources"].append(f"{len(instances)} EC2 instances")
-                analysis["can_delete"] = False
-
-            # Check for attached Internet Gateways
-            igw_response = ec2.describe_internet_gateways(
-                Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
-            )
-            igws = igw_response.get("InternetGateways", [])
-            if igws:
-                analysis["dependencies"].append(f"{len(igws)} Internet Gateways")
-
-            # Check for NAT Gateways
-            nat_response = ec2.describe_nat_gateways(
-                Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-            )
-            nats = [nat for nat in nat_response.get("NatGateways", []) if nat["State"] != "deleted"]
-            if nats:
-                analysis["blocking_resources"].append(f"{len(nats)} NAT Gateways")
-                analysis["can_delete"] = False
-
-            # Check for VPC Endpoints
-            endpoints_response = ec2.describe_vpc_endpoints(
-                Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-            )
-            endpoints = [
-                ep for ep in endpoints_response.get("VpcEndpoints", []) if ep["State"] != "deleted"
-            ]
-            if endpoints:
-                analysis["blocking_resources"].append(f"{len(endpoints)} VPC Endpoints")
-                analysis["can_delete"] = False
-
-            # Check for Load Balancers (this requires ELB API calls)
-            try:
-                elbv2 = boto3.client("elbv2", region_name=region_name)
-                lb_response = elbv2.describe_load_balancers()
-                vpc_lbs = [
-                    lb for lb in lb_response.get("LoadBalancers", []) if lb.get("VpcId") == vpc_id
-                ]
-                if vpc_lbs:
-                    analysis["blocking_resources"].append(f"{len(vpc_lbs)} Load Balancers")
-                    analysis["can_delete"] = False
-            except Exception as e:
-                print(f"  Warning: Could not check load balancers: {e}")
-
-            # Check for RDS instances
-            try:
-                rds = boto3.client("rds", region_name=region_name)
-                db_response = rds.describe_db_instances()
-                vpc_dbs = [
-                    db
-                    for db in db_response.get("DBInstances", [])
-                    if db.get("DBSubnetGroup", {}).get("VpcId") == vpc_id
-                ]
-                if vpc_dbs:
-                    analysis["blocking_resources"].append(f"{len(vpc_dbs)} RDS instances")
-                    analysis["can_delete"] = False
-            except Exception as e:
-                print(f"  Warning: Could not check RDS instances: {e}")
+            _check_vpc_ec2_instances(ec2, vpc_id, analysis)
+            _check_vpc_network_resources(ec2, vpc_id, analysis)
+            _check_vpc_load_balancers(region_name, vpc_id, analysis)
+            _check_vpc_rds_instances(region_name, vpc_id, analysis)
 
             vpc_analysis[vpc_id] = analysis
-
-            # Print analysis for this VPC
-            print(f"\nVPC: {vpc_id} ({'Default' if is_default else 'Custom'})")
-            print(f"  Can delete: {'✅ Yes' if analysis['can_delete'] else '❌ No'}")
-            if analysis["dependencies"]:
-                print(f"  Dependencies: {', '.join(analysis['dependencies'])}")
-            if analysis["blocking_resources"]:
-                print(f"  Blocking resources: {', '.join(analysis['blocking_resources'])}")
+            _print_vpc_analysis(vpc_id, is_default, analysis)
 
     except ClientError as e:
         print(f"❌ Error analyzing VPC dependencies: {e}")
         return {}
 
-    else:
-        return vpc_analysis
+    return vpc_analysis
 
 
-def main():  # noqa: C901, PLR0912
+def _categorize_vpcs(all_vpc_analysis):
+    """Categorize VPCs into deletable and non-deletable"""
+    deletable_vpcs = []
+    non_deletable_vpcs = []
+
+    for region, vpcs in all_vpc_analysis.items():
+        for vpc_id, analysis in vpcs.items():
+            if analysis["can_delete"]:
+                deletable_vpcs.append((region, vpc_id, analysis))
+            else:
+                non_deletable_vpcs.append((region, vpc_id, analysis))
+
+    return deletable_vpcs, non_deletable_vpcs
+
+
+def _print_vpc_recommendations(deletable_vpcs, non_deletable_vpcs):
+    """Print VPC deletion recommendations"""
+    print("\n📋 VPC DELETION ANALYSIS:")
+
+    if deletable_vpcs:
+        print(f"\n✅ VPCs that CAN be safely deleted ({len(deletable_vpcs)}):")
+        for region, vpc_id, analysis in deletable_vpcs:
+            deps = (
+                ", ".join(analysis["dependencies"])
+                if analysis["dependencies"]
+                else "No dependencies"
+            )
+            print(f"  {vpc_id} ({region}) - {deps}")
+
+    if non_deletable_vpcs:
+        print(f"\n❌ VPCs that CANNOT be deleted ({len(non_deletable_vpcs)}):")
+        for region, vpc_id, analysis in non_deletable_vpcs:
+            reasons = analysis["blocking_resources"] + (
+                ["Default VPC"] if analysis["is_default"] else []
+            )
+            print(f"  {vpc_id} ({region}) - Blocked by: {', '.join(reasons)}")
+
+    print("\n💡 NEXT STEPS:")
+    if deletable_vpcs:
+        print(f"  1. You can safely delete {len(deletable_vpcs)} VPCs")
+        print(
+            "  2. This will also remove their associated subnets, "
+            "route tables, and security groups"
+        )
+        print("  3. Internet Gateways will be detached and can then be deleted")
+
+
+def main():
+    """Scan and report VPC deletion possibilities."""
     print("AWS VPC Immediate Cleanup")
     print("=" * 80)
     print("Performing immediate cleanup tasks...")
@@ -256,46 +315,15 @@ def main():  # noqa: C901, PLR0912
     print(f"IGW removal: {'✅ Success' if success2 else '❌ Failed'}")
 
     # VPC deletion recommendations
-    print(f"\n📋 VPC DELETION ANALYSIS:")
-
-    deletable_vpcs = []
-    non_deletable_vpcs = []
-
-    for region, vpcs in all_vpc_analysis.items():
-        for vpc_id, analysis in vpcs.items():
-            if analysis["can_delete"]:
-                deletable_vpcs.append((region, vpc_id, analysis))
-            else:
-                non_deletable_vpcs.append((region, vpc_id, analysis))
-
-    if deletable_vpcs:
-        print(f"\n✅ VPCs that CAN be safely deleted ({len(deletable_vpcs)}):")
-        for region, vpc_id, analysis in deletable_vpcs:
-            print(
-                f"  {vpc_id} ({region}) - {', '.join(analysis['dependencies']) if analysis['dependencies'] else 'No dependencies'}"
-            )
-
-    if non_deletable_vpcs:
-        print(f"\n❌ VPCs that CANNOT be deleted ({len(non_deletable_vpcs)}):")
-        for region, vpc_id, analysis in non_deletable_vpcs:
-            reasons = analysis["blocking_resources"] + (
-                ["Default VPC"] if analysis["is_default"] else []
-            )
-            print(f"  {vpc_id} ({region}) - Blocked by: {', '.join(reasons)}")
-
-    print(f"\n💡 NEXT STEPS:")
-    if deletable_vpcs:
-        print(f"  1. You can safely delete {len(deletable_vpcs)} VPCs")
-        print(
-            f"  2. This will also remove their associated subnets, route tables, and security groups"
-        )
-        print(f"  3. Internet Gateways will be detached and can then be deleted")
+    deletable_vpcs, non_deletable_vpcs = _categorize_vpcs(all_vpc_analysis)
+    _print_vpc_recommendations(deletable_vpcs, non_deletable_vpcs)
 
     if non_deletable_vpcs:
         print(
-            f"  4. {len(non_deletable_vpcs)} VPCs have blocking resources that must be removed first"
+            f"  4. {len(non_deletable_vpcs)} VPCs have blocking resources "
+            "that must be removed first"
         )
-        print(f"  5. Consider if the blocking resources are still needed")
+        print("  5. Consider if the blocking resources are still needed")
 
 
 if __name__ == "__main__":

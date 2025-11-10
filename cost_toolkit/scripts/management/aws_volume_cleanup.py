@@ -4,15 +4,12 @@ AWS Volume Cleanup and Management Script
 Handles volume tagging, snapshot deletion, and S3 bucket listing.
 """
 
-import os
-import sys
 from datetime import datetime, timezone
 
 import boto3
+from botocore.exceptions import ClientError
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from aws_utils import setup_aws_credentials
+from ..aws_utils import setup_aws_credentials
 
 
 def tag_volume_with_name(volume_id, name, region):
@@ -35,12 +32,11 @@ def tag_volume_with_name(volume_id, name, region):
 
         print(f"✅ Successfully tagged volume {volume_id} with name '{name}' in {region}")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error tagging volume {volume_id}: {str(e)}")
         return False
 
-    else:
-        return True
+    return True
 
 
 def delete_snapshot(snapshot_id, region):
@@ -77,12 +73,86 @@ def delete_snapshot(snapshot_id, region):
         print(f"✅ Successfully deleted snapshot {snapshot_id}")
         print(f"💰 Monthly cost savings: ${monthly_cost_saved:.2f}")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error deleting snapshot {snapshot_id}: {str(e)}")
         return False
 
-    else:
-        return True
+    return True
+
+
+def get_bucket_region(s3_client, bucket_name):
+    """Get the region for an S3 bucket"""
+    try:
+        location_response = s3_client.get_bucket_location(Bucket=bucket_name)
+        region = location_response.get("LocationConstraint", "us-east-1")
+        if region is None:
+            region = "us-east-1"
+        print(f"    Region: {region}")
+    except ClientError as e:
+        print(f"    Region: Unable to determine ({str(e)})")
+        return "Unknown"
+    return region
+
+
+def get_bucket_size_metrics(bucket_name, region):
+    """Get bucket size metrics from CloudWatch"""
+    try:
+        cloudwatch = boto3.client(
+            "cloudwatch", region_name=region if region != "Unknown" else "us-east-1"
+        )
+
+        end_time = datetime.now(timezone.utc)
+        start_time = end_time.replace(day=1)
+
+        metrics_response = cloudwatch.get_metric_statistics(
+            Namespace="AWS/S3",
+            MetricName="BucketSizeBytes",
+            Dimensions=[
+                {"Name": "BucketName", "Value": bucket_name},
+                {"Name": "StorageType", "Value": "StandardStorage"},
+            ],
+            StartTime=start_time,
+            EndTime=end_time,
+            Period=86400,
+            Statistics=["Average"],
+        )
+
+        if metrics_response["Datapoints"]:
+            sorted_datapoints = sorted(
+                metrics_response["Datapoints"], key=lambda x: x["Timestamp"], reverse=True
+            )
+            size_bytes = sorted_datapoints[0]["Average"]
+            size_gb = size_bytes / (1024**3)
+
+            if size_gb > 1:
+                print(f"    Size: {size_gb:.2f} GB")
+                monthly_cost = size_gb * 0.023
+                print(f"    Est. monthly cost: ${monthly_cost:.2f}")
+            else:
+                size_mb = size_bytes / (1024**2)
+                print(f"    Size: {size_mb:.2f} MB")
+                print("    Est. monthly cost: <$0.01")
+        else:
+            print("    Size: No recent data available")
+
+    except ClientError:
+        print("    Size: Unable to determine")
+
+
+def process_bucket_info(s3_client, bucket):
+    """Process and display information for a single bucket"""
+    bucket_name = bucket["Name"]
+    creation_date = bucket["CreationDate"]
+
+    print(f"  Bucket: {bucket_name}")
+    print(f"    Created: {creation_date}")
+
+    region = get_bucket_region(s3_client, bucket_name)
+    get_bucket_size_metrics(bucket_name, region)
+
+    print()
+
+    return {"name": bucket_name, "creation_date": creation_date, "region": region}
 
 
 def list_s3_buckets():
@@ -95,90 +165,19 @@ def list_s3_buckets():
     try:
         s3_client = boto3.client("s3")
 
-        # List buckets
         response = s3_client.list_buckets()
         buckets = response.get("Buckets", [])
 
         print(f"🪣 Found {len(buckets)} S3 bucket(s):")
         print()
 
-        bucket_info = []
+        bucket_info = [process_bucket_info(s3_client, bucket) for bucket in buckets]
 
-        for bucket in buckets:
-            bucket_name = bucket["Name"]
-            creation_date = bucket["CreationDate"]
-
-            print(f"  Bucket: {bucket_name}")
-            print(f"    Created: {creation_date}")
-
-            # Get bucket region
-            try:
-                location_response = s3_client.get_bucket_location(Bucket=bucket_name)
-                region = location_response.get("LocationConstraint", "us-east-1")
-                if region is None:
-                    region = "us-east-1"
-                print(f"    Region: {region}")
-            except Exception as e:
-                print(f"    Region: Unable to determine ({str(e)})")
-                region = "Unknown"
-
-            # Try to get bucket size (this requires additional permissions)
-            try:
-                cloudwatch = boto3.client(
-                    "cloudwatch", region_name=region if region != "Unknown" else "us-east-1"
-                )
-
-                # Get bucket size metric from CloudWatch
-                end_time = datetime.now(timezone.utc)
-                start_time = end_time.replace(day=1)  # Start of current month
-
-                metrics_response = cloudwatch.get_metric_statistics(
-                    Namespace="AWS/S3",
-                    MetricName="BucketSizeBytes",
-                    Dimensions=[
-                        {"Name": "BucketName", "Value": bucket_name},
-                        {"Name": "StorageType", "Value": "StandardStorage"},
-                    ],
-                    StartTime=start_time,
-                    EndTime=end_time,
-                    Period=86400,  # Daily
-                    Statistics=["Average"],
-                )
-
-                if metrics_response["Datapoints"]:
-                    # Get the most recent datapoint
-                    sorted_datapoints = sorted(
-                        metrics_response["Datapoints"], key=lambda x: x["Timestamp"], reverse=True
-                    )
-                    size_bytes = sorted_datapoints[0]["Average"]
-                    size_gb = size_bytes / (1024**3)  # Convert to GB
-
-                    if size_gb > 1:
-                        print(f"    Size: {size_gb:.2f} GB")
-                        monthly_cost = size_gb * 0.023  # Rough estimate for S3 Standard
-                        print(f"    Est. monthly cost: ${monthly_cost:.2f}")
-                    else:
-                        size_mb = size_bytes / (1024**2)
-                        print(f"    Size: {size_mb:.2f} MB")
-                        print(f"    Est. monthly cost: <$0.01")
-                else:
-                    print(f"    Size: No recent data available")
-
-            except Exception as e:
-                print(f"    Size: Unable to determine")
-
-            print()
-
-            bucket_info.append(
-                {"name": bucket_name, "creation_date": creation_date, "region": region}
-            )
-
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error listing S3 buckets: {str(e)}")
         return []
 
-    else:
-        return bucket_info
+    return bucket_info
 
 
 def main():
@@ -192,7 +191,7 @@ def main():
     # Task 1: Tag vol-062d0da3492e8ceff with name "mufasa"
     print("🏷️  Task 1: Tagging volume with name 'mufasa'")
     print("-" * 50)
-    success1 = tag_volume_with_name("vol-062d0da3492e8ceff", "mufasa", "us-east-2")
+    success1 = tag_volume_with_name("vol-062d0da3492e8cef", "mufasa", "us-east-2")
     print()
 
     # Task 2: Delete automated snapshots
@@ -239,7 +238,7 @@ def main():
 
     print()
     print("📝 Note: You can verify changes using:")
-    print("   python3 scripts/management/aws_ebs_volume_manager.py info vol-062d0da3492e8ceff")
+    print("   python3 scripts/management/aws_ebs_volume_manager.py info vol-062d0da3492e8cef")
     print("   python3 scripts/audit/aws_ebs_audit.py")
 
 

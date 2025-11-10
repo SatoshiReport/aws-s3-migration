@@ -7,9 +7,9 @@ about what each AMI is used for and whether it can be safely deregistered.
 
 import os
 import sys
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -48,7 +48,7 @@ def get_ami_details(ec2_client, ami_id):
                 "block_device_mappings": ami.get("BlockDeviceMappings", []),
                 "tags": ami.get("Tags", []),
             }
-    except Exception as e:
+    except ClientError as e:
         return {"ami_id": ami_id, "error": str(e), "accessible": False}
     return None
 
@@ -80,19 +80,102 @@ def check_ami_usage(ec2_client, ami_id):
                     }
                 )
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error checking AMI usage: {e}")
         return []
 
+    return instances
+
+
+def _print_ami_details(ami_details):
+    """Print AMI details."""
+    print(f"   📋 AMI Name: {ami_details['name']}")
+    print(f"   📝 Description: {ami_details['description']}")
+    print(f"   📅 Created: {ami_details['creation_date']}")
+    print(f"   🏗️  Architecture: {ami_details['architecture']}")
+    print(f"   💻 Platform: {ami_details['platform']}")
+    print(f"   🔧 State: {ami_details['state']}")
+    print(f"   🔒 Public: {ami_details['public']}")
+
+
+def _print_ami_tags(ami_details):
+    """Print AMI tags."""
+    if ami_details["tags"]:
+        print("   🏷️  Tags:")
+        for tag in ami_details["tags"]:
+            print(f"      {tag['Key']}: {tag['Value']}")
     else:
-        return instances
+        print("   🏷️  Tags: None")
 
 
-def analyze_snapshot_ami_relationships():  # noqa: C901, PLR0912, PLR0915
+def _print_ami_usage(instances):
+    """Print instances using the AMI."""
+    if instances:
+        print(f"   ⚠️  Currently used by {len(instances)} instance(s):")
+        for instance in instances:
+            instance_name = "Unnamed"
+            for tag in instance["tags"]:
+                if tag["Key"] == "Name":
+                    instance_name = tag["Value"]
+                    break
+            print(f"      - {instance['instance_id']} ({instance_name}) - {instance['state']}")
+    else:
+        print("   ✅ Not currently used by any instances")
+
+
+def _analyze_snapshot_cost(ec2_client, snapshot_id, instances):
+    """Analyze snapshot cost and return monthly cost."""
+    try:
+        snapshots = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
+        if snapshots["Snapshots"]:
+            snapshot = snapshots["Snapshots"][0]
+            size_gb = snapshot["VolumeSize"]
+            monthly_cost = size_gb * 0.05
+            print(f"   💰 Snapshot size: {size_gb} GB")
+            print(f"   💰 Monthly cost: ${monthly_cost:.2f}")
+
+            if not instances:
+                print(
+                    f"   💡 RECOMMENDATION: This AMI appears unused - "
+                    f"consider deregistering to save ${monthly_cost:.2f}/month"
+                )
+            else:
+                print("   ⚠️  CAUTION: AMI is in use - verify instances before deregistering")
+            return monthly_cost
+    except ClientError as e:
+        print(f"   ❌ Error getting snapshot details: {e}")
+    return 0
+
+
+def _analyze_single_snapshot(ec2_client, snapshot_id, ami_id, region):
+    """Analyze a single snapshot-AMI relationship. Returns monthly cost."""
+    print(f"🔍 Analyzing {snapshot_id} -> {ami_id} in {region}")
+    print("-" * 60)
+
+    ami_details = get_ami_details(ec2_client, ami_id)
+
+    if ami_details and "error" not in ami_details:
+        _print_ami_details(ami_details)
+        _print_ami_tags(ami_details)
+        instances = check_ami_usage(ec2_client, ami_id)
+        _print_ami_usage(instances)
+        monthly_cost = _analyze_snapshot_cost(ec2_client, snapshot_id, instances)
+    elif ami_details and "error" in ami_details:
+        print(f"   ❌ Error accessing AMI: {ami_details['error']}")
+        print("   💡 This AMI may be owned by another account or may not exist")
+        monthly_cost = 0
+    else:
+        print("   ❌ AMI not found or inaccessible")
+        monthly_cost = 0
+
+    print()
+    return monthly_cost
+
+
+def analyze_snapshot_ami_relationships():
     """Analyze the relationship between snapshots and AMIs"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
-    # Snapshots that couldn't be deleted and their associated AMIs
     snapshot_ami_mapping = {
         "snap-09e90c64db692f884": {"ami": "ami-0cb04cf30dc50a00e", "region": "eu-west-2"},
         "snap-07c0d4017e24b3240": {"ami": "ami-0abc073133c9d3e18", "region": "us-east-1"},
@@ -111,93 +194,24 @@ def analyze_snapshot_ami_relationships():  # noqa: C901, PLR0912, PLR0915
     total_potential_savings = 0
 
     for snapshot_id, info in snapshot_ami_mapping.items():
-        ami_id = info["ami"]
-        region = info["region"]
-
-        print(f"🔍 Analyzing {snapshot_id} -> {ami_id} in {region}")
-        print("-" * 60)
-
-        # Create EC2 client for the specific region
         ec2_client = boto3.client(
             "ec2",
-            region_name=region,
+            region_name=info["region"],
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
-
-        # Get AMI details
-        ami_details = get_ami_details(ec2_client, ami_id)
-
-        if ami_details and "error" not in ami_details:
-            print(f"   📋 AMI Name: {ami_details['name']}")
-            print(f"   📝 Description: {ami_details['description']}")
-            print(f"   📅 Created: {ami_details['creation_date']}")
-            print(f"   🏗️  Architecture: {ami_details['architecture']}")
-            print(f"   💻 Platform: {ami_details['platform']}")
-            print(f"   🔧 State: {ami_details['state']}")
-            print(f"   🔒 Public: {ami_details['public']}")
-
-            # Check for tags
-            if ami_details["tags"]:
-                print("   🏷️  Tags:")
-                for tag in ami_details["tags"]:
-                    print(f"      {tag['Key']}: {tag['Value']}")
-            else:
-                print("   🏷️  Tags: None")
-
-            # Check if AMI is being used by any instances
-            instances = check_ami_usage(ec2_client, ami_id)
-            if instances:
-                print(f"   ⚠️  Currently used by {len(instances)} instance(s):")
-                for instance in instances:
-                    instance_name = "Unnamed"
-                    for tag in instance["tags"]:
-                        if tag["Key"] == "Name":
-                            instance_name = tag["Value"]
-                            break
-                    print(
-                        f"      - {instance['instance_id']} ({instance_name}) - {instance['state']}"
-                    )
-            else:
-                print("   ✅ Not currently used by any instances")
-
-            # Calculate potential savings if this snapshot could be deleted
-            # Get snapshot details to calculate cost
-            try:
-                snapshots = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
-                if snapshots["Snapshots"]:
-                    snapshot = snapshots["Snapshots"][0]
-                    size_gb = snapshot["VolumeSize"]
-                    monthly_cost = size_gb * 0.05  # $0.05 per GB per month
-                    total_potential_savings += monthly_cost
-                    print(f"   💰 Snapshot size: {size_gb} GB")
-                    print(f"   💰 Monthly cost: ${monthly_cost:.2f}")
-
-                    if not instances:
-                        print(
-                            f"   💡 RECOMMENDATION: This AMI appears unused - consider deregistering to save ${monthly_cost:.2f}/month"
-                        )
-                    else:
-                        print(
-                            f"   ⚠️  CAUTION: AMI is in use - verify instances before deregistering"
-                        )
-            except Exception as e:
-                print(f"   ❌ Error getting snapshot details: {e}")
-
-        elif ami_details and "error" in ami_details:
-            print(f"   ❌ Error accessing AMI: {ami_details['error']}")
-            print("   💡 This AMI may be owned by another account or may not exist")
-        else:
-            print("   ❌ AMI not found or inaccessible")
-
-        print()
+        monthly_cost = _analyze_single_snapshot(
+            ec2_client, snapshot_id, info["ami"], info["region"]
+        )
+        total_potential_savings += monthly_cost
 
     print("=" * 80)
     print("🎯 SUMMARY")
     print("=" * 80)
     print(f"Total snapshots analyzed: {len(snapshot_ami_mapping)}")
     print(
-        f"Total potential monthly savings if all AMIs were deregistered: ${total_potential_savings:.2f}"
+        f"Total potential monthly savings if all AMIs were deregistered: "
+        f"${total_potential_savings:.2f}"
     )
     print(f"Total potential annual savings: ${total_potential_savings * 12:.2f}")
     print()
@@ -211,6 +225,6 @@ def analyze_snapshot_ami_relationships():  # noqa: C901, PLR0912, PLR0915
 if __name__ == "__main__":
     try:
         analyze_snapshot_ami_relationships()
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)

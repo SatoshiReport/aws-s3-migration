@@ -16,6 +16,7 @@ def _build_sample_index():
 
 
 def test_find_exact_duplicates_groups_identical_directories():
+    """Test that exact duplicates are correctly identified."""
     index = _build_sample_index()
     clusters = find_exact_duplicates(index)
 
@@ -35,6 +36,7 @@ def test_find_exact_duplicates_groups_identical_directories():
 
 
 def test_directory_index_ignores_system_files():
+    """Test that system files are properly ignored in indexing."""
     index = DirectoryIndex()
     index.add_file("bucket", "dirA/.DS_Store", 10, "ignored")
     index.add_file("bucket", "dirA/._.DS_Store", 10, "ignored2")

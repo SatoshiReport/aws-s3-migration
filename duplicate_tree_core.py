@@ -6,7 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
-from typing import Dict, Iterable, List, Set, Tuple
+from typing import Dict, Iterable, List, Set
 
 try:  # Prefer package-local imports when packaged
     from .duplicate_tree_models import (

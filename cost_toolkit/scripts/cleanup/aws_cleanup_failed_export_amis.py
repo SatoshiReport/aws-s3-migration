@@ -9,6 +9,7 @@ import os
 import sys
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -86,7 +87,7 @@ def cleanup_failed_export_amis():
             print(f"   ✅ Successfully cleaned up {ami_id}")
             successful_cleanups += 1
 
-        except Exception as e:
+        except ClientError as e:
             print(f"   ❌ Error cleaning up {ami_id}: {e}")
             failed_cleanups += 1
 
@@ -106,6 +107,6 @@ def cleanup_failed_export_amis():
 if __name__ == "__main__":
     try:
         cleanup_failed_export_amis()
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)

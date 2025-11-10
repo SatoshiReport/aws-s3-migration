@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
+"""Migrate EBS data to S3 storage."""
+
 
 import os
-import time
 
 import boto3
+from botocore.exceptions import ClientError
+
+# Volume IDs for migration
+REMAINING_VOLUMES = [
+    "vol-089b9ed38099c68f3",  # 384 GB
+    "vol-0249308257e5fa64d",  # Tars 3 - 64 GB
+]
 
 
 def setup_aws_credentials():
@@ -13,78 +21,66 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def create_s3_bucket_and_migrate():  # noqa: PLR0915
-    """Create S3 bucket and set up migration from EBS to S3"""
-    setup_aws_credentials()
-
+def _print_setup_header():
+    """Print the setup header."""
     print("AWS EBS to S3 Migration Setup")
     print("=" * 80)
     print("🪣 Creating S3 bucket for user file storage")
     print("📁 Setting up migration from EBS volumes to S3 Standard")
     print()
 
-    # Initialize AWS clients
-    s3 = boto3.client("s3", region_name="eu-west-2")
-    ec2 = boto3.client("ec2", region_name="eu-west-2")
 
-    bucket_name = "aws-user-files-backup-london"
+def _create_s3_bucket(s3, bucket_name):
+    """Create the S3 bucket for migration."""
+    print("🪣 CREATING S3 BUCKET:")
+    print("=" * 80)
+    print(f"Bucket name: {bucket_name}")
+    print("Region: eu-west-2 (London)")
+    print("Storage class: S3 Standard")
+    print()
 
     try:
-        # Create S3 bucket
-        print("🪣 CREATING S3 BUCKET:")
-        print("=" * 80)
-        print(f"Bucket name: {bucket_name}")
-        print("Region: eu-west-2 (London)")
-        print("Storage class: S3 Standard")
-        print()
+        s3.create_bucket(
+            Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"}
+        )
+        print("✅ S3 bucket created successfully")
+    except ClientError as e:
+        if "BucketAlreadyExists" in str(e):
+            print("✅ S3 bucket already exists")
+        else:
+            print(f"❌ Error creating bucket: {str(e)}")
+            raise
 
-        try:
-            s3.create_bucket(
-                Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"}
-            )
-            print("✅ S3 bucket created successfully")
-        except Exception as e:
-            if "BucketAlreadyExists" in str(e):
-                print("✅ S3 bucket already exists")
-            else:
-                print(f"❌ Error creating bucket: {str(e)}")
-                return
+    print()
 
-        print()
 
-        # Get current volume information
-        print("📊 CURRENT EBS VOLUMES:")
-        print("=" * 80)
+def _display_volume_info(ec2):
+    """Display information about the volumes to be migrated."""
+    print("📊 CURRENT EBS VOLUMES:")
+    print("=" * 80)
 
-        remaining_volumes = [
-            "vol-089b9ed38099c68f3",  # 384 GB
-            "vol-0249308257e5fa64d",  # Tars 3 - 64 GB
-        ]
+    volumes_response = ec2.describe_volumes(VolumeIds=REMAINING_VOLUMES)
+    volumes = volumes_response["Volumes"]
 
-        volumes_response = ec2.describe_volumes(VolumeIds=remaining_volumes)
-        volumes = volumes_response["Volumes"]
+    for volume in volumes:
+        vol_id = volume["VolumeId"]
+        size = volume["Size"]
 
-        for volume in volumes:
-            vol_id = volume["VolumeId"]
-            size = volume["Size"]
+        name = "No name"
+        if "Tags" in volume:
+            for tag in volume["Tags"]:
+                if tag["Key"] == "Name":
+                    name = tag["Value"]
+                    break
 
-            # Get volume name
-            name = "No name"
-            if "Tags" in volume:
-                for tag in volume["Tags"]:
-                    if tag["Key"] == "Name":
-                        name = tag["Value"]
-                        break
+        print(f"📦 {name} ({vol_id}): {size} GB")
 
-            print(f"📦 {name} ({vol_id}): {size} GB")
+    print()
 
-        print()
 
-        # Create migration script
-        print("📝 MIGRATION SCRIPT:")
-        print("=" * 80)
-
-        migration_script = f"""#!/bin/bash
+def _generate_migration_script(bucket_name):
+    """Generate the bash migration script."""
+    return f"""#!/bin/bash
 
 # AWS EBS to S3 Migration Script
 # This script transfers user files from EBS volumes to S3 Standard storage
@@ -110,7 +106,7 @@ echo "📁 Identifying user directories to migrate..."
 sync_to_s3() {{
     local source_path="$1"
     local s3_prefix="$2"
-    
+
     if [ -d "$source_path" ]; then
         echo "🔄 Syncing $source_path to s3://{bucket_name}/$s3_prefix/"
         aws s3 sync "$source_path" "s3://{bucket_name}/$s3_prefix/" \\
@@ -156,34 +152,60 @@ echo "✅ Migration complete!"
 echo "Files are now stored in S3 bucket: {bucket_name}"
 """
 
-        # Write migration script to file
-        with open("ebs_to_s3_migration.sh", "w") as f:
-            f.write(migration_script)
 
-        # Make script executable
-        os.chmod("ebs_to_s3_migration.sh", 0o700)
+def _write_migration_script(migration_script):
+    """Write and make executable the migration script."""
+    print("📝 MIGRATION SCRIPT:")
+    print("=" * 80)
 
-        print("✅ Migration script created: ebs_to_s3_migration.sh")
-        print()
+    with open("ebs_to_s3_migration.sh", "w", encoding="utf-8") as f:
+        f.write(migration_script)
 
-        print("📋 NEXT STEPS:")
-        print("=" * 80)
-        print("1. ✅ S3 bucket created: " + bucket_name)
-        print("2. ✅ Migration script ready: ebs_to_s3_migration.sh")
-        print("3. 🔄 Run the script on your EC2 instance:")
-        print("   ./ebs_to_s3_migration.sh")
-        print()
-        print("💰 EXPECTED COST SAVINGS:")
-        print("   Current EBS: $35.84/month (448GB)")
-        print("   S3 Standard: ~$10.30/month (448GB)")
-        print("   Monthly savings: ~$25.54")
-        print()
-        print("🎯 TOTAL OPTIMIZATION IMPACT:")
-        print("   EBS cleanup savings: $166.92/month")
-        print("   S3 migration savings: ~$25.54/month")
-        print("   Combined savings: ~$192.46/month")
+    os.chmod("ebs_to_s3_migration.sh", 0o700)
 
-    except Exception as e:
+    print("✅ Migration script created: ebs_to_s3_migration.sh")
+    print()
+
+
+def _print_next_steps(bucket_name):
+    """Print next steps and cost savings information."""
+    print("📋 NEXT STEPS:")
+    print("=" * 80)
+    print("1. ✅ S3 bucket created: " + bucket_name)
+    print("2. ✅ Migration script ready: ebs_to_s3_migration.sh")
+    print("3. 🔄 Run the script on your EC2 instance:")
+    print("   ./ebs_to_s3_migration.sh")
+    print()
+    print("💰 EXPECTED COST SAVINGS:")
+    print("   Current EBS: $35.84/month (448GB)")
+    print("   S3 Standard: ~$10.30/month (448GB)")
+    print("   Monthly savings: ~$25.54")
+    print()
+    print("🎯 TOTAL OPTIMIZATION IMPACT:")
+    print("   EBS cleanup savings: $166.92/month")
+    print("   S3 migration savings: ~$25.54/month")
+    print("   Combined savings: ~$192.46/month")
+
+
+def create_s3_bucket_and_migrate():
+    """Create S3 bucket and set up migration from EBS to S3"""
+    setup_aws_credentials()
+    _print_setup_header()
+
+    s3 = boto3.client("s3", region_name="eu-west-2")
+    ec2 = boto3.client("ec2", region_name="eu-west-2")
+
+    bucket_name = "aws-user-files-backup-london"
+
+    try:
+        _create_s3_bucket(s3, bucket_name)
+        _display_volume_info(ec2)
+
+        migration_script = _generate_migration_script(bucket_name)
+        _write_migration_script(migration_script)
+        _print_next_steps(bucket_name)
+
+    except ClientError as e:
         print(f"❌ Error during setup: {str(e)}")
 
 

@@ -27,132 +27,114 @@ COMPLETED_BUCKET_COUNT = 2
 SUMMARY_FILE_TOTAL = 3
 
 
-class TestBucketStatusPersistence:
-    """Test bucket status save operations"""
+def test_migration_state_v2_save_bucket_status(tmp_path: Path):
+    """MigrationStateV2.save_bucket_status persists bucket info."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
 
-    def test_migration_state_v2_save_bucket_status(self, tmp_path: Path):
-        """MigrationStateV2.save_bucket_status persists bucket info."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
+    state.save_bucket_status(
+        bucket=DEFAULT_BUCKET,
+        file_count=DEFAULT_FILE_COUNT,
+        total_size=DEFAULT_TOTAL_SIZE,
+        storage_classes=DEFAULT_STORAGE,
+        scan_complete=True,
+    )
 
-        state.save_bucket_status(
-            bucket=DEFAULT_BUCKET,
-            file_count=DEFAULT_FILE_COUNT,
-            total_size=DEFAULT_TOTAL_SIZE,
-            storage_classes=DEFAULT_STORAGE,
-            scan_complete=True,
+    with state.db_conn.get_connection() as conn:
+        cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,))
+        row = cursor.fetchone()
+        assert row is not None
+        assert row["file_count"] == DEFAULT_FILE_COUNT
+        assert row["total_size"] == DEFAULT_TOTAL_SIZE
+        assert row["scan_complete"] == 1
+
+
+def test_migration_state_v2_mark_bucket_sync_complete(tmp_path: Path):
+    """MigrationStateV2.mark_bucket_sync_complete updates bucket status."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
+
+    state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
+    state.mark_bucket_sync_complete("bucket1")
+
+    with state.db_conn.get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT sync_complete FROM bucket_status WHERE bucket = ?", ("bucket1",)
         )
-
-        with state.db_conn.get_connection() as conn:
-            cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,))
-            row = cursor.fetchone()
-            assert row is not None
-            assert row["file_count"] == DEFAULT_FILE_COUNT
-            assert row["total_size"] == DEFAULT_TOTAL_SIZE
-            assert row["scan_complete"] == 1
+        row = cursor.fetchone()
+        assert row["sync_complete"] == 1
 
 
-class TestBucketSyncOperations:
-    """Test bucket sync completion operations"""
+def test_migration_state_v2_mark_bucket_verify_complete_with_metrics(tmp_path: Path):
+    """MigrationStateV2.mark_bucket_verify_complete stores verification metrics."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
 
-    def test_migration_state_v2_mark_bucket_sync_complete(self, tmp_path: Path):
-        """MigrationStateV2.mark_bucket_sync_complete updates bucket status."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
+    state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
+    state.mark_bucket_verify_complete(
+        bucket="bucket1",
+        verified_file_count=SMALL_FILE_COUNT,
+        size_verified_count=SMALL_FILE_COUNT,
+        checksum_verified_count=PARTIAL_CHECKSUM_COUNT,
+        total_bytes_verified=SMALL_TOTAL_SIZE,
+        local_file_count=SMALL_FILE_COUNT,
+    )
 
-        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
-        state.mark_bucket_sync_complete("bucket1")
-
-        with state.db_conn.get_connection() as conn:
-            cursor = conn.execute(
-                "SELECT sync_complete FROM bucket_status WHERE bucket = ?", ("bucket1",)
-            )
-            row = cursor.fetchone()
-            assert row["sync_complete"] == 1
+    with state.db_conn.get_connection() as conn:
+        cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", ("bucket1",))
+        row = cursor.fetchone()
+        assert row["verify_complete"] == 1
+        assert row["verified_file_count"] == SMALL_FILE_COUNT
+        assert row["checksum_verified_count"] == PARTIAL_CHECKSUM_COUNT
 
 
-class TestBucketVerifyOperations:
-    """Test bucket verification operations"""
+def test_migration_state_v2_mark_bucket_delete_complete(tmp_path: Path):
+    """MigrationStateV2.mark_bucket_delete_complete updates bucket status."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
 
-    def test_migration_state_v2_mark_bucket_verify_complete_with_metrics(self, tmp_path: Path):
-        """MigrationStateV2.mark_bucket_verify_complete stores verification metrics."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
+    state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
+    state.mark_bucket_delete_complete("bucket1")
 
-        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
-        state.mark_bucket_verify_complete(
-            bucket="bucket1",
-            verified_file_count=SMALL_FILE_COUNT,
-            size_verified_count=SMALL_FILE_COUNT,
-            checksum_verified_count=PARTIAL_CHECKSUM_COUNT,
-            total_bytes_verified=SMALL_TOTAL_SIZE,
-            local_file_count=SMALL_FILE_COUNT,
+    with state.db_conn.get_connection() as conn:
+        cursor = conn.execute(
+            "SELECT delete_complete FROM bucket_status WHERE bucket = ?",
+            ("bucket1",),
         )
-
-        with state.db_conn.get_connection() as conn:
-            cursor = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", ("bucket1",))
-            row = cursor.fetchone()
-            assert row["verify_complete"] == 1
-            assert row["verified_file_count"] == SMALL_FILE_COUNT
-            assert row["checksum_verified_count"] == PARTIAL_CHECKSUM_COUNT
+        row = cursor.fetchone()
+        assert row["delete_complete"] == 1
 
 
-class TestBucketDeleteOperations:
-    """Test bucket deletion operations"""
+def test_migration_state_v2_get_all_buckets(tmp_path: Path):
+    """MigrationStateV2.get_all_buckets returns all bucket names."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
 
-    def test_migration_state_v2_mark_bucket_delete_complete(self, tmp_path: Path):
-        """MigrationStateV2.mark_bucket_delete_complete updates bucket status."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
+    state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
+    state.save_bucket_status("bucket2", MEDIUM_FILE_COUNT, MEDIUM_TOTAL_SIZE, {})
+    state.save_bucket_status("bucket3", LARGE_FILE_COUNT, LARGE_TOTAL_SIZE, {})
 
-        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
-        state.mark_bucket_delete_complete("bucket1")
+    buckets = state.get_all_buckets()
 
-        with state.db_conn.get_connection() as conn:
-            cursor = conn.execute(
-                "SELECT delete_complete FROM bucket_status WHERE bucket = ?",
-                ("bucket1",),
-            )
-            row = cursor.fetchone()
-            assert row["delete_complete"] == 1
+    assert set(buckets) == {"bucket1", "bucket2", "bucket3"}
+    assert buckets == sorted(buckets)
 
 
-class TestBucketListOperations:
-    """Test bucket listing operations"""
+def test_migration_state_v2_get_completed_buckets_for_phase(tmp_path: Path):
+    """MigrationStateV2.get_completed_buckets_for_phase filters by phase flag."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
 
-    def test_migration_state_v2_get_all_buckets(self, tmp_path: Path):
-        """MigrationStateV2.get_all_buckets returns all bucket names."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
+    state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
+    state.save_bucket_status("bucket2", MEDIUM_FILE_COUNT, MEDIUM_TOTAL_SIZE, {})
+    state.save_bucket_status("bucket3", LARGE_FILE_COUNT, LARGE_TOTAL_SIZE, {})
 
-        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
-        state.save_bucket_status("bucket2", MEDIUM_FILE_COUNT, MEDIUM_TOTAL_SIZE, {})
-        state.save_bucket_status("bucket3", LARGE_FILE_COUNT, LARGE_TOTAL_SIZE, {})
+    state.mark_bucket_sync_complete("bucket1")
+    state.mark_bucket_sync_complete("bucket2")
 
-        buckets = state.get_all_buckets()
+    completed = state.get_completed_buckets_for_phase("sync_complete")
 
-        assert set(buckets) == {"bucket1", "bucket2", "bucket3"}
-        assert buckets == sorted(buckets)
-
-
-class TestBucketPhaseFiltering:
-    """Test bucket phase filtering operations"""
-
-    def test_migration_state_v2_get_completed_buckets_for_phase(self, tmp_path: Path):
-        """MigrationStateV2.get_completed_buckets_for_phase filters by phase flag."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
-
-        state.save_bucket_status("bucket1", SMALL_FILE_COUNT, SMALL_TOTAL_SIZE, {})
-        state.save_bucket_status("bucket2", MEDIUM_FILE_COUNT, MEDIUM_TOTAL_SIZE, {})
-        state.save_bucket_status("bucket3", LARGE_FILE_COUNT, LARGE_TOTAL_SIZE, {})
-
-        state.mark_bucket_sync_complete("bucket1")
-        state.mark_bucket_sync_complete("bucket2")
-
-        completed = state.get_completed_buckets_for_phase("sync_complete")
-
-        assert set(completed) == {"bucket1", "bucket2"}
+    assert set(completed) == {"bucket1", "bucket2"}
 
 
 class TestBucketInfoRetrieval:
@@ -186,100 +168,85 @@ class TestBucketInfoRetrieval:
         assert info == {}
 
 
-class TestScanSummaryOperations:
-    """Test scan summary operations"""
+def test_migration_state_v2_get_scan_summary(tmp_path: Path):
+    """MigrationStateV2.get_scan_summary aggregates scan data."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
 
-    def test_migration_state_v2_get_scan_summary(self, tmp_path: Path):
-        """MigrationStateV2.get_scan_summary aggregates scan data."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
+    state.add_file("b1", "k1", SMALL_TOTAL_SIZE, "e1", "STANDARD", "2025-10-31T00:00:00Z")
+    state.add_file("b1", "k2", SMALL_TOTAL_SIZE, "e2", "GLACIER", "2025-10-31T00:00:00Z")
+    state.add_file("b2", "k3", SMALL_TOTAL_SIZE, "e3", "STANDARD", "2025-10-31T00:00:00Z")
 
-        state.add_file("b1", "k1", SMALL_TOTAL_SIZE, "e1", "STANDARD", "2025-10-31T00:00:00Z")
-        state.add_file("b1", "k2", SMALL_TOTAL_SIZE, "e2", "GLACIER", "2025-10-31T00:00:00Z")
-        state.add_file("b2", "k3", SMALL_TOTAL_SIZE, "e3", "STANDARD", "2025-10-31T00:00:00Z")
+    state.save_bucket_status(
+        "b1", 2, 2 * SMALL_TOTAL_SIZE, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True
+    )
+    state.save_bucket_status("b2", 1, SMALL_TOTAL_SIZE, {"STANDARD": 1}, scan_complete=True)
+    state.save_bucket_status(
+        "b3",
+        INCOMPLETE_FILE_COUNT,
+        INCOMPLETE_TOTAL_SIZE,
+        {"STANDARD": INCOMPLETE_FILE_COUNT},
+        scan_complete=False,
+    )
 
-        state.save_bucket_status(
-            "b1", 2, 2 * SMALL_TOTAL_SIZE, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True
-        )
-        state.save_bucket_status("b2", 1, SMALL_TOTAL_SIZE, {"STANDARD": 1}, scan_complete=True)
-        state.save_bucket_status(
-            "b3",
-            INCOMPLETE_FILE_COUNT,
-            INCOMPLETE_TOTAL_SIZE,
-            {"STANDARD": INCOMPLETE_FILE_COUNT},
-            scan_complete=False,
-        )
+    summary = state.get_scan_summary()
 
-        summary = state.get_scan_summary()
-
-        assert summary["bucket_count"] == COMPLETED_BUCKET_COUNT
-        assert summary["total_files"] == SUMMARY_FILE_TOTAL
-        assert summary["total_size"] == 3 * SMALL_TOTAL_SIZE
-        assert summary["storage_classes"]["STANDARD"] == SUMMARY_STANDARD_COUNT
-        assert summary["storage_classes"]["GLACIER"] == SUMMARY_GLACIER_COUNT
+    assert summary["bucket_count"] == COMPLETED_BUCKET_COUNT
+    assert summary["total_files"] == SUMMARY_FILE_TOTAL
+    assert summary["total_size"] == 3 * SMALL_TOTAL_SIZE
+    assert summary["storage_classes"]["STANDARD"] == SUMMARY_STANDARD_COUNT
+    assert summary["storage_classes"]["GLACIER"] == SUMMARY_GLACIER_COUNT
 
 
-class TestPhaseDefaultState:
-    """Test default phase state"""
+def test_migration_state_v2_get_current_phase_default(tmp_path: Path):
+    """MigrationStateV2.get_current_phase returns SCANNING by default."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
 
-    def test_migration_state_v2_get_current_phase_default(self, tmp_path: Path):
-        """MigrationStateV2.get_current_phase returns SCANNING by default."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
+    phase = state.get_current_phase()
 
-        phase = state.get_current_phase()
-
-        assert phase == Phase.SCANNING
+    assert phase == Phase.SCANNING
 
 
-class TestPhaseTransitions:
-    """Test phase transition operations"""
+def test_migration_state_v2_set_current_phase(tmp_path: Path):
+    """MigrationStateV2.set_current_phase updates phase."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
 
-    def test_migration_state_v2_set_current_phase(self, tmp_path: Path):
-        """MigrationStateV2.set_current_phase updates phase."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
+    state.set_current_phase(Phase.GLACIER_RESTORE)
+    phase = state.get_current_phase()
 
-        state.set_current_phase(Phase.GLACIER_RESTORE)
-        phase = state.get_current_phase()
-
-        assert phase == Phase.GLACIER_RESTORE
+    assert phase == Phase.GLACIER_RESTORE
 
 
-class TestPhasePersistence:
-    """Test phase persistence across instances"""
+def test_migration_state_v2_set_current_phase_persists(tmp_path: Path):
+    """MigrationStateV2 phase change persists across instances."""
+    db_path = tmp_path / "test.db"
 
-    def test_migration_state_v2_set_current_phase_persists(self, tmp_path: Path):
-        """MigrationStateV2 phase change persists across instances."""
-        db_path = tmp_path / "test.db"
+    state1 = MigrationStateV2(str(db_path))
+    state1.set_current_phase(Phase.GLACIER_WAIT)
 
-        state1 = MigrationStateV2(str(db_path))
-        state1.set_current_phase(Phase.GLACIER_WAIT)
+    state2 = MigrationStateV2(str(db_path))
+    phase = state2.get_current_phase()
 
-        state2 = MigrationStateV2(str(db_path))
-        phase = state2.get_current_phase()
-
-        assert phase == Phase.GLACIER_WAIT
+    assert phase == Phase.GLACIER_WAIT
 
 
-class TestPhaseSequence:
-    """Test phase sequence transitions"""
+def test_migration_state_v2_phase_transition_sequence(tmp_path: Path):
+    """MigrationStateV2 supports full phase transition sequence."""
+    db_path = tmp_path / "test.db"
+    state = MigrationStateV2(str(db_path))
 
-    def test_migration_state_v2_phase_transition_sequence(self, tmp_path: Path):
-        """MigrationStateV2 supports full phase transition sequence."""
-        db_path = tmp_path / "test.db"
-        state = MigrationStateV2(str(db_path))
+    phases = [
+        Phase.SCANNING,
+        Phase.GLACIER_RESTORE,
+        Phase.GLACIER_WAIT,
+        Phase.SYNCING,
+        Phase.VERIFYING,
+        Phase.DELETING,
+        Phase.COMPLETE,
+    ]
 
-        phases = [
-            Phase.SCANNING,
-            Phase.GLACIER_RESTORE,
-            Phase.GLACIER_WAIT,
-            Phase.SYNCING,
-            Phase.VERIFYING,
-            Phase.DELETING,
-            Phase.COMPLETE,
-        ]
-
-        for expected_phase in phases:
-            state.set_current_phase(expected_phase)
-            assert state.get_current_phase() == expected_phase
+    for expected_phase in phases:
+        state.set_current_phase(expected_phase)
+        assert state.get_current_phase() == expected_phase

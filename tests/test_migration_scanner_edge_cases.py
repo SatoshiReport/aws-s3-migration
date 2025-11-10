@@ -10,122 +10,24 @@ from migration_state_v2 import MigrationStateV2
 from tests.assertions import assert_equal
 
 
-class TestBucketScannerPaginationInterrupt:
-    """Test BucketScanner pagination interrupt handling"""
+def test_scan_bucket_respects_pagination_interrupt():
+    """Test interrupt during pagination"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock(spec=MigrationStateV2)
+    scanner = BucketScanner(mock_s3, mock_state)
 
-    def test_scan_bucket_respects_pagination_interrupt(self):
-        """Test interrupt during pagination"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock(spec=MigrationStateV2)
-        scanner = BucketScanner(mock_s3, mock_state)
+    page_count = 0
 
-        page_count = 0
-
-        def paginate_with_interrupt(*args, **kwargs):
-            nonlocal page_count
-            page_count += 1
-            scanner.interrupted = True
-            return [
-                {
-                    "Contents": [
-                        {
-                            "Key": f"file{page_count}.txt",
-                            "Size": 100,
-                            "StorageClass": "STANDARD",
-                            "LastModified": datetime.now(),
-                        }
-                    ]
-                }
-            ]
-
-        scanner.s3.get_paginator.return_value.paginate = paginate_with_interrupt
-
-        scanner._scan_bucket("test-bucket")
-
-        # Should only process first page before interrupt
-        mock_state.save_bucket_status.assert_not_called()
-
-
-class TestBucketScannerProgressOutput:
-    """Test BucketScanner progress output"""
-
-    def test_scan_bucket_progress_output(self):
-        """Test progress output for large number of files"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock(spec=MigrationStateV2)
-        scanner = BucketScanner(mock_s3, mock_state)
-
-        files = []
-        for i in range(20001):
-            files.append(
-                {
-                    "Key": f"file{i}.txt",
-                    "Size": 100,
-                    "StorageClass": "STANDARD",
-                    "LastModified": datetime.now(),
-                }
-            )
-
-        scanner.s3.get_paginator.return_value.paginate.return_value = [{"Contents": files}]
-
-        import io
-        import sys
-
-        captured_output = io.StringIO()
-        sys.stdout = captured_output
-
-        scanner._scan_bucket("test-bucket")
-
-        sys.stdout = sys.__stdout__
-        output = captured_output.getvalue()
-        # Should show progress at 10000 mark
-        assert "20001" in output or "20,001" in output
-
-
-class TestBucketScannerLargeScale:
-    """Test BucketScanner with large numbers of files"""
-
-    def test_bucket_scanner_handles_very_large_bucket(self):
-        """Test scanning a bucket with many files"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock(spec=MigrationStateV2)
-        mock_s3.list_buckets.return_value = {"Buckets": [{"Name": "large-bucket"}]}
-
-        # Create a large number of files
-        files = [
-            {
-                "Key": f"file{i}.txt",
-                "Size": 1000000,
-                "StorageClass": "STANDARD",
-                "LastModified": datetime.now(),
-            }
-            for i in range(50000)
-        ]
-
-        mock_s3.get_paginator.return_value.paginate.return_value = [{"Contents": files}]
-
-        scanner = BucketScanner(mock_s3, mock_state)
-        scanner.scan_all_buckets()
-
-        # Should have added all files
-        assert_equal(mock_state.add_file.call_count, 50000)
-
-
-class TestBucketScannerZeroSizeFiles:
-    """Test BucketScanner handling of zero-size files"""
-
-    def test_bucket_scanner_handles_zero_size_files(self):
-        """Test scanning bucket with zero-size files"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock(spec=MigrationStateV2)
-        mock_s3.list_buckets.return_value = {"Buckets": [{"Name": "test-bucket"}]}
-
-        mock_s3.get_paginator.return_value.paginate.return_value = [
+    def paginate_with_interrupt(*args, **kwargs):
+        nonlocal page_count
+        page_count += 1
+        scanner.interrupted = True
+        return [
             {
                 "Contents": [
                     {
-                        "Key": "zero.txt",
-                        "Size": 0,
+                        "Key": f"file{page_count}.txt",
+                        "Size": 100,
                         "StorageClass": "STANDARD",
                         "LastModified": datetime.now(),
                     }
@@ -133,141 +35,170 @@ class TestBucketScannerZeroSizeFiles:
             }
         ]
 
-        scanner = BucketScanner(mock_s3, mock_state)
-        scanner.scan_all_buckets()
+    scanner.s3.get_paginator.return_value.paginate = paginate_with_interrupt
 
-        call_args = mock_state.save_bucket_status.call_args
-        assert call_args[0][2] == 0  # Total size should be 0
+    scanner.scan_bucket("test-bucket")
 
-
-class TestGlacierWaiterRestoreStringFormats:
-    """Test GlacierWaiter restore string parsing"""
-
-    def test_glacier_restorer_handles_restore_string_variations(self):
-        """Test various restore string formats"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock(spec=MigrationStateV2)
-        waiter = GlacierWaiter(mock_s3, mock_state)
-
-        test_cases = [
-            ('ongoing-request="false"', True),
-            ('ongoing-request="true"', False),
-            ('ongoing-request="false", expiry-date="..."', True),
-            ("", False),
-        ]
-
-        for restore_string, expected in test_cases:
-            mock_s3.head_object.return_value = {"Restore": restore_string} if restore_string else {}
-
-            result = waiter._check_restore_status({"bucket": "b", "key": "k"})
-            assert result == expected
+    # Should only process first page before interrupt
+    mock_state.save_bucket_status.assert_not_called()
 
 
-class TestGlacierWaiterPartialRestoreString:
-    """Test GlacierWaiter with partial restore string"""
+def test_scan_bucket_progress_output():
+    """Test progress output for large number of files"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock(spec=MigrationStateV2)
+    scanner = BucketScanner(mock_s3, mock_state)
 
-    @pytest.fixture
-    def mock_s3(self):
-        """Create mock S3 client"""
-        return mock.Mock()
+    files = []
+    for i in range(20001):
+        files.append(
+            {
+                "Key": f"file{i}.txt",
+                "Size": 100,
+                "StorageClass": "STANDARD",
+                "LastModified": datetime.now(),
+            }
+        )
 
-    @pytest.fixture
-    def mock_state(self):
-        """Create mock MigrationStateV2"""
-        return mock.Mock(spec=MigrationStateV2)
+    scanner.s3.get_paginator.return_value.paginate.return_value = [{"Contents": files}]
 
-    @pytest.fixture
-    def waiter(self, mock_s3, mock_state):
-        """Create GlacierWaiter instance"""
-        return GlacierWaiter(mock_s3, mock_state)
+    import io
+    import sys
 
-    def test_check_restore_status_partial_restore_string(self, waiter, mock_s3, mock_state):
-        """Test restore status with various Restore header formats"""
-        # AWS includes timestamp and expiry in the Restore header
-        mock_s3.head_object.return_value = {
-            "Restore": 'ongoing-request="false", expiry-date="Tue, 25 Oct 2022 00:00:00 GMT"',
+    captured_output = io.StringIO()
+    sys.stdout = captured_output
+
+    scanner.scan_bucket("test-bucket")
+
+    sys.stdout = sys.__stdout__
+    output = captured_output.getvalue()
+    # Should show progress at 10000 mark
+    assert "20001" in output or "20,001" in output
+
+
+def test_bucket_scanner_handles_very_large_bucket():
+    """Test scanning a bucket with many files"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock(spec=MigrationStateV2)
+    mock_s3.list_buckets.return_value = {"Buckets": [{"Name": "large-bucket"}]}
+
+    # Create a large number of files
+    files = [
+        {
+            "Key": f"file{i}.txt",
+            "Size": 1000000,
+            "StorageClass": "STANDARD",
+            "LastModified": datetime.now(),
         }
+        for i in range(50000)
+    ]
 
-        file_info = {"bucket": "test-bucket", "key": "file.txt"}
-        result = waiter._check_restore_status(file_info)
+    mock_s3.get_paginator.return_value.paginate.return_value = [{"Contents": files}]
 
-        assert result is True
-        mock_state.mark_glacier_restored.assert_called_once()
+    scanner = BucketScanner(mock_s3, mock_state)
+    scanner.scan_all_buckets()
 
-
-class TestGlacierWaiterRestoredFilesOutput:
-    """Test GlacierWaiter output for restored files"""
-
-    @pytest.fixture
-    def mock_s3(self):
-        """Create mock S3 client"""
-        return mock.Mock()
-
-    @pytest.fixture
-    def mock_state(self):
-        """Create mock MigrationStateV2"""
-        return mock.Mock(spec=MigrationStateV2)
-
-    @pytest.fixture
-    def waiter(self, mock_s3, mock_state):
-        """Create GlacierWaiter instance"""
-        return GlacierWaiter(mock_s3, mock_state)
-
-    def test_wait_for_restores_prints_restored_files(self, waiter, mock_s3, mock_state, capsys):
-        """Test output shows restored files"""
-        # Mock _check_restore_status to return True for both files
-        waiter._check_restore_status = mock.Mock(return_value=True)
-
-        mock_state.get_files_restoring.side_effect = [
-            [
-                {"bucket": "test-bucket", "key": "file1.txt"},
-                {"bucket": "test-bucket", "key": "file2.txt"},
-            ],
-            [],
-        ]
-
-        with mock.patch("migration_scanner.time.sleep"):
-            waiter.wait_for_restores()
-
-        output = capsys.readouterr().out
-        assert "Restored: test-bucket/file1.txt" in output
-        assert "Restored: test-bucket/file2.txt" in output
+    # Should have added all files
+    assert_equal(mock_state.add_file.call_count, 50000)
 
 
-class TestGlacierWaiterMultipleFilesCheck:
-    """Test GlacierWaiter checking multiple files"""
+def test_bucket_scanner_handles_zero_size_files():
+    """Test scanning bucket with zero-size files"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock(spec=MigrationStateV2)
+    mock_s3.list_buckets.return_value = {"Buckets": [{"Name": "test-bucket"}]}
 
-    @pytest.fixture
-    def mock_s3(self):
-        """Create mock S3 client"""
-        return mock.Mock()
+    mock_s3.get_paginator.return_value.paginate.return_value = [
+        {
+            "Contents": [
+                {
+                    "Key": "zero.txt",
+                    "Size": 0,
+                    "StorageClass": "STANDARD",
+                    "LastModified": datetime.now(),
+                }
+            ]
+        }
+    ]
 
-    @pytest.fixture
-    def mock_state(self):
-        """Create mock MigrationStateV2"""
-        return mock.Mock(spec=MigrationStateV2)
+    scanner = BucketScanner(mock_s3, mock_state)
+    scanner.scan_all_buckets()
 
-    @pytest.fixture
-    def waiter(self, mock_s3, mock_state):
-        """Create GlacierWaiter instance"""
-        return GlacierWaiter(mock_s3, mock_state)
+    call_args = mock_state.save_bucket_status.call_args
+    assert call_args[0][2] == 0  # Total size should be 0
 
-    def test_check_restore_status_with_multiple_files(self, waiter, mock_s3, mock_state):
-        """Test checking multiple files"""
-        files = [
-            {"bucket": "bucket1", "key": "file1.txt"},
-            {"bucket": "bucket2", "key": "file2.txt"},
-            {"bucket": "bucket1", "key": "file3.txt"},
-        ]
 
-        # First file complete, others still restoring
-        mock_s3.head_object.side_effect = [
-            {"Restore": 'ongoing-request="false"'},
-            {"Restore": 'ongoing-request="true"'},
-            {"Restore": 'ongoing-request="true"'},
-        ]
+def test_glacier_restorer_handles_restore_string_variations():
+    """Test various restore string formats"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock(spec=MigrationStateV2)
+    waiter = GlacierWaiter(mock_s3, mock_state)
 
-        results = [waiter._check_restore_status(f) for f in files]
+    test_cases = [
+        ('ongoing-request="false"', True),
+        ('ongoing-request="true"', False),
+        ('ongoing-request="false", expiry-date="..."', True),
+        ("", False),
+    ]
 
-        assert results == [True, False, False]
-        assert mock_state.mark_glacier_restored.call_count == 1
+    for restore_string, expected in test_cases:
+        mock_s3.head_object.return_value = {"Restore": restore_string} if restore_string else {}
+
+        result = waiter.check_restore_status({"bucket": "b", "key": "k"})
+        assert result == expected
+
+
+def test_check_restore_status_partial_restore_string(waiter, mock_s3, mock_state):
+    """Test restore status with various Restore header formats"""
+    # AWS includes timestamp and expiry in the Restore header
+    mock_s3.head_object.return_value = {
+        "Restore": 'ongoing-request="false", expiry-date="Tue, 25 Oct 2022 00:00:00 GMT"',
+    }
+
+    file_info = {"bucket": "test-bucket", "key": "file.txt"}
+    result = waiter.check_restore_status(file_info)
+
+    assert result is True
+    mock_state.mark_glacier_restored.assert_called_once()
+
+
+def test_wait_for_restores_prints_restored_files(waiter, mock_s3, mock_state, capsys):
+    """Test output shows restored files"""
+    # Mock _check_restore_status to return True for both files
+    waiter.check_restore_status = mock.Mock(return_value=True)
+
+    mock_state.get_files_restoring.side_effect = [
+        [
+            {"bucket": "test-bucket", "key": "file1.txt"},
+            {"bucket": "test-bucket", "key": "file2.txt"},
+        ],
+        [],
+    ]
+
+    with mock.patch("migration_scanner.time.sleep"):
+        waiter.wait_for_restores()
+
+    output = capsys.readouterr().out
+    assert "Restored: test-bucket/file1.txt" in output
+    assert "Restored: test-bucket/file2.txt" in output
+
+
+def test_check_restore_status_with_multiple_files(waiter, mock_s3, mock_state):
+    """Test checking multiple files"""
+    files = [
+        {"bucket": "bucket1", "key": "file1.txt"},
+        {"bucket": "bucket2", "key": "file2.txt"},
+        {"bucket": "bucket1", "key": "file3.txt"},
+    ]
+
+    # First file complete, others still restoring
+    mock_s3.head_object.side_effect = [
+        {"Restore": 'ongoing-request="false"'},
+        {"Restore": 'ongoing-request="true"'},
+        {"Restore": 'ongoing-request="true"'},
+    ]
+
+    results = [waiter.check_restore_status(f) for f in files]
+
+    assert results == [True, False, False]
+    assert mock_state.mark_glacier_restored.call_count == 1

@@ -5,9 +5,9 @@ Identifies unused network interfaces across all regions for cleanup.
 """
 
 import os
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -91,24 +91,71 @@ def audit_network_interfaces_in_region(region_name, aws_access_key_id, aws_secre
             else:
                 region_data["attached_interfaces"].append(interface_info)
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error auditing network interfaces in {region_name}: {str(e)}")
         return None
 
-    else:
-        return region_data
+    return region_data
 
 
-def main():  # noqa: C901, PLR0912, PLR0915
+def _print_unused_interfaces(regions_with_interfaces):
+    """Print unused network interfaces details."""
+    print("⚠️  UNUSED NETWORK INTERFACES FOUND")
+    print("=" * 40)
+
+    for region_data in regions_with_interfaces:
+        if region_data["unused_interfaces"]:
+            print(f"\n📍 Region: {region_data['region']}")
+            print("-" * 30)
+
+            for interface in region_data["unused_interfaces"]:
+                print(f"   🔓 Interface: {interface['interface_id']}")
+                print(f"      Name: {interface['name']}")
+                print(f"      Type: {interface['type']}")
+                print(f"      VPC: {interface['vpc_id']}")
+                print(f"      Subnet: {interface['subnet_id']}")
+                print(f"      Private IP: {interface['private_ip']}")
+                print(f"      Description: {interface['description']}")
+                print(f"      Status: {interface['status']}")
+                print()
+
+    print("💡 CLEANUP RECOMMENDATIONS:")
+    print("   • Unused network interfaces can be safely deleted")
+    print("   • No cost impact but improves account hygiene")
+    print("   • Consider creating cleanup script for bulk deletion")
+
+
+def _print_attached_interfaces(regions_with_interfaces):
+    """Print attached network interfaces details."""
+    print("\n" + "=" * 60)
+    print("🔗 ATTACHED NETWORK INTERFACES DETAILS")
+    print("=" * 60)
+
+    for region_data in regions_with_interfaces:
+        if region_data["attached_interfaces"]:
+            print(f"\n📍 Region: {region_data['region']}")
+            print("-" * 30)
+
+            for interface in region_data["attached_interfaces"]:
+                print(f"   🔗 Interface: {interface['interface_id']}")
+                print(f"      Name: {interface['name']}")
+                print(f"      Type: {interface['type']}")
+                print(f"      Attached to: {interface['attached_to']}")
+                print(f"      Status: {interface['status']}")
+                print(f"      VPC: {interface['vpc_id']}")
+                print(f"      Private IP: {interface['private_ip']}")
+                print(f"      Public IP: {interface['public_ip']}")
+                print()
+
+
+def main():
     """Main execution function"""
     print("AWS Network Interface Audit")
     print("=" * 60)
 
     try:
-        # Load credentials
         aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
-        # Get all regions
         regions = get_all_regions()
         print(f"🌍 Scanning {len(regions)} AWS regions for network interfaces...")
         print()
@@ -132,10 +179,9 @@ def main():  # noqa: C901, PLR0912, PLR0915
                 print(f"   🔓 Unused: {len(region_data['unused_interfaces'])}")
                 print(f"   🔗 Attached: {len(region_data['attached_interfaces'])}")
             else:
-                print(f"   ✅ No network interfaces found")
+                print("   ✅ No network interfaces found")
             print()
 
-        # Summary report
         print("=" * 60)
         print("📋 NETWORK INTERFACE AUDIT SUMMARY")
         print("=" * 60)
@@ -146,56 +192,15 @@ def main():  # noqa: C901, PLR0912, PLR0915
         print()
 
         if total_unused > 0:
-            print("⚠️  UNUSED NETWORK INTERFACES FOUND")
-            print("=" * 40)
-
-            for region_data in regions_with_interfaces:
-                if region_data["unused_interfaces"]:
-                    print(f"\n📍 Region: {region_data['region']}")
-                    print("-" * 30)
-
-                    for interface in region_data["unused_interfaces"]:
-                        print(f"   🔓 Interface: {interface['interface_id']}")
-                        print(f"      Name: {interface['name']}")
-                        print(f"      Type: {interface['type']}")
-                        print(f"      VPC: {interface['vpc_id']}")
-                        print(f"      Subnet: {interface['subnet_id']}")
-                        print(f"      Private IP: {interface['private_ip']}")
-                        print(f"      Description: {interface['description']}")
-                        print(f"      Status: {interface['status']}")
-                        print()
-
-            print("💡 CLEANUP RECOMMENDATIONS:")
-            print("   • Unused network interfaces can be safely deleted")
-            print("   • No cost impact but improves account hygiene")
-            print("   • Consider creating cleanup script for bulk deletion")
+            _print_unused_interfaces(regions_with_interfaces)
         else:
             print("🎉 No unused network interfaces found!")
             print("   Your AWS account has clean network interface configuration.")
 
-        # Detailed report for attached interfaces
         if total_interfaces > total_unused:
-            print("\n" + "=" * 60)
-            print("🔗 ATTACHED NETWORK INTERFACES DETAILS")
-            print("=" * 60)
+            _print_attached_interfaces(regions_with_interfaces)
 
-            for region_data in regions_with_interfaces:
-                if region_data["attached_interfaces"]:
-                    print(f"\n📍 Region: {region_data['region']}")
-                    print("-" * 30)
-
-                    for interface in region_data["attached_interfaces"]:
-                        print(f"   🔗 Interface: {interface['interface_id']}")
-                        print(f"      Name: {interface['name']}")
-                        print(f"      Type: {interface['type']}")
-                        print(f"      Attached to: {interface['attached_to']}")
-                        print(f"      Status: {interface['status']}")
-                        print(f"      VPC: {interface['vpc_id']}")
-                        print(f"      Private IP: {interface['private_ip']}")
-                        print(f"      Public IP: {interface['public_ip']}")
-                        print()
-
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Critical error during network interface audit: {str(e)}")
         raise
 

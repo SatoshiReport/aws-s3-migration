@@ -4,12 +4,12 @@ Monitor Manual AWS Export Tasks
 This script helps you monitor the progress of manual export tasks and check S3 files.
 """
 
-import json
 import os
 import time
 from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -38,13 +38,12 @@ def check_export_status(region, ami_id=None):
     )
 
     try:
+        response = ec2_client.describe_export_image_tasks()
         if ami_id:
             # Check specific AMI
-            response = ec2_client.describe_export_image_tasks()
             tasks = [task for task in response["ExportImageTasks"] if task["ImageId"] == ami_id]
         else:
             # Check all export tasks
-            response = ec2_client.describe_export_image_tasks()
             tasks = response["ExportImageTasks"]
 
         if not tasks:
@@ -73,12 +72,11 @@ def check_export_status(region, ami_id=None):
                 print(f"         Message: {message}")
             print()
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error checking exports in {region}: {e}")
         return []
 
-    else:
-        return tasks
+    return tasks
 
 
 def check_s3_files(region, bucket_name=None):
@@ -126,17 +124,47 @@ def check_s3_files(region, bucket_name=None):
                 print(f"            Modified: {file['last_modified']}")
                 print()
         else:
-            print(f"      📭 No VMDK files found in bucket")
+            print("      📭 No VMDK files found in bucket")
 
     except s3_client.exceptions.NoSuchBucket:
         print(f"      ❌ Bucket {bucket_name} does not exist")
         return []
-    except Exception as e:
+    except ClientError as e:
         print(f"      ❌ Error checking S3: {e}")
         return []
 
-    else:
-        return files
+    return files
+
+
+def _print_task_summary(all_tasks):
+    """Print summary of export tasks."""
+    if not all_tasks:
+        print("📭 No export tasks found")
+        return
+
+    active_tasks = [t for t in all_tasks if t["Status"] == "active"]
+    completed_tasks = [t for t in all_tasks if t["Status"] == "completed"]
+    failed_tasks = [t for t in all_tasks if t["Status"] == "failed"]
+    deleted_tasks = [t for t in all_tasks if t["Status"] == "deleted"]
+
+    print(f"🔄 Active exports: {len(active_tasks)}")
+    print(f"✅ Completed exports: {len(completed_tasks)}")
+    print(f"❌ Failed exports: {len(failed_tasks)}")
+    print(f"🗑️  Deleted exports: {len(deleted_tasks)}")
+
+
+def _print_file_summary(all_files):
+    """Print summary of S3 files and savings."""
+    if not all_files:
+        print("📭 No S3 VMDK files found")
+        return
+
+    total_size_gb = sum(f["size_gb"] for f in all_files)
+    print(f"📄 S3 VMDK files: {len(all_files)} ({total_size_gb:.2f} GB total)")
+
+    monthly_savings = total_size_gb * (0.05 - 0.023)
+    print(f"💰 Current monthly savings: ${monthly_savings:.2f}")
+    print(f"💰 Current annual savings: ${monthly_savings * 12:.2f}")
 
 
 def monitor_all_regions():
@@ -155,43 +183,19 @@ def monitor_all_regions():
         print(f"🌍 Region: {region}")
         print("-" * 30)
 
-        # Check export tasks
         tasks = check_export_status(region)
         all_tasks.extend(tasks)
 
-        # Check S3 files
         files = check_s3_files(region)
         all_files.extend(files)
 
         print()
 
-    # Summary
     print("📊 SUMMARY")
     print("=" * 50)
 
-    if all_tasks:
-        active_tasks = [t for t in all_tasks if t["Status"] == "active"]
-        completed_tasks = [t for t in all_tasks if t["Status"] == "completed"]
-        failed_tasks = [t for t in all_tasks if t["Status"] == "failed"]
-        deleted_tasks = [t for t in all_tasks if t["Status"] == "deleted"]
-
-        print(f"🔄 Active exports: {len(active_tasks)}")
-        print(f"✅ Completed exports: {len(completed_tasks)}")
-        print(f"❌ Failed exports: {len(failed_tasks)}")
-        print(f"🗑️  Deleted exports: {len(deleted_tasks)}")
-    else:
-        print("📭 No export tasks found")
-
-    if all_files:
-        total_size_gb = sum(f["size_gb"] for f in all_files)
-        print(f"📄 S3 VMDK files: {len(all_files)} ({total_size_gb:.2f} GB total)")
-
-        # Calculate savings
-        monthly_savings = total_size_gb * (0.05 - 0.023)
-        print(f"💰 Current monthly savings: ${monthly_savings:.2f}")
-        print(f"💰 Current annual savings: ${monthly_savings * 12:.2f}")
-    else:
-        print("📭 No S3 VMDK files found")
+    _print_task_summary(all_tasks)
+    _print_file_summary(all_files)
 
 
 def check_specific_ami(region, ami_id):
@@ -200,7 +204,7 @@ def check_specific_ami(region, ami_id):
     print("=" * 50)
 
     # Check export task
-    tasks = check_export_status(region, ami_id)
+    _ = check_export_status(region, ami_id)
 
     # Check S3 files for this AMI
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
@@ -224,7 +228,7 @@ def check_specific_ami(region, ami_id):
         else:
             print(f"   📭 No S3 files found for AMI {ami_id}")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error checking S3 for AMI {ami_id}: {e}")
 
 
@@ -258,7 +262,7 @@ def main():
 
     except KeyboardInterrupt:
         print("\n👋 Monitoring stopped")
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error: {e}")
 
 

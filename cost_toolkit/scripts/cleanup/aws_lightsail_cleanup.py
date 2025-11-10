@@ -6,18 +6,122 @@ Completely removes all Lightsail instances and databases to eliminate charges.
 
 import json
 import os
-import sys
 import time
 from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 
-# Add parent directory to path for shared utilities
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from aws_utils import get_aws_regions, setup_aws_credentials
+from ..aws_utils import setup_aws_credentials
 
 
-def delete_lightsail_instances():  # noqa: PLR0915
+def _delete_instance(lightsail_client, instance):
+    """Delete a single Lightsail instance."""
+    instance_name = instance["name"]
+    instance_state = instance["state"]["name"]
+    bundle_id = instance.get("bundleId", "unknown")
+
+    print(f"\n📦 Found instance: {instance_name}")
+    print(f"   State: {instance_state}")
+    print(f"   Bundle: {bundle_id}")
+
+    monthly_cost = estimate_instance_cost(bundle_id)
+
+    try:
+        print(f"🗑️  Deleting instance: {instance_name}")
+        lightsail_client.delete_instance(instanceName=instance_name, forceDeleteAddOns=True)
+        print(f"✅ Successfully deleted instance: {instance_name}")
+        print(f"💰 Monthly savings: ${monthly_cost:.2f}")
+        time.sleep(2)
+    except ClientError as e:
+        print(f"❌ Error deleting instance {instance_name}: {e}")
+        return 0, 0.0
+    return 1, monthly_cost
+
+
+def _delete_database(lightsail_client, database):
+    """Delete a single Lightsail database."""
+    db_name = database["name"]
+    db_state = database["state"]
+    db_bundle = database.get("relationalDatabaseBundleId", "unknown")
+
+    print(f"\n🗄️  Found database: {db_name}")
+    print(f"   State: {db_state}")
+    print(f"   Bundle: {db_bundle}")
+
+    monthly_cost = estimate_database_cost(db_bundle)
+
+    try:
+        print(f"🗑️  Deleting database: {db_name}")
+        lightsail_client.delete_relational_database(
+            relationalDatabaseName=db_name, skipFinalSnapshot=True
+        )
+        print(f"✅ Successfully deleted database: {db_name}")
+        print(f"💰 Monthly savings: ${monthly_cost:.2f}")
+        time.sleep(2)
+    except ClientError as e:
+        print(f"❌ Error deleting database {db_name}: {e}")
+        return 0, 0.0
+    return 1, monthly_cost
+
+
+def _process_region(region):
+    """Process Lightsail resources in a single region."""
+    try:
+        print(f"\n🔍 Checking region: {region}")
+        lightsail_client = boto3.client("lightsail", region_name=region)
+
+        instances_response = lightsail_client.get_instances()
+        instances = instances_response.get("instances", [])
+
+        databases_response = lightsail_client.get_relational_databases()
+        databases = databases_response.get("relationalDatabases", [])
+
+        if not instances and not databases:
+            print(f"✅ No Lightsail resources found in {region}")
+            return 0, 0, 0.0
+
+        instances_deleted = 0
+        databases_deleted = 0
+        region_savings = 0.0
+
+        for instance in instances:
+            deleted, cost = _delete_instance(lightsail_client, instance)
+            instances_deleted += deleted
+            region_savings += cost
+
+        for database in databases:
+            deleted, cost = _delete_database(lightsail_client, database)
+            databases_deleted += deleted
+            region_savings += cost
+
+    except ClientError as e:
+        if "InvalidAction" in str(e) or "not available" in str(e):
+            print(f"ℹ️  Lightsail not available in {region}")
+        else:
+            print(f"❌ Error accessing Lightsail in {region}: {e}")
+        return 0, 0, 0.0
+    return instances_deleted, databases_deleted, region_savings
+
+
+def _print_summary(total_instances_deleted, total_databases_deleted, total_savings):
+    """Print cleanup summary."""
+    print("\n" + "=" * 80)
+    print("🎉 LIGHTSAIL CLEANUP COMPLETED")
+    print("=" * 80)
+    print(f"Instances deleted: {total_instances_deleted}")
+    print(f"Databases deleted: {total_databases_deleted}")
+    print(f"Total estimated monthly savings: ${total_savings:.2f}")
+
+    if total_instances_deleted > 0 or total_databases_deleted > 0:
+        print("\n📝 IMPORTANT NOTES:")
+        print("• Lightsail resources are being deleted in the background")
+        print("• It may take a few minutes for charges to stop")
+        print("• Final bills may include partial charges for the current period")
+        print("• All data has been permanently deleted")
+
+
+def delete_lightsail_instances():
     """Delete all Lightsail instances across all regions"""
     setup_aws_credentials()
 
@@ -27,7 +131,6 @@ def delete_lightsail_instances():  # noqa: PLR0915
     print("This action cannot be undone. All data will be lost.")
     print("=" * 80)
 
-    # Regions where Lightsail is available
     lightsail_regions = [
         "us-east-1",
         "us-east-2",
@@ -46,104 +149,14 @@ def delete_lightsail_instances():  # noqa: PLR0915
     total_savings = 0.0
 
     for region in lightsail_regions:
-        try:
-            print(f"\n🔍 Checking region: {region}")
-            lightsail_client = boto3.client("lightsail", region_name=region)
+        instances, databases, savings = _process_region(region)
+        total_instances_deleted += instances
+        total_databases_deleted += databases
+        total_savings += savings
 
-            # Get instances
-            instances_response = lightsail_client.get_instances()
-            instances = instances_response.get("instances", [])
-
-            # Get databases
-            databases_response = lightsail_client.get_relational_databases()
-            databases = databases_response.get("relationalDatabases", [])
-
-            if not instances and not databases:
-                print(f"✅ No Lightsail resources found in {region}")
-                continue
-
-            # Delete instances
-            for instance in instances:
-                instance_name = instance["name"]
-                instance_state = instance["state"]["name"]
-                bundle_id = instance.get("bundleId", "unknown")
-
-                print(f"\n📦 Found instance: {instance_name}")
-                print(f"   State: {instance_state}")
-                print(f"   Bundle: {bundle_id}")
-
-                # Estimate monthly cost based on bundle
-                monthly_cost = estimate_instance_cost(bundle_id)
-                total_savings += monthly_cost
-
-                try:
-                    print(f"🗑️  Deleting instance: {instance_name}")
-                    # Force delete instance and any associated addons (static IPs, load balancers, etc.)
-                    lightsail_client.delete_instance(
-                        instanceName=instance_name, forceDeleteAddOns=True
-                    )
-                    print(f"✅ Successfully deleted instance: {instance_name}")
-                    print(f"💰 Monthly savings: ${monthly_cost:.2f}")
-                    total_instances_deleted += 1
-
-                    # Wait a moment between deletions
-                    time.sleep(2)
-
-                except Exception as e:
-                    print(f"❌ Error deleting instance {instance_name}: {e}")
-
-            # Delete databases
-            for database in databases:
-                db_name = database["name"]
-                db_state = database["state"]
-                db_bundle = database.get("relationalDatabaseBundleId", "unknown")
-
-                print(f"\n🗄️  Found database: {db_name}")
-                print(f"   State: {db_state}")
-                print(f"   Bundle: {db_bundle}")
-
-                # Estimate monthly cost
-                monthly_cost = estimate_database_cost(db_bundle)
-                total_savings += monthly_cost
-
-                try:
-                    print(f"🗑️  Deleting database: {db_name}")
-                    lightsail_client.delete_relational_database(
-                        relationalDatabaseName=db_name,
-                        skipFinalSnapshot=True,  # Skip final snapshot to avoid additional charges
-                    )
-                    print(f"✅ Successfully deleted database: {db_name}")
-                    print(f"💰 Monthly savings: ${monthly_cost:.2f}")
-                    total_databases_deleted += 1
-
-                    # Wait a moment between deletions
-                    time.sleep(2)
-
-                except Exception as e:
-                    print(f"❌ Error deleting database {db_name}: {e}")
-
-        except Exception as e:
-            if "InvalidAction" in str(e) or "not available" in str(e):
-                print(f"ℹ️  Lightsail not available in {region}")
-            else:
-                print(f"❌ Error accessing Lightsail in {region}: {e}")
-
-    # Summary
-    print("\n" + "=" * 80)
-    print("🎉 LIGHTSAIL CLEANUP COMPLETED")
-    print("=" * 80)
-    print(f"Instances deleted: {total_instances_deleted}")
-    print(f"Databases deleted: {total_databases_deleted}")
-    print(f"Total estimated monthly savings: ${total_savings:.2f}")
+    _print_summary(total_instances_deleted, total_databases_deleted, total_savings)
 
     if total_instances_deleted > 0 or total_databases_deleted > 0:
-        print("\n📝 IMPORTANT NOTES:")
-        print("• Lightsail resources are being deleted in the background")
-        print("• It may take a few minutes for charges to stop")
-        print("• Final bills may include partial charges for the current period")
-        print("• All data has been permanently deleted")
-
-        # Record the cleanup action
         record_cleanup_action(
             "lightsail", total_instances_deleted + total_databases_deleted, total_savings
         )
@@ -197,7 +210,7 @@ def record_cleanup_action(service, resources_deleted, savings):
     try:
         # Read existing log
         if os.path.exists(log_file):
-            with open(log_file, "r") as f:
+            with open(log_file, "r", encoding="utf-8") as f:
                 log_data = json.load(f)
         else:
             log_data = {"cleanup_actions": []}
@@ -207,12 +220,12 @@ def record_cleanup_action(service, resources_deleted, savings):
 
         # Write updated log
         os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        with open(log_file, "w") as f:
+        with open(log_file, "w", encoding="utf-8") as f:
             json.dump(log_data, f, indent=2)
 
         print(f"📝 Cleanup action recorded in {log_file}")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"⚠️  Could not record cleanup action: {e}")
 
 

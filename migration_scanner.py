@@ -48,7 +48,7 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
             if self.interrupted:
                 return
             print(f"[{idx}/{len(buckets)}] Scanning: {bucket}")
-            self._scan_bucket(bucket)
+            self.scan_bucket(bucket)
             print()
         self.state.set_current_phase(Phase.GLACIER_RESTORE)
         print("=" * 70)
@@ -56,7 +56,7 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
         print("=" * 70)
         print()
 
-    def _scan_bucket(self, bucket: str):
+    def scan_bucket(self, bucket: str):
         """Scan a single bucket"""
         file_count = 0
         total_size = 0
@@ -117,7 +117,7 @@ class GlacierRestorer:  # pylint: disable=too-few-public-methods
         for idx, file in enumerate(files, 1):
             if self.interrupted:
                 return
-            self._request_restore(file, idx, len(files))
+            self.request_restore(file, idx, len(files))
         self.state.set_current_phase(Phase.GLACIER_WAIT)
         print()
         print("=" * 70)
@@ -125,7 +125,7 @@ class GlacierRestorer:  # pylint: disable=too-few-public-methods
         print("=" * 70)
         print()
 
-    def _request_restore(self, file: dict, idx: int, total: int):
+    def request_restore(self, file: dict, idx: int, total: int):
         """Request restore for a single file"""
         bucket = file["bucket"]
         key = file["key"]
@@ -172,7 +172,7 @@ class GlacierWaiter:  # pylint: disable=too-few-public-methods
             for idx, file in enumerate(restoring):
                 if self.interrupted:
                     return
-                if self._check_restore_status(file):
+                if self.check_restore_status(file):
                     print(f"  [{idx+1}/{len(restoring)}] Restored: {file['bucket']}/{file['key']}")
             print()
             print("Waiting 5 minutes before next check...")
@@ -183,7 +183,7 @@ class GlacierWaiter:  # pylint: disable=too-few-public-methods
         print("=" * 70)
         print()
 
-    def _check_restore_status(self, file: dict) -> bool:
+    def check_restore_status(self, file: dict) -> bool:
         """Check if restore is complete for a file"""
         try:
             response = self.s3.head_object(Bucket=file["bucket"], Key=file["key"])

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
+"""Start and manage migration operations."""
 
-import json
-import os
+
 import time
 
 import boto3
+from botocore.exceptions import ClientError
 
 # Constants
 MAX_SSM_MONITOR_SECONDS = 7200
@@ -18,59 +19,28 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def start_instance_and_migrate():  # noqa: PLR0912, PLR0915
-    """Start EC2 instance and run migration via SSM"""
-    setup_aws_credentials()
-
-    print("AWS Instance Startup and Migration")
+def _start_ec2_instance(ec2, instance_id):
+    """Start the EC2 instance and wait for it to be running."""
+    print("🔄 STARTING EC2 INSTANCE:")
     print("=" * 80)
-    print("🚀 Starting EC2 instance and running EBS to S3 migration")
-    print("💻 No SSH required - all remote execution")
+    print(f"Starting instance: {instance_id}")
+
+    ec2.start_instances(InstanceIds=[instance_id])
+    print("✅ Start command sent")
+    print("⏳ Waiting for instance to be running...")
+
+    waiter = ec2.get_waiter("instance_running")
+    waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+
+    print("✅ Instance is now running")
+    print("⏳ Waiting additional 60 seconds for SSM agent to be ready...")
+    time.sleep(60)
     print()
 
-    # Initialize AWS clients
-    ec2 = boto3.client("ec2", region_name="eu-west-2")
-    ssm = boto3.client("ssm", region_name="eu-west-2")
 
-    instance_id = "i-05ad29f28fc8a8fdc"
-    bucket_name = "aws-user-files-backup-london"
-
-    try:
-        # Start the instance
-        print("🔄 STARTING EC2 INSTANCE:")
-        print("=" * 80)
-        print(f"Starting instance: {instance_id}")
-
-        ec2.start_instances(InstanceIds=[instance_id])
-        print("✅ Start command sent")
-        print("⏳ Waiting for instance to be running...")
-
-        # Wait for instance to be running
-        waiter = ec2.get_waiter("instance_running")
-        waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
-
-        print("✅ Instance is now running")
-        print("⏳ Waiting additional 60 seconds for SSM agent to be ready...")
-        time.sleep(60)
-        print()
-
-        # Create the migration command
-        migration_command = f"""#!/bin/bash
-
-echo "🚀 Starting EBS to S3 migration via SSM..."
-echo "Target bucket: {bucket_name}"
-echo "Region: eu-west-2"
-echo "$(date): Migration started"
-echo ""
-
-# Set AWS region
-export AWS_DEFAULT_REGION=eu-west-2
-
-# Create mount points
-sudo mkdir -p /mnt/vol384
-sudo mkdir -p /mnt/vol64
-
-# Find and mount volumes
+def _build_volume_discovery_script():
+    """Build the bash script section for discovering and mounting volumes."""
+    return """# Find and mount volumes
 echo "📦 Discovering and mounting volumes..."
 
 # List all block devices
@@ -90,15 +60,15 @@ for dev in $(lsblk -d -o NAME -n | grep -E "nvme|xvd"); do
     if [ -b "$FULL_DEV" ]; then
         SIZE_BYTES=$(lsblk -b -d -o SIZE -n $FULL_DEV 2>/dev/null)
         SIZE_GB=$((SIZE_BYTES / 1024 / 1024 / 1024))
-        
-        echo "Device $FULL_DEV: ${{SIZE_GB}}GB"  # type: ignore
-        
+
+        echo "Device $FULL_DEV: ${SIZE_GB}GB"  # type: ignore
+
         # 384GB volume (allow some variance)
         if [ "$SIZE_GB" -gt 350 ] && [ "$SIZE_GB" -lt 450 ]; then
             VOL384_DEVICE=$FULL_DEV
             echo "✅ Found 384GB volume: $VOL384_DEVICE"
         fi
-        
+
         # 64GB volume (allow some variance)
         if [ "$SIZE_GB" -gt 50 ] && [ "$SIZE_GB" -lt 100 ]; then
             VOL64_DEVICE=$FULL_DEV
@@ -136,7 +106,7 @@ for mount_point in /mnt/vol384 /mnt/vol64; do
         echo ""
         echo "Contents of $mount_point:"
         ls -la "$mount_point" 2>/dev/null || echo "Cannot list contents"
-        
+
         # Check for common directories
         for dir in home opt var root data; do
             if [ -d "$mount_point/$dir" ]; then
@@ -145,24 +115,24 @@ for mount_point in /mnt/vol384 /mnt/vol64; do
             fi
         done
     fi
-done
+done"""
 
-echo ""
-echo "🔄 Starting file sync to S3..."
 
-# Function to sync directory to S3
-sync_to_s3() {{
+def _build_s3_sync_function(bucket_name):
+    """Build the bash function for syncing directories to S3."""
+    return f"""# Function to sync directory to S3
+sync_to_s3() {{{{
     local source_path="$1"
     local s3_prefix="$2"
-    
+
     if [ -d "$source_path" ]; then
         echo ""
         echo "🔄 Syncing $source_path to s3://{bucket_name}/$s3_prefix/"
-        
+
         # Get directory size first
         DIR_SIZE=$(du -sh "$source_path" 2>/dev/null | cut -f1)
         echo "Directory size: $DIR_SIZE"
-        
+
         aws s3 sync "$source_path" "s3://{bucket_name}/$s3_prefix/" \\
             --region eu-west-2 \\
             --storage-class STANDARD \\
@@ -175,7 +145,7 @@ sync_to_s3() {{
             --exclude "dev/*" \\
             --exclude "*.sock" \\
             --delete
-            
+
         if [ $? -eq 0 ]; then
             echo "✅ Completed: $source_path"
         else
@@ -184,9 +154,12 @@ sync_to_s3() {{
     else
         echo "⚠️  Directory not found: $source_path"
     fi
-}}
+}}}}"""
 
-# Migrate from 384GB volume
+
+def _build_volume_migration_commands():
+    """Build the bash commands for migrating volume contents."""
+    return """# Migrate from 384GB volume
 if [ -d "/mnt/vol384" ]; then
     echo ""
     echo "📦 Processing 384GB volume..."
@@ -210,7 +183,38 @@ if [ -d "/mnt/vol64" ]; then
     sync_to_s3 "/mnt/vol64/root" "64gb-volume/root"
     sync_to_s3 "/mnt/vol64/etc" "64gb-volume/etc"
     sync_to_s3 "/mnt/vol64/usr/local" "64gb-volume/usr-local"
-fi
+fi"""
+
+
+def _create_migration_command(bucket_name):
+    """Create the migration bash script command."""
+    volume_discovery = _build_volume_discovery_script()
+    sync_function = _build_s3_sync_function(bucket_name)
+    migration_commands = _build_volume_migration_commands()
+
+    return f"""#!/bin/bash
+
+echo "🚀 Starting EBS to S3 migration via SSM..."
+echo "Target bucket: {bucket_name}"
+echo "Region: eu-west-2"
+echo "$(date): Migration started"
+echo ""
+
+# Set AWS region
+export AWS_DEFAULT_REGION=eu-west-2
+
+# Create mount points
+sudo mkdir -p /mnt/vol384
+sudo mkdir -p /mnt/vol64
+
+{volume_discovery}
+
+echo ""
+echo "🔄 Starting file sync to S3..."
+
+{sync_function}
+
+{migration_commands}
 
 echo ""
 echo "📊 Final S3 bucket contents:"
@@ -227,87 +231,119 @@ echo "2. Consider reducing EBS volume sizes"
 echo "3. Potential monthly savings: ~$25.54"
 """
 
-        # Execute the command via SSM
-        print("🚀 EXECUTING MIGRATION VIA SSM:")
-        print("=" * 80)
-        print("Sending migration command to EC2 instance...")
 
-        response = ssm.send_command(
-            InstanceIds=[instance_id],
-            DocumentName="AWS-RunShellScript",
-            Parameters={
-                "commands": [migration_command],
-                "executionTimeout": ["7200"],  # 2 hour timeout
-            },
-            Comment="EBS to S3 migration via SSM - automated",
-        )
+def _execute_ssm_command(ssm, instance_id, migration_command):
+    """Execute the migration command via SSM."""
+    print("🚀 EXECUTING MIGRATION VIA SSM:")
+    print("=" * 80)
+    print("Sending migration command to EC2 instance...")
 
-        command_id = response["Command"]["CommandId"]
-        print(f"✅ Command sent successfully")
-        print(f"Command ID: {command_id}")
-        print()
+    response = ssm.send_command(
+        InstanceIds=[instance_id],
+        DocumentName="AWS-RunShellScript",
+        Parameters={
+            "commands": [migration_command],
+            "executionTimeout": ["7200"],
+        },
+        Comment="EBS to S3 migration via SSM - automated",
+    )
 
-        # Monitor command execution
-        print("⏳ MONITORING MIGRATION PROGRESS:")
-        print("=" * 80)
+    command_id = response["Command"]["CommandId"]
+    print("✅ Command sent successfully")
+    print(f"Command ID: {command_id}")
+    print()
 
-        max_wait_time = MAX_SSM_MONITOR_SECONDS  # 2 hours
-        wait_interval = 30  # Check every 30 seconds
-        elapsed_time = 0
+    return command_id
 
-        while elapsed_time < max_wait_time:
-            try:
-                command_status = ssm.get_command_invocation(
-                    CommandId=command_id, InstanceId=instance_id
-                )
 
-                status = command_status["Status"]
-                print(f"Status: {status} (elapsed: {elapsed_time//60}m {elapsed_time%60}s)")
+def _monitor_migration_progress(ssm, instance_id, command_id):
+    """Monitor the migration command execution."""
+    print("⏳ MONITORING MIGRATION PROGRESS:")
+    print("=" * 80)
 
-                if status in ["Success", "Failed", "Cancelled", "TimedOut"]:
-                    print()
-                    print("📋 MIGRATION OUTPUT:")
-                    print("=" * 80)
+    max_wait_time = MAX_SSM_MONITOR_SECONDS
+    wait_interval = 30
+    elapsed_time = 0
 
-                    if "StandardOutputContent" in command_status:
-                        output = command_status["StandardOutputContent"]
-                        # Show last characters to avoid overwhelming output
-                        if len(output) > OUTPUT_TRUNCATE_CHARS:
-                            print("... (output truncated) ...")
-                            print(output[-OUTPUT_TRUNCATE_CHARS:])
-                        else:
-                            print(output)
+    while elapsed_time < max_wait_time:
+        try:
+            command_status = ssm.get_command_invocation(
+                CommandId=command_id, InstanceId=instance_id
+            )
 
-                    if (
-                        "StandardErrorContent" in command_status
-                        and command_status["StandardErrorContent"]
-                    ):
-                        print("\nERRORS:")
-                        print(command_status["StandardErrorContent"])
+            status = command_status["Status"]
+            print(f"Status: {status} (elapsed: {elapsed_time//60}m {elapsed_time%60}s)")
 
-                    if status == "Success":
-                        print("\n✅ Migration completed successfully!")
-                        print("\n🎯 RESULTS:")
-                        print("- Files transferred from EBS to S3")
-                        print("- S3 bucket: aws-user-files-backup-london")
-                        print("- Potential savings: ~$25.54/month")
-                    else:
-                        print(f"\n❌ Migration failed with status: {status}")
+            if status in ["Success", "Failed", "Cancelled", "TimedOut"]:
+                _print_migration_output(command_status, status)
+                break
 
-                    break
+            time.sleep(wait_interval)
+            elapsed_time += wait_interval
 
-                time.sleep(wait_interval)
-                elapsed_time += wait_interval
+        except ClientError as e:
+            print(f"Error checking status: {str(e)}")
+            time.sleep(wait_interval)
+            elapsed_time += wait_interval
 
-            except Exception as e:
-                print(f"Error checking status: {str(e)}")
-                time.sleep(wait_interval)
-                elapsed_time += wait_interval
+    if elapsed_time >= max_wait_time:
+        print("⏰ Migration timeout reached")
 
-        if elapsed_time >= max_wait_time:
-            print("⏰ Migration timeout reached")
 
-    except Exception as e:
+def _print_migration_output(command_status, status):
+    """Print the migration output."""
+    print()
+    print("📋 MIGRATION OUTPUT:")
+    print("=" * 80)
+
+    if "StandardOutputContent" in command_status:
+        output = command_status["StandardOutputContent"]
+        if len(output) > OUTPUT_TRUNCATE_CHARS:
+            print("... (output truncated) ...")
+            print(output[-OUTPUT_TRUNCATE_CHARS:])
+        else:
+            print(output)
+
+    if "StandardErrorContent" in command_status and command_status["StandardErrorContent"]:
+        print("\nERRORS:")
+        print(command_status["StandardErrorContent"])
+
+    if status == "Success":
+        print("\n✅ Migration completed successfully!")
+        print("\n🎯 RESULTS:")
+        print("- Files transferred from EBS to S3")
+        print("- S3 bucket: aws-user-files-backup-london")
+        print("- Potential savings: ~$25.54/month")
+    else:
+        print(f"\n❌ Migration failed with status: {status}")
+
+
+def start_instance_and_migrate():
+    """Start EC2 instance and run migration via SSM"""
+    setup_aws_credentials()
+
+    print("AWS Instance Startup and Migration")
+    print("=" * 80)
+    print("🚀 Starting EC2 instance and running EBS to S3 migration")
+    print("💻 No SSH required - all remote execution")
+    print()
+
+    ec2 = boto3.client("ec2", region_name="eu-west-2")
+    ssm = boto3.client("ssm", region_name="eu-west-2")
+
+    instance_id = "i-05ad29f28fc8a8fdc"
+    bucket_name = "aws-user-files-backup-london"
+
+    try:
+        _start_ec2_instance(ec2, instance_id)
+
+        migration_command = _create_migration_command(bucket_name)
+
+        command_id = _execute_ssm_command(ssm, instance_id, migration_command)
+
+        _monitor_migration_progress(ssm, instance_id, command_id)
+
+    except ClientError as e:
         print(f"❌ Error during execution: {str(e)}")
 
 

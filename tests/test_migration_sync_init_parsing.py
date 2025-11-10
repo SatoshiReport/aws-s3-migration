@@ -37,21 +37,21 @@ class TestParseAwsSize:
         """Test parsing invalid format returns None"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         line = "Invalid line"
-        result = syncer._parse_aws_size(line)
+        result = syncer.parse_aws_size(line)
         assert result is None
 
     def test_parse_size_empty_line_returns_none(self, tmp_path):
         """Test parsing empty line returns None"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         line = ""
-        result = syncer._parse_aws_size(line)
+        result = syncer.parse_aws_size(line)
         assert result is None
 
     def test_parse_size_malformed_size_returns_none(self, tmp_path):
         """Test parsing line with malformed size returns None"""
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         line = "Completed s3://bucket/file.txt notanumber"
-        result = syncer._parse_aws_size(line)
+        result = syncer.parse_aws_size(line)
         assert result is None
 
     def test_parse_size_exception_handling(self, tmp_path):
@@ -60,7 +60,7 @@ class TestParseAwsSize:
         # Line with no parts will cause IndexError
         line = None
         try:
-            result = syncer._parse_aws_size(line)
+            result = syncer.parse_aws_size(line)
             assert result is None
         except AttributeError:
             # This is expected since we pass None
@@ -75,7 +75,7 @@ class TestParseAwsSize:
             "Just some text KiB MiB",
         ]
         for line in test_cases:
-            result = syncer._parse_aws_size(line)
+            result = syncer.parse_aws_size(line)
             # Function should return None for malformed input
             assert result is None or isinstance(result, int)
 
@@ -90,7 +90,7 @@ class TestParseAwsSize:
         # These will return None because of the parsing bug in the function
         # but we're testing that it at least tries to process them
         for line in [line_kib, line_mib, line_gib]:
-            result = syncer._parse_aws_size(line)
+            result = syncer.parse_aws_size(line)
             # Result should be None or an int (due to exception handling)
             assert result is None or isinstance(result, int)
 
@@ -102,7 +102,7 @@ class TestParseAwsSize:
             "Some output ending with number 1024",
         ]
         for line in lines:
-            result = syncer._parse_aws_size(line)
+            result = syncer.parse_aws_size(line)
             if result is not None:
                 assert isinstance(result, int)
 
@@ -112,6 +112,6 @@ class TestParseAwsSize:
         # The function looks for space-separated unit from last token
         # This will fail due to implementation, but should not crash
         line = "Completed file.txt 5 MiB"
-        result = syncer._parse_aws_size(line)
+        result = syncer.parse_aws_size(line)
         # Should handle gracefully
         assert result is None or isinstance(result, int)

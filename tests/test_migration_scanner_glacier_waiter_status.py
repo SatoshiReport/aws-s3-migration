@@ -34,7 +34,7 @@ class TestGlacierWaiterRestoreIncomplete:
         }
 
         file_info = {"bucket": "test-bucket", "key": "file.txt"}
-        result = waiter._check_restore_status(file_info)
+        result = waiter.check_restore_status(file_info)
 
         assert result is False
         mock_state.mark_glacier_restored.assert_not_called()
@@ -65,7 +65,7 @@ class TestGlacierWaiterRestoreComplete:
         }
 
         file_info = {"bucket": "test-bucket", "key": "file.txt"}
-        result = waiter._check_restore_status(file_info)
+        result = waiter.check_restore_status(file_info)
 
         assert result is True
         mock_state.mark_glacier_restored.assert_called_once_with("test-bucket", "file.txt")
@@ -94,7 +94,7 @@ class TestGlacierWaiterMissingRestoreHeader:
         mock_s3.head_object.return_value = {}
 
         file_info = {"bucket": "test-bucket", "key": "file.txt"}
-        result = waiter._check_restore_status(file_info)
+        result = waiter.check_restore_status(file_info)
 
         assert result is False
         mock_state.mark_glacier_restored.assert_not_called()
@@ -124,7 +124,7 @@ class TestGlacierWaiterErrorHandling:
         mock_s3.head_object.side_effect = ClientError(error_response, "HeadObject")
 
         file_info = {"bucket": "test-bucket", "key": "file.txt"}
-        result = waiter._check_restore_status(file_info)
+        result = waiter.check_restore_status(file_info)
 
         assert result is False
         mock_state.mark_glacier_restored.assert_not_called()

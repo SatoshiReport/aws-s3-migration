@@ -4,18 +4,14 @@ AWS Global Accelerator Cleanup Script
 Disables and deletes all Global Accelerator resources to eliminate charges.
 """
 
-import os
-import sys
 import time
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
+
+from ..aws_utils import setup_aws_credentials
 
 MAX_ACCELERATOR_WAIT_SECONDS = 600
-
-# Import shared AWS utilities
-sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
-from aws_utils import setup_aws_credentials
 
 
 def list_accelerators():
@@ -26,7 +22,7 @@ def list_accelerators():
         )  # Global Accelerator is only in us-west-2
         response = client.list_accelerators()
         return response.get("Accelerators", [])
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error listing accelerators: {str(e)}")
         return []
 
@@ -44,13 +40,13 @@ def disable_accelerator(accelerator_arn):
         print(f"  📊 Current status: {current_status}, Enabled: {current_enabled}")
 
         if current_enabled:
-            print(f"  🔄 Disabling accelerator...")
+            print("  🔄 Disabling accelerator...")
             client.update_accelerator(AcceleratorArn=accelerator_arn, Enabled=False)
         else:
-            print(f"  ✅ Accelerator already disabled")
+            print("  ✅ Accelerator already disabled")
 
         # Wait for accelerator to be in DEPLOYED state (not IN_PROGRESS)
-        print(f"  ⏳ Waiting for accelerator to reach stable state...")
+        print("  ⏳ Waiting for accelerator to reach stable state...")
         max_wait_time = MAX_ACCELERATOR_WAIT_SECONDS  # 10 minutes
         wait_interval = 30  # 30 seconds
         elapsed_time = 0
@@ -63,20 +59,19 @@ def disable_accelerator(accelerator_arn):
             print(f"    Status: {status}, Enabled: {enabled} (waited {elapsed_time}s)")
 
             if status == "DEPLOYED" and not enabled:
-                print(f"  ✅ Accelerator is disabled and ready for deletion")
+                print("  ✅ Accelerator is disabled and ready for deletion")
                 return True
 
             time.sleep(wait_interval)
             elapsed_time += wait_interval
 
-        print(f"  ⚠️ Timeout waiting for accelerator to reach stable state")
+        print("  ⚠️ Timeout waiting for accelerator to reach stable state")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"  ❌ Error disabling accelerator: {str(e)}")
         return False
 
-    else:
-        return False
+    return False
 
 
 def delete_listeners(accelerator_arn):
@@ -106,14 +101,13 @@ def delete_listeners(accelerator_arn):
 
             # Delete listener
             client.delete_listener(ListenerArn=listener_arn)
-            print(f"  ✅ Deleted listener successfully")
+            print("  ✅ Deleted listener successfully")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"  ❌ Error deleting listeners: {str(e)}")
         return False
 
-    else:
-        return True
+    return True
 
 
 def delete_accelerator(accelerator_arn):
@@ -121,19 +115,81 @@ def delete_accelerator(accelerator_arn):
     try:
         client = boto3.client("globalaccelerator", region_name="us-west-2")
 
-        print(f"  🗑️  Deleting accelerator...")
+        print("  🗑️  Deleting accelerator...")
         client.delete_accelerator(AcceleratorArn=accelerator_arn)
 
-        print(f"  ✅ Accelerator deletion initiated")
-    except Exception as e:
+        print("  ✅ Accelerator deletion initiated")
+    except ClientError as e:
         print(f"  ❌ Error deleting accelerator: {str(e)}")
         return False
 
+    return True
+
+
+def process_single_accelerator(accelerator):
+    """Process deletion of a single Global Accelerator"""
+    accelerator_arn = accelerator["AcceleratorArn"]
+    accelerator_name = accelerator.get("Name", "Unnamed")
+    accelerator_status = accelerator.get("Status", "Unknown")
+    accelerator_enabled = accelerator.get("Enabled", False)
+
+    print(f"\n📋 Processing Accelerator: {accelerator_name}")
+    print(f"  ARN: {accelerator_arn}")
+    print(f"  Status: {accelerator_status}")
+    print(f"  Enabled: {accelerator_enabled}")
+
+    # Calculate estimated cost
+    # (Global Accelerator charges $0.025/hour = ~$18/month base + data transfer)
+    estimated_monthly_cost = 18.0  # Base cost estimate
+
+    success = True
+
+    # Step 1: Always ensure accelerator is properly disabled and in stable state
+    if not disable_accelerator(accelerator_arn):
+        success = False
+        return success, estimated_monthly_cost
+
+    # Step 2: Delete listeners and endpoint groups
+    if not delete_listeners(accelerator_arn):
+        success = False
+        return success, estimated_monthly_cost
+
+    # Step 3: Delete accelerator
+    if not delete_accelerator(accelerator_arn):
+        success = False
+        return success, estimated_monthly_cost
+
+    if success:
+        print(f"  ✅ Successfully deleted accelerator: {accelerator_name}")
     else:
-        return True
+        print(f"  ❌ Failed to delete accelerator: {accelerator_name}")
+
+    return success, estimated_monthly_cost
 
 
-def main():  # noqa: PLR0915
+def print_cleanup_summary(total_processed, total_deleted, monthly_savings):
+    """Print cleanup summary with cost savings"""
+    print("\n" + "=" * 80)
+    print("🎯 CLEANUP SUMMARY")
+    print("=" * 80)
+    print(f"Total accelerators processed: {total_processed}")
+    print(f"Successfully deleted: {total_deleted}")
+    print(f"Estimated monthly savings: ${monthly_savings:.2f}")
+    print(f"Estimated annual savings: ${monthly_savings * 12:.2f}")
+
+    if total_deleted > 0:
+        print("\n✅ SUCCESS: Global Accelerator cleanup completed!")
+        print("💰 You will save approximately ${:.2f} per month".format(monthly_savings))
+        print("\n📋 IMPORTANT NOTES:")
+        print("  - All accelerated traffic routing has been stopped")
+        print("  - Applications using accelerator endpoints will need updates")
+        print("  - Consider using CloudFront or ALB for traffic acceleration needs")
+        print("  - Billing charges may take 24-48 hours to stop appearing")
+    else:
+        print("\n⚠️  No accelerators were successfully deleted")
+
+
+def main():
     """Main cleanup function"""
     print("AWS Global Accelerator Cleanup")
     print("=" * 80)
@@ -163,62 +219,13 @@ def main():  # noqa: PLR0915
     monthly_savings = 0.0
 
     for accelerator in accelerators:
-        accelerator_arn = accelerator["AcceleratorArn"]
-        accelerator_name = accelerator.get("Name", "Unnamed")
-        accelerator_status = accelerator.get("Status", "Unknown")
-        accelerator_enabled = accelerator.get("Enabled", False)
-
-        print(f"\n📋 Processing Accelerator: {accelerator_name}")
-        print(f"  ARN: {accelerator_arn}")
-        print(f"  Status: {accelerator_status}")
-        print(f"  Enabled: {accelerator_enabled}")
-
-        # Calculate estimated cost (Global Accelerator charges $0.025/hour = ~$18/month base + data transfer)
-        estimated_monthly_cost = 18.0  # Base cost estimate
-        monthly_savings += estimated_monthly_cost
-
-        success = True
-
-        # Step 1: Always ensure accelerator is properly disabled and in stable state
-        if not disable_accelerator(accelerator_arn):
-            success = False
-            continue
-
-        # Step 2: Delete listeners and endpoint groups
-        if not delete_listeners(accelerator_arn):
-            success = False
-            continue
-
-        # Step 3: Delete accelerator
-        if not delete_accelerator(accelerator_arn):
-            success = False
-            continue
-
+        success, cost = process_single_accelerator(accelerator)
+        monthly_savings += cost
         if success:
             total_deleted += 1
-            print(f"  ✅ Successfully deleted accelerator: {accelerator_name}")
-        else:
-            print(f"  ❌ Failed to delete accelerator: {accelerator_name}")
 
     # Summary
-    print("\n" + "=" * 80)
-    print("🎯 CLEANUP SUMMARY")
-    print("=" * 80)
-    print(f"Total accelerators processed: {len(accelerators)}")
-    print(f"Successfully deleted: {total_deleted}")
-    print(f"Estimated monthly savings: ${monthly_savings:.2f}")
-    print(f"Estimated annual savings: ${monthly_savings * 12:.2f}")
-
-    if total_deleted > 0:
-        print("\n✅ SUCCESS: Global Accelerator cleanup completed!")
-        print("💰 You will save approximately ${:.2f} per month".format(monthly_savings))
-        print("\n📋 IMPORTANT NOTES:")
-        print("  - All accelerated traffic routing has been stopped")
-        print("  - Applications using accelerator endpoints will need updates")
-        print("  - Consider using CloudFront or ALB for traffic acceleration needs")
-        print("  - Billing charges may take 24-48 hours to stop appearing")
-    else:
-        print("\n⚠️  No accelerators were successfully deleted")
+    print_cleanup_summary(len(accelerators), total_deleted, monthly_savings)
 
 
 if __name__ == "__main__":

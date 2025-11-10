@@ -20,7 +20,6 @@ Usage:
     python migrate_v2.py reset     # Reset and start over
 """
 import argparse
-import os
 import signal
 import sys
 from dataclasses import dataclass
@@ -156,7 +155,7 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         self.migration_orchestrator = components.migration_orchestrator
         self.status_reporter = components.status_reporter
         self.interrupted = False
-        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGINT, self.signal_handler)
 
     def _set_interrupted_flags(self):
         """Set interrupted flags on all components"""
@@ -168,7 +167,7 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         self.bucket_migrator.syncer.interrupted = True
         self.migration_orchestrator.interrupted = True
 
-    def _signal_handler(self, _signum, _frame):
+    def signal_handler(self, _signum, _frame):
         """Handle Ctrl+C gracefully"""
         self._set_interrupted_flags()
         print("\n" + "=" * 70)

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Fix EC2 instance termination protection settings."""
 
 import boto3
 from botocore.exceptions import ClientError
@@ -13,42 +14,42 @@ def disable_termination_protection_and_terminate(instance_id, region_name):
         ec2 = boto3.client("ec2", region_name=region_name)
 
         # First, disable termination protection
-        print(f"  Disabling termination protection...")
+        print("  Disabling termination protection...")
         ec2.modify_instance_attribute(
             InstanceId=instance_id, DisableApiTermination={"Value": False}
         )
-        print(f"  ✅ Termination protection disabled")
+        print("  ✅ Termination protection disabled")
 
         # Now terminate the instance
-        print(f"  Terminating instance...")
+        print("  Terminating instance...")
         ec2.terminate_instances(InstanceIds=[instance_id])
         print(f"  ✅ Instance {instance_id} termination initiated")
-        print(f"  💰 This will stop EBS storage charges for attached volumes")
+        print("  💰 This will stop EBS storage charges for attached volumes")
 
     except ClientError as e:
         print(f"  ❌ Error: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
 def main():
+    """Disable termination protection and remove EC2 instance."""
     print("AWS Fix Termination Protection")
     print("=" * 80)
 
     # The instance that failed to terminate
-    instance_id = "i-0cfce47f50e3c34ff"
+    instance_id = "i-0cfce47f50e3c34f"
     region_name = "us-east-1"
 
-    print(f"Fixing termination protection for mufasa instance...")
+    print("Fixing termination protection for mufasa instance...")
 
     success = disable_termination_protection_and_terminate(instance_id, region_name)
 
-    print(f"\n🎯 RESULT:")
+    print("\n🎯 RESULT:")
     if success:
         print(f"  ✅ Successfully disabled protection and terminated {instance_id}")
-        print(f"  💰 Additional monthly savings: $0.64 (8GB EBS volume)")
+        print("  💰 Additional monthly savings: $0.64 (8GB EBS volume)")
     else:
         print(f"  ❌ Failed to terminate {instance_id}")
 

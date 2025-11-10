@@ -15,12 +15,20 @@ class _FakeWaiter:
         self.calls = []
 
     def wait(self, **kwargs):
+        """Record wait call."""
         self.calls.append(kwargs)
+
+    def __repr__(self):
+        return f"_FakeWaiter(calls={len(self.calls)})"
 
 
 class _FakePaginator:
     def paginate(self, **kwargs):
+        """Yield empty object versions."""
         yield {"Versions": [], "DeleteMarkers": []}
+
+    def __repr__(self):
+        return "_FakePaginator()"
 
 
 class _FakeS3:
@@ -32,28 +40,35 @@ class _FakeS3:
         self.bucket_name = "alpha"
 
     def create_bucket(self, **kwargs):
+        """Record bucket creation."""
         self.created.append(kwargs)
 
     def get_waiter(self, name):
+        """Return fake waiter."""
         assert name == "bucket_exists"
         waiter = _FakeWaiter()
         self.waiters.append(waiter)
         return waiter
 
     def list_buckets(self):
+        """Return list of buckets."""
         return {"Buckets": [{"Name": "alpha"}, {"Name": self.bucket_name}]}
 
     def put_object(self, **kwargs):
+        """Record object put."""
         self.put_calls.append(kwargs)
 
     def get_paginator(self, name):
+        """Return fake paginator."""
         assert name in {"list_object_versions"}
         return _FakePaginator()
 
     def delete_objects(self, **_kwargs):
+        """Simulate object deletion."""
         return {}
 
     def delete_bucket(self, **_kwargs):
+        """Simulate bucket deletion."""
         return {}
 
 
@@ -63,7 +78,11 @@ class _FakeDriveChecker:
         self.checked = False
 
     def check_available(self):
+        """Mark as checked."""
         self.checked = True
+
+    def __repr__(self):
+        return f"_FakeDriveChecker(path={self.path}, checked={self.checked})"
 
 
 class _FakeMigrator:
@@ -71,7 +90,11 @@ class _FakeMigrator:
         self.ran = False
 
     def run(self):
+        """Mark as run."""
         self.ran = True
+
+    def __repr__(self):
+        return f"_FakeMigrator(ran={self.ran})"
 
 
 def _make_deps(tmp_path, fake_s3, monkeypatch):
@@ -88,8 +111,13 @@ def _make_deps(tmp_path, fake_s3, monkeypatch):
         region_name = "us-west-2"
 
         def client(self, service_name):
+            """Return fake S3 client."""
             assert service_name == "s3"
             return fake_s3
+
+        def __repr__(self):
+            """Return string representation."""
+            return f"_FakeSession(region={self.region_name})"
 
     monkeypatch.setattr(real, "Session", _FakeSession)
     deps = SmokeTestDeps(
@@ -100,14 +128,15 @@ def _make_deps(tmp_path, fake_s3, monkeypatch):
     return deps, migrator
 
 
-def test_seed_real_bucket_updates_config(monkeypatch, tmp_path):
+def testseed_real_bucket_updates_config(monkeypatch, tmp_path):
+    """Test that seeding real bucket updates config."""
     fake_s3 = _FakeS3()
     deps, _ = _make_deps(tmp_path, fake_s3, monkeypatch)
-    ctx = real._RealSmokeContext.create(deps)
+    ctx = real.RealSmokeContext.create(deps)
     fake_s3.bucket_name = ctx.bucket_name
     original_input = builtins.input
     try:
-        stats = real._seed_real_bucket(ctx)
+        stats = real.seed_real_bucket(ctx)
     finally:
         builtins.input = original_input
     assert stats.files_created > 0
@@ -116,37 +145,40 @@ def test_seed_real_bucket_updates_config(monkeypatch, tmp_path):
     assert fake_s3.put_calls  # ensure uploads occurred
 
 
-def test_run_real_workflow_removes_local_data(monkeypatch, tmp_path):
+def testrun_real_workflow_removes_local_data(monkeypatch, tmp_path):
+    """Test that workflow removes local data after migration."""
     fake_s3 = _FakeS3()
     deps, migrator = _make_deps(tmp_path, fake_s3, monkeypatch)
-    ctx = real._RealSmokeContext.create(deps)
+    ctx = real.RealSmokeContext.create(deps)
     fake_s3.bucket_name = ctx.bucket_name
     original_input = builtins.input
     try:
-        stats = real._seed_real_bucket(ctx)
+        stats = real.seed_real_bucket(ctx)
     finally:
         builtins.input = original_input
     ctx.local_bucket_path.mkdir(parents=True, exist_ok=True)
     materialize_sample_tree(ctx.local_bucket_path)
-    real._run_real_workflow(ctx, stats)
+    real.run_real_workflow(ctx, stats)
     assert migrator.ran
     assert not ctx.local_bucket_path.exists()
 
 
-def test_print_real_report_outputs_sections(capsys, monkeypatch, tmp_path):
+def testprint_real_report_outputs_sections(capsys, monkeypatch, tmp_path):
+    """Test that report printing outputs expected sections."""
     fake_s3 = _FakeS3()
     deps, _ = _make_deps(tmp_path, fake_s3, monkeypatch)
-    ctx = real._RealSmokeContext.create(deps)
-    stats = real._RealSmokeStats(
+    ctx = real.RealSmokeContext.create(deps)
+    stats = real.RealSmokeStats(
         files_created=1, dirs_created=1, total_bytes=10, manifest_expected={}
     )
-    real._print_real_report(ctx, stats)
+    real.print_real_report(ctx, stats)
     output = capsys.readouterr().out
     assert "SMOKE TEST REPORT" in output
     assert "Files processed" in output
 
 
 def test_context_restore_resets_state(tmp_path):
+    """Test that context restore resets state."""
     temp_dir = tmp_path / "ctx"
     temp_dir.mkdir()
     original_input = builtins.input
@@ -154,7 +186,7 @@ def test_context_restore_resets_state(tmp_path):
         STATE_DB_PATH="state.db",
         EXCLUDED_BUCKETS=["x"],
     )
-    ctx = real._RealSmokeContext(
+    ctx = real.RealSmokeContext(
         deps=SmokeTestDeps(
             config=config,
             drive_checker_cls=_FakeDriveChecker,

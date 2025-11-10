@@ -4,16 +4,35 @@ AWS Instance Termination Script
 Safely terminates specified instances and handles associated EBS volumes.
 """
 
-import os
-import sys
 import time
-from datetime import datetime, timezone
 
 import boto3
+from botocore.exceptions import ClientError
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from aws_utils import setup_aws_credentials
+from ..aws_utils import setup_aws_credentials
+
+
+def _extract_instance_name(instance):
+    """Extract instance name from tags."""
+    for tag in instance.get("Tags", []):
+        if tag["Key"] == "Name":
+            return tag["Value"]
+    return "Unnamed"
+
+
+def _extract_volumes(instance):
+    """Extract volume information from instance."""
+    volumes = []
+    for bdm in instance.get("BlockDeviceMappings", []):
+        if "Ebs" in bdm:
+            volumes.append(
+                {
+                    "volume_id": bdm["Ebs"]["VolumeId"],
+                    "device": bdm["DeviceName"],
+                    "delete_on_termination": bdm["Ebs"]["DeleteOnTermination"],
+                }
+            )
+    return volumes
 
 
 def get_instance_details(instance_id, region):
@@ -29,44 +48,25 @@ def get_instance_details(instance_id, region):
     """
     try:
         ec2_client = boto3.client("ec2", region_name=region)
-
         response = ec2_client.describe_instances(InstanceIds=[instance_id])
 
         for reservation in response["Reservations"]:
             for instance in reservation["Instances"]:
-                # Get instance name from tags
-                instance_name = "Unnamed"
-                for tag in instance.get("Tags", []):
-                    if tag["Key"] == "Name":
-                        instance_name = tag["Value"]
-                        break
-
-                # Get attached volumes
-                volumes = []
-                for bdm in instance.get("BlockDeviceMappings", []):
-                    if "Ebs" in bdm:
-                        volumes.append(
-                            {
-                                "volume_id": bdm["Ebs"]["VolumeId"],
-                                "device": bdm["DeviceName"],
-                                "delete_on_termination": bdm["Ebs"]["DeleteOnTermination"],
-                            }
-                        )
-
                 return {
                     "instance_id": instance_id,
-                    "name": instance_name,
+                    "name": _extract_instance_name(instance),
                     "state": instance["State"]["Name"],
                     "instance_type": instance["InstanceType"],
                     "launch_time": instance["LaunchTime"],
                     "availability_zone": instance["Placement"]["AvailabilityZone"],
-                    "volumes": volumes,
+                    "volumes": _extract_volumes(instance),
                     "region": region,
                 }
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error getting instance details for {instance_id}: {str(e)}")
         return None
+    return None
 
 
 def get_volume_details(volume_id, region):
@@ -102,12 +102,94 @@ def get_volume_details(volume_id, region):
             "encrypted": volume["Encrypted"],
         }
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error getting volume details for {volume_id}: {str(e)}")
         return None
 
 
-def terminate_instance_safely(instance_id, region):  # noqa: C901, PLR0912, PLR0915
+def _print_instance_info(instance_info, region):
+    """Print instance information."""
+    print(f"🔍 Instance to terminate: {instance_info['instance_id']}")
+    print(f"   Name: {instance_info['name']}")
+    print(f"   Type: {instance_info['instance_type']}")
+    print(f"   State: {instance_info['state']}")
+    print(f"   Launch Time: {instance_info['launch_time']}")
+    print(f"   Region: {region}")
+    print()
+
+
+def _check_and_print_volumes(instance_info, region):
+    """Check volumes and return list of volumes to delete manually."""
+    print("📦 Attached Volumes:")
+    volumes_to_delete_manually = []
+
+    for volume in instance_info["volumes"]:
+        volume_details = get_volume_details(volume["volume_id"], region)
+        if volume_details:
+            print(f"   Volume: {volume['volume_id']} ({volume_details['name']})")
+            print(f"     Size: {volume_details['size']} GB")
+            print(f"     Device: {volume['device']}")
+            print(f"     Delete on Termination: {volume['delete_on_termination']}")
+
+            if volume["delete_on_termination"]:
+                print("     ✅ Will be automatically deleted with instance")
+            else:
+                print("     ⚠️  Will remain after termination (manual deletion needed)")
+                volumes_to_delete_manually.append(volume["volume_id"])
+            print()
+
+    return volumes_to_delete_manually
+
+
+def _disable_termination_protection(ec2_client, instance_id):
+    """Disable termination protection if enabled."""
+    try:
+        ec2_client.modify_instance_attribute(
+            InstanceId=instance_id, DisableApiTermination={"Value": False}
+        )
+        print("🔓 Disabled termination protection")
+    except ClientError as e:
+        print(f"ℹ️  Termination protection check: {str(e)}")
+
+
+def _perform_termination(ec2_client, instance_id, instance_name):
+    """Perform instance termination."""
+    print(f"🚨 Terminating instance {instance_id} ({instance_name})...")
+
+    response = ec2_client.terminate_instances(InstanceIds=[instance_id])
+
+    current_state = response["TerminatingInstances"][0]["CurrentState"]["Name"]
+    previous_state = response["TerminatingInstances"][0]["PreviousState"]["Name"]
+
+    print("✅ Termination initiated successfully")
+    print(f"   Previous state: {previous_state}")
+    print(f"   Current state: {current_state}")
+    print()
+
+
+def _delete_manual_volumes(ec2_client, volumes_to_delete, region):
+    """Delete volumes that need manual deletion."""
+    if not volumes_to_delete:
+        return
+
+    print("🗑️  Volumes that need manual deletion:")
+    for volume_id in volumes_to_delete:
+        volume_details = get_volume_details(volume_id, region)
+        if volume_details:
+            monthly_cost = volume_details["size"] * 0.08
+            print(f"   {volume_id} ({volume_details['name']}) - {volume_details['size']} GB")
+            print(f"     Monthly cost: ${monthly_cost:.2f}")
+
+            try:
+                print(f"     🗑️  Deleting volume {volume_id}...")
+                ec2_client.delete_volume(VolumeId=volume_id)
+                print(f"     ✅ Volume {volume_id} deletion initiated")
+            except ClientError as e:
+                print(f"     ❌ Error deleting volume {volume_id}: {str(e)}")
+    print()
+
+
+def terminate_instance_safely(instance_id, region):
     """
     Safely terminate an EC2 instance with proper checks and volume handling.
 
@@ -121,101 +203,35 @@ def terminate_instance_safely(instance_id, region):  # noqa: C901, PLR0912, PLR0
     try:
         ec2_client = boto3.client("ec2", region_name=region)
 
-        # Get instance details before termination
         instance_info = get_instance_details(instance_id, region)
         if not instance_info:
             return False
 
-        print(f"🔍 Instance to terminate: {instance_id}")
-        print(f"   Name: {instance_info['name']}")
-        print(f"   Type: {instance_info['instance_type']}")
-        print(f"   State: {instance_info['state']}")
-        print(f"   Launch Time: {instance_info['launch_time']}")
-        print(f"   Region: {region}")
-        print()
+        _print_instance_info(instance_info, region)
 
-        # Show attached volumes and their fate
-        print("📦 Attached Volumes:")
-        volumes_to_delete_manually = []
+        volumes_to_delete_manually = _check_and_print_volumes(instance_info, region)
 
-        for volume in instance_info["volumes"]:
-            volume_details = get_volume_details(volume["volume_id"], region)
-            if volume_details:
-                print(f"   Volume: {volume['volume_id']} ({volume_details['name']})")
-                print(f"     Size: {volume_details['size']} GB")
-                print(f"     Device: {volume['device']}")
-                print(f"     Delete on Termination: {volume['delete_on_termination']}")
-
-                if volume["delete_on_termination"]:
-                    print(f"     ✅ Will be automatically deleted with instance")
-                else:
-                    print(f"     ⚠️  Will remain after termination (manual deletion needed)")
-                    volumes_to_delete_manually.append(volume["volume_id"])
-                print()
-
-        # Check if instance is already terminated
         if instance_info["state"] in ["terminated", "terminating"]:
             print(f"ℹ️  Instance {instance_id} is already {instance_info['state']}")
             return True
 
-        # Disable termination protection if enabled
-        try:
-            ec2_client.modify_instance_attribute(
-                InstanceId=instance_id, DisableApiTermination={"Value": False}
-            )
-            print("🔓 Disabled termination protection")
-        except Exception as e:
-            print(f"ℹ️  Termination protection check: {str(e)}")
+        _disable_termination_protection(ec2_client, instance_id)
 
-        # Terminate the instance
-        print(f"🚨 Terminating instance {instance_id} ({instance_info['name']})...")
+        _perform_termination(ec2_client, instance_id, instance_info["name"])
 
-        response = ec2_client.terminate_instances(InstanceIds=[instance_id])
-
-        current_state = response["TerminatingInstances"][0]["CurrentState"]["Name"]
-        previous_state = response["TerminatingInstances"][0]["PreviousState"]["Name"]
-
-        print(f"✅ Termination initiated successfully")
-        print(f"   Previous state: {previous_state}")
-        print(f"   Current state: {current_state}")
-        print()
-
-        # Wait a moment and check status
         print("⏳ Waiting for termination to begin...")
         time.sleep(10)
 
-        # Check current status
         updated_info = get_instance_details(instance_id, region)
         if updated_info:
             print(f"📊 Current status: {updated_info['state']}")
 
-        # Handle volumes that won't be automatically deleted
-        if volumes_to_delete_manually:
-            print("🗑️  Volumes that need manual deletion:")
-            for volume_id in volumes_to_delete_manually:
-                volume_details = get_volume_details(volume_id, region)
-                if volume_details:
-                    monthly_cost = volume_details["size"] * 0.08  # Rough estimate for gp3
-                    print(
-                        f"   {volume_id} ({volume_details['name']}) - {volume_details['size']} GB"
-                    )
-                    print(f"     Monthly cost: ${monthly_cost:.2f}")
+        _delete_manual_volumes(ec2_client, volumes_to_delete_manually, region)
 
-                    # Delete the volume
-                    try:
-                        print(f"     🗑️  Deleting volume {volume_id}...")
-                        ec2_client.delete_volume(VolumeId=volume_id)
-                        print(f"     ✅ Volume {volume_id} deletion initiated")
-                    except Exception as e:
-                        print(f"     ❌ Error deleting volume {volume_id}: {str(e)}")
-            print()
-
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error terminating instance {instance_id}: {str(e)}")
         return False
-
-    else:
-        return True
+    return True
 
 
 def main():

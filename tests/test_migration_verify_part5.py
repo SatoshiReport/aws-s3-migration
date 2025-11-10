@@ -15,44 +15,42 @@ from migration_verify import (
 from tests.assertions import assert_equal
 
 
-class TestProgressTrackerLargeNumbers:
-    """Tests for VerificationProgressTracker with large numbers"""
+def test_update_progress_with_large_file_counts(capsys):
+    """Test progress update with large file counts"""
+    tracker = VerificationProgressTracker()
+    start_time = time.time() - 10
 
-    def test_update_progress_with_large_file_counts(self, capsys):
-        """Test progress update with large file counts"""
-        tracker = VerificationProgressTracker()
-        start_time = time.time() - 10
+    # Test with 1 million files
+    tracker.update_progress(
+        start_time=start_time,
+        verified_count=500000,
+        total_bytes_verified=1024 * 1024 * 1024,  # 1 GB
+        expected_files=1000000,
+        expected_size=2048 * 1024 * 1024,  # 2 GB
+    )
 
-        # Test with 1 million files
-        tracker.update_progress(
-            start_time=start_time,
-            verified_count=500000,
-            total_bytes_verified=1024 * 1024 * 1024,  # 1 GB
-            expected_files=1000000,
-            expected_size=2048 * 1024 * 1024,  # 2 GB
-        )
+    captured = capsys.readouterr()
+    # Should display progress with large counts
+    assert "Progress:" in captured.out
 
-        captured = capsys.readouterr()
-        # Should display progress with large counts
-        assert "Progress:" in captured.out
 
-    def test_verify_files_all_file_count_milestone_updates(self, capsys):
-        """Test progress updates at every 100-file milestone"""
-        tracker = VerificationProgressTracker()
-        current_time = time.time()
+def test_verify_files_all_file_count_milestone_updates(capsys):
+    """Test progress updates at every 100-file milestone"""
+    tracker = VerificationProgressTracker()
+    current_time = time.time()
 
-        # Verify that exactly 100 files triggers an update
-        tracker.update_progress(
-            start_time=current_time,
-            verified_count=100,
-            total_bytes_verified=1024,
-            expected_files=1000,
-            expected_size=10240,
-        )
+    # Verify that exactly 100 files triggers an update
+    tracker.update_progress(
+        start_time=current_time,
+        verified_count=100,
+        total_bytes_verified=1024,
+        expected_files=1000,
+        expected_size=10240,
+    )
 
-        captured = capsys.readouterr()
-        # Should have updated due to file count milestone
-        assert "Progress:" in captured.out
+    captured = capsys.readouterr()
+    # Should have updated due to file count milestone
+    assert "Progress:" in captured.out
 
 
 class TestBucketDeleterEmptyBuckets:
@@ -75,26 +73,23 @@ class TestBucketDeleterEmptyBuckets:
         mock_s3.delete_bucket.assert_called_once_with(Bucket="empty-bucket")
 
 
-class TestFileInventoryScanningLargeNumbers:
-    """Tests for FileInventoryChecker with large file counts"""
+def test_scan_large_number_of_files_with_progress_output(tmp_path):
+    """Test scanning with many files to trigger progress output"""
+    bucket_path = tmp_path / "test-bucket"
+    bucket_path.mkdir()
 
-    def test_scan_large_number_of_files_with_progress_output(self, tmp_path):
-        """Test scanning with many files to trigger progress output"""
-        bucket_path = tmp_path / "test-bucket"
-        bucket_path.mkdir()
+    # Create 10100 files to trigger progress output (>10000)
+    for i in range(10100):
+        subdir = bucket_path / f"dir{i // 100}"
+        subdir.mkdir(exist_ok=True)
+        (subdir / f"file{i}.txt").write_text(f"content{i}")
 
-        # Create 10100 files to trigger progress output (>10000)
-        for i in range(10100):
-            subdir = bucket_path / f"dir{i // 100}"
-            subdir.mkdir(exist_ok=True)
-            (subdir / f"file{i}.txt").write_text(f"content{i}")
+    mock_state = mock.Mock()
+    checker = FileInventoryChecker(mock_state, tmp_path)
 
-        mock_state = mock.Mock()
-        checker = FileInventoryChecker(mock_state, tmp_path)
+    local_files = checker.scan_local_files("test-bucket", 10100)
 
-        local_files = checker.scan_local_files("test-bucket", 10100)
-
-        assert_equal(len(local_files), 10100)
+    assert_equal(len(local_files), 10100)
 
 
 class TestBucketDeleterProgressUpdates:
@@ -130,75 +125,69 @@ class TestBucketDeleterProgressUpdates:
         assert_equal(mock_s3.delete_objects.call_count, 3)
 
 
-class TestIntegrationSuccess:
-    """Integration tests for successful verification workflows"""
+def test_full_verification_workflow(tmp_path):
+    """Test complete verification workflow from inventory to checksums"""
+    # Setup
+    bucket_path = tmp_path / "test-bucket"
+    bucket_path.mkdir()
+    (bucket_path / "file1.txt").write_bytes(b"content")
+    (bucket_path / "file2.txt").write_bytes(b"data")
 
-    def test_full_verification_workflow(self, tmp_path):
-        """Test complete verification workflow from inventory to checksums"""
-        # Setup
-        bucket_path = tmp_path / "test-bucket"
-        bucket_path.mkdir()
-        (bucket_path / "file1.txt").write_bytes(b"content")
-        (bucket_path / "file2.txt").write_bytes(b"data")
+    md5_1 = hashlib.md5(b"content", usedforsecurity=False).hexdigest()
+    md5_2 = hashlib.md5(b"data", usedforsecurity=False).hexdigest()
 
-        md5_1 = hashlib.md5(b"content", usedforsecurity=False).hexdigest()
-        md5_2 = hashlib.md5(b"data", usedforsecurity=False).hexdigest()
+    mock_state = mock.Mock()
+    mock_state.get_bucket_info.return_value = {
+        "file_count": 2,
+        "total_size": 11,
+    }
 
-        mock_state = mock.Mock()
-        mock_state.get_bucket_info.return_value = {
-            "file_count": 2,
-            "total_size": 11,
-        }
+    mock_conn = mock.Mock()
+    mock_rows = [
+        {"key": "file1.txt", "size": 7, "etag": md5_1},
+        {"key": "file2.txt", "size": 4, "etag": md5_2},
+    ]
+    mock_conn.execute.return_value = mock_rows
 
-        mock_conn = mock.Mock()
-        mock_rows = [
-            {"key": "file1.txt", "size": 7, "etag": md5_1},
-            {"key": "file2.txt", "size": 4, "etag": md5_2},
-        ]
-        mock_conn.execute.return_value = mock_rows
+    # Use MagicMock for context manager support
+    mock_cm = mock.MagicMock()
+    mock_cm.__enter__.return_value = mock_conn
+    mock_cm.__exit__.return_value = False
+    mock_state.db_conn.get_connection.return_value = mock_cm
 
-        # Use MagicMock for context manager support
-        mock_cm = mock.MagicMock()
-        mock_cm.__enter__.return_value = mock_conn
-        mock_cm.__exit__.return_value = False
-        mock_state.db_conn.get_connection.return_value = mock_cm
+    verifier = BucketVerifier(mock_state, tmp_path)
+    results = verifier.verify_bucket("test-bucket")
 
-        verifier = BucketVerifier(mock_state, tmp_path)
-        results = verifier.verify_bucket("test-bucket")
-
-        assert_equal(results["verified_count"], 2)
-        assert_equal(results["checksum_verified"], 2)
-        assert_equal(results["local_file_count"], 2)
+    assert_equal(results["verified_count"], 2)
+    assert_equal(results["checksum_verified"], 2)
+    assert_equal(results["local_file_count"], 2)
 
 
-class TestIntegrationErrors:
-    """Integration tests for error handling across components"""
+def test_error_handling_across_components(tmp_path):
+    """Test error handling flows through components"""
+    bucket_path = tmp_path / "test-bucket"
+    bucket_path.mkdir()
+    (bucket_path / "file1.txt").write_bytes(b"content")
 
-    def test_error_handling_across_components(self, tmp_path):
-        """Test error handling flows through components"""
-        bucket_path = tmp_path / "test-bucket"
-        bucket_path.mkdir()
-        (bucket_path / "file1.txt").write_bytes(b"content")
+    mock_state = mock.Mock()
+    mock_state.get_bucket_info.return_value = {
+        "file_count": 1,
+        "total_size": 100,
+    }
 
-        mock_state = mock.Mock()
-        mock_state.get_bucket_info.return_value = {
-            "file_count": 1,
-            "total_size": 100,
-        }
+    mock_conn = mock.Mock()
+    mock_rows = [
+        {"key": "file1.txt", "size": 100, "etag": "abc123"},  # Wrong size
+    ]
+    mock_conn.execute.return_value = mock_rows
 
-        mock_conn = mock.Mock()
-        mock_rows = [
-            {"key": "file1.txt", "size": 100, "etag": "abc123"},  # Wrong size
-        ]
-        mock_conn.execute.return_value = mock_rows
+    # Use MagicMock for context manager support
+    mock_cm = mock.MagicMock()
+    mock_cm.__enter__.return_value = mock_conn
+    mock_cm.__exit__.return_value = False
+    mock_state.db_conn.get_connection.return_value = mock_cm
 
-        # Use MagicMock for context manager support
-        mock_cm = mock.MagicMock()
-        mock_cm.__enter__.return_value = mock_conn
-        mock_cm.__exit__.return_value = False
-        mock_state.db_conn.get_connection.return_value = mock_cm
+    verifier = BucketVerifier(mock_state, tmp_path)
 
-        verifier = BucketVerifier(mock_state, tmp_path)
-
-        with pytest.raises(ValueError):
-            verifier.verify_bucket("test-bucket")
+    with pytest.raises(ValueError):
+        verifier.verify_bucket("test-bucket")

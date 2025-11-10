@@ -1,0 +1,211 @@
+"""
+Database loading and caching integration for cleanup_temp_artifacts.
+
+Handles database connection, cache management, and candidate loading orchestration.
+"""
+
+from __future__ import annotations
+
+import argparse
+import logging
+import os
+import sqlite3
+from dataclasses import dataclass
+from pathlib import Path
+
+from cleanup_temp_artifacts.cache import (
+    build_cache_key,
+    cache_is_valid,
+    load_cache,
+    write_cache,
+)
+from cleanup_temp_artifacts.categories import Category
+from cleanup_temp_artifacts.core_scanner import (
+    Candidate,
+    CandidateLoadError,
+    CandidateLoadResult,
+    scan_candidates_from_db,
+)
+
+
+@dataclass
+class CacheConfig:
+    """Configuration for cache operations."""
+
+    enabled: bool
+    cache_dir: Path
+    refresh_cache: bool
+    cache_ttl: int
+
+
+@dataclass
+class DatabaseInfo:
+    """Database metadata and statistics."""
+
+    db_path: Path
+    db_stat: os.stat_result
+    total_files: int
+    max_rowid: int
+
+
+class MissingFilesTableError(CandidateLoadError):
+    """Raised when the migration database is missing the expected 'files' table."""
+
+    def __init__(self) -> None:
+        super().__init__("Migration database missing expected 'files' table")
+
+    def __str__(self) -> str:
+        """Return string representation of the error."""
+        return "Migration database missing expected 'files' table"
+
+
+class DatabaseConnectionError(CandidateLoadError):
+    """Raised when the SQLite database cannot be opened."""
+
+    def __init__(self, db_path: Path) -> None:
+        super().__init__(f"Failed to open SQLite database {db_path}")
+        self.db_path = db_path
+
+    def __str__(self) -> str:
+        """Return string representation of the error."""
+        return f"Failed to open SQLite database {self.db_path}"
+
+
+def _get_db_file_stats(conn: sqlite3.Connection) -> tuple[int, int]:
+    """Get total file count and max rowid from database."""
+    try:
+        total_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
+    except sqlite3.OperationalError as exc:
+        raise MissingFilesTableError() from exc
+
+    try:
+        max_rowid_row = conn.execute("SELECT MAX(rowid) FROM files").fetchone()
+        max_rowid = max_rowid_row[0] if max_rowid_row and max_rowid_row[0] is not None else 0
+    except sqlite3.OperationalError:
+        max_rowid = total_files
+
+    return total_files, max_rowid
+
+
+def _try_load_from_cache(
+    cache_config: CacheConfig,
+    base_path: Path,
+    db_info: DatabaseInfo,
+    scan_params: dict[str, object],
+    category_map: dict[str, Category],
+) -> tuple[Path | None, bool, list[Candidate] | None]:
+    """Attempt to load candidates from cache. Returns (cache_path, cache_used, candidates)."""
+    if not cache_config.enabled:
+        return None, False, None
+
+    cache_key = build_cache_key(base_path, db_info.db_path, scan_params)
+    cache_config.cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_path = cache_config.cache_dir / f"{cache_key}.json"
+
+    if not cache_path.exists() or cache_config.refresh_cache:
+        return cache_path, False, None
+
+    loaded = load_cache(cache_path, scan_params, category_map)
+    if not loaded:
+        return cache_path, False, None
+
+    cached_candidates, metadata = loaded
+    if not cache_is_valid(
+        metadata,
+        ttl_seconds=cache_config.cache_ttl,
+        rowcount=db_info.total_files,
+        max_rowid=db_info.max_rowid,
+        db_mtime_ns=db_info.db_stat.st_mtime_ns,
+    ):
+        return cache_path, False, None
+
+    generated = metadata.get("generated_at", "unknown time")
+    print(
+        f"Using cached results from {generated} "
+        f"(files={db_info.total_files:,}). Use --refresh-cache to rescan.\n"
+    )
+    return cache_path, True, cached_candidates
+
+
+def load_candidates_from_db(
+    *,
+    args: argparse.Namespace,
+    base_path: Path,
+    db_path: Path,
+    db_stat: os.stat_result,
+    cutoff_ts: float | None,
+    scan_params: dict[str, object],
+) -> CandidateLoadResult:
+    """Read candidate directories, honoring cache settings."""
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+    except sqlite3.Error as exc:  # pragma: no cover - connection failure
+        raise DatabaseConnectionError(db_path) from exc
+
+    category_map = {cat.name: cat for cat in args.categories}
+
+    try:
+        total_files, max_rowid = _get_db_file_stats(conn)
+
+        cache_config = CacheConfig(
+            enabled=args.cache_enabled,
+            cache_dir=args.cache_dir,
+            refresh_cache=args.refresh_cache,
+            cache_ttl=args.cache_ttl,
+        )
+        db_info = DatabaseInfo(
+            db_path=db_path, db_stat=db_stat, total_files=total_files, max_rowid=max_rowid
+        )
+
+        cache_path, cache_used, candidates = _try_load_from_cache(
+            cache_config, base_path, db_info, scan_params, category_map
+        )
+
+        if candidates is None:
+            candidates = scan_candidates_from_db(
+                conn,
+                base_path,
+                args.categories,
+                cutoff_ts=cutoff_ts,
+                min_size_bytes=args.min_size_bytes,
+                total_files=total_files,
+            )
+
+        return CandidateLoadResult(
+            candidates=candidates,
+            cache_path=cache_path,
+            cache_used=cache_used,
+            total_files=total_files,
+            max_rowid=max_rowid,
+        )
+    finally:
+        conn.close()
+
+
+def write_cache_if_needed(
+    cache_config: CacheConfig,
+    load_result: CandidateLoadResult,
+    cache_path: Path | None,
+    cache_used: bool,
+    base_path: Path,
+    db_info: DatabaseInfo,
+    scan_params: dict[str, object],
+) -> None:
+    """Write cache if enabled and not already used."""
+    if not cache_config.enabled or not cache_path or cache_used:
+        return
+
+    try:
+        write_cache(
+            cache_path,
+            load_result.candidates,
+            scan_params=scan_params,
+            base_path=base_path,
+            db_path=db_info.db_path,
+            rowcount=load_result.total_files,
+            max_rowid=load_result.max_rowid,
+            db_mtime_ns=db_info.db_stat.st_mtime_ns,
+        )
+    except OSError as exc:
+        logging.warning("Failed to write cache %s: %s", cache_path, exc)

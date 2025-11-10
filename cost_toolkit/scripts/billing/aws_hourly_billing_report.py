@@ -4,14 +4,13 @@ AWS Hourly Billing Report Script
 Gets detailed billing information for the current hour to identify active cost-generating services.
 """
 
-import json
 import os
 import subprocess
 from collections import defaultdict
 from datetime import datetime, timedelta
 
 import boto3
-import botocore.exceptions
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -93,21 +92,15 @@ def get_hourly_billing_data():
             GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
         )
 
-    except Exception as e:
+    except ClientError as e:
         print(f"Error retrieving billing data: {str(e)}")
         return None, None
 
-    else:
-        return hourly_response, daily_response
+    return hourly_response, daily_response
 
 
-def format_hourly_billing_report(hourly_data, daily_data):  # noqa: C901, PLR0912, PLR0915
-    """Format and display the hourly billing report"""
-    if not hourly_data or "ResultsByTime" not in hourly_data:
-        print("No hourly billing data available")
-        return
-
-    # Process daily data for comparison
+def _process_daily_data(daily_data):
+    """Process daily billing data."""
     daily_service_costs = defaultdict(float)
     if daily_data and "ResultsByTime" in daily_data:
         for result in daily_data["ResultsByTime"]:
@@ -115,19 +108,18 @@ def format_hourly_billing_report(hourly_data, daily_data):  # noqa: C901, PLR091
                 service = group["Keys"][0] if group["Keys"] else "Unknown Service"
                 cost_amount = float(group["Metrics"]["BlendedCost"]["Amount"])
                 daily_service_costs[service] += cost_amount
+    return daily_service_costs
 
-    # Process hourly data
+
+def _process_hourly_data(hourly_data, current_hour):
+    """Process hourly billing data."""
     hourly_service_costs = defaultdict(list)
     current_hour_costs = defaultdict(float)
-
-    now = datetime.now()
-    current_hour = now.replace(minute=0, second=0, microsecond=0)
 
     for result in hourly_data["ResultsByTime"]:
         period_start = result["TimePeriod"]["Start"]
         period_end = result["TimePeriod"]["End"]
 
-        # Parse the hour from the period
         hour_start = datetime.fromisoformat(period_start.replace("Z", "+00:00"))
 
         for group in result["Groups"]:
@@ -144,18 +136,18 @@ def format_hourly_billing_report(hourly_data, daily_data):  # noqa: C901, PLR091
                     }
                 )
 
-                # Track current hour costs
                 if hour_start.hour == current_hour.hour:
                     current_hour_costs[service] += cost_amount
 
-    # Display report
-    print(f"\nHOURLY AWS BILLING REPORT - {now.strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 120)
+    return hourly_service_costs, current_hour_costs
 
-    # Current hour active services
+
+def _display_current_hour_section(current_hour_costs, current_hour, now, daily_service_costs):
+    """Display current hour active services section."""
     if current_hour_costs:
         print(
-            f"\n🔥 ACTIVE SERVICES IN CURRENT HOUR ({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})"
+            f"\n🔥 ACTIVE SERVICES IN CURRENT HOUR "
+            f"({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})"
         )
         print("-" * 80)
 
@@ -166,7 +158,6 @@ def format_hourly_billing_report(hourly_data, daily_data):  # noqa: C901, PLR091
             current_hour_total += cost
             daily_cost = daily_service_costs.get(service, 0)
 
-            # Calculate hourly rate if we have daily data
             hourly_rate = ""
             if daily_cost > 0:
                 hours_elapsed = now.hour + (now.minute / 60.0)
@@ -179,12 +170,15 @@ def format_hourly_billing_report(hourly_data, daily_data):  # noqa: C901, PLR091
         print(f"\n   📊 Current Hour Total: ${current_hour_total:.6f}")
     else:
         print(
-            f"\n✅ NO ACTIVE SERVICES IN CURRENT HOUR ({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})"
+            f"\n✅ NO ACTIVE SERVICES IN CURRENT HOUR "
+            f"({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})"
         )
 
-    # Today's summary by service
+
+def _display_daily_summary(daily_service_costs, hourly_service_costs):
+    """Display today's cost summary by service."""
     if daily_service_costs:
-        print(f"\n📈 TODAY'S COST SUMMARY BY SERVICE")
+        print("\n📈 TODAY'S COST SUMMARY BY SERVICE")
         print("-" * 80)
 
         daily_total = 0
@@ -193,7 +187,6 @@ def format_hourly_billing_report(hourly_data, daily_data):  # noqa: C901, PLR091
         for service, cost in sorted_daily:
             daily_total += cost
 
-            # Show hourly breakdown if available
             hourly_breakdown = ""
             if service in hourly_service_costs:
                 hours_with_cost = len([h for h in hourly_service_costs[service] if h["cost"] > 0])
@@ -205,32 +198,34 @@ def format_hourly_billing_report(hourly_data, daily_data):  # noqa: C901, PLR091
 
         print(f"\n   💰 Today's Total: ${daily_total:.6f}")
 
-    # Hourly trend analysis
+
+def _display_hourly_trends(hourly_service_costs, daily_service_costs):
+    """Display hourly cost trends for top services."""
     if hourly_service_costs:
-        print(f"\n⏰ HOURLY COST TRENDS (Top Services)")
+        print("\n⏰ HOURLY COST TRENDS (Top Services)")
         print("-" * 80)
 
-        # Get top 5 services by daily cost
         top_services = sorted(daily_service_costs.items(), key=lambda x: x[1], reverse=True)[:5]
 
         for service, daily_cost in top_services:
             if service in hourly_service_costs:
                 print(f"\n🔍 {service} (${daily_cost:.6f} today)")
 
-                # Show hourly breakdown
                 hourly_costs = hourly_service_costs[service]
                 hourly_costs.sort(key=lambda x: x["hour"])
 
-                for hour_data in hourly_costs[-12:]:  # Show last 12 hours
+                for hour_data in hourly_costs[-12:]:
                     hour_str = hour_data["hour"].strftime("%H:00")
                     cost = hour_data["cost"]
                     if cost > 0:
-                        bar_length = min(int(cost * 1000000), 50)  # Scale for visualization
+                        bar_length = min(int(cost * 1000000), 50)
                         bar = "█" * bar_length
                         print(f"   {hour_str}: ${cost:.6f} {bar}")
 
-    # Cost optimization recommendations
-    print(f"\n💡 COST OPTIMIZATION INSIGHTS")
+
+def _display_optimization_insights(current_hour_costs, daily_service_costs):
+    """Display cost optimization insights."""
+    print("\n💡 COST OPTIMIZATION INSIGHTS")
     print("-" * 80)
 
     if current_hour_costs:
@@ -242,13 +237,33 @@ def format_hourly_billing_report(hourly_data, daily_data):  # noqa: C901, PLR091
         print("✅ No services generating costs in the current hour")
         print("🎉 Your cleanup efforts are working!")
 
-    # Show services that were active earlier today but not now
     earlier_services = set(daily_service_costs.keys()) - set(current_hour_costs.keys())
     if earlier_services:
-        print(f"\n📝 Services active earlier today but not in current hour:")
+        print("\n📝 Services active earlier today but not in current hour:")
         for service in sorted(earlier_services):
             daily_cost = daily_service_costs[service]
             print(f"   • {service}: ${daily_cost:.6f} (may be already cleaned up)")
+
+
+def format_hourly_billing_report(hourly_data, daily_data):
+    """Format and display the hourly billing report"""
+    if not hourly_data or "ResultsByTime" not in hourly_data:
+        print("No hourly billing data available")
+        return
+
+    now = datetime.now()
+    current_hour = now.replace(minute=0, second=0, microsecond=0)
+
+    daily_service_costs = _process_daily_data(daily_data)
+    hourly_service_costs, current_hour_costs = _process_hourly_data(hourly_data, current_hour)
+
+    print(f"\nHOURLY AWS BILLING REPORT - {now.strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 120)
+
+    _display_current_hour_section(current_hour_costs, current_hour, now, daily_service_costs)
+    _display_daily_summary(daily_service_costs, hourly_service_costs)
+    _display_hourly_trends(hourly_service_costs, daily_service_costs)
+    _display_optimization_insights(current_hour_costs, daily_service_costs)
 
 
 def main():

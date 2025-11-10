@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+"""Clean up EBS volumes in London region."""
 
-import os
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 
 
 def setup_aws_credentials():
@@ -13,7 +13,126 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def cleanup_london_ebs_volumes():  # noqa: C901, PLR0912, PLR0915
+def _print_volumes_to_delete(volumes_to_delete):
+    """Print list of volumes scheduled for deletion."""
+    print("🗑️  Volumes scheduled for deletion:")
+    total_savings = 0
+    for vol in volumes_to_delete:
+        print(f"   • {vol['id']} ({vol['name']}) - {vol['size']}")
+        print(f"     Reason: {vol['reason']}")
+        print(f"     Savings: {vol['savings']}")
+        savings_amount = int(vol["savings"].replace("$", "").replace("/month", ""))
+        total_savings += savings_amount
+        print()
+    return total_savings
+
+
+def _detach_volume(ec2, volume_id):
+    """Detach a volume if it's attached."""
+    response = ec2.describe_volumes(VolumeIds=[volume_id])
+    volume = response["Volumes"][0]
+
+    if volume["Attachments"]:
+        attachment = volume["Attachments"][0]
+        instance_id = attachment["InstanceId"]
+        device = attachment["Device"]
+
+        print(f"   Volume is attached to {instance_id} as {device}")
+        print("   Detaching volume...")
+
+        ec2.detach_volume(VolumeId=volume_id, InstanceId=instance_id, Device=device, Force=True)
+
+        print("   ✅ Volume detachment initiated")
+        print("   Waiting for volume to detach...")
+        waiter = ec2.get_waiter("volume_available")
+        waiter.wait(VolumeIds=[volume_id])
+        print("   ✅ Volume successfully detached")
+    else:
+        print("   Volume is already detached")
+
+
+def _delete_volumes(ec2, volumes_to_delete):
+    """Delete volumes and return lists of deleted and failed volumes."""
+    deleted_volumes = []
+    failed_deletions = []
+
+    for vol in volumes_to_delete:
+        try:
+            print(f"   Deleting {vol['id']} ({vol['name']})...")
+            ec2.delete_volume(VolumeId=vol["id"])
+            print(f"   ✅ Successfully deleted {vol['id']}")
+            deleted_volumes.append(vol)
+        except ClientError as e:
+            print(f"   ❌ Failed to delete {vol['id']}: {str(e)}")
+            failed_deletions.append({"volume": vol, "error": str(e)})
+
+    return deleted_volumes, failed_deletions
+
+
+def _print_cleanup_summary(deleted_volumes, failed_deletions):
+    """Print cleanup summary."""
+    print()
+    print("📊 CLEANUP SUMMARY:")
+    print("=" * 80)
+
+    if deleted_volumes:
+        print("✅ Successfully deleted volumes:")
+        total_deleted_savings = 0
+        for vol in deleted_volumes:
+            print(f"   • {vol['id']} ({vol['name']}) - {vol['size']}")
+            savings_amount = int(vol["savings"].replace("$", "").replace("/month", ""))
+            total_deleted_savings += savings_amount
+        print(f"   💰 Monthly savings achieved: ${total_deleted_savings}")
+        print()
+        return total_deleted_savings
+
+    if failed_deletions:
+        print("❌ Failed deletions:")
+        for failure in failed_deletions:
+            vol = failure["volume"]
+            error = failure["error"]
+            print(f"   • {vol['id']} ({vol['name']}): {error}")
+        print()
+
+    return 0
+
+
+def _show_remaining_volumes(ec2):
+    """Show remaining volumes after cleanup."""
+    print("📦 Remaining London EBS volumes:")
+    try:
+        response = ec2.describe_volumes(
+            Filters=[
+                {"Name": "state", "Values": ["available", "in-use"]},
+                {"Name": "availability-zone", "Values": ["eu-west-2a", "eu-west-2b", "eu-west-2c"]},
+            ]
+        )
+
+        remaining_cost = 0
+        for volume in response["Volumes"]:
+            size = volume["Size"]
+            vol_id = volume["VolumeId"]
+            state = volume["State"]
+
+            name = "No name"
+            if "Tags" in volume:
+                for tag in volume["Tags"]:
+                    if tag["Key"] == "Name":
+                        name = tag["Value"]
+                        break
+
+            monthly_cost = size * 0.08
+            remaining_cost += monthly_cost
+
+            print(f"   • {vol_id} ({name}) - {size} GB - {state} - ${monthly_cost:.2f}/month")
+
+        print(f"   💰 Total remaining monthly cost: ${remaining_cost:.2f}")
+
+    except ClientError as e:
+        print(f"   ❌ Error listing remaining volumes: {str(e)}")
+
+
+def cleanup_london_ebs_volumes():
     """Clean up duplicate and unattached EBS volumes in London"""
     setup_aws_credentials()
 
@@ -40,127 +159,24 @@ def cleanup_london_ebs_volumes():  # noqa: C901, PLR0912, PLR0915
         },
     ]
 
-    print("🗑️  Volumes scheduled for deletion:")
-    total_savings = 0
-    for vol in volumes_to_delete:
-        print(f"   • {vol['id']} ({vol['name']}) - {vol['size']}")
-        print(f"     Reason: {vol['reason']}")
-        print(f"     Savings: {vol['savings']}")
-        savings_amount = int(vol["savings"].replace("$", "").replace("/month", ""))
-        total_savings += savings_amount
-        print()
-
+    total_savings = _print_volumes_to_delete(volumes_to_delete)
     print(f"💰 Total estimated monthly savings: ${total_savings}")
     print()
 
-    # First, detach the old Tars volume if it's still attached
     print("🔧 Step 1: Detaching old Tars volume if attached...")
     try:
-        # Check if volume is attached
-        response = ec2.describe_volumes(VolumeIds=["vol-0e148f66bcb4f7a0b"])
-        volume = response["Volumes"][0]
-
-        if volume["Attachments"]:
-            attachment = volume["Attachments"][0]
-            instance_id = attachment["InstanceId"]
-            device = attachment["Device"]
-
-            print(f"   Volume is attached to {instance_id} as {device}")
-            print("   Detaching volume...")
-
-            ec2.detach_volume(
-                VolumeId="vol-0e148f66bcb4f7a0b", InstanceId=instance_id, Device=device, Force=True
-            )
-
-            print("   ✅ Volume detachment initiated")
-
-            # Wait for detachment
-            print("   Waiting for volume to detach...")
-            waiter = ec2.get_waiter("volume_available")
-            waiter.wait(VolumeIds=["vol-0e148f66bcb4f7a0b"])
-            print("   ✅ Volume successfully detached")
-        else:
-            print("   Volume is already detached")
-
-    except Exception as e:
+        _detach_volume(ec2, "vol-0e148f66bcb4f7a0b")
+    except ClientError as e:
         print(f"   ❌ Error detaching volume: {str(e)}")
         return
 
     print()
     print("🗑️  Step 2: Deleting volumes...")
 
-    deleted_volumes = []
-    failed_deletions = []
+    deleted_volumes, failed_deletions = _delete_volumes(ec2, volumes_to_delete)
 
-    for vol in volumes_to_delete:
-        try:
-            print(f"   Deleting {vol['id']} ({vol['name']})...")
-
-            # Delete the volume
-            ec2.delete_volume(VolumeId=vol["id"])
-
-            print(f"   ✅ Successfully deleted {vol['id']}")
-            deleted_volumes.append(vol)
-
-        except Exception as e:
-            print(f"   ❌ Failed to delete {vol['id']}: {str(e)}")
-            failed_deletions.append({"volume": vol, "error": str(e)})
-
-    print()
-    print("📊 CLEANUP SUMMARY:")
-    print("=" * 80)
-
-    if deleted_volumes:
-        print("✅ Successfully deleted volumes:")
-        total_deleted_savings = 0
-        for vol in deleted_volumes:
-            print(f"   • {vol['id']} ({vol['name']}) - {vol['size']}")
-            savings_amount = int(vol["savings"].replace("$", "").replace("/month", ""))
-            total_deleted_savings += savings_amount
-        print(f"   💰 Monthly savings achieved: ${total_deleted_savings}")
-        print()
-
-    if failed_deletions:
-        print("❌ Failed deletions:")
-        for failure in failed_deletions:
-            vol = failure["volume"]
-            error = failure["error"]
-            print(f"   • {vol['id']} ({vol['name']}): {error}")
-        print()
-
-    # Show remaining volumes
-    print("📦 Remaining London EBS volumes:")
-    try:
-        response = ec2.describe_volumes(
-            Filters=[
-                {"Name": "state", "Values": ["available", "in-use"]},
-                {"Name": "availability-zone", "Values": ["eu-west-2a", "eu-west-2b", "eu-west-2c"]},
-            ]
-        )
-
-        remaining_cost = 0
-        for volume in response["Volumes"]:
-            size = volume["Size"]
-            vol_id = volume["VolumeId"]
-            state = volume["State"]
-
-            # Get volume name from tags
-            name = "No name"
-            if "Tags" in volume:
-                for tag in volume["Tags"]:
-                    if tag["Key"] == "Name":
-                        name = tag["Value"]
-                        break
-
-            monthly_cost = size * 0.08  # $0.08 per GB per month for gp2
-            remaining_cost += monthly_cost
-
-            print(f"   • {vol_id} ({name}) - {size} GB - {state} - ${monthly_cost:.2f}/month")
-
-        print(f"   💰 Total remaining monthly cost: ${remaining_cost:.2f}")
-
-    except Exception as e:
-        print(f"   ❌ Error listing remaining volumes: {str(e)}")
+    total_deleted_savings = _print_cleanup_summary(deleted_volumes, failed_deletions)
+    _show_remaining_volumes(ec2)
 
     print()
     print("🎯 OPTIMIZATION COMPLETE!")

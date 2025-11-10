@@ -1,0 +1,232 @@
+"""CLI interface for fixed snapshot export"""
+
+import argparse
+
+import boto3
+from botocore.exceptions import ClientError
+
+from .constants import ExportTaskDeletedException, ExportTaskStuckException
+from .export_helpers import export_ami_to_s3_with_recovery
+from .export_ops import (
+    create_ami_from_snapshot,
+    create_s3_bucket_if_not_exists,
+    create_s3_bucket_new,
+    load_aws_credentials,
+    setup_s3_bucket_versioning,
+)
+from .monitoring import calculate_cost_savings, verify_s3_export_final
+from .recovery import (
+    check_existing_completed_exports,
+    cleanup_temporary_ami,
+    get_snapshots_to_export,
+)
+
+
+def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_access_key):
+    """Export a single snapshot to S3 with comprehensive error handling"""
+    from datetime import datetime
+
+    snapshot_id = snapshot_info["snapshot_id"]
+    region = snapshot_info["region"]
+    size_gb = snapshot_info["size_gb"]
+    description = snapshot_info["description"]
+
+    print(f"🔍 Processing {snapshot_id} ({size_gb} GB) in {region}...")
+
+    ec2_client = boto3.client(
+        "ec2",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+
+    s3_client = boto3.client(
+        "s3",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+
+    bucket_name = f"ebs-snapshot-archive-{region}-{datetime.now().strftime('%Y%m%d')}"
+
+    print(f"   🔍 Checking for existing completed exports in {region}...")
+    _ = check_existing_completed_exports(s3_client, region)
+
+    try:
+        create_s3_bucket_if_not_exists(s3_client, bucket_name, region)
+    except s3_client.exceptions.NoSuchBucket:
+        create_s3_bucket_new(s3_client, bucket_name, region)
+
+    setup_s3_bucket_versioning(s3_client, bucket_name)
+
+    ami_id = create_ami_from_snapshot(ec2_client, snapshot_id, description)
+
+    try:
+        export_task_id, s3_key = export_ami_to_s3_with_recovery(
+            ec2_client, s3_client, ami_id, bucket_name, region, size_gb
+        )
+
+        _ = verify_s3_export_final(s3_client, bucket_name, s3_key, size_gb)
+
+        savings = calculate_cost_savings(size_gb)
+
+        cleanup_temporary_ami(ec2_client, ami_id, region)
+
+        print(f"   ✅ Successfully exported {snapshot_id}")
+        print(f"   📍 S3 location: s3://{bucket_name}/{s3_key}")
+        print(f"   💰 Monthly savings: ${savings['monthly_savings']:.2f}")
+
+        return {
+            "snapshot_id": snapshot_id,
+            "ami_id": ami_id,
+            "bucket_name": bucket_name,
+            "s3_key": s3_key,
+            "export_task_id": export_task_id,
+            "size_gb": size_gb,
+            "monthly_savings": savings["monthly_savings"],
+            "success": True,
+        }
+
+    except (ExportTaskDeletedException, ExportTaskStuckException):
+        try:
+            cleanup_temporary_ami(ec2_client, ami_id, region)
+        except ClientError as cleanup_error:
+            print(f"   ⚠️  Warning: Could not clean up AMI {ami_id}: {cleanup_error}")
+
+        raise
+
+    except ClientError:
+        try:
+            cleanup_temporary_ami(ec2_client, ami_id, region)
+        except ClientError as cleanup_error:
+            print(f"   ⚠️  Warning: Could not clean up AMI {ami_id}: {cleanup_error}")
+
+        raise
+
+
+def _print_export_intro_fixed(snapshots_to_export, total_savings):
+    """Print introduction and summary for export."""
+    print("AWS EBS Snapshot to S3 Export Script - FIXED VERSION")
+    print("=" * 80)
+    print("Exporting EBS snapshots to S3 with fail-fast error handling...")
+    print()
+
+    total_size_gb = sum(snap["size_gb"] for snap in snapshots_to_export)
+
+    print(f"🎯 Target: {len(snapshots_to_export)} snapshots ({total_size_gb} GB total)")
+    print(f"💰 Current monthly cost: ${total_savings['ebs_cost']:.2f}")
+    print(f"💰 Future monthly cost: ${total_savings['s3_cost']:.2f}")
+    print(
+        f"💰 Monthly savings: ${total_savings['monthly_savings']:.2f} "
+        f"({total_savings['savings_percentage']:.1f}%)"
+    )
+    print(f"💰 Annual savings: ${total_savings['annual_savings']:.2f}")
+    print()
+
+    print("⚠️  IMPORTANT NOTES:")
+    print("   - Export process can take several hours per snapshot")
+    print("   - AMIs will be created temporarily and automatically cleaned up after export")
+    print("   - Data will be stored in S3 Standard for immediate access")
+    print("   - All errors will fail fast - no hidden failures")
+    print()
+
+
+def _print_final_summary_fixed(successful_exports, export_results, snapshots_to_export):
+    """Print final summary of export operation."""
+    print("=" * 80)
+    print("🎯 S3 EXPORT SUMMARY")
+    print("=" * 80)
+    print(f"✅ Successfully exported: {successful_exports} snapshots")
+
+    if not export_results:
+        return
+
+    total_monthly_savings = sum(result["monthly_savings"] for result in export_results)
+    print(f"💰 Total monthly savings: ${total_monthly_savings:.2f}")
+    print(f"💰 Total annual savings: ${total_monthly_savings * 12:.2f}")
+    print()
+
+    print("📋 Export Results:")
+    for result in export_results:
+        print(f"   {result['snapshot_id']} → s3://{result['bucket_name']}/{result['s3_key']}")
+
+    print()
+    print("📝 Next Steps:")
+    print("1. Verify exports in S3 console")
+    print("2. Test restore process if needed")
+    print("3. Delete original EBS snapshots to realize savings")
+    print()
+    print("🔧 Delete Original Snapshots (after verifying S3 exports):")
+    for result in export_results:
+        region = next(
+            snap["region"]
+            for snap in snapshots_to_export
+            if snap["snapshot_id"] == result["snapshot_id"]
+        )
+        print(f"   aws ec2 delete-snapshot --snapshot-id {result['snapshot_id']} --region {region}")
+
+
+def export_snapshots_to_s3_fixed():
+    """Main function to export EBS snapshots to S3 with fail-fast error handling"""
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    snapshots_to_export = get_snapshots_to_export(aws_access_key_id, aws_secret_access_key)
+
+    total_size_gb = sum(snap["size_gb"] for snap in snapshots_to_export)
+    total_savings = calculate_cost_savings(total_size_gb)
+
+    _print_export_intro_fixed(snapshots_to_export, total_savings)
+
+    confirmation = input("Type 'EXPORT TO S3' to proceed with snapshot export: ")
+    if confirmation != "EXPORT TO S3":
+        raise ValueError("Operation cancelled by user")  # noqa: TRY003
+
+    print()
+    print("🚨 Proceeding with snapshot export to S3...")
+    print("=" * 80)
+
+    export_results = []
+    snapshots_to_export = sorted(snapshots_to_export, key=lambda x: x["size_gb"])
+
+    print("📋 Processing snapshots in order of size (smallest first):")
+    for snap in snapshots_to_export:
+        print(f"   - {snap['snapshot_id']}: {snap['size_gb']} GB")
+    print()
+
+    for snap_info in snapshots_to_export:
+        try:
+            result = export_single_snapshot_to_s3(
+                snap_info, aws_access_key_id, aws_secret_access_key
+            )
+            export_results.append(result)
+
+        except (ExportTaskDeletedException, ExportTaskStuckException) as e:
+            print(f"   ❌ Failed to export {snap_info['snapshot_id']}: {e}")
+            print(
+                "   💡 This is a known AWS export service issue - continuing with next snapshot..."
+            )
+            print("   🔄 Continuing with next snapshot...")
+            continue
+
+        except ClientError as e:
+            print(f"   ❌ Failed to export {snap_info['snapshot_id']}: {e}")
+            raise Exception(  # noqa: TRY002, TRY003
+                f"Export failed for {snap_info['snapshot_id']}: {e}"
+            ) from e
+        print()
+
+    _print_final_summary_fixed(len(export_results), export_results, snapshots_to_export)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Export EBS snapshots to S3 for cost optimization - FIXED VERSION",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python3 aws_snapshot_to_s3_export_fixed.py    # Export with fail-fast error handling
+        """,
+    )
+
+    args = parser.parse_args()
+
+    export_snapshots_to_s3_fixed()

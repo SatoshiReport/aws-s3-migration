@@ -141,7 +141,7 @@ class TestSingleBucketMigration:
     def test_migrate_single_bucket_success(self, orchestrator, mock_dependencies):
         """Test _migrate_single_bucket successful processing"""
         with mock.patch("builtins.print"):
-            orchestrator._migrate_single_bucket(1, "bucket-1", 3)
+            orchestrator.migrate_single_bucket(1, "bucket-1", 3)
 
         mock_dependencies["drive_checker"].check_available.assert_called_once()
         mock_dependencies["bucket_migrator"].process_bucket.assert_called_once_with("bucket-1")
@@ -160,7 +160,7 @@ class TestSingleBucketDriveErrors:
 
         with mock.patch("builtins.print"):
             with pytest.raises(SystemExit) as exc_info:
-                orchestrator._migrate_single_bucket(1, "bucket-1", 1)
+                orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
         assert exc_info.value.code == 1
 
@@ -172,7 +172,7 @@ class TestSingleBucketDriveErrors:
 
         with mock.patch("builtins.print"):
             with pytest.raises(SystemExit) as exc_info:
-                orchestrator._migrate_single_bucket(1, "bucket-1", 1)
+                orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
         assert exc_info.value.code == 1
 
@@ -184,7 +184,7 @@ class TestSingleBucketDriveErrors:
 
         with mock.patch("builtins.print"):
             with pytest.raises(SystemExit) as exc_info:
-                orchestrator._migrate_single_bucket(1, "bucket-1", 1)
+                orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
         assert exc_info.value.code == 1
 
@@ -200,7 +200,7 @@ class TestSingleBucketMigrationErrors:
 
         with mock.patch("builtins.print"):
             with pytest.raises(SystemExit) as exc_info:
-                orchestrator._migrate_single_bucket(1, "bucket-1", 1)
+                orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
         assert exc_info.value.code == 1
 
@@ -212,7 +212,7 @@ class TestSingleBucketMigrationErrors:
 
         with mock.patch("builtins.print"):
             with pytest.raises(SystemExit) as exc_info:
-                orchestrator._migrate_single_bucket(1, "bucket-1", 1)
+                orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
         assert exc_info.value.code == 1
 
@@ -220,7 +220,7 @@ class TestSingleBucketMigrationErrors:
 class TestErrorHandlers:
     """Tests for global error handler functions"""
 
-    def test_handle_drive_error_prints_error_message(self, mock_dependencies):
+    def test_handle_drive_error_prints_error_message(self, _mock_dependencies):
         """Test handle_drive_error prints proper error message"""
         from migration_orchestrator import (
             handle_drive_error,  # pylint: disable=import-outside-toplevel
@@ -237,7 +237,7 @@ class TestErrorHandlers:
         assert "Drive error" in printed_text
         assert "MIGRATION INTERRUPTED" in printed_text
 
-    def test_handle_migration_error_prints_error_details(self, mock_dependencies):
+    def test_handle_migration_error_prints_error_details(self, _mock_dependencies):
         """Test handle_migration_error prints error details"""
         from migration_orchestrator import (
             handle_migration_error,  # pylint: disable=import-outside-toplevel
@@ -265,7 +265,7 @@ class TestCompletionStatusReporting:
         mock_dependencies["state"].get_completed_buckets_for_phase.return_value = all_buckets
 
         with mock.patch("builtins.print") as mock_print:
-            orchestrator._print_completion_status(all_buckets)
+            orchestrator.print_completion_status(all_buckets)
 
         mock_dependencies["state"].set_current_phase.assert_called_once_with(Phase.COMPLETE)
         printed_text = " ".join([str(call) for call in mock_print.call_args_list])
@@ -278,7 +278,7 @@ class TestCompletionStatusReporting:
         mock_dependencies["state"].get_completed_buckets_for_phase.return_value = completed_buckets
 
         with mock.patch("builtins.print") as mock_print:
-            orchestrator._print_completion_status(all_buckets)
+            orchestrator.print_completion_status(all_buckets)
 
         mock_dependencies["state"].set_current_phase.assert_not_called()
         printed_text = " ".join([str(call) for call in mock_print.call_args_list])

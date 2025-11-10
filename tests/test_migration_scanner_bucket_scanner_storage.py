@@ -92,7 +92,7 @@ class TestBucketScannerMixedStorageClasses:
         ]
         scanner.s3.get_paginator.return_value.paginate.return_value = [{"Contents": files}]
 
-        scanner._scan_bucket("test-bucket")
+        scanner.scan_bucket("test-bucket")
 
         storage_classes = mock_state.save_bucket_status.call_args[0][3]
         assert storage_classes["STANDARD"] == 1
@@ -133,7 +133,7 @@ class TestBucketScannerMissingStorageClass:
             }
         ]
 
-        scanner._scan_bucket("test-bucket")
+        scanner.scan_bucket("test-bucket")
 
         # Should default to STANDARD
         storage_classes = mock_state.save_bucket_status.call_args[0][3]
@@ -179,7 +179,7 @@ class TestBucketScannerSizeAccumulation:
             }
         ]
 
-        scanner._scan_bucket("test-bucket")
+        scanner.scan_bucket("test-bucket")
 
         # Total size should be 3000
         call_args = mock_state.save_bucket_status.call_args

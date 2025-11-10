@@ -95,13 +95,13 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
             bucket_info = self.state.get_bucket_info(bucket)
             print("→ Step 3/3: Delete from S3")
             print()
-            self._delete_with_confirmation(bucket, bucket_info)
+            self.delete_with_confirmation(bucket, bucket_info)
             print()
         else:
             print("→ Step 3/3: Already deleted ✓")
             print()
 
-    def _delete_with_confirmation(self, bucket: str, bucket_info: dict):
+    def delete_with_confirmation(self, bucket: str, bucket_info: dict):
         """Delete bucket from S3 with user confirmation"""
         show_verification_summary(bucket_info)
         print()
@@ -236,10 +236,10 @@ class BucketMigrationOrchestrator:  # pylint: disable=too-few-public-methods
         for idx, bucket in enumerate(remaining_buckets, 1):
             if self.interrupted:
                 return
-            self._migrate_single_bucket(idx, bucket, len(remaining_buckets))
-        self._print_completion_status(all_buckets)
+            self.migrate_single_bucket(idx, bucket, len(remaining_buckets))
+        self.print_completion_status(all_buckets)
 
-    def _migrate_single_bucket(self, idx, bucket, total):
+    def migrate_single_bucket(self, idx, bucket, total):
         """Migrate a single bucket with error handling"""
         self.drive_checker.check_available()
         print("╔" + "=" * 68 + "╗")
@@ -256,7 +256,7 @@ class BucketMigrationOrchestrator:  # pylint: disable=too-few-public-methods
         except (RuntimeError, ValueError) as e:
             handle_migration_error(bucket, e)
 
-    def _print_completion_status(self, all_buckets):
+    def print_completion_status(self, all_buckets):
         """Print completion or paused status"""
         still_incomplete = [
             b

@@ -16,7 +16,7 @@ class TestDisplayProgress:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time()
 
-        syncer._display_progress(start_time, 0, 0)
+        syncer.display_progress(start_time, 0, 0)
 
         captured = capsys.readouterr()
         assert captured.out == ""
@@ -28,7 +28,7 @@ class TestDisplayProgress:
         files_done = 10
         bytes_done = 1024 * 1024
 
-        syncer._display_progress(start_time, files_done, bytes_done)
+        syncer.display_progress(start_time, files_done, bytes_done)
 
         captured = capsys.readouterr()
         assert "Progress:" in captured.out
@@ -41,7 +41,7 @@ class TestDisplayProgress:
         files_done = 5
         bytes_done = 1024 * 1024 * 5  # 5 MB
 
-        syncer._display_progress(start_time, files_done, bytes_done)
+        syncer.display_progress(start_time, files_done, bytes_done)
 
         captured = capsys.readouterr()
         assert "/s" in captured.out
@@ -51,7 +51,7 @@ class TestDisplayProgress:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time() - 5
 
-        syncer._display_progress(start_time, 0, 0)
+        syncer.display_progress(start_time, 0, 0)
 
         captured = capsys.readouterr()
         # No progress should be printed when no bytes done
@@ -62,7 +62,7 @@ class TestDisplayProgress:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time()
 
-        syncer._display_progress(start_time, 10, 1024)
+        syncer.display_progress(start_time, 10, 1024)
 
         captured = capsys.readouterr()
         # With minimal elapsed time and bytes, progress is still displayed
@@ -80,7 +80,7 @@ class TestCheckSyncErrors:
         mock_process.returncode = 0
         mock_process.stderr.read.return_value = ""
 
-        syncer._check_sync_errors(mock_process)
+        syncer.check_sync_errors(mock_process)
 
     def test_check_sync_errors_raises_on_nonzero_return_code(self, tmp_path):
         """Test that RuntimeError is raised on nonzero return code"""
@@ -90,7 +90,7 @@ class TestCheckSyncErrors:
         mock_process.stderr.read.return_value = ""
 
         with pytest.raises(RuntimeError) as exc_info:
-            syncer._check_sync_errors(mock_process)
+            syncer.check_sync_errors(mock_process)
 
         assert "aws s3 sync failed" in str(exc_info.value)
         assert "return code 1" in str(exc_info.value)
@@ -103,7 +103,7 @@ class TestCheckSyncErrors:
         mock_process.stderr.read.return_value = "Permission denied\nAccess error"
 
         with pytest.raises(RuntimeError) as exc_info:
-            syncer._check_sync_errors(mock_process)
+            syncer.check_sync_errors(mock_process)
 
         error_msg = str(exc_info.value)
         assert "Permission denied" in error_msg
@@ -117,7 +117,7 @@ class TestCheckSyncErrors:
         mock_process.stderr.read.return_value = "Completed s3://bucket/file.txt\nReal error"
 
         with pytest.raises(RuntimeError) as exc_info:
-            syncer._check_sync_errors(mock_process)
+            syncer.check_sync_errors(mock_process)
 
         error_msg = str(exc_info.value)
         assert "Completed" not in error_msg
@@ -131,7 +131,7 @@ class TestCheckSyncErrors:
         mock_process.stderr.read.return_value = ""
 
         with pytest.raises(RuntimeError) as exc_info:
-            syncer._check_sync_errors(mock_process)
+            syncer.check_sync_errors(mock_process)
 
         assert "Error details:" not in str(exc_info.value)
 
@@ -146,7 +146,7 @@ class TestPrintSyncSummary:
         files_done = 100
         bytes_done = 1024 * 1024 * 100
 
-        syncer._print_sync_summary(start_time, files_done, bytes_done)
+        syncer.print_sync_summary(start_time, files_done, bytes_done)
 
         captured = capsys.readouterr()
         assert "Completed in" in captured.out
@@ -158,7 +158,7 @@ class TestPrintSyncSummary:
         files_done = 42
         bytes_done = 1024 * 1024
 
-        syncer._print_sync_summary(start_time, files_done, bytes_done)
+        syncer.print_sync_summary(start_time, files_done, bytes_done)
 
         captured = capsys.readouterr()
         assert "42" in captured.out
@@ -171,7 +171,7 @@ class TestPrintSyncSummary:
         files_done = 10
         bytes_done = 1024 * 1024 * 50
 
-        syncer._print_sync_summary(start_time, files_done, bytes_done)
+        syncer.print_sync_summary(start_time, files_done, bytes_done)
 
         captured = capsys.readouterr()
         assert "Downloaded:" in captured.out
@@ -183,7 +183,7 @@ class TestPrintSyncSummary:
         files_done = 20
         bytes_done = 1024 * 1024 * 100
 
-        syncer._print_sync_summary(start_time, files_done, bytes_done)
+        syncer.print_sync_summary(start_time, files_done, bytes_done)
 
         captured = capsys.readouterr()
         assert "Throughput:" in captured.out
@@ -196,7 +196,7 @@ class TestPrintSyncSummary:
         files_done = 0
         bytes_done = 0
 
-        syncer._print_sync_summary(start_time, files_done, bytes_done)
+        syncer.print_sync_summary(start_time, files_done, bytes_done)
 
         captured = capsys.readouterr()
         assert "0.00 B/s" in captured.out or "Throughput:" in captured.out

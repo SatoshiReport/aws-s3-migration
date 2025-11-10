@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
+"""Check final migration status for London region."""
 
-import os
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 
 
 def setup_aws_credentials():
@@ -13,86 +13,82 @@ def setup_aws_credentials():
     aws_utils.setup_aws_credentials()
 
 
-def show_final_london_status():  # noqa: PLR0915
-    """Show final status after London EBS cleanup"""
-    setup_aws_credentials()
-
-    print("AWS London Final Status After EBS Cleanup")
-    print("=" * 80)
-
-    ec2 = boto3.client("ec2", region_name="eu-west-2")
-
-    # Stop the instance first
-    print("🛑 Stopping instance i-05ad29f28fc8a8fdc...")
+def _stop_instance(ec2, instance_id):
+    """Stop the specified instance."""
+    print(f"🛑 Stopping instance {instance_id}...")
     try:
-        ec2.stop_instances(InstanceIds=["i-05ad29f28fc8a8fdc"])
+        ec2.stop_instances(InstanceIds=[instance_id])
         print("   ✅ Instance stop initiated")
 
-        # Wait for instance to stop
         print("   Waiting for instance to stop...")
         waiter = ec2.get_waiter("instance_stopped")
-        waiter.wait(InstanceIds=["i-05ad29f28fc8a8fdc"])
+        waiter.wait(InstanceIds=[instance_id])
         print("   ✅ Instance successfully stopped")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error stopping instance: {str(e)}")
 
     print()
 
-    # Show remaining volumes
+
+def _extract_volume_name(volume):
+    """Extract volume name from tags."""
+    if "Tags" not in volume:
+        return "No name"
+
+    for tag in volume["Tags"]:
+        if tag["Key"] == "Name":
+            return tag["Value"]
+
+    return "No name"
+
+
+def _build_volume_info(volume):
+    """Build volume information dictionary."""
+    size = volume["Size"]
+    return {
+        "id": volume["VolumeId"],
+        "name": _extract_volume_name(volume),
+        "size": size,
+        "state": volume["State"],
+        "created": volume["CreateTime"],
+        "cost": size * 0.08,
+    }
+
+
+def _list_remaining_volumes(ec2):
+    """List and return remaining London volumes."""
     print("📦 Remaining London EBS volumes:")
     try:
         response = ec2.describe_volumes()
 
-        london_volumes = []
-        total_cost = 0
+        london_volumes = [
+            _build_volume_info(volume)
+            for volume in response["Volumes"]
+            if volume["AvailabilityZone"].startswith("eu-west-2")
+        ]
 
-        for volume in response["Volumes"]:
-            # Check if volume is in London region
-            if volume["AvailabilityZone"].startswith("eu-west-2"):
-                size = volume["Size"]
-                vol_id = volume["VolumeId"]
-                state = volume["State"]
-                created = volume["CreateTime"]
-
-                # Get volume name from tags
-                name = "No name"
-                if "Tags" in volume:
-                    for tag in volume["Tags"]:
-                        if tag["Key"] == "Name":
-                            name = tag["Value"]
-                            break
-
-                monthly_cost = size * 0.08  # $0.08 per GB per month for gp2
-                total_cost += monthly_cost
-
-                london_volumes.append(
-                    {
-                        "id": vol_id,
-                        "name": name,
-                        "size": size,
-                        "state": state,
-                        "created": created,
-                        "cost": monthly_cost,
-                    }
-                )
-
-        # Sort by creation date (newest first)
         london_volumes.sort(key=lambda x: x["created"], reverse=True)
 
         for vol in london_volumes:
             created_str = vol["created"].strftime("%Y-%m-%d")
             print(
-                f"   • {vol['id']} ({vol['name']}) - {vol['size']} GB - {vol['state']} - ${vol['cost']:.2f}/month - Created: {created_str}"
+                f"   • {vol['id']} ({vol['name']}) - {vol['size']} GB - {vol['state']} - "
+                f"${vol['cost']:.2f}/month - Created: {created_str}"
             )
+
+        total_cost = sum(vol["cost"] for vol in london_volumes)
 
         print()
         print(f"   💰 Total remaining monthly cost: ${total_cost:.2f}")
         print(f"   📊 Total volumes remaining: {len(london_volumes)}")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error listing volumes: {str(e)}")
 
+
+def _print_optimization_summary():
+    """Print optimization summary."""
     print()
     print("🎯 LONDON EBS OPTIMIZATION SUMMARY:")
     print("=" * 80)
@@ -111,6 +107,20 @@ def show_final_london_status():  # noqa: PLR0915
     print("🏆 London EBS optimization complete!")
     print("   From 5 volumes (2,528 GB) to 3 volumes (1,472 GB)")
     print("   Reduced monthly cost by ~$85 (approximately 30% reduction)")
+
+
+def show_final_london_status():
+    """Show final status after London EBS cleanup"""
+    setup_aws_credentials()
+
+    print("AWS London Final Status After EBS Cleanup")
+    print("=" * 80)
+
+    ec2 = boto3.client("ec2", region_name="eu-west-2")
+
+    _stop_instance(ec2, "i-05ad29f28fc8a8fdc")
+    _list_remaining_volumes(ec2)
+    _print_optimization_summary()
 
 
 if __name__ == "__main__":

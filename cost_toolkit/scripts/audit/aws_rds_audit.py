@@ -1,123 +1,71 @@
 #!/usr/bin/env python3
-
-import json
+"""Audit RDS database instances."""
 
 import boto3
 from botocore.exceptions import ClientError
 
 
-def audit_rds_databases():  # noqa: C901, PLR0912, PLR0915
-    """Audit RDS databases across all regions to understand what's running"""
+def _process_rds_instance(instance):
+    """Process and print a single RDS instance."""
+    print(f"  Instance ID: {instance['DBInstanceIdentifier']}")
+    print(f"  Engine: {instance['Engine']} {instance.get('EngineVersion', 'Unknown')}")
+    print(f"  Instance Class: {instance['DBInstanceClass']}")
+    print(f"  Status: {instance['DBInstanceStatus']}")
+    print(f"  Storage: {instance.get('AllocatedStorage', 'Unknown')} GB")
+    print(f"  Storage Type: {instance.get('StorageType', 'Unknown')}")
+    print(f"  Multi-AZ: {instance.get('MultiAZ', False)}")
+    print(f"  Publicly Accessible: {instance.get('PubliclyAccessible', False)}")
+    print(f"  Creation Time: {instance.get('InstanceCreateTime', 'Unknown')}")
 
-    # Get all AWS regions
-    ec2 = boto3.client("ec2", region_name="us-east-1")
-    regions = [region["RegionName"] for region in ec2.describe_regions()["Regions"]]
+    instance_class = instance["DBInstanceClass"]
+    estimated_cost = 0.0
+    if "t3.micro" in instance_class:
+        estimated_cost = 20.0
+        print(f"  Estimated Cost: ~${estimated_cost:.2f}/month")
 
-    print("AWS RDS Database Audit")
-    print("=" * 80)
+    if instance.get("DBClusterIdentifier"):
+        print(f"  Part of Cluster: {instance['DBClusterIdentifier']}")
 
-    total_instances = 0
-    total_clusters = 0
-    total_monthly_cost = 0
+    print()
+    return estimated_cost
 
-    for region in regions:
-        try:
-            rds = boto3.client("rds", region_name=region)
 
-            # Check RDS instances
-            instances = rds.describe_db_instances()
-            clusters = rds.describe_db_clusters()
+def _process_aurora_cluster(cluster):
+    """Process and print a single Aurora cluster."""
+    print(f"  Cluster ID: {cluster['DBClusterIdentifier']}")
+    print(f"  Engine: {cluster['Engine']} {cluster.get('EngineVersion', 'Unknown')}")
+    print(f"  Status: {cluster['Status']}")
+    print(f"  Database Name: {cluster.get('DatabaseName', 'None')}")
+    print(f"  Master Username: {cluster.get('MasterUsername', 'Unknown')}")
+    print(f"  Multi-AZ: {cluster.get('MultiAZ', False)}")
+    print(f"  Storage Encrypted: {cluster.get('StorageEncrypted', False)}")
+    print(f"  Creation Time: {cluster.get('ClusterCreateTime', 'Unknown')}")
 
-            if not instances["DBInstances"] and not clusters["DBClusters"]:
-                continue
+    if cluster.get("DBClusterMembers"):
+        print(f"  Cluster Members: {len(cluster['DBClusterMembers'])}")
+        for member in cluster["DBClusterMembers"]:
+            role = "Writer" if member["IsClusterWriter"] else "Reader"
+            print(f"    - {member['DBInstanceIdentifier']} ({role})")
 
-            print(f"\nRegion: {region}")
-            print("-" * 40)
+    if cluster.get("EngineMode") == "serverless":
+        print("  Engine Mode: Serverless")
+        if cluster.get("ScalingConfigurationInfo"):
+            scaling = cluster["ScalingConfigurationInfo"]
+            min_cap = scaling.get("MinCapacity", "Unknown")
+            max_cap = scaling.get("MaxCapacity", "Unknown")
+            print(f"  Scaling: {min_cap}-{max_cap} ACU")
+    elif cluster.get("ServerlessV2ScalingConfiguration"):
+        print("  Engine Mode: Serverless V2")
+        scaling = cluster["ServerlessV2ScalingConfiguration"]
+        min_cap = scaling.get("MinCapacity", "Unknown")
+        max_cap = scaling.get("MaxCapacity", "Unknown")
+        print(f"  Scaling: {min_cap}-{max_cap} ACU")
 
-            # Process RDS Instances
-            if instances["DBInstances"]:
-                print("RDS INSTANCES:")
-                for instance in instances["DBInstances"]:
-                    total_instances += 1
+    print()
 
-                    print(f"  Instance ID: {instance['DBInstanceIdentifier']}")
-                    print(
-                        f"  Engine: {instance['Engine']} {instance.get('EngineVersion', 'Unknown')}"
-                    )
-                    print(f"  Instance Class: {instance['DBInstanceClass']}")
-                    print(f"  Status: {instance['DBInstanceStatus']}")
-                    print(f"  Storage: {instance.get('AllocatedStorage', 'Unknown')} GB")
-                    print(f"  Storage Type: {instance.get('StorageType', 'Unknown')}")
-                    print(f"  Multi-AZ: {instance.get('MultiAZ', False)}")
-                    print(f"  Publicly Accessible: {instance.get('PubliclyAccessible', False)}")
-                    print(f"  Creation Time: {instance.get('InstanceCreateTime', 'Unknown')}")
 
-                    # Estimate monthly cost based on instance class
-                    instance_class = instance["DBInstanceClass"]
-                    if "t3.micro" in instance_class:
-                        estimated_cost = 20.0  # Rough estimate for t3.micro
-                        total_monthly_cost += estimated_cost
-                        print(f"  Estimated Cost: ~${estimated_cost:.2f}/month")
-
-                    # Check if instance is in a cluster
-                    if instance.get("DBClusterIdentifier"):
-                        print(f"  Part of Cluster: {instance['DBClusterIdentifier']}")
-
-                    print()
-
-            # Process Aurora Clusters
-            if clusters["DBClusters"]:
-                print("AURORA CLUSTERS:")
-                for cluster in clusters["DBClusters"]:
-                    total_clusters += 1
-
-                    print(f"  Cluster ID: {cluster['DBClusterIdentifier']}")
-                    print(
-                        f"  Engine: {cluster['Engine']} {cluster.get('EngineVersion', 'Unknown')}"
-                    )
-                    print(f"  Status: {cluster['Status']}")
-                    print(f"  Database Name: {cluster.get('DatabaseName', 'None')}")
-                    print(f"  Master Username: {cluster.get('MasterUsername', 'Unknown')}")
-                    print(f"  Multi-AZ: {cluster.get('MultiAZ', False)}")
-                    print(f"  Storage Encrypted: {cluster.get('StorageEncrypted', False)}")
-                    print(f"  Creation Time: {cluster.get('ClusterCreateTime', 'Unknown')}")
-
-                    # Check cluster members
-                    if cluster.get("DBClusterMembers"):
-                        print(f"  Cluster Members: {len(cluster['DBClusterMembers'])}")
-                        for member in cluster["DBClusterMembers"]:
-                            print(
-                                f"    - {member['DBInstanceIdentifier']} ({'Writer' if member['IsClusterWriter'] else 'Reader'})"
-                            )
-
-                    # Check if it's serverless
-                    if cluster.get("EngineMode") == "serverless":
-                        print(f"  Engine Mode: Serverless")
-                        if cluster.get("ScalingConfigurationInfo"):
-                            scaling = cluster["ScalingConfigurationInfo"]
-                            print(
-                                f"  Scaling: {scaling.get('MinCapacity', 'Unknown')}-{scaling.get('MaxCapacity', 'Unknown')} ACU"
-                            )
-                    elif cluster.get("ServerlessV2ScalingConfiguration"):
-                        print(f"  Engine Mode: Serverless V2")
-                        scaling = cluster["ServerlessV2ScalingConfiguration"]
-                        print(
-                            f"  Scaling: {scaling.get('MinCapacity', 'Unknown')}-{scaling.get('MaxCapacity', 'Unknown')} ACU"
-                        )
-
-                    print()
-
-        except ClientError as e:
-            if "not available" not in str(e).lower():
-                print(f"Error accessing region {region}: {e}")
-
-    print("=" * 80)
-    print(f"DATABASE SUMMARY:")
-    print(f"Total RDS Instances: {total_instances}")
-    print(f"Total Aurora Clusters: {total_clusters}")
-    print(f"Estimated Monthly Cost: ${total_monthly_cost:.2f}")
-
-    # Analyze billing data context
+def _print_billing_analysis():
+    """Print billing data analysis."""
     print("\n" + "=" * 80)
     print("BILLING DATA ANALYSIS:")
     print("-" * 40)
@@ -138,6 +86,71 @@ def audit_rds_databases():  # noqa: C901, PLR0912, PLR0915
     print("2. RDS Instance (us-east-1): t3.micro running 64/720 hours (~9%)")
     print("   - Consider stopping when not in use")
     print("   - Or migrate to Aurora Serverless for auto-scaling")
+
+
+def _audit_region_databases(region):
+    """Audit databases in a single region."""
+    try:
+        rds = boto3.client("rds", region_name=region)
+
+        instances = rds.describe_db_instances()
+        clusters = rds.describe_db_clusters()
+
+        if not instances["DBInstances"] and not clusters["DBClusters"]:
+            return 0, 0, 0.0
+
+        print(f"\nRegion: {region}")
+        print("-" * 40)
+
+        instance_count = 0
+        cluster_count = 0
+        region_cost = 0.0
+
+        if instances["DBInstances"]:
+            print("RDS INSTANCES:")
+            for instance in instances["DBInstances"]:
+                instance_count += 1
+                cost = _process_rds_instance(instance)
+                region_cost += cost
+
+        if clusters["DBClusters"]:
+            print("AURORA CLUSTERS:")
+            for cluster in clusters["DBClusters"]:
+                cluster_count += 1
+                _process_aurora_cluster(cluster)
+    except ClientError as e:
+        if "not available" not in str(e).lower():
+            print(f"Error accessing region {region}: {e}")
+        return 0, 0, 0.0
+    return instance_count, cluster_count, region_cost
+
+
+def audit_rds_databases():
+    """Audit RDS databases across all regions to understand what's running"""
+
+    ec2 = boto3.client("ec2", region_name="us-east-1")
+    regions = [region["RegionName"] for region in ec2.describe_regions()["Regions"]]
+
+    print("AWS RDS Database Audit")
+    print("=" * 80)
+
+    total_instances = 0
+    total_clusters = 0
+    total_monthly_cost = 0
+
+    for region in regions:
+        instances, clusters, cost = _audit_region_databases(region)
+        total_instances += instances
+        total_clusters += clusters
+        total_monthly_cost += cost
+
+    print("=" * 80)
+    print("DATABASE SUMMARY:")
+    print(f"Total RDS Instances: {total_instances}")
+    print(f"Total Aurora Clusters: {total_clusters}")
+    print(f"Estimated Monthly Cost: ${total_monthly_cost:.2f}")
+
+    _print_billing_analysis()
 
 
 if __name__ == "__main__":

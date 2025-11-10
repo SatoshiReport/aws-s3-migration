@@ -5,9 +5,9 @@ Terminates stopped EC2 instances and cleans up associated resources.
 """
 
 import os
-from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -72,12 +72,11 @@ def get_instance_details(region_name, instance_id, aws_access_key_id, aws_secret
             ],
         }
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error getting instance details for {instance_id}: {str(e)}")
         return None
 
-    else:
-        return instance_info
+    return instance_info
 
 
 def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
@@ -98,15 +97,106 @@ def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_a
 
         print(f"   State change: {previous_state} → {current_state}")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Failed to terminate {instance_id}: {str(e)}")
         return False
 
-    else:
-        return True
+    return True
 
 
-def main():  # noqa: C901, PLR0912, PLR0915
+def _get_stopped_instances():
+    """Return list of stopped instances to terminate."""
+    return [
+        {"region": "eu-west-2", "instance_id": "i-09ff569745467b037", "type": "r7i.2xlarge"},
+        {"region": "eu-west-2", "instance_id": "i-0635f4a0de21cbc37", "type": "r7i.2xlarge"},
+    ]
+
+
+def _print_instance_details(details):
+    """Print detailed information about an instance."""
+    print(f"   Name: {details['name']}")
+    print(f"   Type: {details['instance_type']}")
+    print(f"   State: {details['state']}")
+    print(f"   VPC: {details['vpc_id']}")
+    print(f"   Launch Time: {details['launch_time']}")
+    print(f"   Volumes: {len(details['volumes'])} attached")
+    print(f"   Network Interfaces: {len(details['network_interfaces'])} attached")
+
+    for volume in details["volumes"]:
+        delete_behavior = (
+            "will be deleted" if volume["delete_on_termination"] else "will be preserved"
+        )
+        print(f"      📀 {volume['volume_id']} ({volume['device_name']}) - {delete_behavior}")
+
+
+def _analyze_instances(stopped_instances, aws_access_key_id, aws_secret_access_key):
+    """Analyze and gather details for all stopped instances."""
+    instance_details = []
+    for instance in stopped_instances:
+        region = instance["region"]
+        instance_id = instance["instance_id"]
+
+        print(f"🔍 Analyzing instance: {instance_id} ({region})")
+        details = get_instance_details(
+            region, instance_id, aws_access_key_id, aws_secret_access_key
+        )
+
+        if details:
+            instance_details.append({"region": region, "details": details})
+            _print_instance_details(details)
+        print()
+
+    return instance_details
+
+
+def _terminate_all_instances(instance_details, aws_access_key_id, aws_secret_access_key):
+    """Terminate all instances and return results."""
+    terminated_instances = []
+    failed_terminations = []
+
+    for instance_data in instance_details:
+        region = instance_data["region"]
+        details = instance_data["details"]
+        instance_id = details["instance_id"]
+
+        success = terminate_instance(region, instance_id, aws_access_key_id, aws_secret_access_key)
+
+        if success:
+            terminated_instances.append(instance_data)
+        else:
+            failed_terminations.append(instance_data)
+
+    return terminated_instances, failed_terminations
+
+
+def _print_termination_summary(terminated_instances, failed_terminations):
+    """Print summary of termination results."""
+    print("\n" + "=" * 50)
+    print("🎯 INSTANCE TERMINATION SUMMARY")
+    print("=" * 50)
+    print(f"✅ Successfully terminated: {len(terminated_instances)} instances")
+    print(f"❌ Failed terminations: {len(failed_terminations)} instances")
+    print()
+
+    if terminated_instances:
+        print("✅ Successfully terminated instances:")
+        for instance_data in terminated_instances:
+            details = instance_data["details"]
+            region = instance_data["region"]
+            print(
+                f"   🗑️  {details['instance_id']} ({region}) - "
+                f"{details['name']} ({details['instance_type']})"
+            )
+
+    if failed_terminations:
+        print("\n❌ Failed terminations:")
+        for instance_data in failed_terminations:
+            details = instance_data["details"]
+            region = instance_data["region"]
+            print(f"   ❌ {details['instance_id']} ({region}) - {details['name']}")
+
+
+def main():
     """Main execution function"""
     print("AWS Stopped Instance Cleanup")
     print("=" * 50)
@@ -114,57 +204,20 @@ def main():  # noqa: C901, PLR0912, PLR0915
     print()
 
     try:
-        # Load credentials
         aws_access_key_id, aws_secret_access_key = load_aws_credentials()
-
-        # Target stopped instances identified in audit - EU-WEST-2 ONLY
-        stopped_instances = [
-            {"region": "eu-west-2", "instance_id": "i-09ff569745467b037", "type": "r7i.2xlarge"},
-            {"region": "eu-west-2", "instance_id": "i-0635f4a0de21cbc37", "type": "r7i.2xlarge"},
-        ]
+        stopped_instances = _get_stopped_instances()
 
         print(f"🎯 Target: {len(stopped_instances)} stopped instances")
         print()
 
-        # Get detailed information for each instance
-        instance_details = []
-        for instance in stopped_instances:
-            region = instance["region"]
-            instance_id = instance["instance_id"]
-
-            print(f"🔍 Analyzing instance: {instance_id} ({region})")
-            details = get_instance_details(
-                region, instance_id, aws_access_key_id, aws_secret_access_key
-            )
-
-            if details:
-                instance_details.append({"region": region, "details": details})
-
-                print(f"   Name: {details['name']}")
-                print(f"   Type: {details['instance_type']}")
-                print(f"   State: {details['state']}")
-                print(f"   VPC: {details['vpc_id']}")
-                print(f"   Launch Time: {details['launch_time']}")
-                print(f"   Volumes: {len(details['volumes'])} attached")
-                print(f"   Network Interfaces: {len(details['network_interfaces'])} attached")
-
-                # Show volume deletion behavior
-                for volume in details["volumes"]:
-                    delete_behavior = (
-                        "will be deleted"
-                        if volume["delete_on_termination"]
-                        else "will be preserved"
-                    )
-                    print(
-                        f"      📀 {volume['volume_id']} ({volume['device_name']}) - {delete_behavior}"
-                    )
-            print()
+        instance_details = _analyze_instances(
+            stopped_instances, aws_access_key_id, aws_secret_access_key
+        )
 
         if not instance_details:
             print("❌ No valid instances found to terminate")
             return
 
-        # Show termination impact
         print("⚠️  TERMINATION IMPACT:")
         print("   • Instances will be permanently deleted")
         print("   • Some EBS volumes may be deleted (check delete_on_termination)")
@@ -182,47 +235,11 @@ def main():  # noqa: C901, PLR0912, PLR0915
         print("\n🚨 Proceeding with instance termination...")
         print("=" * 50)
 
-        # Terminate instances
-        terminated_instances = []
-        failed_terminations = []
+        terminated_instances, failed_terminations = _terminate_all_instances(
+            instance_details, aws_access_key_id, aws_secret_access_key
+        )
 
-        for instance_data in instance_details:
-            region = instance_data["region"]
-            details = instance_data["details"]
-            instance_id = details["instance_id"]
-
-            success = terminate_instance(
-                region, instance_id, aws_access_key_id, aws_secret_access_key
-            )
-
-            if success:
-                terminated_instances.append(instance_data)
-            else:
-                failed_terminations.append(instance_data)
-
-        # Summary
-        print("\n" + "=" * 50)
-        print("🎯 INSTANCE TERMINATION SUMMARY")
-        print("=" * 50)
-        print(f"✅ Successfully terminated: {len(terminated_instances)} instances")
-        print(f"❌ Failed terminations: {len(failed_terminations)} instances")
-        print()
-
-        if terminated_instances:
-            print("✅ Successfully terminated instances:")
-            for instance_data in terminated_instances:
-                details = instance_data["details"]
-                region = instance_data["region"]
-                print(
-                    f"   🗑️  {details['instance_id']} ({region}) - {details['name']} ({details['instance_type']})"
-                )
-
-        if failed_terminations:
-            print("\n❌ Failed terminations:")
-            for instance_data in failed_terminations:
-                details = instance_data["details"]
-                region = instance_data["region"]
-                print(f"   ❌ {details['instance_id']} ({region}) - {details['name']}")
+        _print_termination_summary(terminated_instances, failed_terminations)
 
         if len(terminated_instances) > 0:
             print("\n🎉 Instance termination completed!")
@@ -235,7 +252,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
             print("   • Run VPC cleanup to remove empty VPCs if desired")
             print("   • Verify no orphaned resources remain")
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Critical error during instance cleanup: {str(e)}")
         raise
 

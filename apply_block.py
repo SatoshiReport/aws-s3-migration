@@ -38,7 +38,7 @@ def get_buckets_with_policy_files():
     return [f.replace("_policy.json", "") for f in policy_files]
 
 
-def _determine_buckets(args):
+def determine_buckets(args):
     """Determine which buckets to process based on arguments"""
     if args.all:
         buckets = get_buckets_with_policy_files()
@@ -49,17 +49,17 @@ def _determine_buckets(args):
         return buckets
     if args.buckets:
         return args.buckets
-    _show_interactive_help()
+    show_interactive_help()
     sys.exit(0)
 
 
-def _show_interactive_help():
+def show_interactive_help():
     """Show interactive mode help and available policies"""
     available = get_buckets_with_policy_files()
     print_interactive_help("apply_block.py", available, "policy files")
 
 
-def _apply_policy_to_bucket(bucket, dry_run):
+def apply_policy_to_bucket(bucket, dry_run):
     """Apply policy to a single bucket"""
     policy_file = os.path.join("policies", f"{bucket}_policy.json")
     if not os.path.exists(policy_file):
@@ -89,9 +89,9 @@ def main():
         help="Show what would be applied without making changes",
     )
     args = parser.parse_args()
-    buckets = _determine_buckets(args)
+    buckets = determine_buckets(args)
     for bucket in buckets:
-        _apply_policy_to_bucket(bucket, args.dry_run)
+        apply_policy_to_bucket(bucket, args.dry_run)
     if args.dry_run:
         print("\nDry run completed. No changes were made.")
     else:

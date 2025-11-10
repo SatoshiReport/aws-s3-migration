@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
+"""Clean up and manage EC2 instances."""
 
-import json
-import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import boto3
 from botocore.exceptions import ClientError
@@ -35,20 +34,19 @@ def terminate_instance(instance_id, region_name):
         print(f"  Current State: {state}")
 
         if state == "terminated":
-            print(f"  ✅ Instance already terminated")
+            print("  ✅ Instance already terminated")
             return True
 
         # Terminate the instance
         ec2.terminate_instances(InstanceIds=[instance_id])
         print(f"  ✅ Termination initiated for {instance_id}")
-        print(f"  💰 This will stop EBS storage charges for attached volumes")
+        print("  💰 This will stop EBS storage charges for attached volumes")
 
     except ClientError as e:
         print(f"  ❌ Error terminating instance {instance_id}: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
 def rename_instance(instance_id, new_name, region_name):
@@ -68,8 +66,7 @@ def rename_instance(instance_id, new_name, region_name):
         print(f"  ❌ Error renaming instance {instance_id}: {e}")
         return False
 
-    else:
-        return True
+    return True
 
 
 def get_instance_detailed_info(instance_id, region_name):
@@ -124,9 +121,9 @@ def get_instance_detailed_info(instance_id, region_name):
                 last_activity = datapoints[-1]["Timestamp"]
                 print(f"  Last Activity (CPU metrics): {last_activity}")
             else:
-                print(f"  Last Activity: No CPU metrics found (may not have run recently)")
+                print("  Last Activity: No CPU metrics found (may not have run recently)")
 
-        except Exception as e:
+        except ClientError as e:
             print(f"  Last Activity: Could not retrieve metrics - {e}")
 
         # Calculate age
@@ -137,49 +134,28 @@ def get_instance_detailed_info(instance_id, region_name):
     except ClientError as e:
         print(f"  ❌ Error getting instance info: {e}")
         return None
-    else:
-        return {
-            "instance_id": instance_id,
-            "name": name_tag,
-            "instance_type": instance_type,
-            "state": state,
-            "launch_time": launch_time,
-            "region": region_name,
-        }
+    return {
+        "instance_id": instance_id,
+        "name": name_tag,
+        "instance_type": instance_type,
+        "state": state,
+        "launch_time": launch_time,
+        "region": region_name,
+    }
 
 
-def main():  # noqa: C901, PLR0912, PLR0915
-    print("AWS EC2 Instance Cleanup and Analysis")
-    print("=" * 80)
+def _calculate_ebs_savings(name):
+    """Calculate EBS savings for a terminated instance."""
+    savings_map = {
+        "Talker GPU": 5.12,
+        "Model": 5.12,
+        "mufasa": 0.64,
+    }
+    return savings_map.get(name, 0)
 
-    # Instances to terminate
-    instances_to_terminate = [
-        ("i-032b756f4ad7b1821", "us-east-1", "Talker GPU"),
-        ("i-079d5fb7d85c5e9ae", "us-east-1", "Model"),
-        ("i-0cfce47f50e3c34ff", "us-east-1", "mufasa"),
-    ]
 
-    # Instance to rename
-    instance_to_rename = ("i-00c39b1ba0eba3e2d", "us-east-2", "mufasa")
-
-    # Instances to analyze
-    instances_to_analyze = [
-        ("i-0635f4a0de21cbc37", "eu-west-2"),
-        ("i-09ff569745467b037", "eu-west-2"),
-        ("i-05ad29f28fc8a8fdc", "eu-west-2"),
-    ]
-
-    print(f"\n⚠️  WARNING: This will:")
-    print(f"  - TERMINATE 3 instances (Talker GPU, Model, mufasa)")
-    print(f"  - DELETE their attached EBS volumes")
-    print(f"  - RENAME i-00c39b1ba0eba3e2d to 'mufasa'")
-    print(f"  - ANALYZE 3 instances in eu-west-2")
-
-    # Phase 1: Terminate instances
-    print(f"\n" + "=" * 80)
-    print("PHASE 1: TERMINATING INSTANCES")
-    print("=" * 80)
-
+def _terminate_instances(instances_to_terminate):
+    """Terminate a list of instances."""
     termination_results = []
     estimated_savings = 0
 
@@ -188,40 +164,27 @@ def main():  # noqa: C901, PLR0912, PLR0915
         termination_results.append((instance_id, name, success))
 
         if success:
-            # Calculate savings (approximate EBS costs)
-            if name == "Talker GPU":
-                estimated_savings += 5.12  # 64GB volume
-            elif name == "Model":
-                estimated_savings += 5.12  # 64GB volume
-            elif name == "mufasa":
-                estimated_savings += 0.64  # 8GB volume
+            estimated_savings += _calculate_ebs_savings(name)
 
-    # Phase 2: Rename instance
-    print(f"\n" + "=" * 80)
-    print("PHASE 2: RENAMING INSTANCE")
-    print("=" * 80)
+    return termination_results, estimated_savings
 
-    rename_success = rename_instance(
-        instance_to_rename[0], instance_to_rename[2], instance_to_rename[1]
-    )
 
-    # Phase 3: Analyze remaining instances
-    print(f"\n" + "=" * 80)
-    print("PHASE 3: ANALYZING EU-WEST-2 INSTANCES")
-    print("=" * 80)
-
+def _analyze_instances(instances_to_analyze):
+    """Analyze a list of instances."""
     instance_details = []
     for instance_id, region in instances_to_analyze:
         details = get_instance_detailed_info(instance_id, region)
         if details:
             instance_details.append(details)
+    return instance_details
 
-    # Summary
-    print(f"\n" + "=" * 80)
+
+def _print_summary(termination_results, rename_success, instance_details, estimated_savings):
+    """Print operation summary."""
+    print("\n" + "=" * 80)
     print("🎯 OPERATION SUMMARY")
     print("=" * 80)
 
-    # Termination results
     successful_terminations = [result for result in termination_results if result[2]]
     failed_terminations = [result for result in termination_results if not result[2]]
 
@@ -234,22 +197,67 @@ def main():  # noqa: C901, PLR0912, PLR0915
         for instance_id, name, _ in failed_terminations:
             print(f"  {instance_id} ({name})")
 
-    # Rename result
     print(f"\n🏷️  Instance rename: {'✅ Success' if rename_success else '❌ Failed'}")
 
-    # Instance analysis summary
-    print(f"\n📊 EU-WEST-2 INSTANCE ANALYSIS:")
+    print("\n📊 EU-WEST-2 INSTANCE ANALYSIS:")
     for details in instance_details:
         print(f"  {details['instance_id']} ({details['name']}):")
         print(f"    Type: {details['instance_type']}")
         print(f"    Created: {details['launch_time']}")
         print(f"    State: {details['state']}")
 
-    # Cost impact
-    print(f"\n💰 COST IMPACT:")
+    print("\n💰 COST IMPACT:")
     print(f"  Estimated monthly savings: ${estimated_savings:.2f}")
-    print(f"  Terminated instances will stop incurring EBS storage costs")
-    print(f"  Remaining active instance: i-00c39b1ba0eba3e2d (now named 'mufasa')")
+    print("  Terminated instances will stop incurring EBS storage costs")
+    print("  Remaining active instance: i-00c39b1ba0eba3e2d (now named 'mufasa')")
+
+
+def main():
+    """Analyze and clean up EC2 instances."""
+    print("AWS EC2 Instance Cleanup and Analysis")
+    print("=" * 80)
+
+    instances_to_terminate = [
+        ("i-032b756f4ad7b1821", "us-east-1", "Talker GPU"),
+        ("i-079d5fb7d85c5e9ae", "us-east-1", "Model"),
+        ("i-0cfce47f50e3c34f", "us-east-1", "mufasa"),
+    ]
+
+    instance_to_rename = ("i-00c39b1ba0eba3e2d", "us-east-2", "mufasa")
+
+    instances_to_analyze = [
+        ("i-0635f4a0de21cbc37", "eu-west-2"),
+        ("i-09ff569745467b037", "eu-west-2"),
+        ("i-05ad29f28fc8a8fdc", "eu-west-2"),
+    ]
+
+    print("\n⚠️  WARNING: This will:")
+    print("  - TERMINATE 3 instances (Talker GPU, Model, mufasa)")
+    print("  - DELETE their attached EBS volumes")
+    print("  - RENAME i-00c39b1ba0eba3e2d to 'mufasa'")
+    print("  - ANALYZE 3 instances in eu-west-2")
+
+    print("\n" + "=" * 80)
+    print("PHASE 1: TERMINATING INSTANCES")
+    print("=" * 80)
+
+    termination_results, estimated_savings = _terminate_instances(instances_to_terminate)
+
+    print("\n" + "=" * 80)
+    print("PHASE 2: RENAMING INSTANCE")
+    print("=" * 80)
+
+    rename_success = rename_instance(
+        instance_to_rename[0], instance_to_rename[2], instance_to_rename[1]
+    )
+
+    print("\n" + "=" * 80)
+    print("PHASE 3: ANALYZING EU-WEST-2 INSTANCES")
+    print("=" * 80)
+
+    instance_details = _analyze_instances(instances_to_analyze)
+
+    _print_summary(termination_results, rename_success, instance_details, estimated_savings)
 
 
 if __name__ == "__main__":

@@ -71,7 +71,7 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
         _print_sync_summary(start_time, files_done, bytes_done)
 
     # Compatibility wrappers for tests that access previous private methods
-    def _monitor_sync_progress(self, process, start_time):
+    def monitor_sync_progress(self, process, start_time):
         """Delegate to the module-level monitor helper."""
         return _monitor_sync_progress(
             process,
@@ -80,23 +80,23 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
             progress_callback=_display_progress,
         )
 
-    def _parse_aws_size(self, line: str):
+    def parse_aws_size(self, line: str):
         """Delegate to the shared AWS size parser."""
         return _parse_aws_size(line)
 
-    def _display_progress(self, start_time, files_done, bytes_done):
+    def display_progress(self, start_time, files_done, bytes_done):
         """Proxy to the shared progress renderer."""
         _display_progress(start_time, files_done, bytes_done)
 
-    def _print_sync_summary(self, start_time, files_done, bytes_done):
+    def print_sync_summary(self, start_time, files_done, bytes_done):
         """Proxy to the shared summary renderer."""
         _print_sync_summary(start_time, files_done, bytes_done)
 
-    def _calculate_local_stats(self, local_path: Path):
+    def calculate_local_stats(self, local_path: Path):
         """Proxy to the shared stats calculator."""
         return _calculate_local_stats(local_path)
 
-    def _check_sync_errors(self, process):
+    def check_sync_errors(self, process):
         """Proxy to the shared error checker."""
         check_sync_process_errors(process)
 

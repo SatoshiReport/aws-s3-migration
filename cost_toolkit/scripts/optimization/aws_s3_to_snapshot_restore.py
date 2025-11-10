@@ -5,13 +5,13 @@ Restores EBS snapshots from S3 exports when needed.
 This script handles the reverse process of importing AMIs from S3 and creating snapshots.
 """
 
-import json
 import os
 import sys
 import time
 from datetime import datetime
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
 
@@ -46,12 +46,11 @@ def list_s3_exports(s3_client, bucket_name):
                         }
                     )
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error listing S3 exports: {e}")
         return []
 
-    else:
-        return exports
+    return exports
 
 
 def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
@@ -75,7 +74,7 @@ def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
         print(f"   ✅ Started import task: {import_task_id}")
 
         # Monitor import progress
-        print(f"   ⏳ Monitoring import progress...")
+        print("   ⏳ Monitoring import progress...")
         while True:
             try:
                 status_response = ec2_client.describe_import_image_tasks(
@@ -93,7 +92,7 @@ def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
                         ami_id = task["ImageId"]
                         print(f"   ✅ Import completed! AMI ID: {ami_id}")
                         return ami_id
-                    elif status == "deleted" or "failed" in status.lower():
+                    if status == "deleted" or "failed" in status.lower():
                         error_msg = task.get("StatusMessage", "Unknown error")
                         print(f"   ❌ Import failed: {error_msg}")
                         return None
@@ -101,14 +100,14 @@ def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
                     # Wait before checking again
                     time.sleep(60)  # Check every minute
                 else:
-                    print(f"   ❌ Import task not found")
+                    print("   ❌ Import task not found")
                     return None
 
-            except Exception as e:
+            except ClientError as e:
                 print(f"   ❌ Error checking import status: {e}")
                 time.sleep(60)
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error importing from S3: {e}")
         return None
 
@@ -152,29 +151,21 @@ def create_snapshot_from_ami(ec2_client, ami_id, description):
                     ],
                 )
                 print(f"   ✅ Tagged snapshot {root_snapshot_id}")
-            except Exception as e:
+            except ClientError as e:
                 print(f"   ⚠️  Warning: Could not tag snapshot: {e}")
 
             return root_snapshot_id
-        else:
-            print(f"   ❌ No root snapshot found in AMI")
-            return None
 
-    except Exception as e:
+    except ClientError as e:
         print(f"   ❌ Error creating snapshot from AMI: {e}")
+        return None
+    else:
+        print("   ❌ No root snapshot found in AMI")
         return None
 
 
-def restore_snapshots_from_s3():  # noqa: C901, PLR0912, PLR0915
-    """Main function to restore EBS snapshots from S3"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
-
-    print("AWS S3 to EBS Snapshot Restore Script")
-    print("=" * 80)
-    print("Restoring EBS snapshots from S3 exports...")
-    print()
-
-    # Get bucket information from user
+def _get_user_inputs():
+    """Get region and bucket name from user."""
     print("📋 Available regions with potential S3 exports:")
     print("   - eu-west-2 (London)")
     print("   - us-east-1 (N. Virginia)")
@@ -183,15 +174,74 @@ def restore_snapshots_from_s3():  # noqa: C901, PLR0912, PLR0915
 
     region = input("Enter the AWS region where your S3 exports are stored: ").strip()
     if not region:
-        print("❌ Region is required")
-        return
+        return None, None
 
     bucket_name = input("Enter the S3 bucket name containing exports: ").strip()
     if not bucket_name:
-        print("❌ Bucket name is required")
-        return
+        return region, None
 
-    # Create clients
+    return region, bucket_name
+
+
+def _select_exports(exports):
+    """Allow user to select which exports to restore."""
+    print(f"✅ Found {len(exports)} export(s):")
+    for i, export in enumerate(exports, 1):
+        size_mb = export["size"] / (1024 * 1024)
+        print(f"   {i}. {export['key']} ({size_mb:.1f} MB, {export['last_modified']})")
+
+    print()
+    selection = input(
+        "Enter the number of the export to restore (or 'all' for all exports): "
+    ).strip()
+
+    if selection.lower() == "all":
+        return exports
+
+    try:
+        index = int(selection) - 1
+        if 0 <= index < len(exports):
+            return [exports[index]]
+    except ValueError:
+        pass
+
+    return None
+
+
+def _process_export_restore(ec2_client, bucket_name, export):
+    """Process restore of a single export."""
+    s3_key = export["key"]
+    print(f"🔍 Processing {s3_key}...")
+
+    description = f"Restored from S3: {s3_key}"
+
+    ami_id = import_ami_from_s3(ec2_client, bucket_name, s3_key, description)
+    if not ami_id:
+        print("   ❌ Failed to import AMI from S3")
+        return None
+
+    snapshot_id = create_snapshot_from_ami(ec2_client, ami_id, description)
+    if not snapshot_id:
+        print("   ❌ Failed to create snapshot from AMI")
+        return None
+
+    print(f"   ✅ Successfully restored to snapshot: {snapshot_id}")
+    return {"s3_key": s3_key, "ami_id": ami_id, "snapshot_id": snapshot_id}
+
+
+def _validate_user_inputs(region, bucket_name):
+    """Validate user inputs for region and bucket."""
+    if not region:
+        print("❌ Region is required")
+        return False
+    if not bucket_name:
+        print("❌ Bucket name is required")
+        return False
+    return True
+
+
+def _create_aws_clients(aws_access_key_id, aws_secret_access_key, region):
+    """Create EC2 and S3 clients for the specified region."""
     ec2_client = boto3.client(
         "ec2",
         region_name=region,
@@ -206,87 +256,59 @@ def restore_snapshots_from_s3():  # noqa: C901, PLR0912, PLR0915
         aws_secret_access_key=aws_secret_access_key,
     )
 
-    # List available exports
+    return ec2_client, s3_client
+
+
+def _get_and_validate_exports(s3_client, bucket_name):
+    """Get exports from S3 and validate user selection."""
     print(f"\n🔍 Scanning S3 bucket {bucket_name} for exports...")
     exports = list_s3_exports(s3_client, bucket_name)
 
     if not exports:
         print("❌ No snapshot exports found in the specified bucket")
-        return
+        return None
 
-    print(f"✅ Found {len(exports)} export(s):")
-    for i, export in enumerate(exports, 1):
-        size_mb = export["size"] / (1024 * 1024)
-        print(f"   {i}. {export['key']} ({size_mb:.1f} MB, {export['last_modified']})")
+    selected_exports = _select_exports(exports)
+    if not selected_exports:
+        print("❌ Invalid selection")
+        return None
 
-    print()
-    selection = input(
-        "Enter the number of the export to restore (or 'all' for all exports): "
-    ).strip()
+    return selected_exports
 
-    if selection.lower() == "all":
-        selected_exports = exports
-    else:
-        try:
-            index = int(selection) - 1
-            if 0 <= index < len(exports):
-                selected_exports = [exports[index]]
-            else:
-                print("❌ Invalid selection")
-                return
-        except ValueError:
-            print("❌ Invalid selection")
-            return
 
+def _confirm_restore_operation(selected_exports):
+    """Confirm restore operation with user."""
     print(f"\n🎯 Restoring {len(selected_exports)} export(s)...")
     print()
 
     confirmation = input("Type 'RESTORE FROM S3' to proceed: ")
     if confirmation != "RESTORE FROM S3":
         print("❌ Operation cancelled")
-        return
+        return False
 
     print("\n🚨 Proceeding with S3 restore...")
     print("=" * 80)
+    return True
 
-    successful_restores = 0
-    failed_restores = 0
+
+def _perform_restores(ec2_client, bucket_name, selected_exports):
+    """Perform restore operations for selected exports."""
     restore_results = []
-
     for export in selected_exports:
-        s3_key = export["key"]
-        print(f"🔍 Processing {s3_key}...")
-
-        # Extract description from key if possible
-        description = f"Restored from S3: {s3_key}"
-
-        # Import AMI from S3
-        ami_id = import_ami_from_s3(ec2_client, bucket_name, s3_key, description)
-
-        if ami_id:
-            # Create snapshot from AMI
-            snapshot_id = create_snapshot_from_ami(ec2_client, ami_id, description)
-
-            if snapshot_id:
-                successful_restores += 1
-                restore_results.append(
-                    {"s3_key": s3_key, "ami_id": ami_id, "snapshot_id": snapshot_id}
-                )
-                print(f"   ✅ Successfully restored to snapshot: {snapshot_id}")
-            else:
-                failed_restores += 1
-                print(f"   ❌ Failed to create snapshot from AMI")
-        else:
-            failed_restores += 1
-            print(f"   ❌ Failed to import AMI from S3")
-
+        result = _process_export_restore(ec2_client, bucket_name, export)
+        if result:
+            restore_results.append(result)
         print()
+    return restore_results
 
+
+def _print_restore_summary(restore_results, selected_exports, region):
+    """Print summary of restore operations."""
     print("=" * 80)
     print("🎯 RESTORE SUMMARY")
     print("=" * 80)
-    print(f"✅ Successfully restored: {successful_restores} snapshots")
-    print(f"❌ Failed to restore: {failed_restores} exports")
+    print(f"✅ Successfully restored: {len(restore_results)} snapshots")
+    print(f"❌ Failed to restore: {len(selected_exports) - len(restore_results)} exports")
 
     if restore_results:
         print("\n📋 Restore Results:")
@@ -302,9 +324,35 @@ def restore_snapshots_from_s3():  # noqa: C901, PLR0912, PLR0915
             print(f"   aws ec2 deregister-image --image-id {result['ami_id']} --region {region}")
 
 
+def restore_snapshots_from_s3():
+    """Main function to restore EBS snapshots from S3"""
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+
+    print("AWS S3 to EBS Snapshot Restore Script")
+    print("=" * 80)
+    print("Restoring EBS snapshots from S3 exports...")
+    print()
+
+    region, bucket_name = _get_user_inputs()
+    if not _validate_user_inputs(region, bucket_name):
+        return
+
+    ec2_client, s3_client = _create_aws_clients(aws_access_key_id, aws_secret_access_key, region)
+
+    selected_exports = _get_and_validate_exports(s3_client, bucket_name)
+    if not selected_exports:
+        return
+
+    if not _confirm_restore_operation(selected_exports):
+        return
+
+    restore_results = _perform_restores(ec2_client, bucket_name, selected_exports)
+    _print_restore_summary(restore_results, selected_exports, region)
+
+
 if __name__ == "__main__":
     try:
         restore_snapshots_from_s3()
-    except Exception as e:
+    except (ClientError, KeyboardInterrupt) as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)

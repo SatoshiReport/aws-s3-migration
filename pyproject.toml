@@ -28,6 +28,10 @@ profile = "black"
 line_length = 100
 skip = ["ci_shared"]
 
+[tool.pylint.MASTER]
+init-hook = "import sys, os; sys.path.insert(0, os.getcwd())"
+ignored-modules = ["psycopg2"]
+
 [tool.pylint.'MESSAGES CONTROL']
 disable = []
 
@@ -42,7 +46,7 @@ exclude = ["ci_shared/", "scripts/", "docs/", ".venv/"]
 extend_exclude = ["ci_shared", "tests", "scripts"]
 pep621_dev_dependency_groups = []
 requirements_files_dev = ["scripts/requirements.txt"]
-per_rule_ignores = { DEP002 = ["boto3", "pydantic"], DEP003 = ["ci_tools"] }
+per_rule_ignores = { DEP001 = ["overview", "s3_audit", "billing_report", "ebs_manager", "rds_aurora_migration", "snapshot_export", "snapshot_export_fixed", "snapshot_export_robust", "analysis", "deletion", "workflow", "cache", "cleanup_temp_artifacts", "duplicate_tree", "find_compressible"], DEP002 = ["boto3", "pydantic"], DEP003 = ["ci_tools"] }
 
 [tool.deptry.package_module_name_map]
 "psycopg2-binary" = ["psycopg2"]

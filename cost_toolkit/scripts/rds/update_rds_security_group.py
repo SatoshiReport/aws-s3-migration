@@ -1,15 +1,11 @@
 #!/usr/bin/env python3
-import os
-import sys
+"""Update RDS instance security group settings."""
 
 import boto3
 import requests
+from botocore.exceptions import ClientError
 
-SCRIPT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if SCRIPT_ROOT not in sys.path:
-    sys.path.append(SCRIPT_ROOT)
-
-from aws_utils import setup_aws_credentials
+from ..aws_utils import setup_aws_credentials
 
 
 def update_security_group():
@@ -24,7 +20,7 @@ def update_security_group():
         response = requests.get("https://ipv4.icanhazip.com/", timeout=10)
         current_ip = response.text.strip()
         print(f"   Your IP: {current_ip}")
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Could not get current IP: {e}")
         print("Please provide your public IP address manually")
         return
@@ -52,13 +48,13 @@ def update_security_group():
             ],
         )
 
-        print(f"✅ Security group updated!")
+        print("✅ Security group updated!")
         print(f"   Added rule: Port 5432 from {current_ip}/32")
         print("⚠️  This is temporary - we'll remove it after data migration")
 
-    except Exception as e:
+    except ClientError as e:
         if "already exists" in str(e).lower():
-            print(f"✅ Rule already exists for your IP")
+            print("✅ Rule already exists for your IP")
         else:
             print(f"❌ Error updating security group: {e}")
 

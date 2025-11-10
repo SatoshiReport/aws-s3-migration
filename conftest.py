@@ -12,12 +12,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import pytest
 
-try:
-    from migrate_v2 import MigrationComponents, S3MigrationV2
-    from migration_state_v2 import DatabaseConnection
-except ImportError:  # pragma: no cover - pylint package context
-    from .migrate_v2 import MigrationComponents, S3MigrationV2  # type: ignore
-    from .migration_state_v2 import DatabaseConnection  # type: ignore
+from migrate_v2 import MigrationComponents, S3MigrationV2
+from migration_state_v2 import DatabaseConnection
 
 
 @pytest.fixture(name="temp_db")

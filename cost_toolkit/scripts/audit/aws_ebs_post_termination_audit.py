@@ -4,10 +4,9 @@ AWS EBS Post-Termination Audit
 Checks if EBS volumes from terminated instances were properly deleted
 """
 
-import json
-from datetime import datetime, timezone
 
 import boto3
+from botocore.exceptions import ClientError
 
 
 def get_ebs_volumes_by_region(region_name):
@@ -34,7 +33,10 @@ def get_ebs_volumes_by_region(region_name):
                 device = attachment.get("Device", "Unknown")
                 state = attachment.get("State", "Unknown")
                 delete_on_termination = attachment.get("DeleteOnTermination", False)
-                attachment_info = f"{instance_id} ({device}) - State: {state}, DeleteOnTermination: {delete_on_termination}"
+                attachment_info = (
+                    f"{instance_id} ({device}) - State: {state}, "
+                    f"DeleteOnTermination: {delete_on_termination}"
+                )
 
             # Get tags
             tags = {tag["Key"]: tag["Value"] for tag in volume.get("Tags", [])}
@@ -54,12 +56,11 @@ def get_ebs_volumes_by_region(region_name):
                 }
             )
 
-    except Exception as e:
+    except ClientError as e:
         print(f"❌ Error getting volumes in {region_name}: {str(e)}")
         return []
 
-    else:
-        return volume_details
+    return volume_details
 
 
 def check_terminated_instances_volumes():
@@ -108,7 +109,8 @@ def check_terminated_instances_volumes():
         status_icon = "🔴" if is_orphaned else "✅"
         print(f"{status_icon} {volume['VolumeId']} - {volume['Name']}")
         print(
-            f"    Size: {volume['Size']}GB | State: {volume['State']} | Cost: ${volume['MonthlyCost']:.2f}/month"
+            f"    Size: {volume['Size']}GB | State: {volume['State']} | "
+            f"Cost: ${volume['MonthlyCost']:.2f}/month"
         )
         print(f"    Attachment: {volume['Attachment']}")
         print()
@@ -137,6 +139,7 @@ def check_terminated_instances_volumes():
 
 
 def main():
+    """Check and report orphaned EBS volumes after instance termination."""
     orphaned_volumes = check_terminated_instances_volumes()
 
     if orphaned_volumes:

@@ -184,7 +184,7 @@ class TestGlacierRestorerSuccessOutput:
             "storage_class": "GLACIER",
         }
 
-        restorer._request_restore(file_info, 5, 10)
+        restorer.request_restore(file_info, 5, 10)
 
         mock_s3.restore_object.assert_called_once()
         mock_state.mark_glacier_restore_requested.assert_called_once_with("test-bucket", "file.txt")

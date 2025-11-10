@@ -3,9 +3,9 @@ Unit tests for apply_block.py helper functions
 
 Tests cover:
 - get_buckets_with_policy_files() function
-- _determine_buckets() helper function
-- _show_interactive_help() helper function
-- _apply_policy_to_bucket() helper function
+- determine_buckets() helper function
+- show_interactive_help() helper function
+- apply_policy_to_bucket() helper function
 """
 
 import json
@@ -76,7 +76,7 @@ class TestGetBucketsWithPolicyFiles:
 
 
 class TestDetermineBuckets:
-    """Tests for _determine_buckets() helper function"""
+    """Tests for determine_buckets() helper function"""
 
     def test_returns_all_buckets_when_all_flag_set(self, tmp_path, monkeypatch, capsys):
         """Test that --all flag returns all available policy buckets"""
@@ -87,7 +87,7 @@ class TestDetermineBuckets:
         (policies_dir / "bucket2_policy.json").write_text("{}")
 
         args = mock.Mock(all=True, buckets=[])
-        result = apply_block._determine_buckets(args)
+        result = apply_block.determine_buckets(args)
 
         assert set(result) == {"bucket1", "bucket2"}
         captured = capsys.readouterr()
@@ -99,7 +99,7 @@ class TestDetermineBuckets:
         args = mock.Mock(all=True, buckets=[])
 
         with pytest.raises(SystemExit) as exc_info:
-            apply_block._determine_buckets(args)
+            apply_block.determine_buckets(args)
 
         assert exc_info.value.code == 1
         captured = capsys.readouterr()
@@ -109,7 +109,7 @@ class TestDetermineBuckets:
         """Test that specified bucket names are returned"""
         monkeypatch.chdir(tmp_path)
         args = mock.Mock(all=False, buckets=["bucket1", "bucket2", "bucket3"])
-        result = apply_block._determine_buckets(args)
+        result = apply_block.determine_buckets(args)
 
         assert result == ["bucket1", "bucket2", "bucket3"]
 
@@ -119,7 +119,7 @@ class TestDetermineBuckets:
         args = mock.Mock(all=False, buckets=[])
 
         with pytest.raises(SystemExit) as exc_info:
-            apply_block._determine_buckets(args)
+            apply_block.determine_buckets(args)
 
         assert exc_info.value.code == 0
         captured = capsys.readouterr()
@@ -127,12 +127,12 @@ class TestDetermineBuckets:
 
 
 class TestShowInteractiveHelp:
-    """Tests for _show_interactive_help() helper function"""
+    """Tests for show_interactive_help() helper function"""
 
     def test_shows_usage_instructions(self, tmp_path, monkeypatch, capsys):
         """Test that usage instructions are displayed"""
         monkeypatch.chdir(tmp_path)
-        apply_block._show_interactive_help()
+        apply_block.show_interactive_help()
 
         captured = capsys.readouterr()
         assert "No buckets specified" in captured.out
@@ -148,7 +148,7 @@ class TestShowInteractiveHelp:
         (policies_dir / "bucket1_policy.json").write_text("{}")
         (policies_dir / "bucket2_policy.json").write_text("{}")
 
-        apply_block._show_interactive_help()
+        apply_block.show_interactive_help()
 
         captured = capsys.readouterr()
         assert "bucket1" in captured.out
@@ -157,7 +157,7 @@ class TestShowInteractiveHelp:
     def test_shows_none_when_no_policies(self, tmp_path, monkeypatch, capsys):
         """Test that (none found) is shown when no policies exist"""
         monkeypatch.chdir(tmp_path)
-        apply_block._show_interactive_help()
+        apply_block.show_interactive_help()
 
         captured = capsys.readouterr()
         assert "(none found)" in captured.out
@@ -169,7 +169,7 @@ def test_apply_policy_returns_false_when_policy_file_missing(tmp_path, monkeypat
     policies_dir = tmp_path / "policies"
     policies_dir.mkdir()
 
-    result = apply_block._apply_policy_to_bucket("missing-bucket", dry_run=False)
+    result = apply_block.apply_policy_to_bucket("missing-bucket", dry_run=False)
 
     assert result is False
     captured = capsys.readouterr()
@@ -186,7 +186,7 @@ def test_apply_policy_when_file_exists(tmp_path, monkeypatch, capsys):
     (policies_dir / "test-bucket_policy.json").write_text(policy_content)
 
     with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
-        result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=False)
+        result = apply_block.apply_policy_to_bucket("test-bucket", dry_run=False)
 
     assert result is True
     assert mock_apply.called
@@ -205,7 +205,7 @@ def test_apply_policy_dry_run(tmp_path, monkeypatch, capsys):
 
     with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
         with mock.patch("apply_block.load_policy_from_file", return_value=policy_content):
-            result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=True)
+            result = apply_block.apply_policy_to_bucket("test-bucket", dry_run=True)
 
     assert result is True
     assert not mock_apply.called
@@ -223,7 +223,7 @@ def test_apply_policy_handles_load_error(tmp_path, monkeypatch, capsys):
 
     with mock.patch("apply_block.load_policy_from_file") as mock_load:
         mock_load.side_effect = ValueError("Invalid JSON")
-        result = apply_block._apply_policy_to_bucket("bad-bucket", dry_run=False)
+        result = apply_block.apply_policy_to_bucket("bad-bucket", dry_run=False)
 
     assert result is False
     captured = capsys.readouterr()
@@ -241,7 +241,7 @@ def test_apply_policy_handles_apply_error(tmp_path, monkeypatch, capsys):
 
     with mock.patch("apply_block.apply_bucket_policy") as mock_apply:
         mock_apply.side_effect = IOError("S3 error")
-        result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=False)
+        result = apply_block.apply_policy_to_bucket("test-bucket", dry_run=False)
 
     assert result is False
     captured = capsys.readouterr()
@@ -259,7 +259,7 @@ def test_apply_policy_handles_os_error(tmp_path, monkeypatch, capsys):
 
     with mock.patch("apply_block.load_policy_from_file") as mock_load:
         mock_load.side_effect = OSError("Permission denied")
-        result = apply_block._apply_policy_to_bucket("test-bucket", dry_run=False)
+        result = apply_block.apply_policy_to_bucket("test-bucket", dry_run=False)
 
     assert result is False
     captured = capsys.readouterr()

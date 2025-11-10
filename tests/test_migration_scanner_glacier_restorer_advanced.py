@@ -38,7 +38,7 @@ class TestGlacierRestorerStorageClassTiers:
                     "storage_class": "GLACIER",
                 }
 
-                restorer._request_restore(file_info, 1, 1)
+                restorer.request_restore(file_info, 1, 1)
 
                 # Should use configured tier for GLACIER
                 call_args = mock_s3.restore_object.call_args
@@ -53,7 +53,7 @@ class TestGlacierRestorerStorageClassTiers:
                 "storage_class": "DEEP_ARCHIVE",
             }
 
-            restorer._request_restore(file_info, 1, 1)
+            restorer.request_restore(file_info, 1, 1)
 
             # Should use Bulk tier for DEEP_ARCHIVE
             call_args = mock_s3.restore_object.call_args
@@ -95,7 +95,7 @@ class TestGlacierRestorerErrorHandling:
         }
 
         # Should not raise, should mark as requested
-        restorer._request_restore(file_info, 1, 1)
+        restorer.request_restore(file_info, 1, 1)
 
         mock_state.mark_glacier_restore_requested.assert_called_once()
 
@@ -112,7 +112,7 @@ class TestGlacierRestorerErrorHandling:
 
         # Should raise because it's not RestoreAlreadyInProgress
         with pytest.raises(ClientError):
-            restorer._request_restore(file_info, 1, 1)
+            restorer.request_restore(file_info, 1, 1)
 
 
 class TestGlacierRestorerConfiguration:
@@ -143,7 +143,7 @@ class TestGlacierRestorerConfiguration:
                     "storage_class": "GLACIER",
                 }
 
-                restorer._request_restore(file_info, 1, 1)
+                restorer.request_restore(file_info, 1, 1)
 
                 call_args = mock_s3.restore_object.call_args
                 restore_request = call_args[1]["RestoreRequest"]

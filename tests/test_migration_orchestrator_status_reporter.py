@@ -21,189 +21,175 @@ def mock_state():
 
 
 @pytest.fixture
-def reporter(mock_state):
+def reporter(_mock_state):
     """Create StatusReporter instance"""
-    return StatusReporter(mock_state)
+    return StatusReporter(_mock_state)
 
 
-class TestStatusReporterScanningPhase:
-    """Tests for StatusReporter in SCANNING phase"""
+def test_show_status_scanning_phase(_reporter, _mock_state):
+    """Test show_status for SCANNING phase"""
+    _mock_state.get_current_phase.return_value = Phase.SCANNING
+    _mock_state.get_all_buckets.return_value = []
+    _mock_state.get_scan_summary.return_value = {
+        "bucket_count": 0,
+        "total_files": 0,
+        "total_size": 0,
+    }
 
-    def test_show_status_scanning_phase(self, reporter, mock_state):
-        """Test show_status for SCANNING phase"""
-        mock_state.get_current_phase.return_value = Phase.SCANNING
-        mock_state.get_all_buckets.return_value = []
-        mock_state.get_scan_summary.return_value = {
-            "bucket_count": 0,
-            "total_files": 0,
-            "total_size": 0,
-        }
+    with mock.patch("builtins.print") as mock_print:
+        _reporter.show_status()
 
-        with mock.patch("builtins.print") as mock_print:
-            reporter.show_status()
-
-        printed_text = " ".join([str(call) for call in mock_print.call_args_list])
-        assert "MIGRATION STATUS" in printed_text
-        assert "scanning" in printed_text.lower()
-
-    def test_show_status_no_buckets(self, reporter, mock_state):
-        """Test show_status when no buckets exist"""
-        mock_state.get_current_phase.return_value = Phase.SCANNING
-        mock_state.get_all_buckets.return_value = []
-        mock_state.get_scan_summary.return_value = {
-            "bucket_count": 0,
-            "total_files": 0,
-            "total_size": 0,
-        }
-
-        with mock.patch("builtins.print") as mock_print:
-            reporter.show_status()
-
-        printed_text = " ".join([str(call) for call in mock_print.call_args_list])
-        assert "MIGRATION STATUS" in printed_text
+    printed_text = " ".join([str(call) for call in mock_print.call_args_list])
+    assert "MIGRATION STATUS" in printed_text
+    assert "scanning" in printed_text.lower()
 
 
-class TestStatusReporterGlacierRestorePhase:
-    """Tests for StatusReporter in GLACIER_RESTORE phase"""
+def test_show_status_no_buckets(_reporter, _mock_state):
+    """Test show_status when no buckets exist"""
+    _mock_state.get_current_phase.return_value = Phase.SCANNING
+    _mock_state.get_all_buckets.return_value = []
+    _mock_state.get_scan_summary.return_value = {
+        "bucket_count": 0,
+        "total_files": 0,
+        "total_size": 0,
+    }
 
-    def test_show_status_glacier_restore_phase_shows_summary(self, reporter, mock_state):
-        """Test show_status for GLACIER_RESTORE phase shows scan summary"""
-        mock_state.get_current_phase.return_value = Phase.GLACIER_RESTORE
-        mock_state.get_all_buckets.return_value = ["bucket-1", "bucket-2"]
-        mock_state.get_scan_summary.return_value = {
-            "bucket_count": 2,
-            "total_files": 1000,
-            "total_size": 10737418240,
-        }
-        mock_state.get_completed_buckets_for_phase.return_value = []
+    with mock.patch("builtins.print") as mock_print:
+        _reporter.show_status()
 
-        bucket_infos = [
-            {
-                "file_count": 500,
-                "total_size": 5368709120,
-                "sync_complete": False,
-                "verify_complete": False,
-                "delete_complete": False,
-            },
-            {
-                "file_count": 500,
-                "total_size": 5368709120,
-                "sync_complete": False,
-                "verify_complete": False,
-                "delete_complete": False,
-            },
-        ]
-        mock_state.get_bucket_info.side_effect = bucket_infos
-
-        with mock.patch("builtins.print") as mock_print:
-            reporter.show_status()
-
-        printed_text = " ".join([str(call) for call in mock_print.call_args_list])
-        assert "Overall Summary" in printed_text
-        assert "Total Buckets: 2" in printed_text
-        assert "Total Files: 1,000" in printed_text
+    printed_text = " ".join([str(call) for call in mock_print.call_args_list])
+    assert "MIGRATION STATUS" in printed_text
 
 
-class TestStatusReporterBucketProgress:
-    """Tests for StatusReporter bucket progress display"""
+def test_show_status_glacier_restore_phase_shows_summary(_reporter, _mock_state):
+    """Test show_status for GLACIER_RESTORE phase shows scan summary"""
+    _mock_state.get_current_phase.return_value = Phase.GLACIER_RESTORE
+    _mock_state.get_all_buckets.return_value = ["bucket-1", "bucket-2"]
+    _mock_state.get_scan_summary.return_value = {
+        "bucket_count": 2,
+        "total_files": 1000,
+        "total_size": 10737418240,
+    }
+    _mock_state.get_completed_buckets_for_phase.return_value = []
 
-    def test_show_status_shows_bucket_progress(self, reporter, mock_state):
-        """Test show_status displays bucket progress"""
-        mock_state.get_current_phase.return_value = Phase.SYNCING
-        mock_state.get_all_buckets.return_value = ["bucket-1", "bucket-2", "bucket-3"]
-        mock_state.get_scan_summary.return_value = {
-            "bucket_count": 3,
-            "total_files": 1500,
-            "total_size": 15000000000,
-        }
-        mock_state.get_completed_buckets_for_phase.return_value = ["bucket-1"]
-
-        bucket_infos = [
-            {
-                "file_count": 500,
-                "total_size": 5000000000,
-                "sync_complete": True,
-                "verify_complete": True,
-                "delete_complete": True,
-            },
-            {
-                "file_count": 500,
-                "total_size": 5000000000,
-                "sync_complete": False,
-                "verify_complete": False,
-                "delete_complete": False,
-            },
-            {
-                "file_count": 500,
-                "total_size": 5000000000,
-                "sync_complete": False,
-                "verify_complete": False,
-                "delete_complete": False,
-            },
-        ]
-        mock_state.get_bucket_info.side_effect = bucket_infos
-
-        with mock.patch("builtins.print") as mock_print:
-            reporter.show_status()
-
-        printed_text = " ".join([str(call) for call in mock_print.call_args_list])
-        assert "Bucket Progress" in printed_text
-        assert "Completed: 1/3" in printed_text
-
-
-class TestStatusReporterBucketDetails:
-    """Tests for StatusReporter individual bucket details display"""
-
-    def test_show_status_displays_bucket_details(self, reporter, mock_state):
-        """Test show_status shows individual bucket details"""
-        mock_state.get_current_phase.return_value = Phase.SYNCING
-        mock_state.get_all_buckets.return_value = ["bucket-1"]
-        mock_state.get_scan_summary.return_value = {
-            "bucket_count": 1,
-            "total_files": 100,
-            "total_size": 1000000,
-        }
-        mock_state.get_completed_buckets_for_phase.return_value = []
-
-        mock_state.get_bucket_info.return_value = {
-            "file_count": 100,
-            "total_size": 1000000,
-            "sync_complete": True,
+    bucket_infos = [
+        {
+            "file_count": 500,
+            "total_size": 5368709120,
+            "sync_complete": False,
             "verify_complete": False,
             "delete_complete": False,
-        }
+        },
+        {
+            "file_count": 500,
+            "total_size": 5368709120,
+            "sync_complete": False,
+            "verify_complete": False,
+            "delete_complete": False,
+        },
+    ]
+    _mock_state.get_bucket_info.side_effect = bucket_infos
 
-        with mock.patch("builtins.print") as mock_print:
-            reporter.show_status()
+    with mock.patch("builtins.print") as mock_print:
+        _reporter.show_status()
 
-        printed_text = " ".join([str(call) for call in mock_print.call_args_list])
-        assert "bucket-1" in printed_text
-        assert "100" in printed_text
+    printed_text = " ".join([str(call) for call in mock_print.call_args_list])
+    assert "Overall Summary" in printed_text
+    assert "Total Buckets: 2" in printed_text
+    assert "Total Files: 1,000" in printed_text
 
 
-class TestStatusReporterCompletePhase:
-    """Tests for StatusReporter in COMPLETE phase"""
+def test_show_status_shows_bucket_progress(_reporter, _mock_state):
+    """Test show_status displays bucket progress"""
+    _mock_state.get_current_phase.return_value = Phase.SYNCING
+    _mock_state.get_all_buckets.return_value = ["bucket-1", "bucket-2", "bucket-3"]
+    _mock_state.get_scan_summary.return_value = {
+        "bucket_count": 3,
+        "total_files": 1500,
+        "total_size": 15000000000,
+    }
+    _mock_state.get_completed_buckets_for_phase.return_value = ["bucket-1"]
 
-    def test_show_status_complete_phase(self, reporter, mock_state):
-        """Test show_status for COMPLETE phase"""
-        mock_state.get_current_phase.return_value = Phase.COMPLETE
-        mock_state.get_all_buckets.return_value = ["bucket-1"]
-        mock_state.get_scan_summary.return_value = {
-            "bucket_count": 1,
-            "total_files": 100,
-            "total_size": 1000000,
-        }
-        mock_state.get_completed_buckets_for_phase.return_value = ["bucket-1"]
-        mock_state.get_bucket_info.return_value = {
-            "file_count": 100,
-            "total_size": 1000000,
+    bucket_infos = [
+        {
+            "file_count": 500,
+            "total_size": 5000000000,
             "sync_complete": True,
             "verify_complete": True,
             "delete_complete": True,
-        }
+        },
+        {
+            "file_count": 500,
+            "total_size": 5000000000,
+            "sync_complete": False,
+            "verify_complete": False,
+            "delete_complete": False,
+        },
+        {
+            "file_count": 500,
+            "total_size": 5000000000,
+            "sync_complete": False,
+            "verify_complete": False,
+            "delete_complete": False,
+        },
+    ]
+    _mock_state.get_bucket_info.side_effect = bucket_infos
 
-        with mock.patch("builtins.print") as mock_print:
-            reporter.show_status()
+    with mock.patch("builtins.print") as mock_print:
+        _reporter.show_status()
 
-        printed_text = " ".join([str(call) for call in mock_print.call_args_list])
-        assert "MIGRATION STATUS" in printed_text
+    printed_text = " ".join([str(call) for call in mock_print.call_args_list])
+    assert "Bucket Progress" in printed_text
+    assert "Completed: 1/3" in printed_text
+
+
+def test_show_status_displays_bucket_details(_reporter, _mock_state):
+    """Test show_status shows individual bucket details"""
+    _mock_state.get_current_phase.return_value = Phase.SYNCING
+    _mock_state.get_all_buckets.return_value = ["bucket-1"]
+    _mock_state.get_scan_summary.return_value = {
+        "bucket_count": 1,
+        "total_files": 100,
+        "total_size": 1000000,
+    }
+    _mock_state.get_completed_buckets_for_phase.return_value = []
+
+    _mock_state.get_bucket_info.return_value = {
+        "file_count": 100,
+        "total_size": 1000000,
+        "sync_complete": True,
+        "verify_complete": False,
+        "delete_complete": False,
+    }
+
+    with mock.patch("builtins.print") as mock_print:
+        _reporter.show_status()
+
+    printed_text = " ".join([str(call) for call in mock_print.call_args_list])
+    assert "bucket-1" in printed_text
+    assert "100" in printed_text
+
+
+def test_show_status_complete_phase(_reporter, _mock_state):
+    """Test show_status for COMPLETE phase"""
+    _mock_state.get_current_phase.return_value = Phase.COMPLETE
+    _mock_state.get_all_buckets.return_value = ["bucket-1"]
+    _mock_state.get_scan_summary.return_value = {
+        "bucket_count": 1,
+        "total_files": 100,
+        "total_size": 1000000,
+    }
+    _mock_state.get_completed_buckets_for_phase.return_value = ["bucket-1"]
+    _mock_state.get_bucket_info.return_value = {
+        "file_count": 100,
+        "total_size": 1000000,
+        "sync_complete": True,
+        "verify_complete": True,
+        "delete_complete": True,
+    }
+
+    with mock.patch("builtins.print") as mock_print:
+        _reporter.show_status()
+
+    printed_text = " ".join([str(call) for call in mock_print.call_args_list])
+    assert "MIGRATION STATUS" in printed_text
