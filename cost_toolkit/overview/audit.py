@@ -34,7 +34,7 @@ def _run_audit_script(name, script_path):
     print(f"\n📊 {name}:")
     try:
         result = subprocess.run(
-            [sys.executable, script_path], capture_output=True, text=True, timeout=60
+            [sys.executable, script_path], capture_output=True, text=True, timeout=60, check=False
         )
         if result.returncode == 0:
             summary_lines = _extract_summary_lines(result.stdout)

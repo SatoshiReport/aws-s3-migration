@@ -5,14 +5,14 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts import aws_utils
+
 # Instance ID to stop
 INSTANCE_ID = "i-05ad29f28fc8a8fdc"
 
 
 def setup_aws_credentials():
     """Load AWS credentials from ~/.env via shared helper."""
-    from cost_toolkit.scripts import aws_utils
-
     aws_utils.setup_aws_credentials()
 
 

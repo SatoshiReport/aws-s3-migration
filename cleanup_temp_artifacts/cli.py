@@ -168,11 +168,11 @@ def main(argv: list[str] | None = None) -> int:
     write_cache_if_needed(
         cache_config,
         load_result,
-        load_result.cache_path,
-        load_result.cache_used,
-        base_path,
-        db_info,
-        scan_params,
+        cache_path=load_result.cache_path,
+        cache_used=load_result.cache_used,
+        base_path=base_path,
+        db_info=db_info,
+        scan_params=scan_params,
     )
 
     if not load_result.candidates:

@@ -6,12 +6,13 @@ import time
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_utils import get_instance_info
 
-def _get_instance_details(ec2, instance_id):
+
+def _get_instance_details(_ec2, instance_id, region_name):
     """Get current instance details."""
     print("Step 1: Getting instance details...")
-    response = ec2.describe_instances(InstanceIds=[instance_id])
-    instance = response["Reservations"][0]["Instances"][0]
+    instance = get_instance_info(instance_id, region_name)
 
     details = {
         "state": instance["State"]["Name"],
@@ -86,13 +87,12 @@ def _replace_eni(ec2, instance_id, current_eni, new_eni_id):
     return True
 
 
-def _verify_and_cleanup(ec2, instance_id, current_eni_id):
+def _verify_and_cleanup(ec2, instance_id, current_eni_id, region_name):
     """Verify public IP removal and clean up old ENI."""
     print("Step 7: Verifying public IP removal...")
     time.sleep(10)
 
-    response = ec2.describe_instances(InstanceIds=[instance_id])
-    updated_instance = response["Reservations"][0]["Instances"][0]
+    updated_instance = get_instance_info(instance_id, region_name)
     new_public_ip = updated_instance.get("PublicIpAddress")
 
     if new_public_ip:
@@ -117,7 +117,7 @@ def remove_public_ip_by_network_interface_replacement(instance_id, region_name):
 
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
-        details = _get_instance_details(ec2, instance_id)
+        details = _get_instance_details(ec2, instance_id, region_name)
 
         if not details["public_ip"]:
             print(f"✅ Instance {instance_id} already has no public IP")
@@ -134,7 +134,7 @@ def remove_public_ip_by_network_interface_replacement(instance_id, region_name):
         if not _replace_eni(ec2, instance_id, details["current_eni"], new_eni_id):
             try:
                 ec2.delete_network_interface(NetworkInterfaceId=new_eni_id)
-            except:
+            except ClientError:
                 pass
             return False
 
@@ -148,7 +148,7 @@ def remove_public_ip_by_network_interface_replacement(instance_id, region_name):
             print(f"  ❌ Error starting instance: {e}")
             return False
 
-        return _verify_and_cleanup(ec2, instance_id, details["current_eni_id"])
+        return _verify_and_cleanup(ec2, instance_id, details["current_eni_id"], region_name)
 
     except ClientError as e:
         print(f"❌ Error in advanced public IP removal: {e}")
@@ -164,8 +164,7 @@ def simple_stop_start_without_public_ip(instance_id, region_name):
         ec2 = boto3.client("ec2", region_name=region_name)
 
         # Get instance details
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        instance = response["Reservations"][0]["Instances"][0]
+        instance = get_instance_info(instance_id, region_name)
         subnet_id = instance["SubnetId"]
 
         print("Step 1: Ensuring subnet doesn't auto-assign public IPs...")
@@ -190,8 +189,7 @@ def simple_stop_start_without_public_ip(instance_id, region_name):
 
         # Verify
         time.sleep(10)
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        updated_instance = response["Reservations"][0]["Instances"][0]
+        updated_instance = get_instance_info(instance_id, region_name)
         new_public_ip = updated_instance.get("PublicIpAddress")
 
         if new_public_ip:
@@ -201,9 +199,9 @@ def simple_stop_start_without_public_ip(instance_id, region_name):
     except ClientError as e:
         print(f"❌ Error in simple public IP removal: {e}")
         return False
-    else:
-        print("  ✅ Public IP successfully removed")
-        return True
+
+    print("  ✅ Public IP successfully removed")
+    return True
 
 
 def main():

@@ -13,7 +13,6 @@ def fix_rds_subnet_routing():
 
     setup_aws_credentials()
     rds = boto3.client("rds", region_name="us-east-1")
-    _ = boto3.client("ec2", region_name="us-east-1")
 
     print("🔧 Fixing RDS subnet routing for internet access...")
 

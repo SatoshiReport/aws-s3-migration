@@ -4,25 +4,15 @@ AWS Network Interface Audit Script
 Identifies unused network interfaces across all regions for cleanup.
 """
 
-import os
-
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
+
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
 def load_aws_credentials():
     """Load AWS credentials from environment file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+    return setup_aws_credentials()
 
 
 def get_all_regions():
@@ -30,6 +20,39 @@ def get_all_regions():
     ec2 = boto3.client("ec2", region_name="us-east-1")
     regions = ec2.describe_regions()["Regions"]
     return [region["RegionName"] for region in regions]
+
+
+def _build_interface_info(eni):
+    """Build interface information dictionary from network interface data."""
+    interface_id = eni["NetworkInterfaceId"]
+    status = eni["Status"]
+    interface_type = eni.get("InterfaceType", "interface")
+    attachment = eni.get("Attachment", {})
+
+    tags = {tag["Key"]: tag["Value"] for tag in eni.get("Tags", [])}
+    name = tags.get("Name", "No Name")
+
+    return {
+        "interface_id": interface_id,
+        "name": name,
+        "status": status,
+        "type": interface_type,
+        "vpc_id": eni.get("VpcId", "N/A"),
+        "subnet_id": eni.get("SubnetId", "N/A"),
+        "private_ip": eni.get("PrivateIpAddress", "N/A"),
+        "public_ip": eni.get("Association", {}).get("PublicIp", "None"),
+        "attached_to": attachment.get("InstanceId", "Not attached"),
+        "attachment_status": attachment.get("Status", "detached"),
+        "description": eni.get("Description", "No description"),
+        "tags": tags,
+    }
+
+
+def _categorize_interface(status, attachment):
+    """Determine if interface is unused or attached."""
+    if status == "available" and not attachment:
+        return "unused"
+    return "attached"
 
 
 def audit_network_interfaces_in_region(region_name, aws_access_key_id, aws_secret_access_key):
@@ -58,35 +81,12 @@ def audit_network_interfaces_in_region(region_name, aws_access_key_id, aws_secre
         }
 
         for eni in network_interfaces:
-            interface_id = eni["NetworkInterfaceId"]
-            status = eni["Status"]
-            interface_type = eni.get("InterfaceType", "interface")
-            attachment = eni.get("Attachment", {})
-
-            # Get tags for better identification
-            tags = {tag["Key"]: tag["Value"] for tag in eni.get("Tags", [])}
-            name = tags.get("Name", "No Name")
-
-            interface_info = {
-                "interface_id": interface_id,
-                "name": name,
-                "status": status,
-                "type": interface_type,
-                "vpc_id": eni.get("VpcId", "N/A"),
-                "subnet_id": eni.get("SubnetId", "N/A"),
-                "private_ip": eni.get("PrivateIpAddress", "N/A"),
-                "public_ip": eni.get("Association", {}).get("PublicIp", "None"),
-                "attached_to": attachment.get("InstanceId", "Not attached"),
-                "attachment_status": attachment.get("Status", "detached"),
-                "description": eni.get("Description", "No description"),
-                "tags": tags,
-            }
-
+            interface_info = _build_interface_info(eni)
             region_data["interface_details"].append(interface_info)
 
             # Categorize interfaces
-            if status == "available" and not attachment:
-                # Interface is not attached to anything
+            category = _categorize_interface(eni["Status"], eni.get("Attachment", {}))
+            if category == "unused":
                 region_data["unused_interfaces"].append(interface_info)
             else:
                 region_data["attached_interfaces"].append(interface_info)

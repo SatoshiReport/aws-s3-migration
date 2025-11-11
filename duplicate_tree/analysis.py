@@ -11,23 +11,23 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
 try:  # Prefer package-relative imports when packaged
-    from ..duplicate_tree_core import (
+    from duplicate_tree_core import (
         DirectoryIndex,
         DuplicateCluster,
         find_exact_duplicates,
     )
-    from ..duplicate_tree_models import (
+    from duplicate_tree_models import (
         FilesTableReadError,
         PathTuple,
         ProgressPrinter,
     )
 except ImportError:  # pragma: no cover - execution as standalone script
-    from duplicate_tree_core import (  # type: ignore
+    from duplicate_tree_core import (  # type: ignore[import]
         DirectoryIndex,
         DuplicateCluster,
         find_exact_duplicates,
     )
-    from duplicate_tree_models import (  # type: ignore
+    from duplicate_tree_models import (  # type: ignore[import]
         FilesTableReadError,
         PathTuple,
         ProgressPrinter,

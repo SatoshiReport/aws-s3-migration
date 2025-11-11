@@ -38,8 +38,8 @@ def _calculate_cpu_metrics(cloudwatch, instance_id):
     except ClientError as e:
         print(f"  ❌ Error getting metrics: {e}")
         return None, None, None
-    else:
-        return None, None, None
+
+    return None, None, None
 
 
 def _determine_usage_level(avg_cpu):

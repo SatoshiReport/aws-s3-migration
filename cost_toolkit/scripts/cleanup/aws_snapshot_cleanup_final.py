@@ -5,27 +5,18 @@ Deletes the snapshots that were freed after AMI deregistration.
 This script targets the 7 specific snapshots that should now be deletable.
 """
 
-import os
 import sys
 import time
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
+
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
 def load_aws_credentials():
     """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+    return setup_aws_credentials()
 
 
 def delete_snapshot(ec2_client, snapshot_id, region):

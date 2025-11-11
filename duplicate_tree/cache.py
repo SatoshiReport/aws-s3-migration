@@ -8,24 +8,23 @@ from datetime import datetime, timezone
 from typing import Dict, Optional, Sequence
 
 try:  # Prefer package-relative imports when packaged
-    from ..duplicate_tree_core import DuplicateCluster
-    from .analysis import (
+    from duplicate_tree.analysis import (
         MIN_REPORT_BYTES,
         MIN_REPORT_FILES,
         ScanFingerprint,
         cache_key,
         clusters_to_rows,
     )
+    from duplicate_tree_core import DuplicateCluster
 except ImportError:  # pragma: no cover - execution as standalone script
-    from analysis import (  # type: ignore
+    from analysis import (  # type: ignore[import]
         MIN_REPORT_BYTES,
         MIN_REPORT_FILES,
         ScanFingerprint,
         cache_key,
         clusters_to_rows,
     )
-
-    from duplicate_tree_core import DuplicateCluster  # type: ignore
+    from duplicate_tree_core import DuplicateCluster  # type: ignore[import]
 
 
 CACHE_TABLE_SQL = """

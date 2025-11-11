@@ -24,8 +24,8 @@ def _delete_aurora_instance(rds_client, instance_id):
             return False
         print(f"  ❌ Error deleting instance: {e}")
         raise
-    else:
-        return True
+
+    return True
 
 
 def _wait_for_instance_deletion(rds_client, instance_id):

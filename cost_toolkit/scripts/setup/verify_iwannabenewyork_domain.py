@@ -94,9 +94,9 @@ def test_https_connectivity(domain):
     except requests.RequestException as e:
         print(f"  ❌ HTTPS test failed: {e}")
         return False
-    else:
-        print(f"  ⚠️  HTTPS response: {response.status_code}")
-        return False
+
+    print(f"  ⚠️  HTTPS response: {response.status_code}")
+    return False
 
 
 def _extract_cert_dict(cert_items):
@@ -175,6 +175,7 @@ def test_canva_verification(domain):
             capture_output=True,
             text=True,
             timeout=10,
+            check=False,
         )
 
         if result.returncode == 0 and result.stdout.strip():
@@ -185,9 +186,9 @@ def test_canva_verification(domain):
     except ClientError as e:
         print(f"  ❌ Canva verification check failed: {e}")
         return False
-    else:
-        print("  ❌ No Canva verification TXT record found")
-        return False
+
+    print("  ❌ No Canva verification TXT record found")
+    return False
 
 
 def _find_hosted_zone_for_domain(route53, domain):
@@ -273,7 +274,7 @@ def _run_tests(domain):
     return results
 
 
-def _print_summary(results, domain):
+def _print_summary(results, _domain):
     """Print verification summary"""
     print("\n" + "=" * 80)
     print("🎯 VERIFICATION SUMMARY")
@@ -294,7 +295,7 @@ def _print_summary(results, domain):
     return passed_tests, failed_tests
 
 
-def _print_overall_status(domain, passed_tests, failed_tests, total_tests):
+def _print_overall_status(domain, passed_tests, _failed_tests, total_tests):
     """Print overall verification status"""
     if len(passed_tests) == total_tests:
         print(f"\n🎉 SUCCESS: {domain} is fully configured and working!")

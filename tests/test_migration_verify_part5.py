@@ -125,37 +125,11 @@ class TestBucketDeleterProgressUpdates:
         assert_equal(mock_s3.delete_objects.call_count, 3)
 
 
-def test_full_verification_workflow(tmp_path):
+def test_full_verification_workflow(setup_verify_test):
     """Test complete verification workflow from inventory to checksums"""
-    # Setup
-    bucket_path = tmp_path / "test-bucket"
-    bucket_path.mkdir()
-    (bucket_path / "file1.txt").write_bytes(b"content")
-    (bucket_path / "file2.txt").write_bytes(b"data")
+    test_env = setup_verify_test({"file1.txt": b"content", "file2.txt": b"data"})
 
-    md5_1 = hashlib.md5(b"content", usedforsecurity=False).hexdigest()
-    md5_2 = hashlib.md5(b"data", usedforsecurity=False).hexdigest()
-
-    mock_state = mock.Mock()
-    mock_state.get_bucket_info.return_value = {
-        "file_count": 2,
-        "total_size": 11,
-    }
-
-    mock_conn = mock.Mock()
-    mock_rows = [
-        {"key": "file1.txt", "size": 7, "etag": md5_1},
-        {"key": "file2.txt", "size": 4, "etag": md5_2},
-    ]
-    mock_conn.execute.return_value = mock_rows
-
-    # Use MagicMock for context manager support
-    mock_cm = mock.MagicMock()
-    mock_cm.__enter__.return_value = mock_conn
-    mock_cm.__exit__.return_value = False
-    mock_state.db_conn.get_connection.return_value = mock_cm
-
-    verifier = BucketVerifier(mock_state, tmp_path)
+    verifier = BucketVerifier(test_env["mock_state"], test_env["tmp_path"])
     results = verifier.verify_bucket("test-bucket")
 
     assert_equal(results["verified_count"], 2)
@@ -163,7 +137,7 @@ def test_full_verification_workflow(tmp_path):
     assert_equal(results["local_file_count"], 2)
 
 
-def test_error_handling_across_components(tmp_path):
+def test_error_handling_across_components(tmp_path, mock_db_connection):
     """Test error handling flows through components"""
     bucket_path = tmp_path / "test-bucket"
     bucket_path.mkdir()
@@ -175,17 +149,10 @@ def test_error_handling_across_components(tmp_path):
         "total_size": 100,
     }
 
-    mock_conn = mock.Mock()
     mock_rows = [
         {"key": "file1.txt", "size": 100, "etag": "abc123"},  # Wrong size
     ]
-    mock_conn.execute.return_value = mock_rows
-
-    # Use MagicMock for context manager support
-    mock_cm = mock.MagicMock()
-    mock_cm.__enter__.return_value = mock_conn
-    mock_cm.__exit__.return_value = False
-    mock_state.db_conn.get_connection.return_value = mock_cm
+    mock_state.db_conn.get_connection.return_value = mock_db_connection(mock_rows)
 
     verifier = BucketVerifier(mock_state, tmp_path)
 

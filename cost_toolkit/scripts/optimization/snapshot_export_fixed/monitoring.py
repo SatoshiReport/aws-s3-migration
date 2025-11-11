@@ -51,8 +51,8 @@ def _compare_checks_fixed(stability_checks):
     return stability_checks
 
 
-def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, fast_check=False):
-    """Check if S3 file exists and is stable - fail fast on validation errors"""
+def _get_stability_config(fast_check):
+    """Get stability check configuration based on fast_check mode."""
     stability_required_minutes = (
         constants.S3_FAST_CHECK_MINUTES if fast_check else constants.S3_STABILITY_CHECK_MINUTES
     )
@@ -62,6 +62,38 @@ def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, f
         else constants.S3_STABILITY_CHECK_INTERVAL_MINUTES
     )
     required_stable_checks = stability_required_minutes // check_interval_minutes
+
+    return {
+        "stability_required_minutes": stability_required_minutes,
+        "check_interval_minutes": check_interval_minutes,
+        "required_stable_checks": required_stable_checks,
+    }
+
+
+def _validate_final_size(final_check, expected_size_gb, stability_required_minutes):
+    """Validate final file size and print results."""
+    min_expected_gb = expected_size_gb * constants.VMDK_MIN_COMPRESSION_RATIO
+    max_expected_gb = expected_size_gb * constants.VMDK_MAX_EXPANSION_RATIO
+
+    if not min_expected_gb <= final_check["size_gb"] <= max_expected_gb:
+        variance_percent = abs(final_check["size_gb"] - expected_size_gb) / expected_size_gb * 100
+        print(
+            f"   ⚠️  Size variance: Expected ~{expected_size_gb} GB, "
+            f"got {final_check['size_gb']:.2f} GB ({variance_percent:.1f}% difference)"
+        )
+
+    print(
+        f"   ✅ File stable for {stability_required_minutes} minutes "
+        f"at {final_check['size_gb']:.2f} GB"
+    )
+
+
+def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, fast_check=False):
+    """Check if S3 file exists and is stable - fail fast on validation errors"""
+    config = _get_stability_config(fast_check)
+    stability_required_minutes = config["stability_required_minutes"]
+    check_interval_minutes = config["check_interval_minutes"]
+    required_stable_checks = config["required_stable_checks"]
 
     print(f"   🔍 Checking S3 file stability: s3://{bucket_name}/{s3_key}")
 
@@ -96,20 +128,7 @@ def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, f
         )
 
     final_check = stability_checks[-1]
-    min_expected_gb = expected_size_gb * constants.VMDK_MIN_COMPRESSION_RATIO
-    max_expected_gb = expected_size_gb * constants.VMDK_MAX_EXPANSION_RATIO
-
-    if not (min_expected_gb <= final_check["size_gb"] <= max_expected_gb):
-        variance_percent = abs(final_check["size_gb"] - expected_size_gb) / expected_size_gb * 100
-        print(
-            f"   ⚠️  Size variance: Expected ~{expected_size_gb} GB, "
-            f"got {final_check['size_gb']:.2f} GB ({variance_percent:.1f}% difference)"
-        )
-
-    print(
-        f"   ✅ File stable for {stability_required_minutes} minutes "
-        f"at {final_check['size_gb']:.2f} GB"
-    )
+    _validate_final_size(final_check, expected_size_gb, stability_required_minutes)
 
     return {
         "size_bytes": final_check["size_bytes"],
@@ -136,7 +155,7 @@ def verify_s3_export_final(s3_client, bucket_name, s3_key, expected_size_gb):
     min_expected_gb = expected_size_gb * constants.VMDK_MIN_COMPRESSION_RATIO
     max_expected_gb = expected_size_gb * constants.VMDK_MAX_EXPANSION_RATIO
 
-    if not (min_expected_gb <= file_size_gb <= max_expected_gb):
+    if not min_expected_gb <= file_size_gb <= max_expected_gb:
         raise S3FileValidationException(  # noqa: TRY003
             f"Final size validation failed: {file_size_gb:.2f} GB "
             f"(expected {min_expected_gb:.1f}-{max_expected_gb:.1f} GB)"

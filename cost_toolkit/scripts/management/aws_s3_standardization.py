@@ -8,10 +8,11 @@ Implements specific S3 bucket configurations:
 4. Move all objects to Standard storage class
 """
 
-import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
-from ..aws_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_s3_client
+from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
+from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 # Bucket to exclude from standardization - DO NOT TOUCH
 EXCLUDED_BUCKET = "akiaiw6gwdirbsbuzqiq-arq-1"
@@ -23,15 +24,12 @@ BUCKET_TO_DELETE = "mail.satoshi.report"
 def get_bucket_region(bucket_name):
     """Get the region where a bucket is located"""
     try:
-        s3_client = boto3.client("s3")
-        response = s3_client.get_bucket_location(Bucket=bucket_name)
-        region = response.get("LocationConstraint")
-        # us-east-1 returns None for LocationConstraint
+        region = get_bucket_location(bucket_name)
     except ClientError as e:
         print(f"Error getting region for bucket {bucket_name}: {e}")
         return "us-east-1"
 
-    return region if region else "us-east-1"
+    return region
 
 
 def _delete_versioned_objects(s3_client, bucket_name):
@@ -69,7 +67,7 @@ def delete_bucket_completely(bucket_name):
     """Delete a bucket and all its contents"""
     try:
         region = get_bucket_region(bucket_name)
-        s3_client = boto3.client("s3", region_name=region)
+        s3_client = create_s3_client(region=region)
 
         print(f"🗑️  Deleting bucket: {bucket_name}")
         print(f"  Listing objects in {bucket_name}...")
@@ -100,7 +98,7 @@ def delete_bucket_completely(bucket_name):
 def ensure_bucket_private(bucket_name, region):
     """Ensure a bucket has private access configuration"""
     try:
-        s3_client = boto3.client("s3", region_name=region)
+        s3_client = create_s3_client(region=region)
 
         print(f"🔒 Securing bucket: {bucket_name}")
 
@@ -136,7 +134,7 @@ def ensure_bucket_private(bucket_name, region):
 def remove_lifecycle_policy(bucket_name, region):
     """Remove lifecycle policy from a bucket"""
     try:
-        s3_client = boto3.client("s3", region_name=region)
+        s3_client = create_s3_client(region=region)
         print(f"📋 Removing lifecycle policy from: {bucket_name}")
 
         try:
@@ -149,8 +147,7 @@ def remove_lifecycle_policy(bucket_name, region):
                 return True
             print(f"❌ Error removing lifecycle policy from {bucket_name}: {e}")
             return False
-        else:
-            return True
+        return True
     except ClientError as e:
         print(f"❌ Unexpected error removing lifecycle policy from {bucket_name}: {e}")
         return False
@@ -200,7 +197,7 @@ def _process_page_objects(s3_client, bucket_name, page):
 def move_objects_to_standard_storage(bucket_name, region):
     """Move all objects in a bucket to Standard storage class"""
     try:
-        s3_client = boto3.client("s3", region_name=region)
+        s3_client = create_s3_client(region=region)
         print(f"📦 Converting objects to Standard storage in: {bucket_name}")
 
         paginator = s3_client.get_paginator("list_objects_v2")
@@ -257,9 +254,9 @@ def standardize_s3_buckets():
 
     try:
         # Get all buckets
-        s3_client = boto3.client("s3")
-        response = s3_client.list_buckets()
-        buckets = response.get("Buckets", [])
+        from cost_toolkit.scripts.aws_s3_operations import list_buckets
+
+        buckets = list_buckets()
 
         if not buckets:
             print("✅ No S3 buckets found in your account")

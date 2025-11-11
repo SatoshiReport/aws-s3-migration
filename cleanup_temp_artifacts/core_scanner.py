@@ -21,6 +21,8 @@ PROGRESS_UPDATE_INTERVAL_SECONDS = 0.5
 
 @dataclass
 class Candidate:
+    """Represents a candidate directory or file for cleanup."""
+
     path: Path
     category: Category
     size_bytes: int | None
@@ -34,6 +36,8 @@ class Candidate:
 
 @dataclass
 class CandidateLoadResult:
+    """Result of loading cleanup candidates from database or cache."""
+
     candidates: list[Candidate]
     cache_path: Path | None
     cache_used: bool
@@ -122,6 +126,7 @@ def _process_parent_directory(
     file_size: int,
     candidates: dict[Path, Candidate],
     non_matching: set[Path],
+    *,
     categories: list[Category],
     cutoff_ts: float | None,
 ) -> None:
@@ -204,7 +209,12 @@ def scan_candidates_from_db(
         file_size = row["size"] or 0
         for parent in iter_relevant_dirs(local_file, base_path):
             _process_parent_directory(
-                parent, file_size, candidates, non_matching, categories, cutoff_ts
+                parent,
+                file_size,
+                candidates,
+                non_matching,
+                categories=categories,
+                cutoff_ts=cutoff_ts,
             )
     progress.finish()
     return _filter_candidates_by_size(candidates, min_size_bytes)

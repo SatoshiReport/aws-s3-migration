@@ -5,28 +5,19 @@ Restores EBS snapshots from S3 exports when needed.
 This script handles the reverse process of importing AMIs from S3 and creating snapshots.
 """
 
-import os
 import sys
 import time
 from datetime import datetime
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
+
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
 def load_aws_credentials():
     """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+    return setup_aws_credentials()
 
 
 def list_s3_exports(s3_client, bucket_name):
@@ -159,9 +150,9 @@ def create_snapshot_from_ami(ec2_client, ami_id, description):
     except ClientError as e:
         print(f"   ❌ Error creating snapshot from AMI: {e}")
         return None
-    else:
-        print("   ❌ No root snapshot found in AMI")
-        return None
+
+    print("   ❌ No root snapshot found in AMI")
+    return None
 
 
 def _get_user_inputs():

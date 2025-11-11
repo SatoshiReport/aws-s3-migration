@@ -112,7 +112,7 @@ def load_aws_credentials():
     return aws_access_key_id, aws_secret_access_key
 
 
-def delete_security_group(ec2_client, group_id, group_name, region):
+def delete_security_group(ec2_client, group_id, group_name, _region):
     """Delete a specific security group"""
     try:
         print(f"   🗑️  Deleting security group: {group_id} ({group_name})")

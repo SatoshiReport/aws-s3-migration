@@ -5,12 +5,12 @@ Checks if stuck exports have actually completed in S3 despite AWS showing 'activ
 This addresses the known AWS issue where exports get stuck at 80% progress with 'converting' status.
 """
 
-import os
 from datetime import datetime
 
-import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
+
+from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 EXPORT_STABILITY_MINUTES = 10
 
@@ -24,16 +24,7 @@ class AWSCredentialsError(Exception):
 
 def load_aws_credentials():
     """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise AWSCredentialsError()
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+    return setup_aws_credentials()
 
 
 def _check_s3_file_exists(s3_client, bucket_name, s3_key):
@@ -112,18 +103,8 @@ def _process_stuck_export(task, s3_client):
 
 def check_active_exports(region, aws_access_key_id, aws_secret_access_key):
     """Check all active export tasks in a region"""
-    ec2_client = boto3.client(
-        "ec2",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-    s3_client = boto3.client(
-        "s3",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
+    ec2_client, s3_client = create_ec2_and_s3_clients(
+        region, aws_access_key_id, aws_secret_access_key
     )
 
     print(f"\n🔍 Checking active exports in {region}...")

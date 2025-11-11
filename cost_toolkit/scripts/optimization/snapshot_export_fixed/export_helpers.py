@@ -7,25 +7,18 @@ from botocore.exceptions import ClientError
 from . import constants
 from .constants import (
     EXPORT_STATUS_CHECK_INTERVAL_SECONDS,
+    ExportAPIException,
     ExportTaskDeletedException,
+    ExportTaskFailedException,
     ExportTaskStuckException,
 )
 
 
 def _start_export_task_fixed(ec2_client, ami_id, bucket_name):
     """Start AMI export task and return task ID and S3 key."""
-    print(f"   🔄 Exporting AMI {ami_id} to S3 bucket {bucket_name}...")
+    from ..snapshot_export_common import start_ami_export_task
 
-    response = ec2_client.export_image(
-        ImageId=ami_id,
-        DiskImageFormat="VMDK",
-        S3ExportLocation={"S3Bucket": bucket_name, "S3Prefix": f"ebs-snapshots/{ami_id}/"},
-        Description=f"Export of AMI {ami_id} for cost optimization",
-    )
-
-    export_task_id = response["ExportImageTaskId"]
-    s3_key = f"ebs-snapshots/{ami_id}/{export_task_id}.vmdk"
-    print(f"   ✅ Started export task: {export_task_id}")
+    export_task_id, s3_key = start_ami_export_task(ec2_client, ami_id, bucket_name)
     print("   ⏳ Monitoring export progress with intelligent completion detection...")
 
     return export_task_id, s3_key
@@ -52,8 +45,8 @@ def _handle_task_deletion_recovery(s3_client, bucket_name, s3_key, snapshot_size
         raise ExportTaskDeletedException(  # noqa: TRY003
             f"Export task deleted and no valid S3 file found: {s3_error}"
         ) from s3_error
-    else:
-        return True, s3_key
+
+    return True, s3_key
 
 
 def _fetch_export_task_status(ec2_client, export_task_id):
@@ -72,7 +65,7 @@ def _check_terminal_state_fixed(task, status, elapsed_hours):
 
     if status == "failed":
         error_msg = task.get("StatusMessage", "Unknown error")
-        raise Exception(  # noqa: TRY002, TRY003
+        raise ExportTaskFailedException(  # noqa: TRY003
             f"AWS export failed after {elapsed_hours:.1f} hours: {error_msg}"
         )
 
@@ -84,13 +77,9 @@ def _check_terminal_state_fixed(task, status, elapsed_hours):
 
 def _print_export_status(status, progress, status_msg, elapsed_hours):
     """Print formatted export status."""
-    if status_msg:
-        print(
-            f"   📊 AWS Status: {status} | Progress: {progress}% | "
-            f"Message: {status_msg} | Elapsed: {elapsed_hours:.1f}h"
-        )
-    else:
-        print(f"   📊 AWS Status: {status} | Progress: {progress}% | Elapsed: {elapsed_hours:.1f}h")
+    from ..snapshot_export_common import print_export_status
+
+    print_export_status(status, progress, status_msg, elapsed_hours)
 
 
 def _track_progress_change(current_progress, last_progress_value, current_time, last_change_time):
@@ -110,7 +99,7 @@ def _handle_api_errors(consecutive_api_errors, exception):
     )
 
     if consecutive_api_errors >= constants.MAX_CONSECUTIVE_API_ERRORS:
-        raise Exception(  # noqa: TRY002, TRY003
+        raise ExportAPIException(  # noqa: TRY003
             f"Too many consecutive API errors ({consecutive_api_errors}) - failing fast"
         )
 
@@ -174,7 +163,7 @@ def monitor_export_with_recovery(
 
 
 def export_ami_to_s3_with_recovery(
-    ec2_client, s3_client, ami_id, bucket_name, region, snapshot_size_gb
+    ec2_client, s3_client, ami_id, bucket_name, _region, snapshot_size_gb
 ):
     """
     Export AMI to S3 with proper error handling and recovery - fail fast on unrecoverable errors

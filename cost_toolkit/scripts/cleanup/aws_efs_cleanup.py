@@ -9,11 +9,11 @@ import time
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts import aws_utils
+
 
 def setup_aws_credentials():
     """Load AWS credentials from ~/.env via shared helper."""
-    from cost_toolkit.scripts import aws_utils
-
     aws_utils.setup_aws_credentials()
 
 
@@ -35,7 +35,7 @@ def _delete_mount_targets(efs_client, file_system_id):
 def _wait_for_mount_targets_deletion(efs_client, file_system_id):
     """Wait for mount targets to be fully deleted."""
     print("  Waiting for mount targets to be deleted...")
-    for _ in range(6):
+    for _retry_count in range(6):
         time.sleep(10)
         try:
             current_mts = efs_client.describe_mount_targets(FileSystemId=file_system_id)

@@ -16,25 +16,11 @@ MANUAL (with exact commands provided):
 This approach gives you control over the problematic AWS export service.
 """
 
-import os
 from datetime import datetime
 
-import boto3
-from dotenv import load_dotenv
-
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
+from cost_toolkit.scripts.aws_utils import load_aws_credentials_from_env
+from cost_toolkit.scripts.snapshot_export_common import SAMPLE_SNAPSHOTS
 
 
 def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
@@ -113,18 +99,8 @@ def prepare_snapshot_for_export(snapshot_info, aws_access_key_id, aws_secret_acc
     print(f"\n🔍 Preparing {snapshot_id} ({size_gb} GB) in {region}...")
 
     # Create clients
-    ec2_client = boto3.client(
-        "ec2",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-    s3_client = boto3.client(
-        "s3",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
+    ec2_client, s3_client = create_ec2_and_s3_clients(
+        region, aws_access_key_id, aws_secret_access_key
     )
 
     # Create S3 bucket
@@ -150,7 +126,7 @@ def prepare_snapshot_for_export(snapshot_info, aws_access_key_id, aws_secret_acc
     }
 
 
-def _build_export_command(ami_id, bucket_name, region, snapshot_id):
+def _build_export_command(_ami_id, _bucket_name, _region, _snapshot_id):
     """Build AWS CLI export command"""
     return """aws ec2 export-image \\
     --image-id {ami_id} \\
@@ -160,7 +136,7 @@ def _build_export_command(ami_id, bucket_name, region, snapshot_id):
     --region {region}"""
 
 
-def _build_monitor_command(region, ami_id):
+def _build_monitor_command(_region, _ami_id):
     """Build monitoring command"""
     return """# Monitor export progress:
 aws ec2 describe-export-image-tasks \\
@@ -169,7 +145,7 @@ aws ec2 describe-export-image-tasks \\
     --output table"""
 
 
-def _build_s3_check_command(bucket_name, ami_id):
+def _build_s3_check_command(_bucket_name, _ami_id):
     """Build S3 verification command"""
     return """# Check S3 file directly:
 aws s3 ls s3://{bucket_name}/ebs-snapshots/{ami_id}/ --recursive --human-readable
@@ -178,7 +154,7 @@ aws s3 ls s3://{bucket_name}/ebs-snapshots/{ami_id}/ --recursive --human-readabl
 aws s3api head-object --bucket {bucket_name} --key ebs-snapshots/{ami_id}/{ami_id}.vmdk"""
 
 
-def _build_cleanup_command(ami_id, region):
+def _build_cleanup_command(_ami_id, _region):
     """Build cleanup command"""
     return """# CLEANUP (run only after successful export):
 aws ec2 deregister-image --image-id {ami_id} --region {region}"""
@@ -273,26 +249,7 @@ def generate_manual_commands(prepared_snapshots):
 
 def _get_target_snapshots():
     """Get list of snapshots to process"""
-    return [
-        {
-            "snapshot_id": "snap-036eee4a7c291fd26",
-            "region": "us-east-2",
-            "size_gb": 8,
-            "description": "Copied for DestinationAmi ami-05d0a30507ebee9d6",
-        },
-        {
-            "snapshot_id": "snap-046b7eace8694913b",
-            "region": "eu-west-2",
-            "size_gb": 64,
-            "description": "EBS snapshot for cost optimization",
-        },
-        {
-            "snapshot_id": "snap-0f68820355c25e73e",
-            "region": "eu-west-2",
-            "size_gb": 384,
-            "description": "Large EBS snapshot for cost optimization",
-        },
-    ]
+    return SAMPLE_SNAPSHOTS
 
 
 def _prepare_all_snapshots(snapshots, aws_access_key_id, aws_secret_access_key):
@@ -341,7 +298,7 @@ def main():
     print("📋 Provide monitoring and cleanup commands")
     print()
 
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_env()
     snapshots = _get_target_snapshots()
 
     total_size_gb = sum(snap["size_gb"] for snap in snapshots)

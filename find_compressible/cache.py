@@ -13,6 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 try:
+    from cost_toolkit.common.cli_utils import confirm_reset_state_db
     from state_db_admin import reseed_state_db_from_local_drive
 except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
     raise SystemExit(f"Unable to import state_db_admin module: {exc}") from exc
@@ -32,17 +33,7 @@ def format_size(num: int) -> str:
 
 def _confirm_state_db_reset(db_path: Path, skip_prompt: bool) -> bool:
     """Prompt user to confirm state DB reset unless skip_prompt is True."""
-    if skip_prompt:
-        return True
-    resp = (
-        input(
-            f"Reset migrate_v2 state database at {db_path}? "
-            "This deletes cached migration metadata. [y/N] "
-        )
-        .strip()
-        .lower()
-    )
-    return resp in {"y", "yes"}
+    return confirm_reset_state_db(str(db_path), skip_prompt)
 
 
 def handle_state_db_reset(

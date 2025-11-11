@@ -5,7 +5,6 @@ Gets detailed billing information for today to identify currently active cost-ge
 """
 
 import os
-import subprocess
 from collections import defaultdict
 from datetime import datetime, timedelta
 
@@ -13,20 +12,11 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
+from cost_toolkit.common.terminal_utils import clear_screen
+
 # Constants for cost analysis thresholds and calculations
 MIN_TREND_DATA_POINTS = 2  # Minimum number of data points needed for trend analysis
 MINIMUM_COST_THRESHOLD = 0.001  # Minimum cost ($) to display detailed breakdown
-
-
-def clear_screen():
-    """Clear the terminal screen without invoking a shell."""
-    try:
-        if os.name == "nt":
-            subprocess.run(["cmd", "/c", "cls"], check=False)
-        else:
-            subprocess.run(["clear"], check=False)
-    except FileNotFoundError:
-        print("\033c", end="")
 
 
 def setup_aws_credentials():
@@ -242,8 +232,8 @@ def _display_trend_analysis(daily_trends, today_service_costs):
                     cost = trend["cost"]
                     if cost > 0:
                         bar_length = min(int(cost * 10000), 50)
-                        bar = "█" * bar_length
-                        print(f"   {date}: ${cost:.6f} {bar}")
+                        cost_bar = "█" * bar_length
+                        print(f"   {date}: ${cost:.6f} {cost_bar}")
 
 
 def _get_service_recommendation(service):

@@ -2,8 +2,16 @@
 """Audit Route53 DNS records and costs."""
 
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import (
+    create_route53_client,
+    create_route53resolver_client,
+)
+from cost_toolkit.scripts.aws_route53_operations import (
+    list_hosted_zones,
+    list_resource_record_sets,
+)
 
 # Route 53 constants
 COST_VARIANCE_THRESHOLD = 0.50  # Acceptable cost difference in dollars
@@ -13,11 +21,10 @@ EXPECTED_HOSTED_ZONE_COUNT_2 = 2  # Alternative configuration
 EXPECTED_HEALTH_CHECK_COUNT = 2  # Common health check count
 
 
-def _print_zone_records(route53, zone_id):
+def _print_zone_records(_route53, zone_id):
     """Print DNS records for a zone."""
     try:
-        records_response = route53.list_resource_record_sets(HostedZoneId=zone_id)
-        records = records_response.get("ResourceRecordSets", [])
+        records = list_resource_record_sets(hosted_zone_id=zone_id)
 
         print("  Records:")
         for record in records:
@@ -48,10 +55,9 @@ def audit_route53_hosted_zones():
     print("=" * 80)
 
     try:
-        route53 = boto3.client("route53")
+        route53 = create_route53_client()
 
-        response = route53.list_hosted_zones()
-        hosted_zones = response.get("HostedZones", [])
+        hosted_zones = list_hosted_zones()
 
         if not hosted_zones:
             print("✅ No hosted zones found")
@@ -105,7 +111,7 @@ def audit_route53_health_checks():
     print("=" * 80)
 
     try:
-        route53 = boto3.client("route53")
+        route53 = create_route53_client()
 
         response = route53.list_health_checks()
         health_checks = response.get("HealthChecks", [])
@@ -158,7 +164,7 @@ def audit_route53_resolver_endpoints():
     print("=" * 80)
 
     try:
-        route53resolver = boto3.client("route53resolver")
+        route53resolver = create_route53resolver_client()
 
         # Get resolver endpoints
         response = route53resolver.list_resolver_endpoints()
@@ -213,6 +219,7 @@ def _print_cost_breakdown(
     hosted_zones,
     health_checks,
     resolver_endpoints,
+    *,
     total_hosted_zone_cost,
     total_health_check_cost,
     total_resolver_cost,
@@ -304,10 +311,10 @@ def main():
         hosted_zones,
         health_checks,
         resolver_endpoints,
-        total_hosted_zone_cost,
-        total_health_check_cost,
-        total_resolver_cost,
-        total_estimated_cost,
+        total_hosted_zone_cost=total_hosted_zone_cost,
+        total_health_check_cost=total_health_check_cost,
+        total_resolver_cost=total_resolver_cost,
+        total_estimated_cost=total_estimated_cost,
     )
     _print_optimization_opportunities(hosted_zones, health_checks, resolver_endpoints)
     _print_cost_explanation(hosted_zones, health_checks)

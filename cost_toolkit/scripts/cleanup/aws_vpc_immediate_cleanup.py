@@ -4,6 +4,8 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_utils import get_instance_info
+
 
 def release_public_ip_from_instance(instance_id, region_name):
     """Release public IP address from an EC2 instance"""
@@ -12,10 +14,7 @@ def release_public_ip_from_instance(instance_id, region_name):
 
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
-
-        # First, get instance details to see current public IP
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        instance = response["Reservations"][0]["Instances"][0]
+        instance = get_instance_info(instance_id, region_name)
 
         current_public_ip = instance.get("PublicIpAddress")
         if not current_public_ip:
@@ -46,22 +45,22 @@ def release_public_ip_from_instance(instance_id, region_name):
                     f"--allocation-id {allocation_id} --region {region_name}"
                 )
                 return True
-        else:
-            print("This is an auto-assigned public IP")
-            print("To remove it, we need to modify the instance's network interface")
+            print("✅ Elastic IP is already disassociated")
+            return True
 
-            # For auto-assigned IPs, we need to modify the instance
-            # This requires stopping and starting the instance
-            print(
-                "⚠️  To remove auto-assigned public IP, "
-                "the instance needs to be stopped and reconfigured"
-            )
-            print("This will cause downtime. Proceed? (This script will not auto-proceed)")
-            return False
+        print("This is an auto-assigned public IP")
+        print("To remove it, we need to modify the instance's network interface")
 
+        # For auto-assigned IPs, we need to modify the instance
+        # This requires stopping and starting the instance
+        print(
+            "⚠️  To remove auto-assigned public IP, "
+            "the instance needs to be stopped and reconfigured"
+        )
+        print("This will cause downtime. Proceed? (This script will not auto-proceed)")
     except ClientError as e:
         print(f"❌ Error releasing public IP: {e}")
-        return False
+    return False
 
 
 def remove_detached_internet_gateway(igw_id, region_name):

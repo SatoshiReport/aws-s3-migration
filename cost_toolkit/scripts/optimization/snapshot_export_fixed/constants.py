@@ -28,8 +28,16 @@ class ExportTaskDeletedException(Exception):
     """Raised when AWS export task is deleted during processing"""
 
 
+class ExportTaskFailedException(Exception):
+    """Raised when AWS export task fails"""
+
+
 class ExportTaskStuckException(Exception):
     """Raised when export task appears permanently stuck"""
+
+
+class ExportAPIException(Exception):
+    """Raised when too many consecutive API errors occur"""
 
 
 class S3FileValidationException(Exception):

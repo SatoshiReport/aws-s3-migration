@@ -32,8 +32,8 @@ def check_global_accelerator_status():
         if "AccessDenied" in str(e):
             return None, "⚠️ UNKNOWN - No permission to check Global Accelerator status"
         return None, f"⚠️ ERROR - {str(e)}"
-    else:
-        return False, f"❌ ACTIVE - {total_count} accelerators still enabled"
+
+    return False, f"❌ ACTIVE - {total_count} accelerators still enabled"
 
 
 def _check_lightsail_instances_in_region(lightsail_client):

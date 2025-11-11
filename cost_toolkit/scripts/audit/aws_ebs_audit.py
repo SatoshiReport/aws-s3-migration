@@ -1,33 +1,16 @@
 #!/usr/bin/env python3
 """Audit EBS volumes and storage costs."""
 
-import os
 from collections import defaultdict
 from datetime import datetime, timezone
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
+
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 # Constants
 OLD_SNAPSHOT_AGE_DAYS = 30
-
-
-def setup_aws_credentials():
-    """Load AWS credentials from .env file"""
-    # Load environment variables from .env file
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    # Check if credentials are loaded
-    if not os.environ.get("AWS_ACCESS_KEY_ID"):
-        print("⚠️  AWS credentials not found in ~/.env file.")
-        print("Please ensure ~/.env contains:")
-        print("  AWS_ACCESS_KEY_ID=your-access-key")
-        print("  AWS_SECRET_ACCESS_KEY=your-secret-key")
-        print("  AWS_DEFAULT_REGION=us-east-1")
-        return False
-
-    return True
 
 
 def get_all_regions():

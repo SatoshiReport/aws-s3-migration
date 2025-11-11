@@ -9,73 +9,27 @@ Audits all Elastic IP addresses across all AWS regions to identify:
 Unassociated Elastic IPs cost $0.005 per hour ($3.65/month each)
 """
 
-import os
 import sys
 
-import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
-
-
-def get_all_regions():
-    """Get list of all available AWS regions"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
-
-    ec2_client = boto3.client(
-        "ec2",
-        region_name="us-east-1",  # Use us-east-1 to get all regions
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-    try:
-        response = ec2_client.describe_regions()
-        return [region["RegionName"] for region in response["Regions"]]
-    except ClientError as e:
-        print(f"⚠️  Could not get all regions, using common ones: {e}")
-        # Fallback to common regions
-        return [
-            "us-east-1",
-            "us-east-2",
-            "us-west-1",
-            "us-west-2",
-            "eu-west-1",
-            "eu-west-2",
-            "eu-west-3",
-            "eu-central-1",
-            "ap-southeast-1",
-            "ap-southeast-2",
-            "ap-northeast-1",
-        ]
+from cost_toolkit.scripts.aws_client_factory import load_credentials_from_env
+from cost_toolkit.scripts.aws_ec2_operations import (
+    describe_addresses,
+    get_all_regions,
+    get_common_regions,
+    get_instance_name,
+)
 
 
 def audit_elastic_ips_in_region(region, aws_access_key_id, aws_secret_access_key):
     """Audit Elastic IPs in a specific region"""
     try:
-        ec2_client = boto3.client(
-            "ec2",
-            region_name=region,
+        addresses = describe_addresses(
+            region=region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
-
-        # Get all Elastic IPs
-        response = ec2_client.describe_addresses()
-        addresses = response.get("Addresses", [])
 
         if not addresses:
             return None
@@ -116,20 +70,6 @@ def audit_elastic_ips_in_region(region, aws_access_key_id, aws_secret_access_key
     return region_data
 
 
-def get_instance_name(ec2_client, instance_id):
-    """Get the name tag of an EC2 instance"""
-    try:
-        response = ec2_client.describe_instances(InstanceIds=[instance_id])
-        for reservation in response["Reservations"]:
-            for instance in reservation["Instances"]:
-                for tag in instance.get("Tags", []):
-                    if tag["Key"] == "Name":
-                        return tag["Value"]
-    except Exception:  # noqa: BLE001
-        return "Unknown"
-    return "Unnamed"
-
-
 def _scan_all_regions(regions, aws_access_key_id, aws_secret_access_key):
     """Scan all regions for Elastic IPs."""
     total_eips = 0
@@ -167,9 +107,10 @@ def _print_associated_eips(region_data, aws_access_key_id, aws_secret_access_key
 
     print(f"✅ Associated Elastic IPs ({len(region_data['associated_eips'])}):")
 
-    ec2_client = boto3.client(
-        "ec2",
-        region_name=region_data["region"],
+    from cost_toolkit.scripts.aws_client_factory import create_ec2_client
+
+    ec2_client = create_ec2_client(
+        region=region_data["region"],
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
@@ -190,9 +131,8 @@ def _print_unassociated_eips(region_data):
     if not region_data["unassociated_eips"]:
         return
 
-    print(
-        f"⚠️  Unassociated Elastic IPs ({len(region_data['unassociated_eips'])}) " "- COSTING MONEY:"
-    )
+    eip_count = len(region_data["unassociated_eips"])
+    print(f"⚠️  Unassociated Elastic IPs ({eip_count}) - COSTING MONEY:")
     for eip in region_data["unassociated_eips"]:
         tags_str = ""
         if eip["tags"]:
@@ -228,7 +168,7 @@ def _print_cleanup_recommendations(regions_with_eips, total_monthly_cost):
 
 def audit_all_elastic_ips():
     """Audit Elastic IPs across all AWS regions"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
 
     print("AWS Elastic IP Audit")
     print("=" * 80)
@@ -236,7 +176,11 @@ def audit_all_elastic_ips():
     print("⚠️  Note: Unassociated Elastic IPs cost $0.005/hour ($3.65/month each)")
     print()
 
-    regions = get_all_regions()
+    try:
+        regions = get_all_regions(aws_access_key_id, aws_secret_access_key)
+    except ClientError as e:
+        print(f"⚠️  Could not get all regions, using common ones: {e}")
+        regions = get_common_regions()
     regions_with_eips, total_eips, total_unassociated, total_monthly_cost = _scan_all_regions(
         regions, aws_access_key_id, aws_secret_access_key
     )

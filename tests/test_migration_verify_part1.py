@@ -17,10 +17,9 @@ from migration_verify import (
 from tests.assertions import assert_equal
 
 
-def test_load_expected_files_returns_file_map(tmp_path):
+def test_load_expected_files_returns_file_map(tmp_path, mock_db_connection):
     """Test loading expected files from database"""
     mock_state = mock.Mock()
-    mock_conn = mock.Mock()
 
     # Mock database rows as list
     mock_rows = [
@@ -28,13 +27,7 @@ def test_load_expected_files_returns_file_map(tmp_path):
         {"key": "dir/file2.txt", "size": 200, "etag": "def456"},
     ]
 
-    mock_conn.execute.return_value = mock_rows
-
-    # Use MagicMock for context manager support
-    mock_cm = mock.MagicMock()
-    mock_cm.__enter__.return_value = mock_conn
-    mock_cm.__exit__.return_value = False
-    mock_state.db_conn.get_connection.return_value = mock_cm
+    mock_state.db_conn.get_connection.return_value = mock_db_connection(mock_rows)
 
     checker = FileInventoryChecker(mock_state, tmp_path)
     result = checker.load_expected_files("test-bucket")
@@ -45,23 +38,16 @@ def test_load_expected_files_returns_file_map(tmp_path):
     assert_equal(result["dir/file2.txt"]["size"], 200)
 
 
-def test_load_expected_files_normalizes_windows_paths(tmp_path):
+def test_load_expected_files_normalizes_windows_paths(tmp_path, mock_db_connection):
     """Test that Windows path separators are normalized"""
     mock_state = mock.Mock()
-    mock_conn = mock.Mock()
 
     # Mock database with Windows-style path
     mock_rows = [
         {"key": "dir\\file.txt", "size": 100, "etag": "abc123"},
     ]
 
-    mock_conn.execute.return_value = mock_rows
-
-    # Use MagicMock for context manager support
-    mock_cm = mock.MagicMock()
-    mock_cm.__enter__.return_value = mock_conn
-    mock_cm.__exit__.return_value = False
-    mock_state.db_conn.get_connection.return_value = mock_cm
+    mock_state.db_conn.get_connection.return_value = mock_db_connection(mock_rows)
 
     checker = FileInventoryChecker(mock_state, tmp_path)
     result = checker.load_expected_files("test-bucket")

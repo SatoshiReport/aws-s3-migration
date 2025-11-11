@@ -87,6 +87,7 @@ def print_scan_summary(
     base_path: Path,
     db_path: Path,
     stats: Counter,
+    *,
     total_reported: int,
     total_bytes: int,
     reported_extensions: set[str],

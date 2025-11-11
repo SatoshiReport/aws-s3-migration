@@ -156,8 +156,8 @@ def _delete_zones(zones_to_delete):
     print("=" * 80)
 
     results = []
-    for zone_name, _ in zones_to_delete:
-        zone_success = delete_hosted_zone(zone_name, _)
+    for zone_name, zone_id in zones_to_delete:
+        zone_success = delete_hosted_zone(zone_name, zone_id)
         results.append((zone_name, zone_success))
         if zone_success:
             time.sleep(5)
@@ -189,7 +189,7 @@ def _calculate_total_savings(results, zones_to_delete):
     if ("Health Check", True) in results:
         total_savings += 0.50
 
-    for zone_name, _ in zones_to_delete:
+    for zone_name, _zone_id in zones_to_delete:
         if (zone_name, True) in results:
             total_savings += 0.50
 

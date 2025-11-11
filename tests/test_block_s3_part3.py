@@ -16,15 +16,14 @@ import block_s3
 from tests.assertions import assert_equal
 
 
-def test_main_with_bucket_names_and_all_flag_prefers_all(tmp_path, monkeypatch, capsys):
+def test_main_with_bucket_names_and_all_flag_prefers_all(setup_test_env, mock_aws_identity, capsys):
     """Test that --all flag takes precedence over specific bucket names"""
-    monkeypatch.chdir(tmp_path)
     all_buckets = ["bucket-from-all-flag"]
 
     with mock.patch("sys.argv", ["block_s3.py", "ignored-bucket", "--all"]):
         with mock.patch(
             "block_s3.get_aws_identity",
-            return_value={"user_arn": "arn:aws:iam::123:user/test"},
+            return_value=mock_aws_identity,
         ):
             with mock.patch("block_s3.list_s3_buckets", return_value=all_buckets):
                 with mock.patch(
@@ -41,17 +40,13 @@ def test_main_with_bucket_names_and_all_flag_prefers_all(tmp_path, monkeypatch, 
                         assert mock_save.call_count == 1
 
 
-def test_main_policies_directory_with_existing_directory(tmp_path, monkeypatch):
+def test_main_policies_directory_with_existing_directory(policies_dir, mock_aws_identity):
     """Test main() when policies directory already exists"""
-    monkeypatch.chdir(tmp_path)
-    # Pre-create the policies directory
-    policies_dir = tmp_path / "policies"
-    policies_dir.mkdir()
-
+    # policies_dir fixture already creates the directory
     with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
         with mock.patch(
             "block_s3.get_aws_identity",
-            return_value={"user_arn": "arn:aws:iam::123:user/test"},
+            return_value=mock_aws_identity,
         ):
             with mock.patch(
                 "block_s3.generate_restrictive_bucket_policy",
@@ -65,15 +60,14 @@ def test_main_policies_directory_with_existing_directory(tmp_path, monkeypatch):
                     assert policies_dir.exists()
 
 
-def test_main_with_bucket_name_containing_special_characters(tmp_path, monkeypatch):
+def test_main_with_bucket_name_containing_special_characters(setup_test_env, mock_aws_identity):
     """Test main() with bucket names containing hyphens and numbers"""
-    monkeypatch.chdir(tmp_path)
     special_bucket_name = "my-test-bucket-123"
 
     with mock.patch("sys.argv", ["block_s3.py", special_bucket_name]):
         with mock.patch(
             "block_s3.get_aws_identity",
-            return_value={"user_arn": "arn:aws:iam::123:user/test"},
+            return_value=mock_aws_identity,
         ):
             with mock.patch(
                 "block_s3.generate_restrictive_bucket_policy",
@@ -88,15 +82,13 @@ def test_main_with_bucket_name_containing_special_characters(tmp_path, monkeypat
                     assert special_bucket_name in filename
 
 
-def test_argparse_accepts_multiple_positional_arguments(tmp_path, monkeypatch):
+def test_argparse_accepts_multiple_positional_arguments(setup_test_env, mock_aws_identity):
     """Test that argparse correctly handles multiple positional bucket arguments"""
-    monkeypatch.chdir(tmp_path)
-
     # This should work without raising any argparse errors
     with mock.patch("sys.argv", ["block_s3.py", "bucket1", "bucket2", "bucket3"]):
         with mock.patch(
             "block_s3.get_aws_identity",
-            return_value={"user_arn": "arn:aws:iam::123:user/test"},
+            return_value=mock_aws_identity,
         ):
             with mock.patch(
                 "block_s3.generate_restrictive_bucket_policy",
@@ -108,14 +100,12 @@ def test_argparse_accepts_multiple_positional_arguments(tmp_path, monkeypatch):
                     assert_equal(mock_save.call_count, 3)
 
 
-def test_argparse_recognizes_all_flag(tmp_path, monkeypatch):
+def test_argparse_recognizes_all_flag(setup_test_env, mock_aws_identity):
     """Test that argparse correctly recognizes --all flag"""
-    monkeypatch.chdir(tmp_path)
-
     with mock.patch("sys.argv", ["block_s3.py", "--all"]):
         with mock.patch(
             "block_s3.get_aws_identity",
-            return_value={"user_arn": "arn:aws:iam::123:user/test"},
+            return_value=mock_aws_identity,
         ):
             with mock.patch("block_s3.list_s3_buckets", return_value=["bucket1"]):
                 with mock.patch(
@@ -128,14 +118,12 @@ def test_argparse_recognizes_all_flag(tmp_path, monkeypatch):
                         assert mock_save.call_count == 1
 
 
-def test_policies_directory_actually_created(tmp_path, monkeypatch):
+def test_policies_directory_actually_created(setup_test_env, mock_aws_identity):
     """Integration test: verify policies directory is actually created on disk"""
-    monkeypatch.chdir(tmp_path)
-
     with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
         with mock.patch(
             "block_s3.get_aws_identity",
-            return_value={"user_arn": "arn:aws:iam::123:user/test"},
+            return_value=mock_aws_identity,
         ):
             with mock.patch(
                 "block_s3.generate_restrictive_bucket_policy",
@@ -145,13 +133,12 @@ def test_policies_directory_actually_created(tmp_path, monkeypatch):
                     block_s3.main()
 
                     # Check on actual filesystem
-                    policies_path = tmp_path / "policies"
+                    policies_path = setup_test_env / "policies"
                     assert os.path.isdir(str(policies_path))
 
 
-def test_policy_file_path_constructed_correctly(tmp_path, monkeypatch):
+def test_policy_file_path_constructed_correctly(setup_test_env, mock_aws_identity):
     """Test that policy file paths are constructed with correct directory"""
-    monkeypatch.chdir(tmp_path)
     captured_filename = None
 
     def capture_filename(policy, filename):
@@ -161,7 +148,7 @@ def test_policy_file_path_constructed_correctly(tmp_path, monkeypatch):
     with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
         with mock.patch(
             "block_s3.get_aws_identity",
-            return_value={"user_arn": "arn:aws:iam::123:user/test"},
+            return_value=mock_aws_identity,
         ):
             with mock.patch(
                 "block_s3.generate_restrictive_bucket_policy",
@@ -179,13 +166,11 @@ def test_policy_file_path_constructed_correctly(tmp_path, monkeypatch):
                     assert os.sep in filename_str
 
 
-def test_main_can_be_called_multiple_times(tmp_path, monkeypatch):
+def test_main_can_be_called_multiple_times(setup_test_env, mock_aws_identity):
     """Test that main() can be called multiple times without state issues"""
-    monkeypatch.chdir(tmp_path)
-
     with mock.patch(
         "block_s3.get_aws_identity",
-        return_value={"user_arn": "arn:aws:iam::123:user/test"},
+        return_value=mock_aws_identity,
     ):
         with mock.patch(
             "block_s3.generate_restrictive_bucket_policy",

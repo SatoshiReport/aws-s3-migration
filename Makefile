@@ -31,9 +31,11 @@ SHARED_DOC_ROOT := .
 # ============================================================================
 # ALLOWED CUSTOMIZATIONS
 # ============================================================================
-PYLINT_ARGS := --disable=R0801  # Disable duplicate code check (allowed)
 
 include ci_shared.mk
+
+# Exclude standalone CLI scripts from unused module check
+UNUSED_MODULE_GUARD_ARGS := --root $(SHARED_SOURCE_ROOT) --exclude tests conftest.py __init__.py cost_toolkit/scripts/rds
 
 format:
 	black $(FORMAT_TARGETS)

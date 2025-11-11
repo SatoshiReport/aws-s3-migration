@@ -32,6 +32,35 @@ class SnapshotCreationError(ValueError):
         super().__init__(f"Error creating snapshot for volume {volume_id}: {str(error)}")
 
 
+def _generate_snapshot_description(volume_name, volume_id, volume_size):
+    """Generate default snapshot description."""
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    return f"Snapshot of {volume_name} ({volume_id}) - {volume_size}GB - {timestamp}"
+
+
+def _create_snapshot_tags(volume_tags, volume_id):
+    """Create tags for the snapshot based on volume tags."""
+    snapshot_tags = []
+    for key, value in volume_tags.items():
+        if key == "Name":
+            snapshot_tags.append({"Key": "Name", "Value": f"{value}-snapshot"})
+        else:
+            snapshot_tags.append({"Key": key, "Value": value})
+
+    # Add additional metadata tags
+    snapshot_tags.extend(
+        [
+            {"Key": "SourceVolume", "Value": volume_id},
+            {"Key": "CreatedBy", "Value": "aws_ebs_volume_manager"},
+            {
+                "Key": "CreatedDate",
+                "Value": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            },
+        ]
+    )
+    return snapshot_tags
+
+
 def create_volume_snapshot(volume_id: str, description: Optional[str] = None) -> Dict:
     """
     Create a snapshot of an EBS volume.
@@ -58,8 +87,7 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
 
         # Create default description if none provided
         if not description:
-            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-            description = f"Snapshot of {volume_name} ({volume_id}) - {volume_size}GB - {timestamp}"
+            description = _generate_snapshot_description(volume_name, volume_id, volume_size)
 
     except Exception as e:
         raise VolumeRetrievalError(volume_id, e) from e
@@ -67,30 +95,11 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
     # Create the snapshot
     try:
         snapshot_response = ec2_client.create_snapshot(VolumeId=volume_id, Description=description)
-
         snapshot_id = snapshot_response["SnapshotId"]
 
         # Add tags to the snapshot to match the volume
         if volume_tags:
-            snapshot_tags = []
-            for key, value in volume_tags.items():
-                if key == "Name":
-                    snapshot_tags.append({"Key": "Name", "Value": f"{value}-snapshot"})
-                else:
-                    snapshot_tags.append({"Key": key, "Value": value})
-
-            # Add additional metadata tags
-            snapshot_tags.extend(
-                [
-                    {"Key": "SourceVolume", "Value": volume_id},
-                    {"Key": "CreatedBy", "Value": "aws_ebs_volume_manager"},
-                    {
-                        "Key": "CreatedDate",
-                        "Value": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-                    },
-                ]
-            )
-
+            snapshot_tags = _create_snapshot_tags(volume_tags, volume_id)
             ec2_client.create_tags(Resources=[snapshot_id], Tags=snapshot_tags)
 
         return {

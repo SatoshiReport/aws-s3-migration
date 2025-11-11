@@ -14,9 +14,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from cleanup_temp_artifacts.scanner import Candidate
+
 if TYPE_CHECKING:
     from cleanup_temp_artifacts.categories import Category
-    from cleanup_temp_artifacts.scanner import Candidate
 
 CACHE_VERSION = 2
 
@@ -56,8 +57,6 @@ def load_cache(
     category_map: dict[str, Category],
 ) -> tuple[list[Candidate], dict] | None:
     """Load cached scan results and validate against current scan parameters."""
-    from cleanup_temp_artifacts.scanner import Candidate
-
     try:
         payload = json.loads(cache_path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
@@ -125,7 +124,7 @@ def write_cache(  # noqa: PLR0913 - function arguments reflect cache metadata re
     cache_path.write_text(json.dumps(payload, indent=2))
 
 
-def cache_is_valid(  # noqa: PLR0911 - explicit guard clauses improve readability
+def cache_is_valid(
     metadata: dict,
     *,
     ttl_seconds: int,
@@ -134,21 +133,23 @@ def cache_is_valid(  # noqa: PLR0911 - explicit guard clauses improve readabilit
     db_mtime_ns: int,
 ) -> bool:
     """Check if cached metadata is still valid based on TTL and database state."""
-    if metadata.get("rowcount") != rowcount:
+    # Check database state consistency
+    if (
+        metadata.get("rowcount") != rowcount
+        or metadata.get("max_rowid") != max_rowid
+        or metadata.get("db_mtime_ns") != db_mtime_ns
+    ):
         return False
-    if metadata.get("max_rowid") != max_rowid:
-        return False
-    if metadata.get("db_mtime_ns") != db_mtime_ns:
-        return False
-    generated_at = metadata.get("generated_at")
+
+    # Check TTL if enabled
     if ttl_seconds > 0:
+        generated_at = metadata.get("generated_at")
         if not generated_at:
             return False
         try:
             generated_dt = datetime.fromisoformat(generated_at)
+            age = (datetime.now(timezone.utc) - generated_dt).total_seconds()
         except ValueError:
             return False
-        age = (datetime.now(timezone.utc) - generated_dt).total_seconds()
-        if age > ttl_seconds:
-            return False
+        return age <= ttl_seconds
     return True

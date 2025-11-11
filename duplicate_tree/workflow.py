@@ -7,29 +7,28 @@ from pathlib import Path
 from typing import List, Optional
 
 try:  # Prefer package-relative imports when packaged
-    from ..duplicate_tree_core import (
+    from duplicate_tree.analysis import (
+        ClusterRow,
+        ScanFingerprint,
+        apply_thresholds,
+        clusters_to_rows,
+        render_report_rows,
+    )
+    from duplicate_tree.cache import load_cached_report, store_cached_report
+    from duplicate_tree_core import (
         DirectoryIndex,
         find_exact_duplicates,
     )
-    from .analysis import (
-        ClusterRow,
-        ScanFingerprint,
-        apply_thresholds,
-        clusters_to_rows,
-        render_report_rows,
-    )
-    from .cache import load_cached_report, store_cached_report
 except ImportError:  # pragma: no cover - execution as standalone script
-    from analysis import (  # type: ignore
+    from analysis import (  # type: ignore[import]
         ClusterRow,
         ScanFingerprint,
         apply_thresholds,
         clusters_to_rows,
         render_report_rows,
     )
-    from cache import load_cached_report, store_cached_report  # type: ignore
-
-    from duplicate_tree_core import (  # type: ignore
+    from cache import load_cached_report, store_cached_report  # type: ignore[import]
+    from duplicate_tree_core import (  # type: ignore[import]
         DirectoryIndex,
         find_exact_duplicates,
     )

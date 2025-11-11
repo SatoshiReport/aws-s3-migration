@@ -136,17 +136,13 @@ def test_optimization_scripts_import():
     try:
         from cost_toolkit.scripts.optimization import (
             aws_s3_to_snapshot_restore,
-            aws_snapshot_to_s3_export,
             aws_snapshot_to_s3_export_fixed,
-            aws_snapshot_to_s3_export_robust,
         )
 
         assert all(
             [
                 aws_s3_to_snapshot_restore,
-                aws_snapshot_to_s3_export,
                 aws_snapshot_to_s3_export_fixed,
-                aws_snapshot_to_s3_export_robust,
             ]
         )
     except ImportError as exc:

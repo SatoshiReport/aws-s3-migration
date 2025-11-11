@@ -101,7 +101,7 @@ def disable_dlm_policies(region):
                 if state == "ENABLED":
                     try:
                         # Update policy to DISABLED state
-                        _ = dlm_client.get_lifecycle_policy(PolicyId=policy_id)
+                        dlm_client.get_lifecycle_policy(PolicyId=policy_id)
 
                         # Update the policy state to DISABLED
                         dlm_client.update_lifecycle_policy(PolicyId=policy_id, State="DISABLED")

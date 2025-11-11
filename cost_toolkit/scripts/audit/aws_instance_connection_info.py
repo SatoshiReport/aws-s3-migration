@@ -5,6 +5,8 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_utils import get_instance_info
+
 
 def _print_instance_basic_info(instance):
     """Print basic instance information."""
@@ -131,9 +133,7 @@ def get_instance_connection_info(instance_id, region_name):
 
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
-
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        instance = response["Reservations"][0]["Instances"][0]
+        instance = get_instance_info(instance_id, region_name)
 
         _print_instance_basic_info(instance)
         _print_network_info(instance)

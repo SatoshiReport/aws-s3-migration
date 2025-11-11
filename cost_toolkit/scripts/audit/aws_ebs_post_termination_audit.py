@@ -9,58 +9,54 @@ import boto3
 from botocore.exceptions import ClientError
 
 
+def _build_attachment_info(attachments):
+    """Build attachment information string from volume attachments."""
+    if not attachments:
+        return "Unattached"
+
+    attachment = attachments[0]
+    instance_id = attachment.get("InstanceId", "Unknown")
+    device = attachment.get("Device", "Unknown")
+    state = attachment.get("State", "Unknown")
+    delete_on_termination = attachment.get("DeleteOnTermination", False)
+    return (
+        f"{instance_id} ({device}) - State: {state}, "
+        f"DeleteOnTermination: {delete_on_termination}"
+    )
+
+
+def _build_volume_detail(volume):
+    """Build volume detail dictionary from volume data."""
+    size_gb = volume["Size"]
+    monthly_cost = size_gb * 0.08
+    attachment_info = _build_attachment_info(volume.get("Attachments", []))
+    tags = {tag["Key"]: tag["Value"] for tag in volume.get("Tags", [])}
+    name = tags.get("Name", "Unnamed")
+
+    return {
+        "VolumeId": volume["VolumeId"],
+        "Name": name,
+        "Size": size_gb,
+        "State": volume["State"],
+        "VolumeType": volume["VolumeType"],
+        "CreateTime": volume["CreateTime"],
+        "Attachment": attachment_info,
+        "MonthlyCost": monthly_cost,
+        "Tags": tags,
+    }
+
+
 def get_ebs_volumes_by_region(region_name):
     """Get all EBS volumes in a specific region with detailed information"""
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
-
-        # Get all volumes
         response = ec2.describe_volumes()
         volumes = response["Volumes"]
-
-        volume_details = []
-        for volume in volumes:
-            # Calculate monthly cost (GP3 pricing: $0.08/GB/month)
-            size_gb = volume["Size"]
-            monthly_cost = size_gb * 0.08
-
-            # Get attachment info
-            attachments = volume.get("Attachments", [])
-            attachment_info = "Unattached"
-            if attachments:
-                attachment = attachments[0]
-                instance_id = attachment.get("InstanceId", "Unknown")
-                device = attachment.get("Device", "Unknown")
-                state = attachment.get("State", "Unknown")
-                delete_on_termination = attachment.get("DeleteOnTermination", False)
-                attachment_info = (
-                    f"{instance_id} ({device}) - State: {state}, "
-                    f"DeleteOnTermination: {delete_on_termination}"
-                )
-
-            # Get tags
-            tags = {tag["Key"]: tag["Value"] for tag in volume.get("Tags", [])}
-            name = tags.get("Name", "Unnamed")
-
-            volume_details.append(
-                {
-                    "VolumeId": volume["VolumeId"],
-                    "Name": name,
-                    "Size": size_gb,
-                    "State": volume["State"],
-                    "VolumeType": volume["VolumeType"],
-                    "CreateTime": volume["CreateTime"],
-                    "Attachment": attachment_info,
-                    "MonthlyCost": monthly_cost,
-                    "Tags": tags,
-                }
-            )
+        return [_build_volume_detail(volume) for volume in volumes]
 
     except ClientError as e:
         print(f"❌ Error getting volumes in {region_name}: {str(e)}")
         return []
-
-    return volume_details
 
 
 def check_terminated_instances_volumes():

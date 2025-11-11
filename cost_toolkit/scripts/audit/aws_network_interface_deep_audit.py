@@ -76,9 +76,9 @@ def _check_instance_attachment(ec2, attachment):
             return "orphaned"
         print(f"   ❌ Error checking instance: {str(e)}")
         return "error"
-    else:
-        print("   ✅ Instance is active")
-        return "active"
+
+    print("   ✅ Instance is active")
+    return "active"
 
 
 def _check_detached_eni(eni):

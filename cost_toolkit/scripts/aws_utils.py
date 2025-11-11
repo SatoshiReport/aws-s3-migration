@@ -8,6 +8,7 @@ import os
 import sys
 from typing import Optional
 
+import boto3
 from dotenv import load_dotenv
 
 
@@ -52,6 +53,32 @@ def load_aws_credentials(env_path: Optional[str] = None) -> bool:
     return True
 
 
+def load_aws_credentials_from_env(env_path: Optional[str] = None) -> tuple[str, str]:
+    """
+    Load AWS credentials from .env file and return them as a tuple.
+
+    Args:
+        env_path: Optional override path (defaults to ~/.env)
+
+    Returns:
+        tuple: (aws_access_key_id, aws_secret_access_key)
+
+    Raises:
+        ValueError: If credentials are not found in .env file
+    """
+    resolved_path = _resolve_env_path(env_path)
+    load_dotenv(resolved_path)
+
+    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
+    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+
+    if not aws_access_key_id or not aws_secret_access_key:
+        raise ValueError(f"AWS credentials not found in {resolved_path}")
+
+    print(f"✅ AWS credentials loaded from {resolved_path}")
+    return aws_access_key_id, aws_secret_access_key
+
+
 def setup_aws_credentials(env_path: Optional[str] = None):
     """
     Load AWS credentials and exit if not found.
@@ -79,3 +106,23 @@ def get_aws_regions():
         "ap-southeast-1",
         "ap-southeast-2",
     ]
+
+
+def get_instance_info(instance_id: str, region_name: str) -> dict:
+    """
+    Get EC2 instance information for a given instance ID.
+
+    Args:
+        instance_id: EC2 instance ID
+        region_name: AWS region name
+
+    Returns:
+        dict: Instance data from describe_instances API call
+
+    Raises:
+        ClientError: If instance not found or API call fails
+    """
+    ec2 = boto3.client("ec2", region_name=region_name)
+    response = ec2.describe_instances(InstanceIds=[instance_id])
+    instance = response["Reservations"][0]["Instances"][0]
+    return instance

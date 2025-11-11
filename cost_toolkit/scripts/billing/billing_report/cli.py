@@ -4,23 +4,13 @@ Contains main function and CLI utilities.
 """
 
 import os
-import subprocess
 
 from dotenv import load_dotenv
 
+from cost_toolkit.common.terminal_utils import clear_screen
+
 from .cost_analysis import get_combined_billing_data
 from .formatting import format_combined_billing_report
-
-
-def clear_screen():
-    """Clear the terminal screen without invoking a shell."""
-    try:
-        if os.name == "nt":
-            subprocess.run(["cmd", "/c", "cls"], check=False)
-        else:
-            subprocess.run(["clear"], check=False)
-    except FileNotFoundError:
-        print("\033c", end="")
 
 
 def setup_aws_credentials():

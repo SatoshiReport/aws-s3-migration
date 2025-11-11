@@ -8,36 +8,38 @@ from pathlib import Path
 from typing import Optional, Sequence
 
 try:  # Prefer package-relative imports when packaged
-    from .. import config as config_module  # type: ignore
-    from ..state_db_admin import reseed_state_db_from_local_drive
-    from .analysis import (
+    import config as config_module
+    from cost_toolkit.common.cli_utils import confirm_reset_state_db
+    from duplicate_tree.analysis import (
         MIN_REPORT_BYTES,
         MIN_REPORT_FILES,
         build_directory_index_from_db,
         format_bytes,
         recompute_clusters_for_deletion,
     )
-    from .deletion import delete_duplicate_directories
-    from .workflow import (
+    from duplicate_tree.deletion import delete_duplicate_directories
+    from duplicate_tree.workflow import (
         DuplicateAnalysisContext,
         load_or_compute_duplicates,
     )
+    from state_db_admin import reseed_state_db_from_local_drive
 except ImportError:  # pragma: no cover - execution as standalone script
-    from analysis import (  # type: ignore
+    import config as config_module  # type: ignore[import]
+
+    from analysis import (  # type: ignore[import]
         MIN_REPORT_BYTES,
         MIN_REPORT_FILES,
         build_directory_index_from_db,
         format_bytes,
         recompute_clusters_for_deletion,
     )
-    from deletion import delete_duplicate_directories  # type: ignore
-    from workflow import (  # type: ignore
+    from cost_toolkit.common.cli_utils import confirm_reset_state_db  # type: ignore[import]
+    from deletion import delete_duplicate_directories  # type: ignore[import]
+    from state_db_admin import reseed_state_db_from_local_drive  # type: ignore[import]
+    from workflow import (  # type: ignore[import]
         DuplicateAnalysisContext,
         load_or_compute_duplicates,
     )
-
-    import config as config_module  # type: ignore
-    from state_db_admin import reseed_state_db_from_local_drive  # type: ignore
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -98,17 +100,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
 
 def confirm_state_db_reset(db_path: Path, skip_prompt: bool) -> bool:
     """Prompt user to confirm state DB reset unless skip_prompt is True."""
-    if skip_prompt:
-        return True
-    resp = (
-        input(
-            f"Reset migrate_v2 state database at {db_path}? "
-            "This deletes cached migration metadata. [y/N] "
-        )
-        .strip()
-        .lower()
-    )
-    return resp in {"y", "yes"}
+    return confirm_reset_state_db(str(db_path), skip_prompt)
 
 
 def handle_state_db_reset(

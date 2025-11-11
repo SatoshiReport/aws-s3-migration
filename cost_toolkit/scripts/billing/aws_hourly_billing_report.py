@@ -4,71 +4,37 @@ AWS Hourly Billing Report Script
 Gets detailed billing information for the current hour to identify active cost-generating services.
 """
 
-import os
-import subprocess
 from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 
-import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 
-
-def clear_screen():
-    """Clear the terminal screen without invoking a shell."""
-    try:
-        if os.name == "nt":
-            subprocess.run(["cmd", "/c", "cls"], check=False)
-        else:
-            subprocess.run(["clear"], check=False)
-    except FileNotFoundError:
-        print("\033c", end="")
+from cost_toolkit.common.terminal_utils import clear_screen
+from cost_toolkit.scripts.aws_client_factory import load_credentials_from_env
+from cost_toolkit.scripts.aws_cost_operations import (
+    get_daily_costs_by_service,
+    get_hourly_costs_by_service,
+    get_today_date_range,
+)
 
 
 def setup_aws_credentials():
     """Load AWS credentials from .env file"""
-    # Load environment variables from .env file
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    # Check if credentials are loaded
-    if not os.environ.get("AWS_ACCESS_KEY_ID"):
+    try:
+        load_credentials_from_env()
+    except ValueError:
         print("⚠️  AWS credentials not found in ~/.env file.")
         print("Please ensure ~/.env contains:")
         print("  AWS_ACCESS_KEY_ID=your-access-key")
         print("  AWS_SECRET_ACCESS_KEY=your-secret-key")
         print("  AWS_DEFAULT_REGION=us-east-1")
         return False
-
     return True
-
-
-def get_hourly_date_range():
-    """Get the date range for the current hour"""
-    now = datetime.now()
-    # Start of current hour
-    start_time = now.replace(minute=0, second=0, microsecond=0)
-    # Current time (end of range)
-    end_time = now
-
-    return start_time.strftime("%Y-%m-%dT%H:%M:%S"), end_time.strftime("%Y-%m-%dT%H:%M:%S")
-
-
-def get_today_date_range():
-    """Get the date range for today (for comparison)"""
-    now = datetime.now()
-    start_of_day = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    # AWS Cost Explorer requires dates in YYYY-MM-DD format, not datetime
-    end_of_day = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-
-    return start_of_day.strftime("%Y-%m-%d"), end_of_day.strftime("%Y-%m-%d")
 
 
 def get_hourly_billing_data():
     """Retrieve hourly cost and usage data from AWS Cost Explorer"""
     setup_aws_credentials()
-
-    # Create Cost Explorer client
-    ce_client = boto3.client("ce", region_name="us-east-1")
 
     start_date, end_date = get_today_date_range()
 
@@ -77,20 +43,10 @@ def get_hourly_billing_data():
 
     try:
         # Get cost and usage data grouped by service with hourly granularity
-        hourly_response = ce_client.get_cost_and_usage(
-            TimePeriod={"Start": start_date, "End": end_date},
-            Granularity="HOURLY",
-            Metrics=["BlendedCost", "UsageQuantity"],
-            GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
-        )
+        hourly_response = get_hourly_costs_by_service(start_date, end_date)
 
         # Get daily summary for comparison
-        daily_response = ce_client.get_cost_and_usage(
-            TimePeriod={"Start": start_date, "End": end_date},
-            Granularity="DAILY",
-            Metrics=["BlendedCost", "UsageQuantity"],
-            GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
-        )
+        daily_response = get_daily_costs_by_service(start_date, end_date)
 
     except ClientError as e:
         print(f"Error retrieving billing data: {str(e)}")
@@ -219,8 +175,8 @@ def _display_hourly_trends(hourly_service_costs, daily_service_costs):
                     cost = hour_data["cost"]
                     if cost > 0:
                         bar_length = min(int(cost * 1000000), 50)
-                        bar = "█" * bar_length
-                        print(f"   {hour_str}: ${cost:.6f} {bar}")
+                        cost_bar = "█" * bar_length
+                        print(f"   {hour_str}: ${cost:.6f} {cost_bar}")
 
 
 def _display_optimization_insights(current_hour_costs, daily_service_costs):

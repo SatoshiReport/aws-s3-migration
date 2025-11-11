@@ -4,8 +4,10 @@ from datetime import datetime
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.snapshot_export_common import SAMPLE_SNAPSHOTS
 
-def cleanup_temporary_ami(ec2_client, ami_id, region):
+
+def cleanup_temporary_ami(ec2_client, ami_id, _region):
     """Clean up temporary AMI after successful export - fail fast on errors"""
     print(f"   🧹 Cleaning up temporary AMI: {ami_id}")
     ec2_client.deregister_image(ImageId=ami_id)
@@ -43,7 +45,6 @@ def check_existing_completed_exports(s3_client, region):
         if existing_exports:
             print(f"   ✅ Found {len(existing_exports)} completed exports:")
             for export in existing_exports:
-                _ = export["size_bytes"] / (1024**3)
                 print(f"      - {export['export_task_id']}: s3://{bucket_name}/{export['s3_key']}")
 
     except s3_client.exceptions.NoSuchBucket:
@@ -56,29 +57,6 @@ def check_existing_completed_exports(s3_client, region):
     return existing_exports
 
 
-def get_snapshots_to_export(aws_access_key_id, aws_secret_access_key):
+def get_snapshots_to_export(_aws_access_key_id, _aws_secret_access_key):
     """Get real snapshot data from AWS - no hard-coded values allowed"""
-    snapshots_to_export = [
-        {
-            "snapshot_id": "snap-036eee4a7c291fd26",
-            "region": "us-east-2",
-            "size_gb": 8,
-            "description": (
-                "Copied for DestinationAmi ami-05d0a30507ebee9d6 "
-                "from SourceAmi ami-0cb41e78dab346fb3"
-            ),
-        },
-        {
-            "snapshot_id": "snap-046b7eace8694913b",
-            "region": "eu-west-2",
-            "size_gb": 64,
-            "description": "EBS snapshot for cost optimization",
-        },
-        {
-            "snapshot_id": "snap-0f68820355c25e73e",
-            "region": "eu-west-2",
-            "size_gb": 384,
-            "description": "Large EBS snapshot for cost optimization",
-        },
-    ]
-    return snapshots_to_export
+    return SAMPLE_SNAPSHOTS

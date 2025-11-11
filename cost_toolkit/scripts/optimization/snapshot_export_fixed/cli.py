@@ -2,10 +2,19 @@
 
 import argparse
 
-import boto3
 from botocore.exceptions import ClientError
 
-from .constants import ExportTaskDeletedException, ExportTaskStuckException
+from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
+from cost_toolkit.scripts.snapshot_export_common import (
+    print_export_results,
+    print_export_summary,
+)
+
+from .constants import (
+    ExportTaskDeletedException,
+    ExportTaskFailedException,
+    ExportTaskStuckException,
+)
 from .export_helpers import export_ami_to_s3_with_recovery
 from .export_ops import (
     create_ami_from_snapshot,
@@ -22,35 +31,19 @@ from .recovery import (
 )
 
 
-def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_access_key):
-    """Export a single snapshot to S3 with comprehensive error handling"""
+def _setup_aws_clients(region, aws_access_key_id, aws_secret_access_key):
+    """Create and return EC2 and S3 clients for the given region."""
+    return create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key)
+
+
+def _setup_s3_bucket_for_export(s3_client, region):
+    """Create and configure S3 bucket for snapshot export."""
     from datetime import datetime
-
-    snapshot_id = snapshot_info["snapshot_id"]
-    region = snapshot_info["region"]
-    size_gb = snapshot_info["size_gb"]
-    description = snapshot_info["description"]
-
-    print(f"🔍 Processing {snapshot_id} ({size_gb} GB) in {region}...")
-
-    ec2_client = boto3.client(
-        "ec2",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-    s3_client = boto3.client(
-        "s3",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
 
     bucket_name = f"ebs-snapshot-archive-{region}-{datetime.now().strftime('%Y%m%d')}"
 
     print(f"   🔍 Checking for existing completed exports in {region}...")
-    _ = check_existing_completed_exports(s3_client, region)
+    check_existing_completed_exports(s3_client, region)
 
     try:
         create_s3_bucket_if_not_exists(s3_client, bucket_name, region)
@@ -59,6 +52,37 @@ def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_ac
 
     setup_s3_bucket_versioning(s3_client, bucket_name)
 
+    return bucket_name
+
+
+def _build_export_result(
+    snapshot_id, ami_id, bucket_name, s3_key, export_task_id, size_gb, savings
+):
+    """Build export result dictionary."""
+    return {
+        "snapshot_id": snapshot_id,
+        "ami_id": ami_id,
+        "bucket_name": bucket_name,
+        "s3_key": s3_key,
+        "export_task_id": export_task_id,
+        "size_gb": size_gb,
+        "monthly_savings": savings["monthly_savings"],
+        "success": True,
+    }
+
+
+def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_access_key):
+    """Export a single snapshot to S3 with comprehensive error handling"""
+    snapshot_id = snapshot_info["snapshot_id"]
+    region = snapshot_info["region"]
+    size_gb = snapshot_info["size_gb"]
+    description = snapshot_info["description"]
+
+    print(f"🔍 Processing {snapshot_id} ({size_gb} GB) in {region}...")
+
+    ec2_client, s3_client = _setup_aws_clients(region, aws_access_key_id, aws_secret_access_key)
+    bucket_name = _setup_s3_bucket_for_export(s3_client, region)
+
     ami_id = create_ami_from_snapshot(ec2_client, snapshot_id, description)
 
     try:
@@ -66,7 +90,7 @@ def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_ac
             ec2_client, s3_client, ami_id, bucket_name, region, size_gb
         )
 
-        _ = verify_s3_export_final(s3_client, bucket_name, s3_key, size_gb)
+        verify_s3_export_final(s3_client, bucket_name, s3_key, size_gb)
 
         savings = calculate_cost_savings(size_gb)
 
@@ -76,16 +100,9 @@ def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_ac
         print(f"   📍 S3 location: s3://{bucket_name}/{s3_key}")
         print(f"   💰 Monthly savings: ${savings['monthly_savings']:.2f}")
 
-        return {
-            "snapshot_id": snapshot_id,
-            "ami_id": ami_id,
-            "bucket_name": bucket_name,
-            "s3_key": s3_key,
-            "export_task_id": export_task_id,
-            "size_gb": size_gb,
-            "monthly_savings": savings["monthly_savings"],
-            "success": True,
-        }
+        return _build_export_result(
+            snapshot_id, ami_id, bucket_name, s3_key, export_task_id, size_gb, savings
+        )
 
     except (ExportTaskDeletedException, ExportTaskStuckException):
         try:
@@ -109,19 +126,8 @@ def _print_export_intro_fixed(snapshots_to_export, total_savings):
     print("AWS EBS Snapshot to S3 Export Script - FIXED VERSION")
     print("=" * 80)
     print("Exporting EBS snapshots to S3 with fail-fast error handling...")
-    print()
 
-    total_size_gb = sum(snap["size_gb"] for snap in snapshots_to_export)
-
-    print(f"🎯 Target: {len(snapshots_to_export)} snapshots ({total_size_gb} GB total)")
-    print(f"💰 Current monthly cost: ${total_savings['ebs_cost']:.2f}")
-    print(f"💰 Future monthly cost: ${total_savings['s3_cost']:.2f}")
-    print(
-        f"💰 Monthly savings: ${total_savings['monthly_savings']:.2f} "
-        f"({total_savings['savings_percentage']:.1f}%)"
-    )
-    print(f"💰 Annual savings: ${total_savings['annual_savings']:.2f}")
-    print()
+    print_export_summary(snapshots_to_export, total_savings)
 
     print("⚠️  IMPORTANT NOTES:")
     print("   - Export process can take several hours per snapshot")
@@ -141,19 +147,7 @@ def _print_final_summary_fixed(successful_exports, export_results, snapshots_to_
     if not export_results:
         return
 
-    total_monthly_savings = sum(result["monthly_savings"] for result in export_results)
-    print(f"💰 Total monthly savings: ${total_monthly_savings:.2f}")
-    print(f"💰 Total annual savings: ${total_monthly_savings * 12:.2f}")
-    print()
-
-    print("📋 Export Results:")
-    for result in export_results:
-        print(f"   {result['snapshot_id']} → s3://{result['bucket_name']}/{result['s3_key']}")
-
-    print()
-    print("📝 Next Steps:")
-    print("1. Verify exports in S3 console")
-    print("2. Test restore process if needed")
+    print_export_results(export_results)
     print("3. Delete original EBS snapshots to realize savings")
     print()
     print("🔧 Delete Original Snapshots (after verifying S3 exports):")
@@ -209,7 +203,7 @@ def export_snapshots_to_s3_fixed():
 
         except ClientError as e:
             print(f"   ❌ Failed to export {snap_info['snapshot_id']}: {e}")
-            raise Exception(  # noqa: TRY002, TRY003
+            raise ExportTaskFailedException(  # noqa: TRY003
                 f"Export failed for {snap_info['snapshot_id']}: {e}"
             ) from e
         print()

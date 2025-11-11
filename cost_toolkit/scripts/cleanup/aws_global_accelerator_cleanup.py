@@ -179,7 +179,7 @@ def print_cleanup_summary(total_processed, total_deleted, monthly_savings):
 
     if total_deleted > 0:
         print("\n✅ SUCCESS: Global Accelerator cleanup completed!")
-        print("💰 You will save approximately ${:.2f} per month".format(monthly_savings))
+        print(f"💰 You will save approximately ${monthly_savings:.2f} per month")
         print("\n📋 IMPORTANT NOTES:")
         print("  - All accelerated traffic routing has been stopped")
         print("  - Applications using accelerator endpoints will need updates")

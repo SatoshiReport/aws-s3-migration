@@ -6,12 +6,13 @@ import time
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_utils import get_instance_info
 
-def get_instance_details(ec2, instance_id):
+
+def get_instance_details(_ec2, instance_id, region_name):
     """Get current instance details and network information"""
     print("Step 1: Getting instance details...")
-    response = ec2.describe_instances(InstanceIds=[instance_id])
-    instance = response["Reservations"][0]["Instances"][0]
+    instance = get_instance_info(instance_id, region_name)
 
     current_state = instance["State"]["Name"]
     current_public_ip = instance.get("PublicIpAddress")
@@ -63,7 +64,7 @@ def start_instance(ec2, instance_id):
     print("  ✅ Instance started")
 
 
-def retry_with_subnet_modification(ec2, instance_id, subnet_id):
+def retry_with_subnet_modification(ec2, instance_id, subnet_id, region_name):
     """Retry removing public IP by modifying subnet settings"""
     try:
         ec2.modify_subnet_attribute(SubnetId=subnet_id, MapPublicIpOnLaunch={"Value": False})
@@ -80,8 +81,7 @@ def retry_with_subnet_modification(ec2, instance_id, subnet_id):
         waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
 
         time.sleep(10)
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        final_instance = response["Reservations"][0]["Instances"][0]
+        final_instance = get_instance_info(instance_id, region_name)
         final_public_ip = final_instance.get("PublicIpAddress")
 
         if final_public_ip:
@@ -95,13 +95,12 @@ def retry_with_subnet_modification(ec2, instance_id, subnet_id):
     return True
 
 
-def verify_public_ip_removed(ec2, instance_id):
+def verify_public_ip_removed(ec2, instance_id, region_name):
     """Verify that public IP has been removed"""
     print("Step 5: Verifying public IP removal...")
     time.sleep(10)
 
-    response = ec2.describe_instances(InstanceIds=[instance_id])
-    updated_instance = response["Reservations"][0]["Instances"][0]
+    updated_instance = get_instance_info(instance_id, region_name)
     new_public_ip = updated_instance.get("PublicIpAddress")
 
     if new_public_ip:
@@ -111,7 +110,7 @@ def verify_public_ip_removed(ec2, instance_id):
         subnet_id = updated_instance["SubnetId"]
         print(f"  Checking subnet {subnet_id} auto-assign setting...")
 
-        return retry_with_subnet_modification(ec2, instance_id, subnet_id)
+        return retry_with_subnet_modification(ec2, instance_id, subnet_id, region_name)
 
     print("  ✅ Public IP successfully removed")
     return True
@@ -125,8 +124,8 @@ def remove_public_ip_from_instance(instance_id, region_name):
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
 
-        _, current_state, current_public_ip, network_interface_id = get_instance_details(
-            ec2, instance_id
+        _instance, current_state, current_public_ip, network_interface_id = get_instance_details(
+            ec2, instance_id, region_name
         )
 
         if not current_public_ip:
@@ -137,7 +136,7 @@ def remove_public_ip_from_instance(instance_id, region_name):
         modify_network_interface(ec2, instance_id, network_interface_id)
         start_instance(ec2, instance_id)
 
-        return verify_public_ip_removed(ec2, instance_id)
+        return verify_public_ip_removed(ec2, instance_id, region_name)
 
     except ClientError as e:
         print(f"❌ Error removing public IP: {e}")

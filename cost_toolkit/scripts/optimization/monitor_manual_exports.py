@@ -4,31 +4,18 @@ Monitor Manual AWS Export Tasks
 This script helps you monitor the progress of manual export tasks and check S3 files.
 """
 
-import os
 import time
 from datetime import datetime
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    return aws_access_key_id, aws_secret_access_key
+from cost_toolkit.scripts.aws_utils import load_aws_credentials_from_env
 
 
 def check_export_status(region, ami_id=None):
     """Check status of export tasks in a region"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_env()
 
     ec2_client = boto3.client(
         "ec2",
@@ -81,7 +68,7 @@ def check_export_status(region, ami_id=None):
 
 def check_s3_files(region, bucket_name=None):
     """Check S3 files in export buckets"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_env()
 
     s3_client = boto3.client(
         "s3",
@@ -204,10 +191,10 @@ def check_specific_ami(region, ami_id):
     print("=" * 50)
 
     # Check export task
-    _ = check_export_status(region, ami_id)
+    check_export_status(region, ami_id)
 
     # Check S3 files for this AMI
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_env()
     s3_client = boto3.client(
         "s3",
         region_name=region,

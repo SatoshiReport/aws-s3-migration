@@ -7,6 +7,8 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts import aws_utils
+
 # Volume IDs for migration
 REMAINING_VOLUMES = [
     "vol-089b9ed38099c68f3",  # 384 GB
@@ -16,8 +18,6 @@ REMAINING_VOLUMES = [
 
 def setup_aws_credentials():
     """Load AWS credentials from ~/.env via shared helper."""
-    from cost_toolkit.scripts import aws_utils
-
     aws_utils.setup_aws_credentials()
 
 

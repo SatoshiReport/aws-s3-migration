@@ -2,6 +2,8 @@
 """Inspect EBS volumes in London region."""
 
 
+from cost_toolkit.scripts import aws_utils
+
 # Command lists for system inspection
 SYSTEM_INFO_COMMANDS = [
     "df -h",  # Show mounted filesystems
@@ -23,8 +25,6 @@ VOLUME_INSPECTION_COMMANDS = [
 
 def setup_aws_credentials():
     """Load AWS credentials from ~/.env via shared helper."""
-    from cost_toolkit.scripts import aws_utils
-
     aws_utils.setup_aws_credentials()
 
 

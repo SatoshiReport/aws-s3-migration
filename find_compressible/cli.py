@@ -160,7 +160,14 @@ def main() -> None:
         reported_extensions,
     ) = report_and_compress_candidates(reported_candidates, args.compress, stats)
 
-    print_scan_summary(base_path, db_path, stats, total_reported, total_bytes, reported_extensions)
+    print_scan_summary(
+        base_path,
+        db_path,
+        stats,
+        total_reported=total_reported,
+        total_bytes=total_bytes,
+        reported_extensions=reported_extensions,
+    )
 
     if args.compress:
         print_compression_summary(

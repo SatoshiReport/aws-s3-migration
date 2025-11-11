@@ -103,7 +103,7 @@ def test_scan_files_with_equal_expected_files(tmp_path):
     assert_equal(len(local_files), 100)
 
 
-def test_verify_files_count_mismatch_in_verify_bucket(tmp_path):
+def test_verify_files_count_mismatch_in_verify_bucket(tmp_path, mock_db_connection):
     """Test that BucketVerifier detects verified count mismatch"""
     bucket_path = tmp_path / "test-bucket"
     bucket_path.mkdir()
@@ -117,17 +117,11 @@ def test_verify_files_count_mismatch_in_verify_bucket(tmp_path):
         "total_size": 16,
     }
 
-    mock_conn = mock.Mock()
     mock_rows = [
         {"key": "file1.txt", "size": 8, "etag": md5_1},
         {"key": "file2.txt", "size": 8, "etag": "def456"},  # Missing
     ]
-    mock_conn.execute.return_value = mock_rows
-
-    mock_cm = mock.MagicMock()
-    mock_cm.__enter__.return_value = mock_conn
-    mock_cm.__exit__.return_value = False
-    mock_state.db_conn.get_connection.return_value = mock_cm
+    mock_state.db_conn.get_connection.return_value = mock_db_connection(mock_rows)
 
     verifier = BucketVerifier(mock_state, tmp_path)
 
@@ -136,18 +130,13 @@ def test_verify_files_count_mismatch_in_verify_bucket(tmp_path):
         verifier.verify_bucket("test-bucket")
 
 
-def test_verify_multipart_file_verifies_checksum(tmp_path):
+def test_verify_multipart_file_verifies_checksum(tmp_path, empty_verify_stats):
     """Test multipart file verification updates stats correctly"""
     file1 = tmp_path / "file1.txt"
     file1.write_bytes(b"multipart content here")
 
-    stats = {
-        "verified_count": 0,
-        "size_verified": 1,
-        "checksum_verified": 0,
-        "total_bytes_verified": 0,
-        "verification_errors": [],
-    }
+    stats = empty_verify_stats.copy()
+    stats["size_verified"] = 1
 
     verifier = FileChecksumVerifier()
     verifier.verify_multipart_file("file1.txt", file1, stats)

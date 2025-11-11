@@ -186,6 +186,7 @@ def load_candidates_from_db(
 def write_cache_if_needed(
     cache_config: CacheConfig,
     load_result: CandidateLoadResult,
+    *,
     cache_path: Path | None,
     cache_used: bool,
     base_path: Path,

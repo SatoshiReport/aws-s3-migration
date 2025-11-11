@@ -72,7 +72,6 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
             operation_id = response.get("OperationId")
             print(f"  ✅ Nameserver update initiated (Operation ID: {operation_id})")
             print("  ⏳ Changes may take up to 48 hours to propagate globally")
-
         except ClientError as e:
             if "DomainNotFound" in str(e):
                 print("  ❌ Domain is NOT registered through Route53")
@@ -87,8 +86,7 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
                 )
                 return False
             raise
-        else:
-            return True
+        return True
     except ClientError as e:
         print(f"❌ Route53 Domains API error: {e}")
         return False
@@ -106,7 +104,6 @@ def verify_canva_dns_setup(domain_name, zone_id):
 
         has_root_a, has_www_a, has_canva_txt, canva_ip = _check_dns_records(records, domain_name)
         all_present = _print_dns_status(has_root_a, has_www_a, has_canva_txt)
-
     except ClientError as e:
         raise DNSSetupError(e) from e
     return all_present, canva_ip
@@ -145,12 +142,12 @@ def create_missing_dns_records(domain_name, zone_id, canva_ip):
         if changes:
             _apply_dns_changes(route53, zone_id, changes)
             return True
+        return True
 
     except ClientError as e:
         raise DNSRecordCreationError(e) from e
-    else:
-        print("  ✅ All required DNS records already exist")
-        return True
+    print("  ✅ All required DNS records already exist")
+    return True
 
 
 def test_dns_resolution(domain_name):
@@ -162,7 +159,11 @@ def test_dns_resolution(domain_name):
     # Test root domain
     try:
         result = subprocess.run(
-            ["dig", "+short", domain_name, "A"], capture_output=True, text=True, timeout=10
+            ["dig", "+short", domain_name, "A"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
         if result.returncode == 0 and result.stdout.strip():
             ip = result.stdout.strip()
@@ -175,7 +176,11 @@ def test_dns_resolution(domain_name):
     # Test www subdomain
     try:
         result = subprocess.run(
-            ["dig", "+short", f"www.{domain_name}", "A"], capture_output=True, text=True, timeout=10
+            ["dig", "+short", f"www.{domain_name}", "A"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
         if result.returncode == 0 and result.stdout.strip():
             ip = result.stdout.strip()

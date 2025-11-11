@@ -4,39 +4,21 @@ AWS Stopped Instance Cleanup Script
 Terminates stopped EC2 instances and cleans up associated resources.
 """
 
-import os
-
-import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 
-
-def load_aws_credentials():
-    """Load AWS credentials from environment file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+from cost_toolkit.scripts.aws_client_factory import load_credentials_from_env
+from cost_toolkit.scripts.aws_ec2_operations import describe_instance, terminate_instance
 
 
 def get_instance_details(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
     """Get detailed information about an EC2 instance"""
     try:
-        ec2 = boto3.client(
-            "ec2",
-            region_name=region_name,
+        instance = describe_instance(
+            region=region_name,
+            instance_id=instance_id,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
-
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        instance = response["Reservations"][0]["Instances"][0]
 
         # Get tags for better identification
         tags = {tag["Key"]: tag["Value"] for tag in instance.get("Tags", [])}
@@ -77,31 +59,6 @@ def get_instance_details(region_name, instance_id, aws_access_key_id, aws_secret
         return None
 
     return instance_info
-
-
-def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
-    """Terminate an EC2 instance"""
-    try:
-        ec2 = boto3.client(
-            "ec2",
-            region_name=region_name,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
-
-        print(f"🗑️  Terminating instance: {instance_id}")
-        response = ec2.terminate_instances(InstanceIds=[instance_id])
-
-        current_state = response["TerminatingInstances"][0]["CurrentState"]["Name"]
-        previous_state = response["TerminatingInstances"][0]["PreviousState"]["Name"]
-
-        print(f"   State change: {previous_state} → {current_state}")
-
-    except ClientError as e:
-        print(f"   ❌ Failed to terminate {instance_id}: {str(e)}")
-        return False
-
-    return True
 
 
 def _get_stopped_instances():
@@ -204,7 +161,7 @@ def main():
     print()
 
     try:
-        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
         stopped_instances = _get_stopped_instances()
 
         print(f"🎯 Target: {len(stopped_instances)} stopped instances")

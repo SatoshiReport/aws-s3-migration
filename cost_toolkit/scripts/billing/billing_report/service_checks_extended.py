@@ -7,6 +7,13 @@ import boto3
 import botocore.exceptions
 from botocore.exceptions import ClientError
 
+from .service_checks import (
+    PENDING_DELETION_TARGET,
+    check_cloudwatch_status,
+    check_global_accelerator_status,
+    check_lightsail_status,
+)
+
 
 def check_lambda_status():
     """Check if Lambda functions have been deleted"""
@@ -28,8 +35,8 @@ def check_lambda_status():
 
     except ClientError as e:
         return None, f"⚠️ ERROR - {str(e)}"
-    else:
-        return False, f"❌ ACTIVE - {total_functions} Lambda functions still exist"
+
+    return False, f"❌ ACTIVE - {total_functions} Lambda functions still exist"
 
 
 def check_efs_status():
@@ -52,8 +59,8 @@ def check_efs_status():
 
     except ClientError as e:
         return None, f"⚠️ ERROR - {str(e)}"
-    else:
-        return False, f"❌ ACTIVE - {total_filesystems} EFS file systems still exist"
+
+    return False, f"❌ ACTIVE - {total_filesystems} EFS file systems still exist"
 
 
 def check_route53_status():
@@ -119,8 +126,6 @@ def _format_kms_status(pending_deletion_count, pending_deletion_target):
 def check_kms_status():
     """Check if KMS keys have been scheduled for deletion"""
     try:
-        from .service_checks import PENDING_DELETION_TARGET
-
         regions_to_check = ["us-west-1", "eu-west-1", "us-east-1"]
 
         target_keys = [
@@ -176,8 +181,8 @@ def check_vpc_status():
 
     except ClientError as e:
         return None, f"⚠️ ERROR - {str(e)}"
-    else:
-        return False, f"🔴 UNRESOLVED - {total_elastic_ips} Elastic IPs still allocated"
+
+    return False, f"🔴 UNRESOLVED - {total_elastic_ips} Elastic IPs still allocated"
 
 
 def _add_service_status(resolved_services, service_name, check_func):
@@ -189,12 +194,6 @@ def _add_service_status(resolved_services, service_name, check_func):
 
 def get_resolved_services_status():
     """Dynamically check the status of services that can be optimized"""
-    from .service_checks import (
-        check_cloudwatch_status,
-        check_global_accelerator_status,
-        check_lightsail_status,
-    )
-
     resolved_services = {}
 
     service_checks = [

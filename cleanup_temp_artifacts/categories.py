@@ -15,6 +15,8 @@ Matcher = Callable[[Path, bool], bool]
 
 @dataclass(frozen=True)
 class Category:
+    """Represents a category of files to cleanup with matching rules."""
+
     name: str
     description: str
     matcher: Matcher

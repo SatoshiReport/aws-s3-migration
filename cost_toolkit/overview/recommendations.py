@@ -139,7 +139,7 @@ def _match_service_type(service_upper):
 
 
 def _route_to_service_handler(
-    service_upper, recommendations, service, cost, percentage, completed_cleanups
+    service_upper, recommendations, service, *, cost, percentage, completed_cleanups
 ):
     """Route to appropriate service-specific handler."""
     service_type = _match_service_type(service_upper)
@@ -170,7 +170,12 @@ def _add_service_recommendation(recommendations, service, cost, percentage, comp
     """Add recommendations for a specific service based on its type."""
     service_upper = service.upper()
     _route_to_service_handler(
-        service_upper, recommendations, service, cost, percentage, completed_cleanups
+        service_upper,
+        recommendations,
+        service,
+        cost=cost,
+        percentage=percentage,
+        completed_cleanups=completed_cleanups,
     )
 
 

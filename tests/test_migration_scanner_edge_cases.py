@@ -3,8 +3,6 @@
 from datetime import datetime
 from unittest import mock
 
-import pytest
-
 from migration_scanner import BucketScanner, GlacierWaiter
 from migration_state_v2 import MigrationStateV2
 from tests.assertions import assert_equal

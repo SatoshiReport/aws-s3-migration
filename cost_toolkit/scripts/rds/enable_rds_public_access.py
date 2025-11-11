@@ -1,24 +1,24 @@
 #!/usr/bin/env python3
 """Enable public accessibility for RDS database instances."""
 
-import boto3
 from botocore.exceptions import ClientError
 
-from ..aws_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_rds_client
+from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 
 def enable_public_access():
     """Temporarily enable public access to the restored RDS instance"""
 
     setup_aws_credentials()
-    rds = boto3.client("rds", region_name="us-east-1")
+    rds = create_rds_client(region="us-east-1")
 
     print("🔧 Enabling public access to restored RDS instance...")
     print("⚠️  This is temporary - we'll disable it after data migration")
 
     try:
         # Modify the instance to be publicly accessible
-        _ = rds.modify_db_instance(
+        rds.modify_db_instance(
             DBInstanceIdentifier="simba-db-restored", PubliclyAccessible=True, ApplyImmediately=True
         )
 

@@ -77,7 +77,6 @@ def fix_default_subnet_group():
 
     setup_aws_credentials()
     rds = boto3.client("rds", region_name="us-east-1")
-    _ = boto3.client("ec2", region_name="us-east-1")
 
     print("🔧 Fixing default subnet group to only include public subnets...")
 

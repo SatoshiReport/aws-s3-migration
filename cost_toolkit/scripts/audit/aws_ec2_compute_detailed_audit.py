@@ -39,7 +39,7 @@ def _build_instance_info(instance, region_name, hourly_cost, monthly_cost):
 
 
 def _print_instance_details(
-    instance_id, instance_type, state, instance_info, hourly_cost, monthly_cost
+    instance_id, instance_type, state, instance_info, *, hourly_cost, monthly_cost
 ):
     """Print detailed instance information"""
     print(f"Instance: {instance_id}")
@@ -108,7 +108,12 @@ def analyze_ec2_instances_in_region(region_name):
                     instance, region_name, hourly_cost, monthly_cost
                 )
                 _print_instance_details(
-                    instance_id, instance_type, state, instance_info, hourly_cost, monthly_cost
+                    instance_id,
+                    instance_type,
+                    state,
+                    instance_info,
+                    hourly_cost=hourly_cost,
+                    monthly_cost=monthly_cost,
                 )
                 _print_network_and_tags(instance_info)
 
@@ -366,19 +371,12 @@ def _print_optimization_recommendations(
     print("  4. Look into Reserved Instances for long-term workloads")
 
 
-def main():
-    """Perform detailed EC2 compute resource audit."""
-    print("AWS EC2 Compute Detailed Cost Analysis")
-    print("=" * 80)
-    print("Analyzing 'Amazon Elastic Compute Cloud - Compute' costs...")
-
-    _ = get_all_regions()
+def _collect_regional_data(target_regions):
+    """Collect EC2 instance and EBS volume data from all target regions."""
     all_instances = []
     all_volumes = []
     total_compute_cost = 0
     total_storage_cost = 0
-
-    target_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "eu-west-2"]
 
     for region in target_regions:
         instances = analyze_ec2_instances_in_region(region)
@@ -392,6 +390,29 @@ def main():
 
         total_compute_cost += region_compute_cost
         total_storage_cost += region_storage_cost
+
+    return {
+        "all_instances": all_instances,
+        "all_volumes": all_volumes,
+        "total_compute_cost": total_compute_cost,
+        "total_storage_cost": total_storage_cost,
+    }
+
+
+def main():
+    """Perform detailed EC2 compute resource audit."""
+    print("AWS EC2 Compute Detailed Cost Analysis")
+    print("=" * 80)
+    print("Analyzing 'Amazon Elastic Compute Cloud - Compute' costs...")
+
+    get_all_regions()
+    target_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "eu-west-2"]
+
+    data = _collect_regional_data(target_regions)
+    all_instances = data["all_instances"]
+    all_volumes = data["all_volumes"]
+    total_compute_cost = data["total_compute_cost"]
+    total_storage_cost = data["total_storage_cost"]
 
     print("\n" + "=" * 80)
     print("🎯 OVERALL EC2 COST BREAKDOWN")

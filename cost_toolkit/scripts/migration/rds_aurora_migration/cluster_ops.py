@@ -115,14 +115,14 @@ def validate_migration_compatibility(instance_info):
     return True, target_engine
 
 
-def create_rds_snapshot(rds_client, instance_identifier, region):
+def create_rds_snapshot(rds_client, instance_identifier, _region):
     """Create a snapshot of the RDS instance"""
     snapshot_identifier = f"{instance_identifier}-migration-{int(time.time())}"
 
     print(f"\n📸 Creating snapshot: {snapshot_identifier}")
 
     try:
-        _ = rds_client.create_db_snapshot(
+        rds_client.create_db_snapshot(
             DBSnapshotIdentifier=snapshot_identifier, DBInstanceIdentifier=instance_identifier
         )
 
@@ -141,8 +141,7 @@ def create_rds_snapshot(rds_client, instance_identifier, region):
         print(f"❌ Error creating snapshot: {e}")
         raise
 
-    else:
-        return snapshot_identifier
+    return snapshot_identifier
 
 
 def _build_cluster_params(instance_info, target_engine, cluster_identifier):
@@ -199,7 +198,9 @@ def _get_cluster_endpoint_info(rds_client, cluster_identifier):
     }
 
 
-def create_aurora_serverless_cluster(rds_client, instance_info, target_engine, snapshot_identifier):
+def create_aurora_serverless_cluster(
+    rds_client, instance_info, target_engine, _snapshot_identifier
+):
     """Create Aurora Serverless v2 cluster from RDS snapshot"""
     cluster_identifier = f"{instance_info['identifier']}-aurora-serverless"
 
@@ -229,5 +230,5 @@ def create_aurora_serverless_cluster(rds_client, instance_info, target_engine, s
     except ClientError as e:
         print(f"❌ Error creating Aurora Serverless v2 cluster: {e}")
         raise
-    else:
-        return endpoint_info
+
+    return endpoint_info

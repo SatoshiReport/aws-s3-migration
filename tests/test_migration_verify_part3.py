@@ -9,35 +9,11 @@ from migration_verify import BucketDeleter, BucketVerifier
 from tests.assertions import assert_equal
 
 
-def test_verify_bucket_integration_succeeds(tmp_path):
+def test_verify_bucket_integration_succeeds(setup_verify_test):
     """Test complete bucket verification workflow"""
-    # Setup
-    bucket_path = tmp_path / "test-bucket"
-    bucket_path.mkdir()
-    (bucket_path / "file1.txt").write_bytes(b"content1")
+    test_env = setup_verify_test({"file1.txt": b"content1"})
 
-    md5_1 = hashlib.md5(b"content1", usedforsecurity=False).hexdigest()
-
-    # Mock state
-    mock_state = mock.Mock()
-    mock_state.get_bucket_info.return_value = {
-        "file_count": 1,
-        "total_size": 8,
-    }
-
-    mock_conn = mock.Mock()
-    mock_rows = [
-        {"key": "file1.txt", "size": 8, "etag": md5_1},
-    ]
-    mock_conn.execute.return_value = mock_rows
-
-    # Use MagicMock for context manager support
-    mock_cm = mock.MagicMock()
-    mock_cm.__enter__.return_value = mock_conn
-    mock_cm.__exit__.return_value = False
-    mock_state.db_conn.get_connection.return_value = mock_cm
-
-    verifier = BucketVerifier(mock_state, tmp_path)
+    verifier = BucketVerifier(test_env["mock_state"], test_env["tmp_path"])
     results = verifier.verify_bucket("test-bucket")
 
     assert_equal(results["verified_count"], 1)
@@ -59,7 +35,7 @@ def test_verify_bucket_fails_when_local_path_missing(tmp_path):
         verifier.verify_bucket("nonexistent-bucket")
 
 
-def test_verify_bucket_fails_on_missing_files(tmp_path):
+def test_verify_bucket_fails_on_missing_files(tmp_path, mock_db_connection):
     """Test verification fails when files are missing"""
     bucket_path = tmp_path / "test-bucket"
     bucket_path.mkdir()
@@ -71,18 +47,11 @@ def test_verify_bucket_fails_on_missing_files(tmp_path):
         "total_size": 16,
     }
 
-    mock_conn = mock.Mock()
     mock_rows = [
         {"key": "file1.txt", "size": 8, "etag": "abc123"},
         {"key": "file2.txt", "size": 8, "etag": "def456"},  # Missing locally
     ]
-    mock_conn.execute.return_value = mock_rows
-
-    # Use MagicMock for context manager support
-    mock_cm = mock.MagicMock()
-    mock_cm.__enter__.return_value = mock_conn
-    mock_cm.__exit__.return_value = False
-    mock_state.db_conn.get_connection.return_value = mock_cm
+    mock_state.db_conn.get_connection.return_value = mock_db_connection(mock_rows)
 
     verifier = BucketVerifier(mock_state, tmp_path)
 
@@ -92,7 +61,7 @@ def test_verify_bucket_fails_on_missing_files(tmp_path):
     assert "File inventory check failed" in str(exc_info.value)
 
 
-def test_verify_bucket_fails_on_checksum_mismatch(tmp_path):
+def test_verify_bucket_fails_on_checksum_mismatch(tmp_path, mock_db_connection):
     """Test verification fails on checksum mismatch"""
     bucket_path = tmp_path / "test-bucket"
     bucket_path.mkdir()
@@ -104,18 +73,11 @@ def test_verify_bucket_fails_on_checksum_mismatch(tmp_path):
         "total_size": 8,
     }
 
-    mock_conn = mock.Mock()
     wrong_hash = "0" * 32
     mock_rows = [
         {"key": "file1.txt", "size": 8, "etag": wrong_hash},
     ]
-    mock_conn.execute.return_value = mock_rows
-
-    # Use MagicMock for context manager support
-    mock_cm = mock.MagicMock()
-    mock_cm.__enter__.return_value = mock_conn
-    mock_cm.__exit__.return_value = False
-    mock_state.db_conn.get_connection.return_value = mock_cm
+    mock_state.db_conn.get_connection.return_value = mock_db_connection(mock_rows)
 
     verifier = BucketVerifier(mock_state, tmp_path)
 

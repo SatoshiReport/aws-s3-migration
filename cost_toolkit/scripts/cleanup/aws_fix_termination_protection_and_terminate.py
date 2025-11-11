@@ -4,25 +4,15 @@ AWS Fix Termination Protection and Terminate Script
 Disables termination protection on protected instances and then terminates them.
 """
 
-import os
-
-import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
+
+from cost_toolkit.common.aws_common import create_ec2_client
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
 def load_aws_credentials():
     """Load AWS credentials from environment file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+    return setup_aws_credentials()
 
 
 def disable_termination_protection(
@@ -30,12 +20,7 @@ def disable_termination_protection(
 ):
     """Disable termination protection on an EC2 instance"""
     try:
-        ec2 = boto3.client(
-            "ec2",
-            region_name=region_name,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
+        ec2 = create_ec2_client(region_name, aws_access_key_id, aws_secret_access_key)
 
         print(f"🔓 Disabling termination protection: {instance_id}")
         ec2.modify_instance_attribute(
@@ -54,12 +39,7 @@ def disable_termination_protection(
 def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
     """Terminate an EC2 instance"""
     try:
-        ec2 = boto3.client(
-            "ec2",
-            region_name=region_name,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
+        ec2 = create_ec2_client(region_name, aws_access_key_id, aws_secret_access_key)
 
         print(f"🗑️  Terminating instance: {instance_id}")
         response = ec2.terminate_instances(InstanceIds=[instance_id])

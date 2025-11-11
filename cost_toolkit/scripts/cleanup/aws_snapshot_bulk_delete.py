@@ -68,7 +68,7 @@ def get_snapshot_details(snapshot_id, region):
             }
     except ClientError as e:
         print(f"❌ Error getting details for {snapshot_id}: {str(e)}")
-        return None
+    return None
 
 
 def delete_snapshot_safely(snapshot_id, region):
