@@ -4,6 +4,7 @@ from datetime import datetime
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
 from cost_toolkit.scripts.aws_utils import load_aws_credentials_from_env
 
 
@@ -35,13 +36,7 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region, enable_versio
         return True  # noqa: TRY300
     except ClientError:
         try:
-            if region == "us-east-1":
-                s3_client.create_bucket(Bucket=bucket_name)
-            else:
-                s3_client.create_bucket(
-                    Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
-                )
-            print(f"   ✅ Created S3 bucket: {bucket_name}")
+            create_s3_bucket_with_region(s3_client, bucket_name, region)
 
             if enable_versioning:
                 s3_client.put_bucket_versioning(

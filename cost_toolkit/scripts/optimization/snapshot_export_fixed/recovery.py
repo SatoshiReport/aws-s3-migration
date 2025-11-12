@@ -60,3 +60,7 @@ def check_existing_completed_exports(s3_client, region):
 def get_snapshots_to_export(_aws_access_key_id, _aws_secret_access_key):
     """Get real snapshot data from AWS - no hard-coded values allowed"""
     return SAMPLE_SNAPSHOTS
+
+
+if __name__ == "__main__":
+    pass

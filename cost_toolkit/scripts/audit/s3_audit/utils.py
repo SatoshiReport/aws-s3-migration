@@ -20,3 +20,7 @@ def format_bytes(bytes_value):
             return f"{bytes_value:.2f} {unit}"
         bytes_value /= BYTES_PER_KB
     return f"{bytes_value:.2f} PB"
+
+
+if __name__ == "__main__":
+    pass

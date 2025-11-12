@@ -74,3 +74,7 @@ SAMPLE_SNAPSHOTS = [
         "description": "Large EBS snapshot for cost optimization",
     },
 ]
+
+
+if __name__ == "__main__":
+    pass

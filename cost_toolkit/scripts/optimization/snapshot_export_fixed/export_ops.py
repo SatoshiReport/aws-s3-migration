@@ -1,5 +1,7 @@
 """Export operations with fail-fast error handling"""
 
+from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
+
 from ..snapshot_export_common import _register_ami, wait_for_ami_available
 from . import constants
 from .constants import ExportTaskDeletedException
@@ -14,13 +16,7 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, _region):
 
 def create_s3_bucket_new(s3_client, bucket_name, region):
     """Create new S3 bucket - fail fast on errors"""
-    if region == "us-east-1":
-        s3_client.create_bucket(Bucket=bucket_name)
-    else:
-        s3_client.create_bucket(
-            Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
-        )
-    print(f"   ✅ Created S3 bucket: {bucket_name}")
+    create_s3_bucket_with_region(s3_client, bucket_name, region)
     return True
 
 
@@ -55,3 +51,7 @@ def validate_export_task_exists(ec2_client, export_task_id):
         )
 
     return response["ExportImageTasks"][0]
+
+
+if __name__ == "__main__":
+    pass

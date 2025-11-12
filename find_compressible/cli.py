@@ -16,6 +16,11 @@ try:
 except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
     raise SystemExit(f"Unable to import config module: {exc}") from exc
 
+try:
+    from cost_toolkit.common.cli_utils import add_reset_state_db_args
+except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
+    raise SystemExit(f"Unable to import cost_toolkit.common.cli_utils: {exc}") from exc
+
 from find_compressible.analysis import find_candidates
 from find_compressible.cache import handle_state_db_reset
 from find_compressible.reporting import (
@@ -101,16 +106,7 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Compress each reported file in-place using `xz -9e`. Disabled by default.",
     )
-    parser.add_argument(
-        "--reset-state-db",
-        action="store_true",
-        help="Delete and recreate the migrate_v2 state DB before scanning.",
-    )
-    parser.add_argument(
-        "--yes",
-        action="store_true",
-        help="Skip confirmation when using --reset-state-db.",
-    )
+    add_reset_state_db_args(parser)
     return parser.parse_args()
 
 

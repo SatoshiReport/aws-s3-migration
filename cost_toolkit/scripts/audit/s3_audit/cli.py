@@ -141,3 +141,7 @@ def audit_s3_comprehensive():
         print("❌ AWS credentials not found. Please configure your credentials.")
     except ClientError as e:
         print(f"❌ AWS API error: {e}")
+
+
+if __name__ == "__main__":
+    pass

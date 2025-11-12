@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import get_default_regions
+
 
 def _calculate_volume_cost(size_gb, volume_type):
     """Calculate monthly cost for a volume based on type and size."""
@@ -42,7 +44,7 @@ def _scan_region_for_unattached_volumes(region):
 def _check_unattached_ebs_volumes():
     """Check for unattached EBS volumes across regions."""
     try:
-        regions = ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "eu-west-1", "eu-west-2"]
+        regions = get_default_regions()
         unattached_volumes = 0
         unattached_cost = 0.0
 
@@ -106,7 +108,7 @@ def _check_old_snapshots():
         snapshot_cost = 0.0
         cutoff_date = datetime.now() - timedelta(days=90)
 
-        for region in ["us-east-1", "us-east-2", "us-west-1", "us-west-2"]:
+        for region in get_default_regions():
             try:
                 ec2 = boto3.client("ec2", region_name=region)
                 snapshots = ec2.describe_snapshots(OwnerIds=["self"])["Snapshots"]

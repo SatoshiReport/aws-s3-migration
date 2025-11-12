@@ -9,6 +9,11 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.backup_utils import check_aws_backup_plans as get_backup_plans
+from cost_toolkit.common.backup_utils import (
+    check_dlm_lifecycle_policies,
+    check_eventbridge_scheduled_rules,
+)
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 # Constants
@@ -85,9 +90,7 @@ def check_aws_backup_plans(region):
     """Check for AWS Backup plans in a specific region."""
     try:
         backup_client = boto3.client("backup", region_name=region)
-
-        plans_response = backup_client.list_backup_plans()
-        backup_plans = plans_response.get("BackupPlansList", [])
+        backup_plans = get_backup_plans(region)
 
         if backup_plans:
             print(f"🔍 AWS Backup Plans in {region}:")
@@ -134,13 +137,11 @@ def _display_single_schedule(schedule):
 
 def check_data_lifecycle_manager(region):
     """Check for Amazon Data Lifecycle Manager (DLM) policies."""
-    try:
-        dlm_client = boto3.client("dlm", region_name=region)
+    policies = check_dlm_lifecycle_policies(region)
 
-        policies_response = dlm_client.get_lifecycle_policies()
-        policies = policies_response.get("Policies", [])
-
-        if policies:
+    if policies:
+        try:
+            dlm_client = boto3.client("dlm", region_name=region)
             print(f"📅 Data Lifecycle Manager Policies in {region}:")
             for policy in policies:
                 policy_id = policy["PolicyId"]
@@ -153,62 +154,60 @@ def check_data_lifecycle_manager(region):
 
                 _display_policy_schedules(dlm_client, policy_id)
 
+        except ClientError as e:
+            if "UnrecognizedClientException" in str(e):
+                return
+            print(f"  Error checking DLM in {region}: {e}")
+
+
+def _is_snapshot_related_rule(rule):
+    """Check if an EventBridge rule is related to snapshots/AMIs."""
+    rule_name = rule["Name"]
+    description = rule.get("Description", "")
+    return any(
+        keyword in rule_name.lower() or keyword in description.lower()
+        for keyword in ["snapshot", "ami", "backup", "image"]
+    )
+
+
+def _display_rule_details(events_client, rule):
+    """Display details for a single EventBridge rule."""
+    rule_name = rule["Name"]
+    description = rule.get("Description", "No description")
+    state = rule["State"]
+    schedule = rule.get("ScheduleExpression", "Event-driven")
+
+    print(f"  Rule: {rule_name}")
+    print(f"    Description: {description}")
+    print(f"    State: {state}")
+    print(f"    Schedule: {schedule}")
+
+    # Get targets
+    try:
+        targets_response = events_client.list_targets_by_rule(Rule=rule_name)
+        targets = targets_response.get("Targets", [])
+
+        for target in targets:
+            target_arn = target["Arn"]
+            print(f"    Target: {target_arn}")
+
     except ClientError as e:
-        if "UnrecognizedClientException" in str(e):
-            return
-        print(f"  Error checking DLM in {region}: {e}")
+        print(f"    Error getting targets: {e}")
+    print()
 
 
 def check_scheduled_events(region):
     """Check for EventBridge rules that might trigger snapshots."""
-    try:
+    rules = check_eventbridge_scheduled_rules(region)
+
+    if rules:
         events_client = boto3.client("events", region_name=region)
-
-        # List rules
-        rules_response = events_client.list_rules()
-        rules = rules_response.get("Rules", [])
-
-        snapshot_rules = []
-        for rule in rules:
-            rule_name = rule["Name"]
-            description = rule.get("Description", "")
-            state = rule["State"]
-
-            # Look for rules that might be related to snapshots/AMIs
-            if any(
-                keyword in rule_name.lower() or keyword in description.lower()
-                for keyword in ["snapshot", "ami", "backup", "image"]
-            ):
-                snapshot_rules.append(rule)
+        snapshot_rules = [rule for rule in rules if _is_snapshot_related_rule(rule)]
 
         if snapshot_rules:
             print(f"⏰ EventBridge Rules (Snapshot/AMI related) in {region}:")
             for rule in snapshot_rules:
-                rule_name = rule["Name"]
-                description = rule.get("Description", "No description")
-                state = rule["State"]
-                schedule = rule.get("ScheduleExpression", "Event-driven")
-
-                print(f"  Rule: {rule_name}")
-                print(f"    Description: {description}")
-                print(f"    State: {state}")
-                print(f"    Schedule: {schedule}")
-
-                # Get targets
-                try:
-                    targets_response = events_client.list_targets_by_rule(Rule=rule_name)
-                    targets = targets_response.get("Targets", [])
-
-                    for target in targets:
-                        target_arn = target["Arn"]
-                        print(f"    Target: {target_arn}")
-
-                except ClientError as e:
-                    print(f"    Error getting targets: {e}")
-                print()
-
-    except ClientError as e:
-        print(f"  Error checking EventBridge in {region}: {e}")
+                _display_rule_details(events_client, rule)
 
 
 def _categorize_snapshot(snapshot):

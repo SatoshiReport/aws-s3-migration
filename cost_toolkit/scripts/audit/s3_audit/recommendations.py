@@ -150,3 +150,7 @@ def generate_optimization_recommendations(bucket_analysis):
     recommendations.extend(_check_large_objects_and_security(bucket_analysis))
 
     return recommendations
+
+
+if __name__ == "__main__":
+    pass

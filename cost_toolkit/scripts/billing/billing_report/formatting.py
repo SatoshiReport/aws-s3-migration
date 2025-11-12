@@ -66,3 +66,7 @@ def format_combined_billing_report(cost_data, usage_data):
 
     print(f"\nTOTAL AWS COST: ${total_cost:,.2f}")
     print("=" * 120)
+
+
+if __name__ == "__main__":
+    pass

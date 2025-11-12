@@ -6,6 +6,8 @@ Tests cover:
 - Resumable migration state preservation
 """
 
+# pylint: disable=redefined-outer-name  # pytest fixtures
+
 from unittest import mock
 
 import pytest
@@ -17,7 +19,7 @@ from migration_orchestrator import (
 
 
 @pytest.fixture
-def mock_dependencies(tmp_path):
+def mock_deps(tmp_path):
     """Create mock dependencies for integration tests"""
     mock_s3 = mock.Mock()
     mock_state = mock.Mock()
@@ -33,7 +35,7 @@ def mock_dependencies(tmp_path):
     }
 
 
-def test_full_bucket_migration_pipeline(_mock_dependencies):
+def test_full_bucket_migration_pipeline(mock_deps):
     """Test complete migration pipeline: sync → verify → delete"""
     with (
         mock.patch("migration_orchestrator.BucketSyncer"),
@@ -41,9 +43,9 @@ def test_full_bucket_migration_pipeline(_mock_dependencies):
         mock.patch("migration_orchestrator.BucketDeleter"),
     ):
         migrator = BucketMigrator(
-            _mock_dependencies["s3"],
-            _mock_dependencies["state"],
-            _mock_dependencies["base_path"],
+            mock_deps["s3"],
+            mock_deps["state"],
+            mock_deps["base_path"],
         )
         migrator.syncer = mock.Mock()
         migrator.verifier = mock.Mock()
@@ -62,7 +64,7 @@ def test_full_bucket_migration_pipeline(_mock_dependencies):
         "checksum_verified_count": 100,
         "total_bytes_verified": 1000000,
     }
-    _mock_dependencies["state"].get_bucket_info.return_value = bucket_info
+    mock_deps["state"].get_bucket_info.return_value = bucket_info
 
     verify_results = {
         "verified_count": 100,
@@ -82,20 +84,20 @@ def test_full_bucket_migration_pipeline(_mock_dependencies):
     migrator.deleter.delete_bucket.assert_called_once()
 
 
-def test_multi_bucket_orchestration_with_one_error(_mock_dependencies):
+def test_multi_bucket_orchestration_with_one_error(mock_deps):
     """Test orchestration continues despite error in one bucket"""
     mock_bucket_migrator = mock.Mock()
     orchestrator = BucketMigrationOrchestrator(
-        _mock_dependencies["s3"],
-        _mock_dependencies["state"],
-        _mock_dependencies["base_path"],
-        _mock_dependencies["drive_checker"],
+        mock_deps["s3"],
+        mock_deps["state"],
+        mock_deps["base_path"],
+        mock_deps["drive_checker"],
         mock_bucket_migrator,
     )
 
     all_buckets = ["bucket-1", "bucket-2"]
-    _mock_dependencies["state"].get_all_buckets.return_value = all_buckets
-    _mock_dependencies["state"].get_completed_buckets_for_phase.return_value = []
+    mock_deps["state"].get_all_buckets.return_value = all_buckets
+    mock_deps["state"].get_completed_buckets_for_phase.return_value = []
 
     # First bucket fails, exit occurs
     mock_bucket_migrator.process_bucket.side_effect = RuntimeError("Sync failed")
@@ -107,21 +109,21 @@ def test_multi_bucket_orchestration_with_one_error(_mock_dependencies):
     assert exc_info.value.code == 1
 
 
-def test_resumable_migration_state_preserved(_mock_dependencies):
+def test_resumable_migration_state_preserved(mock_deps):
     """Test that migration state is preserved for resumption"""
     mock_bucket_migrator = mock.Mock()
     orchestrator = BucketMigrationOrchestrator(
-        _mock_dependencies["s3"],
-        _mock_dependencies["state"],
-        _mock_dependencies["base_path"],
-        _mock_dependencies["drive_checker"],
+        mock_deps["s3"],
+        mock_deps["state"],
+        mock_deps["base_path"],
+        mock_deps["drive_checker"],
         mock_bucket_migrator,
     )
 
     all_buckets = ["bucket-1", "bucket-2", "bucket-3"]
     completed_buckets = ["bucket-1", "bucket-2"]  # Two already done
-    _mock_dependencies["state"].get_all_buckets.return_value = all_buckets
-    _mock_dependencies["state"].get_completed_buckets_for_phase.return_value = completed_buckets
+    mock_deps["state"].get_all_buckets.return_value = all_buckets
+    mock_deps["state"].get_completed_buckets_for_phase.return_value = completed_buckets
 
     with mock.patch("builtins.print"):
         orchestrator.migrate_all_buckets()

@@ -170,3 +170,7 @@ def print_cleanup_opportunities(all_bucket_analyses):
         )
     else:
         print("No obvious cleanup candidates found (no objects older than 1 year)")
+
+
+if __name__ == "__main__":
+    pass

@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import get_default_regions
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 # Constants
@@ -21,15 +22,7 @@ def get_all_regions():
         return [region["RegionName"] for region in response["Regions"]]
     except ClientError as e:
         print(f"Error getting regions: {e}")
-        return [
-            "us-east-1",
-            "us-east-2",
-            "us-west-1",
-            "us-west-2",
-            "eu-west-1",
-            "eu-west-2",
-            "eu-central-1",
-        ]
+        return get_default_regions()
 
 
 def _calculate_volume_cost(size_gb, volume_type):

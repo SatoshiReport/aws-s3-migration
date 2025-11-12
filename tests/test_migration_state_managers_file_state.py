@@ -1,5 +1,7 @@
 """Unit tests for FileStateManager from migration_state_managers.py"""
 
+# pylint: disable=redefined-outer-name  # pytest fixtures
+
 from datetime import datetime, timezone
 
 import pytest
@@ -9,14 +11,14 @@ from tests.assertions import assert_equal
 
 
 @pytest.fixture
-def file_manager(db_conn):
+def file_mgr(db_conn):
     """Create FileStateManager instance"""
     return FileStateManager(db_conn)
 
 
-def test_add_file_inserts_file_record(_file_manager, db_conn):
+def test_add_file_inserts_file_record(file_mgr, db_conn):
     """Test adding a file to the database"""
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="path/to/file.txt",
         size=1024,
@@ -40,9 +42,9 @@ def test_add_file_inserts_file_record(_file_manager, db_conn):
     assert row["state"] == "discovered"
 
 
-def test_add_file_is_idempotent(_file_manager, db_conn):
+def test_add_file_is_idempotent(file_mgr, db_conn):
     """Test that adding the same file twice doesn't raise an error"""
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="path/to/file.txt",
         size=1024,
@@ -51,7 +53,7 @@ def test_add_file_is_idempotent(_file_manager, db_conn):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="path/to/file.txt",
         size=1024,
@@ -69,10 +71,10 @@ def test_add_file_is_idempotent(_file_manager, db_conn):
     assert_equal(count["cnt"], 1)
 
 
-def test_add_file_sets_timestamps(_file_manager, db_conn):
+def test_add_file_sets_timestamps(file_mgr, db_conn):
     """Test that created_at and updated_at are set"""
     before_time = datetime.now(timezone.utc).isoformat()
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="file.txt",
         size=100,
@@ -93,9 +95,9 @@ def test_add_file_sets_timestamps(_file_manager, db_conn):
     assert before_time <= row["created_at"] <= after_time
 
 
-def test_mark_glacier_restore_requested(_file_manager, db_conn):
+def test_mark_glacier_restore_requested(file_mgr, db_conn):
     """Test marking a file for glacier restore"""
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="glacier-file.txt",
         size=5000,
@@ -104,7 +106,7 @@ def test_mark_glacier_restore_requested(_file_manager, db_conn):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _file_manager.mark_glacier_restore_requested("test-bucket", "glacier-file.txt")
+    file_mgr.mark_glacier_restore_requested("test-bucket", "glacier-file.txt")
 
     with db_conn.get_connection() as conn:
         row = conn.execute(
@@ -115,9 +117,9 @@ def test_mark_glacier_restore_requested(_file_manager, db_conn):
     assert row["glacier_restore_requested_at"] is not None
 
 
-def test_mark_glacier_restored(_file_manager, db_conn):
+def test_mark_glacier_restored(file_mgr, db_conn):
     """Test marking a file as restored from glacier"""
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="glacier-file.txt",
         size=5000,
@@ -126,8 +128,8 @@ def test_mark_glacier_restored(_file_manager, db_conn):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _file_manager.mark_glacier_restore_requested("test-bucket", "glacier-file.txt")
-    _file_manager.mark_glacier_restored("test-bucket", "glacier-file.txt")
+    file_mgr.mark_glacier_restore_requested("test-bucket", "glacier-file.txt")
+    file_mgr.mark_glacier_restored("test-bucket", "glacier-file.txt")
 
     with db_conn.get_connection() as conn:
         row = conn.execute(
@@ -138,9 +140,9 @@ def test_mark_glacier_restored(_file_manager, db_conn):
     assert row["glacier_restored_at"] is not None
 
 
-def test_get_glacier_files_needing_restore(_file_manager):
+def test_get_glacier_files_needing_restore(file_mgr):
     """Test retrieving Glacier files that need restore"""
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="standard.txt",
         size=100,
@@ -149,7 +151,7 @@ def test_get_glacier_files_needing_restore(_file_manager):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="glacier1.txt",
         size=1000,
@@ -158,7 +160,7 @@ def test_get_glacier_files_needing_restore(_file_manager):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="archive1.txt",
         size=2000,
@@ -167,7 +169,7 @@ def test_get_glacier_files_needing_restore(_file_manager):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="glacier2.txt",
         size=1500,
@@ -175,9 +177,9 @@ def test_get_glacier_files_needing_restore(_file_manager):
         storage_class="GLACIER",
         last_modified="2024-01-01T00:00:00Z",
     )
-    _file_manager.mark_glacier_restore_requested("test-bucket", "glacier2.txt")
+    file_mgr.mark_glacier_restore_requested("test-bucket", "glacier2.txt")
 
-    files = _file_manager.get_glacier_files_needing_restore()
+    files = file_mgr.get_glacier_files_needing_restore()
 
     keys = [f["key"] for f in files]
     assert "glacier1.txt" in keys
@@ -187,9 +189,9 @@ def test_get_glacier_files_needing_restore(_file_manager):
     assert_equal(len(files), 2)
 
 
-def test_get_files_restoring(_file_manager):
+def test_get_files_restoring(file_mgr):
     """Test retrieving files currently being restored"""
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="standard.txt",
         size=100,
@@ -198,7 +200,7 @@ def test_get_files_restoring(_file_manager):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="glacier1.txt",
         size=1000,
@@ -207,7 +209,7 @@ def test_get_files_restoring(_file_manager):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="glacier2.txt",
         size=1500,
@@ -215,9 +217,9 @@ def test_get_files_restoring(_file_manager):
         storage_class="GLACIER",
         last_modified="2024-01-01T00:00:00Z",
     )
-    _file_manager.mark_glacier_restore_requested("test-bucket", "glacier2.txt")
+    file_mgr.mark_glacier_restore_requested("test-bucket", "glacier2.txt")
 
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="test-bucket",
         key="glacier3.txt",
         size=2000,
@@ -225,10 +227,10 @@ def test_get_files_restoring(_file_manager):
         storage_class="GLACIER",
         last_modified="2024-01-01T00:00:00Z",
     )
-    _file_manager.mark_glacier_restore_requested("test-bucket", "glacier3.txt")
-    _file_manager.mark_glacier_restored("test-bucket", "glacier3.txt")
+    file_mgr.mark_glacier_restore_requested("test-bucket", "glacier3.txt")
+    file_mgr.mark_glacier_restored("test-bucket", "glacier3.txt")
 
-    files = _file_manager.get_files_restoring()
+    files = file_mgr.get_files_restoring()
 
     keys = [f["key"] for f in files]
     assert "glacier2.txt" in keys
@@ -238,9 +240,9 @@ def test_get_files_restoring(_file_manager):
     assert_equal(len(files), 1)
 
 
-def test_multiple_buckets_tracked_separately(_file_manager, db_conn):
+def test_multiple_buckets_tracked_separately(file_mgr, db_conn):
     """Test that files from different buckets are tracked separately"""
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="bucket-a",
         key="file.txt",
         size=100,
@@ -249,7 +251,7 @@ def test_multiple_buckets_tracked_separately(_file_manager, db_conn):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _file_manager.add_file(
+    file_mgr.add_file(
         bucket="bucket-b",
         key="file.txt",
         size=200,

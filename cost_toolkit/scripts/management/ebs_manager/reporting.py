@@ -75,3 +75,7 @@ def print_snapshot_summary(snapshots: List[Dict]) -> None:
         )
     print()
     print("Snapshots are being created in the background and will be available shortly.")
+
+
+if __name__ == "__main__":
+    pass

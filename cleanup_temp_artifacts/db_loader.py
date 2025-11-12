@@ -13,12 +13,7 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from .cache import (
-    build_cache_key,
-    cache_is_valid,
-    load_cache,
-    write_cache,
-)
+from .cache import build_cache_key, cache_is_valid, load_cache, write_cache
 from .categories import Category
 from .core_scanner import (
     Candidate,
@@ -58,27 +53,6 @@ class ScanContext:
     cutoff_ts: float | None
 
 
-class MissingFilesTableError(CandidateLoadError):
-    """Raised when the migration database is missing the expected 'files' table."""
-
-    def __init__(self) -> None:
-        super().__init__("Migration database missing expected 'files' table")
-
-    def __str__(self) -> str:
-        """Return string representation of the error."""
-        return "Migration database missing expected 'files' table"
-
-
-class DatabaseConnectionError(CandidateLoadError):
-    """Raised when the SQLite database cannot be opened."""
-
-    def __init__(self, db_path: Path) -> None:
-        super().__init__(f"Failed to open SQLite database {db_path}")
-        self.db_path = db_path
-
-    def __str__(self) -> str:
-        """Return string representation of the error."""
-        return f"Failed to open SQLite database {self.db_path}"
 
 
 def _get_db_file_stats(conn: sqlite3.Connection) -> tuple[int, int]:
@@ -86,7 +60,7 @@ def _get_db_file_stats(conn: sqlite3.Connection) -> tuple[int, int]:
     try:
         total_files = conn.execute("SELECT COUNT(*) FROM files").fetchone()[0]
     except sqlite3.OperationalError as exc:
-        raise MissingFilesTableError() from exc
+        raise CandidateLoadError("Migration database missing expected 'files' table") from exc
 
     try:
         max_rowid_row = conn.execute("SELECT MAX(rowid) FROM files").fetchone()
@@ -189,7 +163,7 @@ def _create_db_connection(db_path: Path) -> sqlite3.Connection:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
     except sqlite3.Error as exc:  # pragma: no cover - connection failure
-        raise DatabaseConnectionError(db_path) from exc
+        raise CandidateLoadError(f"Failed to open SQLite database {db_path}") from exc
     return conn
 
 

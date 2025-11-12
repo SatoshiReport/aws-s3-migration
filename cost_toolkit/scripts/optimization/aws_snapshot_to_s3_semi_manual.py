@@ -19,6 +19,7 @@ This approach gives you control over the problematic AWS export service.
 from datetime import datetime
 
 from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
+from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
 from cost_toolkit.scripts.aws_utils import load_aws_credentials_from_env
 from cost_toolkit.scripts.snapshot_export_common import SAMPLE_SNAPSHOTS
 
@@ -30,12 +31,7 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
         print(f"   ✅ S3 bucket {bucket_name} already exists")
     except s3_client.exceptions.NoSuchBucket:
         print(f"   🔄 Creating S3 bucket {bucket_name}...")
-        if region == "us-east-1":
-            s3_client.create_bucket(Bucket=bucket_name)
-        else:
-            s3_client.create_bucket(
-                Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
-            )
+        create_s3_bucket_with_region(s3_client, bucket_name, region)
 
         # Enable versioning for data protection
         s3_client.put_bucket_versioning(

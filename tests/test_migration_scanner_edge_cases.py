@@ -145,10 +145,10 @@ def test_glacier_restorer_handles_restore_string_variations():
         assert result == expected
 
 
-def test_check_restore_status_partial_restore_string(waiter, mock_s3, mock_state):
+def test_check_restore_status_partial_restore_string(waiter, s3_mock, state_mock):
     """Test restore status with various Restore header formats"""
     # AWS includes timestamp and expiry in the Restore header
-    mock_s3.head_object.return_value = {
+    s3_mock.head_object.return_value = {
         "Restore": 'ongoing-request="false", expiry-date="Tue, 25 Oct 2022 00:00:00 GMT"',
     }
 
@@ -156,15 +156,15 @@ def test_check_restore_status_partial_restore_string(waiter, mock_s3, mock_state
     result = waiter.check_restore_status(file_info)
 
     assert result is True
-    mock_state.mark_glacier_restored.assert_called_once()
+    state_mock.mark_glacier_restored.assert_called_once()
 
 
-def test_wait_for_restores_prints_restored_files(waiter, mock_state, capsys):
+def test_wait_for_restores_prints_restored_files(waiter, state_mock, capsys):
     """Test output shows restored files"""
     # Mock _check_restore_status to return True for both files
     waiter.check_restore_status = mock.Mock(return_value=True)
 
-    mock_state.get_files_restoring.side_effect = [
+    state_mock.get_files_restoring.side_effect = [
         [
             {"bucket": "test-bucket", "key": "file1.txt"},
             {"bucket": "test-bucket", "key": "file2.txt"},
@@ -180,7 +180,7 @@ def test_wait_for_restores_prints_restored_files(waiter, mock_state, capsys):
     assert "Restored: test-bucket/file2.txt" in output
 
 
-def test_check_restore_status_with_multiple_files(waiter, mock_s3, mock_state):
+def test_check_restore_status_with_multiple_files(waiter, s3_mock, state_mock):
     """Test checking multiple files"""
     files = [
         {"bucket": "bucket1", "key": "file1.txt"},
@@ -189,7 +189,7 @@ def test_check_restore_status_with_multiple_files(waiter, mock_s3, mock_state):
     ]
 
     # First file complete, others still restoring
-    mock_s3.head_object.side_effect = [
+    s3_mock.head_object.side_effect = [
         {"Restore": 'ongoing-request="false"'},
         {"Restore": 'ongoing-request="true"'},
         {"Restore": 'ongoing-request="true"'},
@@ -198,4 +198,4 @@ def test_check_restore_status_with_multiple_files(waiter, mock_s3, mock_state):
     results = [waiter.check_restore_status(f) for f in files]
 
     assert results == [True, False, False]
-    assert mock_state.mark_glacier_restored.call_count == 1
+    assert state_mock.mark_glacier_restored.call_count == 1

@@ -3,7 +3,7 @@ AWS Billing Report Package.
 Provides modular billing report functionality for AWS cost analysis.
 """
 
-from .cli import main, setup_aws_credentials
+from .cli import main
 from .cost_analysis import (
     categorize_services,
     get_combined_billing_data,
@@ -32,7 +32,6 @@ from .service_checks_extended import (
 
 __all__ = [
     "main",
-    "setup_aws_credentials",
     "get_combined_billing_data",
     "get_date_range",
     "process_cost_data",

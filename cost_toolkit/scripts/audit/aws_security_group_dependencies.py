@@ -17,6 +17,8 @@ import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 
+from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_GROUPS
+
 
 class AWSCredentialsError(Exception):
     """Raised when AWS credentials are not found in the environment file."""
@@ -252,41 +254,8 @@ def audit_security_group_dependencies():
     """Audit dependencies for security groups that couldn't be deleted"""
     aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
-    # Security groups that failed to delete
-    failed_security_groups = [
-        {
-            "group_id": "sg-0423403672ae41d94",
-            "name": "security-group-for-outbound-nfs-d-jbqwgqwiy4df",
-            "region": "us-east-1",
-        },
-        {"group_id": "sg-0bf8a0d06a121f4a0", "name": "rds-ec2-1", "region": "us-east-1"},
-        {
-            "group_id": "sg-049977ce080d9ab0f",
-            "name": "security-group-for-inbound-nfs-d-ujcvqjdoyu70",
-            "region": "us-east-1",
-        },
-        {"group_id": "sg-044777fbbcdee8f28", "name": "ec2-rds-1", "region": "us-east-1"},
-        {
-            "group_id": "sg-0dfa7bedc21d91798",
-            "name": "security-group-for-inbound-nfs-d-jbqwgqwiy4df",
-            "region": "us-east-1",
-        },
-        {
-            "group_id": "sg-05ec40d14e0fb6fed",
-            "name": "security-group-for-outbound-nfs-d-ujcvqjdoyu70",
-            "region": "us-east-1",
-        },
-        {
-            "group_id": "sg-09e291dc61da97af1",
-            "name": "security-group-for-outbound-nfs-d-ki8zr9k0yt95",
-            "region": "us-east-2",
-        },
-        {
-            "group_id": "sg-0dba11de0f5b92f40",
-            "name": "security-group-for-inbound-nfs-d-ki8zr9k0yt95",
-            "region": "us-east-2",
-        },
-    ]
+    # Security groups that failed to delete - loaded from shared constants
+    failed_security_groups = ALL_CIRCULAR_SECURITY_GROUPS
 
     print("AWS Security Group Dependencies Audit")
     print("=" * 60)

@@ -15,34 +15,32 @@ from migration_verify import (
 from tests.assertions import assert_equal
 
 
-class TestInventoryEdgeCasesManyFiles:
-    """Tests for inventory checker with many missing/extra files"""
+def test_check_inventory_shows_many_missing_files():
+    """Test inventory check shows summary when >10 missing files"""
+    mock_state = mock.Mock()
+    checker = FileInventoryChecker(mock_state, Path("/tmp"))
 
-    def test_check_inventory_shows_many_missing_files(self):
-        """Test inventory check shows summary when >10 missing files"""
-        mock_state = mock.Mock()
-        checker = FileInventoryChecker(mock_state, Path("/tmp"))
+    expected_keys = {f"file{i}.txt" for i in range(20)}
+    local_keys = {"file0.txt", "file1.txt"}
 
-        expected_keys = {f"file{i}.txt" for i in range(20)}
-        local_keys = {"file0.txt", "file1.txt"}
+    with pytest.raises(ValueError) as exc_info:
+        checker.check_inventory(expected_keys, local_keys)
 
-        with pytest.raises(ValueError) as exc_info:
-            checker.check_inventory(expected_keys, local_keys)
+    assert "18 missing" in str(exc_info.value)
 
-        assert "18 missing" in str(exc_info.value)
 
-    def test_check_inventory_shows_many_extra_files(self):
-        """Test inventory check shows summary when >10 extra files"""
-        mock_state = mock.Mock()
-        checker = FileInventoryChecker(mock_state, Path("/tmp"))
+def test_check_inventory_shows_many_extra_files():
+    """Test inventory check shows summary when >10 extra files"""
+    mock_state = mock.Mock()
+    checker = FileInventoryChecker(mock_state, Path("/tmp"))
 
-        expected_keys = {"file0.txt", "file1.txt"}
-        local_keys = {f"file{i}.txt" for i in range(20)}
+    expected_keys = {"file0.txt", "file1.txt"}
+    local_keys = {f"file{i}.txt" for i in range(20)}
 
-        with pytest.raises(ValueError) as exc_info:
-            checker.check_inventory(expected_keys, local_keys)
+    with pytest.raises(ValueError) as exc_info:
+        checker.check_inventory(expected_keys, local_keys)
 
-        assert "18 extra" in str(exc_info.value)
+    assert "18 extra" in str(exc_info.value)
 
 
 def test_verify_files_shows_many_verification_errors(tmp_path):
@@ -192,58 +190,50 @@ def test_verify_files_with_mixed_single_and_multipart(tmp_path):
     assert_equal(results["checksum_verified"], 2)
 
 
-class TestBucketDeletionLargeBatch:  # pylint: disable=too-few-public-methods
-    """Tests for bucket deletion with large batches"""
+def test_delete_bucket_large_batch():
+    """Test deleting bucket with large batch of objects"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock()
+    mock_state.get_bucket_info.return_value = {"file_count": 1500}
 
-    def test_delete_bucket_large_batch(self):
-        """Test deleting bucket with large batch of objects"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock()
-        mock_state.get_bucket_info.return_value = {"file_count": 1500}
+    # Create mock paginator with large batch (list_object_versions format)
+    large_batch = {"Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(1500)]}
+    mock_paginator = mock.Mock()
+    mock_paginator.paginate.return_value = [large_batch]
+    mock_s3.get_paginator.return_value = mock_paginator
 
-        # Create mock paginator with large batch (list_object_versions format)
-        large_batch = {
-            "Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(1500)]
+    deleter = BucketDeleter(mock_s3, mock_state)
+    deleter.delete_bucket("test-bucket")
+
+    # Verify delete_objects was called with all objects
+    call_args = mock_s3.delete_objects.call_args
+    assert_equal(len(call_args[1]["Delete"]["Objects"]), 1500)
+
+
+def test_delete_bucket_updates_progress():
+    """Test that delete progress is displayed"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock()
+    mock_state.get_bucket_info.return_value = {"file_count": 5}
+
+    # Create multiple pages to trigger progress updates (list_object_versions format)
+    mock_paginator = mock.Mock()
+    pages = [
+        {
+            "Versions": [
+                {"Key": f"file{i}.txt", "VersionId": f"v{i}"}
+                for i in range(j * 1000, (j + 1) * 1000)
+            ]
         }
-        mock_paginator = mock.Mock()
-        mock_paginator.paginate.return_value = [large_batch]
-        mock_s3.get_paginator.return_value = mock_paginator
+        for j in range(5)
+    ]
+    mock_paginator.paginate.return_value = pages
+    mock_s3.get_paginator.return_value = mock_paginator
 
-        deleter = BucketDeleter(mock_s3, mock_state)
-        deleter.delete_bucket("test-bucket")
+    deleter = BucketDeleter(mock_s3, mock_state)
 
-        # Verify delete_objects was called with all objects
-        call_args = mock_s3.delete_objects.call_args
-        assert_equal(len(call_args[1]["Delete"]["Objects"]), 1500)
+    # Should not raise an error
+    deleter.delete_bucket("test-bucket")
 
-
-class TestBucketDeletionProgressDisplay:  # pylint: disable=too-few-public-methods
-    """Tests for bucket deletion progress display"""
-
-    def test_delete_bucket_updates_progress(self):
-        """Test that delete progress is displayed"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock()
-        mock_state.get_bucket_info.return_value = {"file_count": 5}
-
-        # Create multiple pages to trigger progress updates (list_object_versions format)
-        mock_paginator = mock.Mock()
-        pages = [
-            {
-                "Versions": [
-                    {"Key": f"file{i}.txt", "VersionId": f"v{i}"}
-                    for i in range(j * 1000, (j + 1) * 1000)
-                ]
-            }
-            for j in range(5)
-        ]
-        mock_paginator.paginate.return_value = pages
-        mock_s3.get_paginator.return_value = mock_paginator
-
-        deleter = BucketDeleter(mock_s3, mock_state)
-
-        # Should not raise an error
-        deleter.delete_bucket("test-bucket")
-
-        # Should have called delete_objects for each page
-        assert_equal(mock_s3.delete_objects.call_count, 5)
+    # Should have called delete_objects for each page
+    assert_equal(mock_s3.delete_objects.call_count, 5)

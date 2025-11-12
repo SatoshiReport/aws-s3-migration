@@ -30,3 +30,7 @@ REQUEST_PRICING = {
     "DATA_RETRIEVAL_GLACIER": 0.01,  # Glacier retrieval per 1000
     "DATA_RETRIEVAL_DEEP_ARCHIVE": 0.02,  # Deep Archive retrieval per 1000
 }
+
+
+if __name__ == "__main__":
+    pass

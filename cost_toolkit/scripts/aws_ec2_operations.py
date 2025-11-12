@@ -8,6 +8,7 @@ from typing import Optional
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import get_default_regions, get_instance_name
 from cost_toolkit.scripts.aws_client_factory import create_ec2_client
 
 
@@ -45,33 +46,15 @@ def get_common_regions() -> list[str]:
     Returns:
         list: List of AWS region names
     """
-    return [
-        "us-east-1",
-        "us-east-2",
-        "us-west-1",
-        "us-west-2",
-        "eu-west-1",
-        "eu-west-2",
-        "eu-west-3",
-        "eu-central-1",
-        "ap-southeast-1",
-        "ap-southeast-2",
-        "ap-northeast-1",
-    ]
+    # Extended version with eu-west-3 and ap-northeast-1
+    regions = get_default_regions()
+    regions.extend(["eu-west-3", "ap-northeast-1"])
+    return regions
 
 
-def get_instance_name(ec2_client, instance_id: str) -> str:
-    """Get the Name tag of an EC2 instance."""
-    try:
-        response = ec2_client.describe_instances(InstanceIds=[instance_id])
-        for reservation in response["Reservations"]:
-            for instance in reservation["Instances"]:
-                for tag in instance.get("Tags", []):
-                    if tag["Key"] == "Name":
-                        return tag["Value"]
-    except ClientError:
-        return "Unknown"
-    return "Unnamed"
+# Re-export get_instance_name from aws_common for backward compatibility
+# (this module is widely imported)
+__all__ = ["get_all_regions", "get_common_regions", "get_instance_name", "describe_instance"]
 
 
 def describe_instance(
@@ -387,3 +370,7 @@ def describe_volumes(
 
     response = ec2_client.describe_volumes(**params)
     return response.get("Volumes", [])
+
+
+if __name__ == "__main__":
+    pass

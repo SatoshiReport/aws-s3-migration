@@ -33,7 +33,7 @@ init-hook = "import sys, os; sys.path.insert(0, os.getcwd())"
 ignored-modules = ["psycopg2"]
 
 [tool.pylint.'MESSAGES CONTROL']
-disable = []
+disable = ["duplicate-code"]  # R0801 - Many duplications in test fixtures and similar utility patterns
 
 [tool.pylint.DESIGN]
 max-attributes = 10

@@ -279,3 +279,7 @@ def calculate_cost_savings(
         "annual_savings": annual_savings,
         "savings_percentage": savings_percentage,
     }
+
+
+if __name__ == "__main__":
+    pass

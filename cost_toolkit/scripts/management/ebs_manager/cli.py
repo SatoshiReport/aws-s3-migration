@@ -136,3 +136,7 @@ def main() -> None:
         print(f"Unknown command: {command}")
         print("Valid commands: delete, info, snapshot")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    pass

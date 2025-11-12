@@ -13,9 +13,12 @@ except ImportError:  # pragma: no cover
     import config as config_module  # type: ignore[import]
 
 try:
-    from cost_toolkit.common.cli_utils import confirm_reset_state_db
+    from cost_toolkit.common.cli_utils import add_reset_state_db_args, confirm_reset_state_db
 except ImportError:  # pragma: no cover
-    from cost_toolkit.common.cli_utils import confirm_reset_state_db  # type: ignore[import]
+    from cost_toolkit.common.cli_utils import (  # type: ignore[import]
+        add_reset_state_db_args,
+        confirm_reset_state_db,
+    )
 
 try:  # Prefer package-relative imports when packaged
     from duplicate_tree.analysis import (
@@ -93,16 +96,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
             "in each cluster (requires confirmation)."
         ),
     )
-    parser.add_argument(
-        "--reset-state-db",
-        action="store_true",
-        help="Delete and recreate the migrate_v2 state DB before scanning.",
-    )
-    parser.add_argument(
-        "--yes",
-        action="store_true",
-        help="Skip confirmation when using --reset-state-db.",
-    )
+    add_reset_state_db_args(parser)
     return parser.parse_args(argv)
 
 

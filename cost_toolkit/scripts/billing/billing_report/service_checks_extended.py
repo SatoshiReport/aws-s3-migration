@@ -217,3 +217,7 @@ def get_resolved_services_status():
     )
 
     return resolved_services
+
+
+if __name__ == "__main__":
+    pass

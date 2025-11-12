@@ -353,3 +353,7 @@ def get_bucket_tagging(
         if e.response["Error"]["Code"] == "NoSuchTagSet":
             return []
         raise
+
+
+if __name__ == "__main__":
+    pass

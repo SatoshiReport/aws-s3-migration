@@ -180,3 +180,7 @@ def _apply_dns_changes(route53, zone_id, changes):
     waiter = route53.get_waiter("resource_record_sets_changed")
     waiter.wait(Id=change_id, WaiterConfig={"Delay": 10, "MaxAttempts": 30})
     print("  ✅ DNS changes completed successfully")
+
+
+if __name__ == "__main__":
+    pass

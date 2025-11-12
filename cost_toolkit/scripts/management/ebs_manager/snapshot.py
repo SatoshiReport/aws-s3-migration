@@ -115,3 +115,7 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
 
     except Exception as e:
         raise SnapshotCreationError(volume_id, e) from e
+
+
+if __name__ == "__main__":
+    pass

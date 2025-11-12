@@ -296,3 +296,7 @@ def get_hosted_zone_cost(hosted_zone_count: int, query_count: int = 0) -> dict:
         "total_monthly_cost": total_monthly_cost,
         "total_annual_cost": total_monthly_cost * 12,
     }
+
+
+if __name__ == "__main__":
+    pass

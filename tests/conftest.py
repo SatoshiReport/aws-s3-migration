@@ -1,8 +1,4 @@
-"""
-Shared pytest fixtures for test files
-
-Provides common test fixtures to eliminate duplication across test files.
-"""
+"""Shared pytest fixtures for test files."""
 
 import hashlib
 import json
@@ -10,22 +6,19 @@ from unittest import mock
 
 import pytest
 
+from migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
 from migration_state_v2 import MigrationStateV2, Phase
-
-# ============================================================================
-# AWS Identity Fixtures
-# ============================================================================
 
 
 @pytest.fixture
 def mock_aws_identity():
-    """Fixture that provides a mock AWS identity return value"""
+    """Mock AWS identity return value"""
     return {"user_arn": "arn:aws:iam::123:user/test"}
 
 
 @pytest.fixture
 def mock_aws_info_identity():
-    """Fixture that provides a complete AWS identity for aws_info tests"""
+    """Complete AWS identity for aws_info tests"""
     return {
         "account_id": "123456789012",
         "username": "test-user",
@@ -35,7 +28,7 @@ def mock_aws_info_identity():
 
 @pytest.fixture
 def sample_policy():
-    """Fixture that provides a sample S3 bucket policy structure"""
+    """Sample S3 bucket policy structure"""
     return {
         "Version": "2012-10-17",
         "Statement": [
@@ -55,10 +48,7 @@ def sample_policy():
 
 @pytest.fixture
 def policies_dir(tmp_path, monkeypatch):
-    """Fixture that sets up a policies directory in tmp_path and changes to tmp_path.
-
-    Returns the policies directory Path object.
-    """
+    """Sets up policies directory in tmp_path and changes to it."""
     monkeypatch.chdir(tmp_path)
     policies_dir = tmp_path / "policies"  # pylint: disable=redefined-outer-name
     policies_dir.mkdir()
@@ -67,10 +57,7 @@ def policies_dir(tmp_path, monkeypatch):
 
 @pytest.fixture
 def setup_test_env(tmp_path, monkeypatch):
-    """Fixture that changes to tmp_path but doesn't create policies directory.
-
-    Useful for tests that need to verify directory creation.
-    """
+    """Changes to tmp_path (tests can verify directory creation)."""
     monkeypatch.chdir(tmp_path)
     return tmp_path
 
@@ -79,10 +66,7 @@ def setup_test_env(tmp_path, monkeypatch):
 def mock_block_s3_dependencies(
     mock_aws_identity, sample_policy
 ):  # pylint: disable=redefined-outer-name
-    """Fixture that provides common mocks for block_s3.py tests.
-
-    Returns a context manager that can be used with 'with' statement.
-    """
+    """Common mocks for block_s3.py tests (context manager)."""
 
     class MockContext:
         """Context manager for block_s3 test mocking."""
@@ -114,10 +98,7 @@ def mock_block_s3_dependencies(
 
 @pytest.fixture
 def create_policy_file(policies_dir):  # pylint: disable=redefined-outer-name
-    """Fixture that provides a helper function to create policy files.
-
-    Returns a callable that creates a policy file with the given bucket name and policy content.
-    """
+    """Helper function to create policy files with given bucket name and policy content."""
 
     def _create_policy_file(bucket_name, policy_content=None):
         if policy_content is None:
@@ -131,10 +112,7 @@ def create_policy_file(policies_dir):  # pylint: disable=redefined-outer-name
 
 @pytest.fixture
 def mock_apply_block_dependencies():
-    """Fixture that provides common mocks for apply_block.py tests.
-
-    Returns a context manager with mocked apply_bucket_policy.
-    """
+    """Context manager with mocked apply_bucket_policy for apply_block.py tests."""
 
     class MockContext:
         """Context manager for apply_block test mocking."""
@@ -153,18 +131,9 @@ def mock_apply_block_dependencies():
     return MockContext()
 
 
-# ============================================================================
-# AWS Info Test Fixtures
-# ============================================================================
-
-
 @pytest.fixture
 def mock_aws_info_context(mock_aws_info_identity):  # pylint: disable=redefined-outer-name
-    """Fixture that provides a context manager for aws_info tests.
-
-    Returns a context manager that mocks get_aws_identity, list_s3_buckets,
-    and print. Allows custom bucket lists to be passed.
-    """
+    """Context manager mocking get_aws_identity, list_s3_buckets, and print for aws_info tests."""
 
     class MockContext:
         """Context manager for aws_info test mocking."""
@@ -199,27 +168,18 @@ def mock_aws_info_context(mock_aws_info_identity):  # pylint: disable=redefined-
     return MockContext(mock_aws_info_identity)
 
 
-# ============================================================================
-# Block S3 Test Fixtures
-# ============================================================================
-
-
 @pytest.fixture
 def empty_policy():
-    """Fixture that provides an empty S3 bucket policy"""
+    """Empty S3 bucket policy"""
     return {"Version": "2012-10-17", "Statement": []}
 
 
 @pytest.fixture
 def mock_block_s3_context(mock_aws_identity):  # pylint: disable=redefined-outer-name
-    """Fixture that provides a context manager for block_s3 tests.
-
-    Returns a context manager that can be configured with custom policies
-    and supports multiple nested patch contexts.
-    """
+    """Fixture providing context manager for block_s3 tests with policy/save mocking."""
 
     class MockContext:
-        """Context manager for configurable block_s3 test mocking."""
+        """Context manager for mocking block_s3 operations in tests."""
 
         def __init__(self, identity):
             self.identity = identity
@@ -227,14 +187,16 @@ def mock_block_s3_context(mock_aws_identity):  # pylint: disable=redefined-outer
             self.buckets = []
             self.identity_patch = self.policy_patch = None  # type: ignore
             self.identity_mock = self.policy_mock = None
+            self.save_policy_patch = None
+            self.save_policy_mock = None
 
         def with_policy(self, policy):
-            """Set the policy for this context"""
+            """Set the policy to be returned by mocked generate_restrictive_bucket_policy."""
             self.policy = policy
             return self
 
         def with_buckets(self, buckets):
-            """Set the buckets list for this context"""
+            """Set the list of buckets to be used in tests."""
             self.buckets = buckets
             return self
 
@@ -245,32 +207,25 @@ def mock_block_s3_context(mock_aws_identity):  # pylint: disable=redefined-outer
             self.policy_patch = mock.patch(
                 "block_s3.generate_restrictive_bucket_policy", return_value=self.policy
             )
+            self.save_policy_patch = mock.patch("block_s3.save_policy_to_file")
             self.identity_mock = self.identity_patch.__enter__()
             self.policy_mock = self.policy_patch.__enter__()
+            self.save_policy_mock = self.save_policy_patch.__enter__()
             return self
 
         def __exit__(self, exc_type, exc_val, exc_tb):
+            self.save_policy_patch.__exit__(exc_type, exc_val, exc_tb)  # type: ignore
             self.policy_patch.__exit__(exc_type, exc_val, exc_tb)  # type: ignore
             self.identity_patch.__exit__(exc_type, exc_val, exc_tb)  # type: ignore
 
     return MockContext(mock_aws_identity)
 
 
-# ============================================================================
-# Migration Verify Test Fixtures
-# ============================================================================
-
-
 @pytest.fixture
 def mock_db_connection():
-    """Fixture that provides a mock database connection context manager.
-
-    Returns a function that takes rows and returns a configured mock
-    connection context manager ready for use with MigrationStateV2.
-    """
+    """Mock database connection context manager factory for MigrationStateV2 tests."""
 
     def _create_mock_connection(rows):
-        """Create a mock connection that returns the given rows"""
         mock_conn = mock.Mock()
         mock_conn.execute.return_value = rows
 
@@ -283,48 +238,64 @@ def mock_db_connection():
     return _create_mock_connection
 
 
-# ============================================================================
-# Migration Scanner Test Fixtures
-# ============================================================================
-
-
 @pytest.fixture
 def mock_migration_scanner_deps():
-    """Fixture that provides mock dependencies for migration scanner tests.
+    """Mock dependencies (s3, state) for migration scanner tests."""
+    s3_client = mock.Mock()
+    state_manager = mock.Mock(spec=MigrationStateV2)
 
-    Returns a dict with mock_s3 and mock_state instances.
-    """
-    mock_s3 = mock.Mock()
-    mock_state = mock.Mock(spec=MigrationStateV2)
-
-    return {"s3": mock_s3, "state": mock_state}
+    return {"s3": s3_client, "state": state_manager}
 
 
 @pytest.fixture
 def s3_paginator_response():
-    """Fixture that provides a factory for S3 paginator responses.
-
-    Returns a function that creates S3 paginator response with given contents.
-    """
+    """Factory for creating S3 paginator responses with given contents."""
 
     def _create_response(contents):
-        """Create a paginator response with the given contents"""
         return [{"Contents": contents}]
 
     return _create_response
 
 
-# ============================================================================
-# Migration Orchestrator Test Fixtures
-# ============================================================================
+@pytest.fixture
+def s3_mock():
+    """Create mock S3 client for migration scanner tests"""
+    return mock.Mock()
+
+
+@pytest.fixture
+def state_mock():
+    """Create mock MigrationStateV2 for migration scanner tests"""
+    return mock.Mock(spec=MigrationStateV2)
+
+
+@pytest.fixture
+def scanner(request):
+    """Create BucketScanner instance for migration scanner tests"""
+    s3_client = request.getfixturevalue("s3_mock")
+    state_manager = request.getfixturevalue("state_mock")
+    return BucketScanner(s3_client, state_manager)
+
+
+@pytest.fixture
+def restorer(request):
+    """Create GlacierRestorer instance for migration scanner tests"""
+    s3_client = request.getfixturevalue("s3_mock")
+    state_manager = request.getfixturevalue("state_mock")
+    return GlacierRestorer(s3_client, state_manager)
+
+
+@pytest.fixture
+def waiter(request):
+    """Create GlacierWaiter instance for migration scanner tests"""
+    s3_client = request.getfixturevalue("s3_mock")
+    state_manager = request.getfixturevalue("state_mock")
+    return GlacierWaiter(s3_client, state_manager)
 
 
 @pytest.fixture
 def mock_orchestrator_deps(tmp_path):
-    """Fixture that provides mock dependencies for migration orchestrator tests.
-
-    Returns a dict with all necessary mocks and paths configured.
-    """
+    """Mock dependencies for migration orchestrator tests."""
     base_path = tmp_path / "migration"
     base_path.mkdir()
 
@@ -338,10 +309,7 @@ def mock_orchestrator_deps(tmp_path):
 
 @pytest.fixture
 def mock_bucket_info():
-    """Fixture that provides a factory for bucket info dicts.
-
-    Returns a function that creates bucket info with custom values.
-    """
+    """Factory for creating bucket info dicts with custom values."""
 
     def _create_bucket_info(
         sync_complete=False,
@@ -362,14 +330,9 @@ def mock_bucket_info():
     return _create_bucket_info
 
 
-# ============================================================================
-# Phase and State Management Fixtures
-# ============================================================================
-
-
 @pytest.fixture
 def all_phases():
-    """Fixture that provides a list of all migration phases in order"""
+    """List of all migration phases in order"""
     return [
         Phase.SCANNING,
         Phase.GLACIER_RESTORE,
@@ -383,7 +346,7 @@ def all_phases():
 
 @pytest.fixture
 def common_phases():
-    """Fixture that provides a list of common migration phases (without VERIFYING and DELETING)"""
+    """Common migration phases (without VERIFYING and DELETING)"""
     return [
         Phase.SCANNING,
         Phase.GLACIER_RESTORE,
@@ -393,27 +356,15 @@ def common_phases():
     ]
 
 
-# ============================================================================
-# Migration Verify Test Fixtures - Specific Helpers
-# ============================================================================
-
-
 @pytest.fixture
 def setup_verify_test(tmp_path, mock_db_connection):  # pylint: disable=redefined-outer-name
-    """Fixture that sets up a complete verification test environment.
-
-    Returns a function that creates test files, mock state, and db connection.
-    """
+    """Setup verification test environment with test files, mock state, and db connection."""
 
     def _setup(file_data_map):
         """
         Setup verification test with given file data.
 
-        Args:
-            file_data_map: Dict mapping filenames to their content bytes
-
-        Returns:
-            Dict with bucket_path, mock_state, and file metadata
+        Returns bucket_path, mock_state, and metadata.
         """
         bucket_path = tmp_path / "test-bucket"
         bucket_path.mkdir()
@@ -426,19 +377,19 @@ def setup_verify_test(tmp_path, mock_db_connection):  # pylint: disable=redefine
             file_metadata.append({"key": filename, "size": len(content), "etag": md5})
 
         # Setup mock state
-        mock_state = mock.Mock()
-        mock_state.get_bucket_info.return_value = {
+        state_manager = mock.Mock()
+        state_manager.get_bucket_info.return_value = {
             "file_count": len(file_data_map),
             "total_size": sum(len(c) for c in file_data_map.values()),
         }
 
         # Setup db connection
         mock_cm = mock_db_connection(file_metadata)
-        mock_state.db_conn.get_connection.return_value = mock_cm
+        state_manager.db_conn.get_connection.return_value = mock_cm
 
         return {
             "bucket_path": bucket_path,
-            "mock_state": mock_state,
+            "mock_state": state_manager,
             "file_metadata": file_metadata,
             "tmp_path": tmp_path,
         }
@@ -446,14 +397,9 @@ def setup_verify_test(tmp_path, mock_db_connection):  # pylint: disable=redefine
     return _setup
 
 
-# ============================================================================
-# Verification Stats Fixtures
-# ============================================================================
-
-
 @pytest.fixture
 def empty_verify_stats():
-    """Fixture that provides an empty verification stats dict"""
+    """an empty verification stats dict"""
     return {
         "verified_count": 0,
         "size_verified": 0,
@@ -463,26 +409,12 @@ def empty_verify_stats():
     }
 
 
-# ============================================================================
-# Migration Sync Test Fixtures
-# ============================================================================
-
-
 @pytest.fixture
 def create_mock_process():
-    """Fixture that provides a factory for creating mock subprocess.Popen processes"""
+    """Factory for creating mock subprocess.Popen processes."""
 
     def _create_process(stdout_lines, returncodes):
-        """
-        Create a mock process with specified output and return codes.
-
-        Args:
-            stdout_lines: List of strings to return from stdout.readline()
-            returncodes: List of return codes (None while running, 0 when complete)
-
-        Returns:
-            Mock process object configured with the given behavior
-        """
+        """Create mock process with specified stdout lines and return codes."""
         mock_process = mock.Mock()
         mock_process.stdout.readline.side_effect = [
             line.encode() if line else b"" for line in stdout_lines

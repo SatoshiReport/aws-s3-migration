@@ -113,3 +113,7 @@ def record_migration_action(original_instance, endpoint_info, monthly_savings):
 
     except Exception as e:  # pylint: disable=broad-exception-caught
         print(f"⚠️  Could not record migration: {e}")
+
+
+if __name__ == "__main__":
+    pass

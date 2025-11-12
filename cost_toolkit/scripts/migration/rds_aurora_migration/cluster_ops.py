@@ -232,3 +232,7 @@ def create_aurora_serverless_cluster(
         raise
 
     return endpoint_info
+
+
+if __name__ == "__main__":
+    pass

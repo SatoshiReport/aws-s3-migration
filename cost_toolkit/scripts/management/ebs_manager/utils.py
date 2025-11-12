@@ -6,7 +6,8 @@ Contains helper functions for region discovery and tag management.
 from typing import Dict, List, Optional
 
 import boto3
-from botocore.exceptions import ClientError
+
+from cost_toolkit.common.aws_common import get_instance_name as _get_instance_name_with_client
 
 
 def get_all_aws_regions() -> List[str]:
@@ -59,18 +60,9 @@ def get_instance_name(instance_id: str, region: str) -> str:
         Instance name from Name tag, or 'No Name' if not found
     """
     ec2_client = boto3.client("ec2", region_name=region)
-
-    try:
-        response = ec2_client.describe_instances(InstanceIds=[instance_id])
-        for reservation in response["Reservations"]:
-            for instance in reservation["Instances"]:
-                for tag in instance.get("Tags", []):
-                    if tag["Key"] == "Name":
-                        return tag["Value"]
-    except ClientError:
-        return "Unknown"
-
-    return "No Name"
+    result = _get_instance_name_with_client(ec2_client, instance_id)
+    # Convert "Unknown" to "No Name" for compatibility
+    return "No Name" if result == "Unknown" else result
 
 
 def get_volume_tags(volume: Dict) -> Dict[str, str]:
@@ -87,3 +79,7 @@ def get_volume_tags(volume: Dict) -> Dict[str, str]:
     for tag in volume.get("Tags", []):
         tags[tag["Key"]] = tag["Value"]
     return tags
+
+
+if __name__ == "__main__":
+    pass

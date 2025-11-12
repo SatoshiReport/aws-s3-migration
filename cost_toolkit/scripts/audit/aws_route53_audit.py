@@ -4,6 +4,7 @@
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.route53_utils import parse_hosted_zone
 from cost_toolkit.scripts.aws_client_factory import (
     create_route53_client,
     create_route53resolver_client,
@@ -67,10 +68,11 @@ def audit_route53_hosted_zones():
         total_monthly_cost = 0
 
         for zone in hosted_zones:
-            zone_id = zone["Id"].split("/")[-1]
-            zone_name = zone["Name"]
-            is_private = zone.get("Config", {}).get("PrivateZone", False)
-            record_count = zone.get("ResourceRecordSetCount", 0)
+            zone_info = parse_hosted_zone(zone)
+            zone_id = zone_info["zone_id"]
+            zone_name = zone_info["zone_name"]
+            is_private = zone_info["is_private"]
+            record_count = zone_info["record_count"]
 
             monthly_cost = 0.50
             total_monthly_cost += monthly_cost

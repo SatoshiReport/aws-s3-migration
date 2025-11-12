@@ -41,3 +41,7 @@ class CertificateInfoError(Exception):
 
     def __init__(self):
         super().__init__("Certificate date information not available")
+
+
+if __name__ == "__main__":
+    pass

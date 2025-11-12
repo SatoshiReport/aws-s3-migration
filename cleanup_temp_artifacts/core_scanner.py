@@ -11,8 +11,10 @@ import sqlite3
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Iterator
+
+from migration_utils import derive_local_path
 
 from .categories import Category
 
@@ -47,22 +49,6 @@ class CandidateLoadResult:
 
 class CandidateLoadError(RuntimeError):
     """Raised when the migration database cannot be queried."""
-
-
-def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
-    """Convert a bucket/key pair into the expected local filesystem path."""
-    candidate = base_path / bucket
-    for part in PurePosixPath(key).parts:
-        if part in ("", "."):
-            continue
-        if part == "..":
-            return None
-        candidate /= part
-    try:
-        candidate.relative_to(base_path)
-    except ValueError:
-        return None
-    return candidate
 
 
 def iter_relevant_dirs(file_path: Path, base_path: Path) -> Iterator[Path]:

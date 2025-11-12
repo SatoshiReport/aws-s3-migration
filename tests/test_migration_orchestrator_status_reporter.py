@@ -6,6 +6,8 @@ Tests cover:
 - Individual bucket details display
 """
 
+# pylint: disable=redefined-outer-name  # pytest fixtures
+
 from unittest import mock
 
 import pytest
@@ -15,62 +17,63 @@ from migration_state_v2 import Phase
 
 
 @pytest.fixture
-def mock_state():
+def state_mock():
     """Create mock MigrationStateV2"""
     return mock.Mock()
 
 
 @pytest.fixture
-def reporter(_mock_state):
+def status_reporter(request):
     """Create StatusReporter instance"""
-    return StatusReporter(_mock_state)
+    state_mgr = request.getfixturevalue("state_mock")
+    return StatusReporter(state_mgr)
 
 
-def test_show_status_scanning_phase(_reporter, _mock_state):
+def test_show_status_scanning_phase(status_reporter, state_mock):
     """Test show_status for SCANNING phase"""
-    _mock_state.get_current_phase.return_value = Phase.SCANNING
-    _mock_state.get_all_buckets.return_value = []
-    _mock_state.get_scan_summary.return_value = {
+    state_mock.get_current_phase.return_value = Phase.SCANNING
+    state_mock.get_all_buckets.return_value = []
+    state_mock.get_scan_summary.return_value = {
         "bucket_count": 0,
         "total_files": 0,
         "total_size": 0,
     }
 
     with mock.patch("builtins.print") as mock_print:
-        _reporter.show_status()
+        status_reporter.show_status()
 
     printed_text = " ".join([str(call) for call in mock_print.call_args_list])
     assert "MIGRATION STATUS" in printed_text
     assert "scanning" in printed_text.lower()
 
 
-def test_show_status_no_buckets(_reporter, _mock_state):
+def test_show_status_no_buckets(status_reporter, state_mock):
     """Test show_status when no buckets exist"""
-    _mock_state.get_current_phase.return_value = Phase.SCANNING
-    _mock_state.get_all_buckets.return_value = []
-    _mock_state.get_scan_summary.return_value = {
+    state_mock.get_current_phase.return_value = Phase.SCANNING
+    state_mock.get_all_buckets.return_value = []
+    state_mock.get_scan_summary.return_value = {
         "bucket_count": 0,
         "total_files": 0,
         "total_size": 0,
     }
 
     with mock.patch("builtins.print") as mock_print:
-        _reporter.show_status()
+        status_reporter.show_status()
 
     printed_text = " ".join([str(call) for call in mock_print.call_args_list])
     assert "MIGRATION STATUS" in printed_text
 
 
-def test_show_status_glacier_restore_phase_shows_summary(_reporter, _mock_state):
+def test_show_status_glacier_restore_phase_shows_summary(status_reporter, state_mock):
     """Test show_status for GLACIER_RESTORE phase shows scan summary"""
-    _mock_state.get_current_phase.return_value = Phase.GLACIER_RESTORE
-    _mock_state.get_all_buckets.return_value = ["bucket-1", "bucket-2"]
-    _mock_state.get_scan_summary.return_value = {
+    state_mock.get_current_phase.return_value = Phase.GLACIER_RESTORE
+    state_mock.get_all_buckets.return_value = ["bucket-1", "bucket-2"]
+    state_mock.get_scan_summary.return_value = {
         "bucket_count": 2,
         "total_files": 1000,
         "total_size": 10737418240,
     }
-    _mock_state.get_completed_buckets_for_phase.return_value = []
+    state_mock.get_completed_buckets_for_phase.return_value = []
 
     bucket_infos = [
         {
@@ -88,10 +91,10 @@ def test_show_status_glacier_restore_phase_shows_summary(_reporter, _mock_state)
             "delete_complete": False,
         },
     ]
-    _mock_state.get_bucket_info.side_effect = bucket_infos
+    state_mock.get_bucket_info.side_effect = bucket_infos
 
     with mock.patch("builtins.print") as mock_print:
-        _reporter.show_status()
+        status_reporter.show_status()
 
     printed_text = " ".join([str(call) for call in mock_print.call_args_list])
     assert "Overall Summary" in printed_text
@@ -99,16 +102,16 @@ def test_show_status_glacier_restore_phase_shows_summary(_reporter, _mock_state)
     assert "Total Files: 1,000" in printed_text
 
 
-def test_show_status_shows_bucket_progress(_reporter, _mock_state):
+def test_show_status_shows_bucket_progress(status_reporter, state_mock):
     """Test show_status displays bucket progress"""
-    _mock_state.get_current_phase.return_value = Phase.SYNCING
-    _mock_state.get_all_buckets.return_value = ["bucket-1", "bucket-2", "bucket-3"]
-    _mock_state.get_scan_summary.return_value = {
+    state_mock.get_current_phase.return_value = Phase.SYNCING
+    state_mock.get_all_buckets.return_value = ["bucket-1", "bucket-2", "bucket-3"]
+    state_mock.get_scan_summary.return_value = {
         "bucket_count": 3,
         "total_files": 1500,
         "total_size": 15000000000,
     }
-    _mock_state.get_completed_buckets_for_phase.return_value = ["bucket-1"]
+    state_mock.get_completed_buckets_for_phase.return_value = ["bucket-1"]
 
     bucket_infos = [
         {
@@ -133,28 +136,28 @@ def test_show_status_shows_bucket_progress(_reporter, _mock_state):
             "delete_complete": False,
         },
     ]
-    _mock_state.get_bucket_info.side_effect = bucket_infos
+    state_mock.get_bucket_info.side_effect = bucket_infos
 
     with mock.patch("builtins.print") as mock_print:
-        _reporter.show_status()
+        status_reporter.show_status()
 
     printed_text = " ".join([str(call) for call in mock_print.call_args_list])
     assert "Bucket Progress" in printed_text
     assert "Completed: 1/3" in printed_text
 
 
-def test_show_status_displays_bucket_details(_reporter, _mock_state):
+def test_show_status_displays_bucket_details(status_reporter, state_mock):
     """Test show_status shows individual bucket details"""
-    _mock_state.get_current_phase.return_value = Phase.SYNCING
-    _mock_state.get_all_buckets.return_value = ["bucket-1"]
-    _mock_state.get_scan_summary.return_value = {
+    state_mock.get_current_phase.return_value = Phase.SYNCING
+    state_mock.get_all_buckets.return_value = ["bucket-1"]
+    state_mock.get_scan_summary.return_value = {
         "bucket_count": 1,
         "total_files": 100,
         "total_size": 1000000,
     }
-    _mock_state.get_completed_buckets_for_phase.return_value = []
+    state_mock.get_completed_buckets_for_phase.return_value = []
 
-    _mock_state.get_bucket_info.return_value = {
+    state_mock.get_bucket_info.return_value = {
         "file_count": 100,
         "total_size": 1000000,
         "sync_complete": True,
@@ -163,24 +166,24 @@ def test_show_status_displays_bucket_details(_reporter, _mock_state):
     }
 
     with mock.patch("builtins.print") as mock_print:
-        _reporter.show_status()
+        status_reporter.show_status()
 
     printed_text = " ".join([str(call) for call in mock_print.call_args_list])
     assert "bucket-1" in printed_text
     assert "100" in printed_text
 
 
-def test_show_status_complete_phase(_reporter, _mock_state):
+def test_show_status_complete_phase(status_reporter, state_mock):
     """Test show_status for COMPLETE phase"""
-    _mock_state.get_current_phase.return_value = Phase.COMPLETE
-    _mock_state.get_all_buckets.return_value = ["bucket-1"]
-    _mock_state.get_scan_summary.return_value = {
+    state_mock.get_current_phase.return_value = Phase.COMPLETE
+    state_mock.get_all_buckets.return_value = ["bucket-1"]
+    state_mock.get_scan_summary.return_value = {
         "bucket_count": 1,
         "total_files": 100,
         "total_size": 1000000,
     }
-    _mock_state.get_completed_buckets_for_phase.return_value = ["bucket-1"]
-    _mock_state.get_bucket_info.return_value = {
+    state_mock.get_completed_buckets_for_phase.return_value = ["bucket-1"]
+    state_mock.get_bucket_info.return_value = {
         "file_count": 100,
         "total_size": 1000000,
         "sync_complete": True,
@@ -189,7 +192,7 @@ def test_show_status_complete_phase(_reporter, _mock_state):
     }
 
     with mock.patch("builtins.print") as mock_print:
-        _reporter.show_status()
+        status_reporter.show_status()
 
     printed_text = " ".join([str(call) for call in mock_print.call_args_list])
     assert "MIGRATION STATUS" in printed_text

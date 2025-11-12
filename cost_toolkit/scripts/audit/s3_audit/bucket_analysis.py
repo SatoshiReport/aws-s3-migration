@@ -161,3 +161,7 @@ def analyze_bucket_objects(bucket_name, region):
         return None
 
     return bucket_analysis
+
+
+if __name__ == "__main__":
+    pass

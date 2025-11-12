@@ -30,22 +30,23 @@ def mock_dependencies(tmp_path):  # pylint: disable=redefined-outer-name
 
 
 @pytest.fixture
-def migrator(mock_dependencies):  # pylint: disable=redefined-outer-name
+def migrator(request):
     """Create BucketMigrator instance with mocked dependencies"""
+    mock_deps = request.getfixturevalue("mock_dependencies")
     with (
         mock.patch("migration_orchestrator.BucketSyncer"),
         mock.patch("migration_orchestrator.BucketVerifier"),
         mock.patch("migration_orchestrator.BucketDeleter"),
     ):
-        _migrator = BucketMigrator(
-            mock_dependencies["s3"],
-            mock_dependencies["state"],
-            mock_dependencies["base_path"],
+        mig = BucketMigrator(
+            mock_deps["s3"],
+            mock_deps["state"],
+            mock_deps["base_path"],
         )
-        _migrator.syncer = mock.Mock()
-        _migrator.verifier = mock.Mock()
-        _migrator.deleter = mock.Mock()
-    return _migrator
+        mig.syncer = mock.Mock()
+        mig.verifier = mock.Mock()
+        mig.deleter = mock.Mock()
+    return mig
 
 
 def test_process_bucket_first_time_sync_verify_delete(

@@ -8,6 +8,12 @@ Safely disables all automated backup services while preserving existing data.
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.backup_utils import check_aws_backup_plans as get_backup_plans
+from cost_toolkit.common.backup_utils import (
+    check_dlm_lifecycle_policies,
+    check_eventbridge_scheduled_rules,
+)
+
 from ..aws_utils import setup_aws_credentials
 
 
@@ -59,9 +65,7 @@ def disable_aws_backup_plans(region):
     """Disable AWS Backup plans in a specific region."""
     try:
         backup_client = boto3.client("backup", region_name=region)
-
-        plans_response = backup_client.list_backup_plans()
-        backup_plans = plans_response.get("BackupPlansList", [])
+        backup_plans = get_backup_plans(region)
 
         if backup_plans:
             print(f"🔍 Found {len(backup_plans)} AWS Backup plan(s) in {region}")
@@ -81,10 +85,7 @@ def disable_dlm_policies(region):
     """Disable Data Lifecycle Manager policies in a specific region."""
     try:
         dlm_client = boto3.client("dlm", region_name=region)
-
-        # List lifecycle policies
-        policies_response = dlm_client.get_lifecycle_policies()
-        policies = policies_response.get("Policies", [])
+        policies = check_dlm_lifecycle_policies(region)
 
         if policies:
             print(f"📅 Found {len(policies)} Data Lifecycle Manager policies in {region}")
@@ -126,10 +127,7 @@ def disable_eventbridge_backup_rules(region):
     """Disable EventBridge rules that trigger automated backups."""
     try:
         events_client = boto3.client("events", region_name=region)
-
-        # List rules
-        rules_response = events_client.list_rules()
-        rules = rules_response.get("Rules", [])
+        rules = check_eventbridge_scheduled_rules(region)
 
         backup_rules = []
         for rule in rules:

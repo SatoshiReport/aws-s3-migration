@@ -244,9 +244,7 @@ class TestSingleBucketMigrationErrors:
 class TestErrorHandlers:
     """Tests for global error handler functions"""
 
-    def test_handle_drive_error_prints_error_message(
-        self, _mock_dependencies
-    ):  # pylint: disable=redefined-outer-name
+    def test_handle_drive_error_prints_error_message(self):
         """Test handle_drive_error prints proper error message"""
         error = FileNotFoundError("Drive not found")
 
@@ -259,9 +257,7 @@ class TestErrorHandlers:
         assert "Drive error" in printed_text
         assert "MIGRATION INTERRUPTED" in printed_text
 
-    def test_handle_migration_error_prints_error_details(
-        self, _mock_dependencies
-    ):  # pylint: disable=redefined-outer-name
+    def test_handle_migration_error_prints_error_details(self):
         """Test handle_migration_error prints error details"""
         error = RuntimeError("Sync failed")
         bucket = "test-bucket"

@@ -107,71 +107,63 @@ def test_scan_local_files_normalizes_windows_paths(tmp_path):
     assert "subdir\\file.txt" not in local_files
 
 
-class TestFileInventoryCheckerCheckSuccess:  # pylint: disable=too-few-public-methods
-    """Tests for FileInventoryChecker.check_inventory() success cases"""
+def test_check_inventory_success_when_files_match():
+    """Test inventory check succeeds when files match"""
+    mock_state = mock.Mock()
+    checker = FileInventoryChecker(mock_state, Path("/tmp"))
 
-    def test_check_inventory_success_when_files_match(self):
-        """Test inventory check succeeds when files match"""
-        mock_state = mock.Mock()
-        checker = FileInventoryChecker(mock_state, Path("/tmp"))
+    expected_keys = {"file1.txt", "file2.txt", "dir/file3.txt"}
+    local_keys = {"file1.txt", "file2.txt", "dir/file3.txt"}
 
-        expected_keys = {"file1.txt", "file2.txt", "dir/file3.txt"}
-        local_keys = {"file1.txt", "file2.txt", "dir/file3.txt"}
+    errors = checker.check_inventory(expected_keys, local_keys)
 
-        errors = checker.check_inventory(expected_keys, local_keys)
-
-        assert errors == []
+    assert errors == []
 
 
-class TestFileInventoryCheckerCheckMissingFiles:  # pylint: disable=too-few-public-methods
-    """Tests for FileInventoryChecker.check_inventory() missing file cases"""
+def test_check_inventory_fails_on_missing_files():
+    """Test inventory check fails when files are missing"""
+    mock_state = mock.Mock()
+    checker = FileInventoryChecker(mock_state, Path("/tmp"))
 
-    def test_check_inventory_fails_on_missing_files(self):
-        """Test inventory check fails when files are missing"""
-        mock_state = mock.Mock()
-        checker = FileInventoryChecker(mock_state, Path("/tmp"))
+    expected_keys = {"file1.txt", "file2.txt", "file3.txt"}
+    local_keys = {"file1.txt"}
 
-        expected_keys = {"file1.txt", "file2.txt", "file3.txt"}
-        local_keys = {"file1.txt"}
+    with pytest.raises(ValueError) as exc_info:
+        checker.check_inventory(expected_keys, local_keys)
 
-        with pytest.raises(ValueError) as exc_info:
-            checker.check_inventory(expected_keys, local_keys)
-
-        assert "File inventory check failed" in str(exc_info.value)
-        assert "2 missing" in str(exc_info.value)
+    assert "File inventory check failed" in str(exc_info.value)
+    assert "2 missing" in str(exc_info.value)
 
 
-class TestFileInventoryCheckerCheckExtraFiles:
-    """Tests for FileInventoryChecker.check_inventory() extra file cases"""
+def test_check_inventory_fails_on_extra_files():
+    """Test inventory check fails when extra files exist"""
+    mock_state = mock.Mock()
+    checker = FileInventoryChecker(mock_state, Path("/tmp"))
 
-    def test_check_inventory_fails_on_extra_files(self):
-        """Test inventory check fails when extra files exist"""
-        mock_state = mock.Mock()
-        checker = FileInventoryChecker(mock_state, Path("/tmp"))
+    expected_keys = {"file1.txt"}
+    local_keys = {"file1.txt", "file2.txt", "file3.txt"}
 
-        expected_keys = {"file1.txt"}
-        local_keys = {"file1.txt", "file2.txt", "file3.txt"}
+    with pytest.raises(ValueError) as exc_info:
+        checker.check_inventory(expected_keys, local_keys)
 
-        with pytest.raises(ValueError) as exc_info:
-            checker.check_inventory(expected_keys, local_keys)
+    assert "File inventory check failed" in str(exc_info.value)
+    assert "2 extra" in str(exc_info.value)
 
-        assert "File inventory check failed" in str(exc_info.value)
-        assert "2 extra" in str(exc_info.value)
 
-    def test_check_inventory_fails_on_both_missing_and_extra(self):
-        """Test inventory check fails on both missing and extra files"""
-        mock_state = mock.Mock()
-        checker = FileInventoryChecker(mock_state, Path("/tmp"))
+def test_check_inventory_fails_on_both_missing_and_extra():
+    """Test inventory check fails on both missing and extra files"""
+    mock_state = mock.Mock()
+    checker = FileInventoryChecker(mock_state, Path("/tmp"))
 
-        expected_keys = {"file1.txt", "file2.txt"}
-        local_keys = {"file1.txt", "file3.txt", "file4.txt"}
+    expected_keys = {"file1.txt", "file2.txt"}
+    local_keys = {"file1.txt", "file3.txt", "file4.txt"}
 
-        with pytest.raises(ValueError) as exc_info:
-            checker.check_inventory(expected_keys, local_keys)
+    with pytest.raises(ValueError) as exc_info:
+        checker.check_inventory(expected_keys, local_keys)
 
-        assert "File inventory check failed" in str(exc_info.value)
-        assert "1 missing" in str(exc_info.value)
-        assert "2 extra" in str(exc_info.value)
+    assert "File inventory check failed" in str(exc_info.value)
+    assert "1 missing" in str(exc_info.value)
+    assert "2 extra" in str(exc_info.value)
 
 
 def test_update_progress_displays_on_file_milestone(capsys):

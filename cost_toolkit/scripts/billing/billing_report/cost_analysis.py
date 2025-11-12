@@ -126,3 +126,7 @@ def categorize_services(service_costs, resolved_services):
     resolved_services_list.sort(key=lambda x: x[1]["cost"], reverse=True)
 
     return unresolved_services_list + noted_services_list + resolved_services_list
+
+
+if __name__ == "__main__":
+    pass

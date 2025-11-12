@@ -114,131 +114,101 @@ class TestAwsUtilsIntegration:
 
                         mock_identity.assert_called_once()
 
-    def test_main_passes_correct_arn_to_generate_policy(self, setup_test_env):
+    def test_main_passes_correct_arn_to_generate_policy(
+        self, setup_test_env, mock_block_s3_context
+    ):
         """Test that main() passes correct ARN to generate_restrictive_bucket_policy()"""
         _ = setup_test_env  # Used for test isolation
-        _ = setup_test_env  # Used for test isolation
         test_arn = "arn:aws:iam::123456789012:user/testuser"
+        test_policy = {"Version": "2012-10-17", "Statement": []}
+
+        # Override identity for this test
+        mock_block_s3_context.identity = {"user_arn": test_arn}
 
         with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
-            with mock.patch(
-                "block_s3.get_aws_identity",
-                return_value={"user_arn": test_arn},
-            ):
-                with mock.patch("block_s3.generate_restrictive_bucket_policy") as mock_gen:
-                    mock_gen.return_value = {"Version": "2012-10-17", "Statement": []}
-                    with mock.patch("block_s3.save_policy_to_file"):
-                        block_s3.main()
+            with mock_block_s3_context.with_policy(test_policy) as ctx:
+                block_s3.main()
 
-                        # Verify generate_restrictive_bucket_policy was called with correct ARN
-                        call_args = mock_gen.call_args[0]
-                        assert call_args[0] == test_arn
+                # Verify generate_restrictive_bucket_policy was called with correct ARN
+                call_args = ctx.policy_mock.call_args[0]
+                assert call_args[0] == test_arn
 
-    def test_main_passes_bucket_name_to_generate_policy(self, setup_test_env, mock_aws_identity):
+    def test_main_passes_bucket_name_to_generate_policy(
+        self, setup_test_env, mock_block_s3_context
+    ):
         """Test that main() passes bucket name to generate_restrictive_bucket_policy()"""
         _ = setup_test_env  # Used for test isolation
-        _ = setup_test_env  # Used for test isolation
-        with mock.patch("sys.argv", ["block_s3.py", "my-special-bucket"]):
-            with mock.patch(
-                "block_s3.get_aws_identity",
-                return_value=mock_aws_identity,
-            ):
-                with mock.patch("block_s3.generate_restrictive_bucket_policy") as mock_gen:
-                    mock_gen.return_value = {"Version": "2012-10-17", "Statement": []}
-                    with mock.patch("block_s3.save_policy_to_file"):
-                        block_s3.main()
+        test_policy = {"Version": "2012-10-17", "Statement": []}
 
-                        # Verify bucket name was passed correctly
-                        call_args = mock_gen.call_args[0]
-                        assert call_args[1] == "my-special-bucket"
+        with mock.patch("sys.argv", ["block_s3.py", "my-special-bucket"]):
+            with mock_block_s3_context.with_policy(test_policy) as ctx:
+                block_s3.main()
+
+                # Verify bucket name was passed correctly
+                call_args = ctx.policy_mock.call_args[0]
+                assert call_args[1] == "my-special-bucket"
 
     def test_main_calls_save_policy_with_policy_object_and_filename(
-        self, setup_test_env, sample_policy, mock_aws_identity
+        self, setup_test_env, sample_policy, mock_block_s3_context
     ):
         """Test that main() calls save_policy_to_file() with correct arguments"""
         _ = setup_test_env  # Used for test isolation
         with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
-            with mock.patch(
-                "block_s3.get_aws_identity",
-                return_value=mock_aws_identity,
-            ):
-                with mock.patch(
-                    "block_s3.generate_restrictive_bucket_policy",
-                    return_value=sample_policy,
-                ):
-                    with mock.patch("block_s3.save_policy_to_file") as mock_save:
-                        block_s3.main()
+            with mock_block_s3_context.with_policy(sample_policy) as ctx:
+                block_s3.main()
 
-                        # Verify save was called with policy and filename
-                        mock_save.assert_called_once()
-                        saved_policy, saved_filename = mock_save.call_args[0]
-                        assert saved_policy == sample_policy
-                        assert saved_filename.endswith("test-bucket_policy.json")
+                # Verify save was called with policy and filename
+                ctx.save_policy_mock.assert_called_once()
+                saved_policy, saved_filename = ctx.save_policy_mock.call_args[0]
+                assert saved_policy == sample_policy
+                assert saved_filename.endswith("test-bucket_policy.json")
 
 
 class TestOutputMessages:
     """Tests for output messages and logging"""
 
     def test_main_prints_success_message_for_single_bucket(
-        self, setup_test_env, mock_aws_identity, capsys
+        self, setup_test_env, mock_block_s3_context, capsys
     ):
         """Test that main() prints success message when generating policy"""
         _ = setup_test_env  # Used for test isolation
-        with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
-            with mock.patch(
-                "block_s3.get_aws_identity",
-                return_value=mock_aws_identity,
-            ):
-                with mock.patch(
-                    "block_s3.generate_restrictive_bucket_policy",
-                    return_value={"Version": "2012-10-17", "Statement": []},
-                ):
-                    with mock.patch("block_s3.save_policy_to_file"):
-                        block_s3.main()
+        test_policy = {"Version": "2012-10-17", "Statement": []}
 
-                        captured = capsys.readouterr()
-                        assert "Successfully generated 1 policy file(s)" in captured.out
-                        assert "Saved" in captured.out
+        with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
+            with mock_block_s3_context.with_policy(test_policy):
+                block_s3.main()
+
+                captured = capsys.readouterr()
+                assert "Successfully generated 1 policy file(s)" in captured.out
+                assert "Saved" in captured.out
 
     def test_main_prints_success_message_for_multiple_buckets(
-        self, setup_test_env, mock_aws_identity, capsys
+        self, setup_test_env, mock_block_s3_context, capsys
     ):
         """Test that main() prints correct count for multiple buckets"""
         _ = setup_test_env  # Used for test isolation
-        with mock.patch("sys.argv", ["block_s3.py", "bucket1", "bucket2", "bucket3"]):
-            with mock.patch(
-                "block_s3.get_aws_identity",
-                return_value=mock_aws_identity,
-            ):
-                with mock.patch(
-                    "block_s3.generate_restrictive_bucket_policy",
-                    return_value={"Version": "2012-10-17", "Statement": []},
-                ):
-                    with mock.patch("block_s3.save_policy_to_file"):
-                        block_s3.main()
+        test_policy = {"Version": "2012-10-17", "Statement": []}
 
-                        captured = capsys.readouterr()
-                        assert "Successfully generated 3 policy file(s)" in captured.out
+        with mock.patch("sys.argv", ["block_s3.py", "bucket1", "bucket2", "bucket3"]):
+            with mock_block_s3_context.with_policy(test_policy):
+                block_s3.main()
+
+                captured = capsys.readouterr()
+                assert "Successfully generated 3 policy file(s)" in captured.out
 
     def test_main_prints_status_for_each_saved_file(
-        self, setup_test_env, mock_aws_identity, capsys
+        self, setup_test_env, mock_block_s3_context, capsys
     ):
         """Test that main() prints message for each saved policy file"""
         _ = setup_test_env  # Used for test isolation
-        with mock.patch("sys.argv", ["block_s3.py", "bucket1", "bucket2"]):
-            with mock.patch(
-                "block_s3.get_aws_identity",
-                return_value=mock_aws_identity,
-            ):
-                with mock.patch(
-                    "block_s3.generate_restrictive_bucket_policy",
-                    return_value={"Version": "2012-10-17", "Statement": []},
-                ):
-                    with mock.patch("block_s3.save_policy_to_file"):
-                        block_s3.main()
+        test_policy = {"Version": "2012-10-17", "Statement": []}
 
-                        captured = capsys.readouterr()
-                        # Should print status for bucket1
-                        assert "bucket1_policy.json" in captured.out
-                        # Should print status for bucket2
-                        assert "bucket2_policy.json" in captured.out
+        with mock.patch("sys.argv", ["block_s3.py", "bucket1", "bucket2"]):
+            with mock_block_s3_context.with_policy(test_policy):
+                block_s3.main()
+
+                captured = capsys.readouterr()
+                # Should print status for bucket1
+                assert "bucket1_policy.json" in captured.out
+                # Should print status for bucket2
+                assert "bucket2_policy.json" in captured.out

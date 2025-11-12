@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Iterator, Sequence
 
+from migration_utils import derive_local_path
+
 IMAGE_EXTENSIONS = {
     "jpg",
     "jpeg",
@@ -132,22 +134,6 @@ def should_skip_by_suffix(*names: str) -> str | None:
     if _check_numeric_suffix(tokens):
         return "numeric_extension"
     return None
-
-
-def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
-    """Convert a bucket/key pair into the expected local filesystem path."""
-    candidate = base_path / bucket
-    for part in PurePosixPath(key).parts:
-        if part in ("", "."):
-            continue
-        if part == "..":
-            return None
-        candidate /= part
-    try:
-        candidate.relative_to(base_path)
-    except ValueError:
-        return None
-    return candidate
 
 
 def candidate_rows(

@@ -180,3 +180,7 @@ def calculate_cost_savings(snapshot_size_gb):
         "annual_savings": annual_savings,
         "savings_percentage": (monthly_savings / ebs_monthly_cost) * 100,
     }
+
+
+if __name__ == "__main__":
+    pass

@@ -12,6 +12,8 @@ from datetime import datetime
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import get_default_regions
+
 from ..aws_utils import setup_aws_credentials
 
 
@@ -131,18 +133,7 @@ def delete_lightsail_instances():
     print("This action cannot be undone. All data will be lost.")
     print("=" * 80)
 
-    lightsail_regions = [
-        "us-east-1",
-        "us-east-2",
-        "us-west-1",
-        "us-west-2",
-        "eu-west-1",
-        "eu-west-2",
-        "eu-central-1",
-        "ap-southeast-1",
-        "ap-southeast-2",
-        "ap-south-1",
-    ]
+    lightsail_regions = get_default_regions() + ["ap-south-1"]
 
     total_instances_deleted = 0
     total_databases_deleted = 0

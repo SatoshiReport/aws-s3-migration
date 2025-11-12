@@ -4,9 +4,9 @@ Cleanup temporary artifacts package.
 Scan backup trees for disposable cache/temp artifacts and optionally delete them.
 """
 
-from cleanup_temp_artifacts import args_parser, cache, categories, config, reports, scanner
-from cleanup_temp_artifacts.categories import Category, build_categories
-from cleanup_temp_artifacts.scanner import (
+from . import args_parser, cache, categories, config, core_scanner, db_loader, reports, scanner
+from .categories import Category, build_categories
+from .scanner import (
     Candidate,
     CandidateLoadError,
     CandidateLoadResult,
@@ -23,6 +23,8 @@ __all__ = [
     "cache",
     "categories",
     "config",
+    "core_scanner",
+    "db_loader",
     "load_candidates_from_db",
     "reports",
     "scanner",

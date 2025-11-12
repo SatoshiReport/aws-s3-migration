@@ -12,6 +12,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_GROUPS
 
 
 def load_aws_credentials():
@@ -100,41 +101,8 @@ def delete_security_group(ec2_client, group_id, group_name):
 
 
 def _get_circular_security_groups():
-    """Return list of security groups with circular dependencies."""
-    return [
-        {
-            "group_id": "sg-0423403672ae41d94",
-            "name": "security-group-for-outbound-nfs-d-jbqwgqwiy4d",
-            "region": "us-east-1",
-        },
-        {
-            "group_id": "sg-0dfa7bedc21d91798",
-            "name": "security-group-for-inbound-nfs-d-jbqwgqwiy4d",
-            "region": "us-east-1",
-        },
-        {
-            "group_id": "sg-049977ce080d9ab0",
-            "name": "security-group-for-inbound-nfs-d-ujcvqjdoyu70",
-            "region": "us-east-1",
-        },
-        {
-            "group_id": "sg-05ec40d14e0fb6fed",
-            "name": "security-group-for-outbound-nfs-d-ujcvqjdoyu70",
-            "region": "us-east-1",
-        },
-        {"group_id": "sg-0bf8a0d06a121f4a0", "name": "rds-ec2-1", "region": "us-east-1"},
-        {"group_id": "sg-044777fbbcdee8f28", "name": "ec2-rds-1", "region": "us-east-1"},
-        {
-            "group_id": "sg-09e291dc61da97af1",
-            "name": "security-group-for-outbound-nfs-d-ki8zr9k0yt95",
-            "region": "us-east-2",
-        },
-        {
-            "group_id": "sg-0dba11de0f5b92f40",
-            "name": "security-group-for-inbound-nfs-d-ki8zr9k0yt95",
-            "region": "us-east-2",
-        },
-    ]
+    """Return list of security groups with circular dependencies from shared constants."""
+    return ALL_CIRCULAR_SECURITY_GROUPS
 
 
 def _remove_cross_references(ec2_client, sgs):

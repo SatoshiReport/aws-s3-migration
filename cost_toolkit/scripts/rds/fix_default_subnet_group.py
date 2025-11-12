@@ -6,25 +6,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from ..aws_utils import setup_aws_credentials
-
-
-def _create_public_subnet_group(rds, subnet_group_name, public_subnets):
-    """Create a new DB subnet group with public subnets"""
-    print(f"🌐 Creating new public subnet group: {subnet_group_name}")
-
-    try:
-        rds.create_db_subnet_group(
-            DBSubnetGroupName=subnet_group_name,
-            DBSubnetGroupDescription="Public subnets only for RDS internet access",
-            SubnetIds=public_subnets,
-            Tags=[{"Key": "Purpose", "Value": "Public RDS access"}],
-        )
-        print(f"✅ Created new subnet group: {subnet_group_name}")
-    except ClientError as e:
-        if "already exists" in str(e).lower():
-            print(f"✅ Subnet group {subnet_group_name} already exists")
-        else:
-            raise
+from .constants import create_public_subnet_group
 
 
 def _create_migration_snapshot(rds, snapshot_id):
@@ -80,19 +62,9 @@ def fix_default_subnet_group():
 
     print("🔧 Fixing default subnet group to only include public subnets...")
 
-    # Public subnets (ones with internet gateway routes)
-    public_subnets = [
-        "subnet-2b441e6d",  # us-east-1d
-        "subnet-34dd5c38",  # us-east-1f
-        "subnet-3ce78006",  # us-east-1e
-        "subnet-2755cf42",  # us-east-1a
-        "subnet-98bf86ec",  # us-east-1c
-        "subnet-5edaa076",  # us-east-1b
-    ]
-
     try:
         subnet_group_name = "public-rds-subnets"
-        _create_public_subnet_group(rds, subnet_group_name, public_subnets)
+        create_public_subnet_group(rds, subnet_group_name)
 
         # Since we can't modify the subnet group directly, let's try a different approach
         # We'll create a snapshot and restore to a new instance in the public subnet group

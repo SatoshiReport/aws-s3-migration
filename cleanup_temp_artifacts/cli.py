@@ -18,23 +18,21 @@ try:  # Shared state DB utilities.
 except ImportError:  # pragma: no cover - direct script execution
     from state_db_admin import reseed_state_db_from_local_drive  # type: ignore
 
-from cleanup_temp_artifacts.args_parser import parse_args
-from cleanup_temp_artifacts.cache import build_scan_params
-from cleanup_temp_artifacts.config import REPO_ROOT
-from cleanup_temp_artifacts.reports import (
-    delete_paths,
-    format_size,
-    order_candidates,
-    print_candidates_report,
-    write_reports,
-)
-from cleanup_temp_artifacts.scanner import (
-    CacheConfig,
-    CandidateLoadError,
-    DatabaseInfo,
-    load_candidates_from_db,
-    write_cache_if_needed,
-)
+from . import args_parser, cache, config, reports, scanner
+
+parse_args = args_parser.parse_args
+build_scan_params = cache.build_scan_params
+REPO_ROOT = config.REPO_ROOT
+delete_paths = reports.delete_paths
+format_size = reports.format_size
+order_candidates = reports.order_candidates
+print_candidates_report = reports.print_candidates_report
+write_reports = reports.write_reports
+CacheConfig = scanner.CacheConfig
+CandidateLoadError = scanner.CandidateLoadError
+DatabaseInfo = scanner.DatabaseInfo
+load_candidates_from_db = scanner.load_candidates_from_db
+write_cache_if_needed = scanner.write_cache_if_needed
 
 
 def maybe_reset_state_db(

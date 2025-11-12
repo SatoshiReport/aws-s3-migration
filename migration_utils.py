@@ -2,12 +2,39 @@
 
 import time
 from datetime import datetime, timezone
+from pathlib import Path, PurePosixPath
 
 # Constants for size and time conversions
 BYTES_PER_KB = 1024.0
 SECONDS_PER_MINUTE = 60
 SECONDS_PER_HOUR = 3600
 SECONDS_PER_DAY = 86400
+
+
+def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
+    """
+    Convert a bucket/key pair into the expected local filesystem path.
+
+    Args:
+        base_path: Base directory containing bucket folders
+        bucket: S3 bucket name
+        key: S3 object key
+
+    Returns:
+        Path object if valid, None if path traversal detected
+    """
+    candidate = base_path / bucket
+    for part in PurePosixPath(key).parts:
+        if part in ("", "."):
+            continue
+        if part == "..":
+            return None
+        candidate /= part
+    try:
+        candidate.relative_to(base_path)
+    except ValueError:
+        return None
+    return candidate
 
 
 def format_size(bytes_size: int) -> str:

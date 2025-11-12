@@ -209,3 +209,7 @@ def check_cloudwatch_status():
 
     except ClientError as e:
         return None, f"⚠️ ERROR - {str(e)}"
+
+
+if __name__ == "__main__":
+    pass

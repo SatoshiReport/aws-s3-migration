@@ -42,3 +42,7 @@ class ExportAPIException(Exception):
 
 class S3FileValidationException(Exception):
     """Raised when S3 file validation fails"""
+
+
+if __name__ == "__main__":
+    pass

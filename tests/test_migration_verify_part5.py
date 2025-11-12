@@ -52,24 +52,21 @@ def test_verify_files_all_file_count_milestone_updates(capsys):
     assert "Progress:" in captured.out
 
 
-class TestBucketDeleterEmptyBuckets:  # pylint: disable=too-few-public-methods
-    """Tests for BucketDeleter with empty buckets"""
+def test_delete_bucket_with_zero_objects():
+    """Test deleting bucket with no objects"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock()
+    mock_state.get_bucket_info.return_value = {"file_count": 0}
 
-    def test_delete_bucket_with_zero_objects(self):
-        """Test deleting bucket with no objects"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock()
-        mock_state.get_bucket_info.return_value = {"file_count": 0}
+    mock_paginator = mock.Mock()
+    mock_paginator.paginate.return_value = []
+    mock_s3.get_paginator.return_value = mock_paginator
 
-        mock_paginator = mock.Mock()
-        mock_paginator.paginate.return_value = []
-        mock_s3.get_paginator.return_value = mock_paginator
+    deleter = BucketDeleter(mock_s3, mock_state)
+    deleter.delete_bucket("empty-bucket")
 
-        deleter = BucketDeleter(mock_s3, mock_state)
-        deleter.delete_bucket("empty-bucket")
-
-        # Should still call delete_bucket to remove the empty bucket
-        mock_s3.delete_bucket.assert_called_once_with(Bucket="empty-bucket")
+    # Should still call delete_bucket to remove the empty bucket
+    mock_s3.delete_bucket.assert_called_once_with(Bucket="empty-bucket")
 
 
 def test_scan_large_number_of_files_with_progress_output(tmp_path):
@@ -91,37 +88,26 @@ def test_scan_large_number_of_files_with_progress_output(tmp_path):
     assert_equal(len(local_files), 10100)
 
 
-class TestBucketDeleterProgressUpdates:  # pylint: disable=too-few-public-methods
-    """Tests for BucketDeleter progress update functionality"""
+def test_delete_bucket_with_pagination_triggers_progress():
+    """Test delete progress update at 1000 object intervals"""
+    mock_s3 = mock.Mock()
+    mock_state = mock.Mock()
+    mock_state.get_bucket_info.return_value = {"file_count": 2500}
 
-    def test_delete_bucket_with_pagination_triggers_progress(self):
-        """Test delete progress update at 1000 object intervals"""
-        mock_s3 = mock.Mock()
-        mock_state = mock.Mock()
-        mock_state.get_bucket_info.return_value = {"file_count": 2500}
+    # Create 3 pages with 1000, 1000, 500 objects (list_object_versions format)
+    mock_paginator = mock.Mock()
+    mock_paginator.paginate.return_value = [
+        {"Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(1000)]},
+        {"Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(1000, 2000)]},
+        {"Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(2000, 2500)]},
+    ]
+    mock_s3.get_paginator.return_value = mock_paginator
 
-        # Create 3 pages with 1000, 1000, 500 objects (list_object_versions format)
-        mock_paginator = mock.Mock()
-        mock_paginator.paginate.return_value = [
-            {"Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(1000)]},
-            {
-                "Versions": [
-                    {"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(1000, 2000)
-                ]
-            },
-            {
-                "Versions": [
-                    {"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(2000, 2500)
-                ]
-            },
-        ]
-        mock_s3.get_paginator.return_value = mock_paginator
+    deleter = BucketDeleter(mock_s3, mock_state)
+    deleter.delete_bucket("test-bucket")
 
-        deleter = BucketDeleter(mock_s3, mock_state)
-        deleter.delete_bucket("test-bucket")
-
-        # Should be called 3 times (one per page)
-        assert_equal(mock_s3.delete_objects.call_count, 3)
+    # Should be called 3 times (one per page)
+    assert_equal(mock_s3.delete_objects.call_count, 3)
 
 
 def test_full_verification_workflow(setup_verify_test):

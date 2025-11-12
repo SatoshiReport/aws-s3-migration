@@ -4,36 +4,18 @@ AWS Today's Billing Report Script
 Gets detailed billing information for today to identify currently active cost-generating services.
 """
 
-import os
 from collections import defaultdict
 from datetime import datetime, timedelta
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 
+from cost_toolkit.common.credential_utils import check_aws_credentials
 from cost_toolkit.common.terminal_utils import clear_screen
 
 # Constants for cost analysis thresholds and calculations
 MIN_TREND_DATA_POINTS = 2  # Minimum number of data points needed for trend analysis
 MINIMUM_COST_THRESHOLD = 0.001  # Minimum cost ($) to display detailed breakdown
-
-
-def setup_aws_credentials():
-    """Load AWS credentials from .env file"""
-    # Load environment variables from .env file
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    # Check if credentials are loaded
-    if not os.environ.get("AWS_ACCESS_KEY_ID"):
-        print("⚠️  AWS credentials not found in ~/.env file.")
-        print("Please ensure ~/.env contains:")
-        print("  AWS_ACCESS_KEY_ID=your-access-key")
-        print("  AWS_SECRET_ACCESS_KEY=your-secret-key")
-        print("  AWS_DEFAULT_REGION=us-east-1")
-        return False
-
-    return True
 
 
 def get_today_date_range():
@@ -56,7 +38,7 @@ def get_recent_days_range():
 
 def get_today_billing_data():
     """Retrieve today's cost and usage data from AWS Cost Explorer"""
-    setup_aws_credentials()
+    check_aws_credentials()
 
     # Create Cost Explorer client
     ce_client = boto3.client("ce", region_name="us-east-1")
@@ -309,7 +291,7 @@ def main():
     print("Real-time cost analysis for today's active services")
     print()
 
-    if not setup_aws_credentials():
+    if not check_aws_credentials():
         return
 
     # Get billing data

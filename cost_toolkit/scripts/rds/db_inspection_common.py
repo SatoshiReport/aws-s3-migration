@@ -243,3 +243,7 @@ def analyze_tables(cursor, tables, max_sample_columns=5):
     print(f"   Total Tables: {len(tables)}")
     print(f"   Total Rows: {total_rows:,}")
     return total_rows
+
+
+if __name__ == "__main__":
+    pass

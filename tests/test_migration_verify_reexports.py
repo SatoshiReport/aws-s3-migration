@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+import importlib
+import importlib.util
+import pathlib
+import sys
+
 import migration_verify as mv
 from migration_verify_bucket import BucketVerifier
 from migration_verify_checksums import FileChecksumVerifier
@@ -21,9 +26,6 @@ def test_reexports_match_original_symbols():
 
 def test_fallback_import_path_executes():
     """Load migration_verify as a standalone module to hit the fallback branch."""
-    import importlib.util  # pylint: disable=import-outside-toplevel
-    import pathlib  # pylint: disable=import-outside-toplevel
-
     module_path = pathlib.Path(mv.__file__)
     spec = importlib.util.spec_from_file_location("mv_standalone", module_path)
     assert spec is not None
@@ -36,9 +38,6 @@ def test_fallback_import_path_executes():
 
 def test_package_import_triggers_relative_branch():
     """Import the module via the aws package to exercise the relative import path."""
-    import importlib  # pylint: disable=import-outside-toplevel
-    import sys  # pylint: disable=import-outside-toplevel
-
     top_level = sys.modules.pop("migration_verify", None)
     package_level = sys.modules.pop("aws.migration_verify", None)
     try:

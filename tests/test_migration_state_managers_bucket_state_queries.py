@@ -1,5 +1,7 @@
 """Unit tests for BucketStateManager query operations from migration_state_managers.py"""
 
+# pylint: disable=redefined-outer-name  # pytest fixtures
+
 import pytest
 
 from migration_state_managers import BucketStateManager, FileStateManager
@@ -31,7 +33,7 @@ COMPLETE_BUCKET_SIZE = 50_000
 
 # Shared fixtures for BucketStateManager query tests
 @pytest.fixture
-def bucket_manager(db_conn):
+def bucket_mgr(db_conn):
     """Create BucketStateManager instance"""
     return BucketStateManager(db_conn)
 
@@ -39,63 +41,63 @@ def bucket_manager(db_conn):
 class TestGetAllBuckets:
     """Test get_all_buckets operations"""
 
-    def test_get_all_buckets(self, _bucket_manager):
+    def test_get_all_buckets(self, bucket_mgr):
         """Test retrieving all buckets"""
-        _bucket_manager.save_bucket_status(
+        bucket_mgr.save_bucket_status(
             bucket="bucket-a",
             file_count=BUCKET_A_FILE_COUNT,
             total_size=BUCKET_A_TOTAL_SIZE,
             storage_classes={"STANDARD": BUCKET_A_FILE_COUNT},
         )
-        _bucket_manager.save_bucket_status(
+        bucket_mgr.save_bucket_status(
             bucket="bucket-b",
             file_count=BUCKET_B_FILE_COUNT,
             total_size=BUCKET_B_TOTAL_SIZE,
             storage_classes={"STANDARD": BUCKET_B_FILE_COUNT},
         )
-        _bucket_manager.save_bucket_status(
+        bucket_mgr.save_bucket_status(
             bucket="bucket-c",
             file_count=BUCKET_C_FILE_COUNT,
             total_size=BUCKET_C_TOTAL_SIZE,
             storage_classes={"STANDARD": BUCKET_C_FILE_COUNT},
         )
 
-        buckets = _bucket_manager.get_all_buckets()
+        buckets = bucket_mgr.get_all_buckets()
 
         assert buckets == ["bucket-a", "bucket-b", "bucket-c"]
 
-    def test_get_all_buckets_empty(self, _bucket_manager):
+    def test_get_all_buckets_empty(self, bucket_mgr):
         """Test getting all buckets when none exist"""
-        buckets = _bucket_manager.get_all_buckets()
+        buckets = bucket_mgr.get_all_buckets()
 
         assert buckets == []
 
 
-def test_get_completed_buckets_for_phase(_bucket_manager):
+def test_get_completed_buckets_for_phase(bucket_mgr):
     """Test retrieving buckets completed for a specific phase"""
-    _bucket_manager.save_bucket_status(
+    bucket_mgr.save_bucket_status(
         bucket="bucket-a",
         file_count=BUCKET_A_FILE_COUNT,
         total_size=BUCKET_A_TOTAL_SIZE,
         storage_classes={"STANDARD": BUCKET_A_FILE_COUNT},
     )
-    _bucket_manager.save_bucket_status(
+    bucket_mgr.save_bucket_status(
         bucket="bucket-b",
         file_count=BUCKET_B_FILE_COUNT,
         total_size=BUCKET_B_TOTAL_SIZE,
         storage_classes={"STANDARD": BUCKET_B_FILE_COUNT},
     )
-    _bucket_manager.save_bucket_status(
+    bucket_mgr.save_bucket_status(
         bucket="bucket-c",
         file_count=BUCKET_C_FILE_COUNT,
         total_size=BUCKET_C_TOTAL_SIZE,
         storage_classes={"STANDARD": BUCKET_C_FILE_COUNT},
     )
 
-    _bucket_manager.mark_bucket_sync_complete("bucket-a")
-    _bucket_manager.mark_bucket_sync_complete("bucket-b")
+    bucket_mgr.mark_bucket_sync_complete("bucket-a")
+    bucket_mgr.mark_bucket_sync_complete("bucket-b")
 
-    buckets = _bucket_manager.get_completed_buckets_for_phase("sync_complete")
+    buckets = bucket_mgr.get_completed_buckets_for_phase("sync_complete")
 
     assert sorted(buckets) == ["bucket-a", "bucket-b"]
 
@@ -103,9 +105,9 @@ def test_get_completed_buckets_for_phase(_bucket_manager):
 class TestGetBucketInfo:
     """Test get_bucket_info operations"""
 
-    def test_get_bucket_info(self, _bucket_manager):
+    def test_get_bucket_info(self, bucket_mgr):
         """Test retrieving bucket information"""
-        _bucket_manager.save_bucket_status(
+        bucket_mgr.save_bucket_status(
             bucket="test-bucket",
             file_count=BUCKET_A_FILE_COUNT,
             total_size=BUCKET_A_TOTAL_SIZE,
@@ -113,21 +115,21 @@ class TestGetBucketInfo:
             scan_complete=True,
         )
 
-        info = _bucket_manager.get_bucket_info("test-bucket")
+        info = bucket_mgr.get_bucket_info("test-bucket")
 
         assert info["bucket"] == "test-bucket"
         assert info["file_count"] == BUCKET_A_FILE_COUNT
         assert info["total_size"] == BUCKET_A_TOTAL_SIZE
         assert info["scan_complete"] == 1
 
-    def test_get_bucket_info_nonexistent(self, _bucket_manager):
+    def test_get_bucket_info_nonexistent(self, bucket_mgr):
         """Test retrieving info for nonexistent bucket"""
-        info = _bucket_manager.get_bucket_info("nonexistent-bucket")
+        info = bucket_mgr.get_bucket_info("nonexistent-bucket")
 
         assert info == {}
 
 
-def test_get_scan_summary(_bucket_manager, db_conn):
+def test_get_scan_summary(bucket_mgr, db_conn):
     """Test getting scan summary"""
     file_manager = FileStateManager(db_conn)
     file_manager.add_file(
@@ -155,14 +157,14 @@ def test_get_scan_summary(_bucket_manager, db_conn):
         last_modified="2024-01-01T00:00:00Z",
     )
 
-    _bucket_manager.save_bucket_status(
+    bucket_mgr.save_bucket_status(
         bucket="bucket-a",
         file_count=SMALL_SCAN_FILE_COUNT,
         total_size=SMALL_SCAN_TOTAL_SIZE,
         storage_classes={"STANDARD": 1, "GLACIER": 1},
         scan_complete=True,
     )
-    _bucket_manager.save_bucket_status(
+    bucket_mgr.save_bucket_status(
         bucket="bucket-b",
         file_count=SINGLE_FILE_COUNT,
         total_size=SINGLE_BUCKET_TOTAL_SIZE,
@@ -170,7 +172,7 @@ def test_get_scan_summary(_bucket_manager, db_conn):
         scan_complete=True,
     )
 
-    summary = _bucket_manager.get_scan_summary()
+    summary = bucket_mgr.get_scan_summary()
 
     assert summary["bucket_count"] == SUMMARY_BUCKET_COUNT
     assert summary["total_files"] == SUMMARY_FILE_TOTAL
@@ -179,9 +181,9 @@ def test_get_scan_summary(_bucket_manager, db_conn):
     assert summary["storage_classes"]["GLACIER"] == SUMMARY_GLACIER_CLASS_COUNT
 
 
-def test_get_scan_summary_excludes_incomplete_scans(_bucket_manager):
+def test_get_scan_summary_excludes_incomplete_scans(bucket_mgr):
     """Test that scan summary only includes complete scans"""
-    _bucket_manager.save_bucket_status(
+    bucket_mgr.save_bucket_status(
         bucket="incomplete-bucket",
         file_count=INCOMPLETE_BUCKET_COUNT,
         total_size=INCOMPLETE_BUCKET_SIZE,
@@ -189,7 +191,7 @@ def test_get_scan_summary_excludes_incomplete_scans(_bucket_manager):
         scan_complete=False,
     )
 
-    _bucket_manager.save_bucket_status(
+    bucket_mgr.save_bucket_status(
         bucket="complete-bucket",
         file_count=COMPLETE_BUCKET_COUNT,
         total_size=COMPLETE_BUCKET_SIZE,
@@ -197,7 +199,7 @@ def test_get_scan_summary_excludes_incomplete_scans(_bucket_manager):
         scan_complete=True,
     )
 
-    summary = _bucket_manager.get_scan_summary()
+    summary = bucket_mgr.get_scan_summary()
 
     assert summary["bucket_count"] == 1
     assert summary["total_files"] == COMPLETE_BUCKET_COUNT

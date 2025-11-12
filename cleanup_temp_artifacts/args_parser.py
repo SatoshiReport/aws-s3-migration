@@ -10,6 +10,11 @@ import argparse
 import sys
 from pathlib import Path
 
+try:
+    from cost_toolkit.common.cli_utils import add_reset_state_db_args
+except ImportError:  # pragma: no cover
+    from cost_toolkit.common.cli_utils import add_reset_state_db_args  # type: ignore[import]
+
 from .cache import _default_cache_dir
 from .categories import build_categories
 from .config import DEFAULT_BASE_PATH, DEFAULT_DB_PATH
@@ -65,20 +70,11 @@ def _add_filter_arguments(parser: argparse.ArgumentParser, categories: dict[str,
 
 def _add_action_arguments(parser: argparse.ArgumentParser) -> None:
     """Add action and confirmation arguments."""
-    parser.add_argument(
-        "--reset-state-db",
-        action="store_true",
-        help="Delete and recreate the migrate_v2 state DB before scanning.",
-    )
+    add_reset_state_db_args(parser)
     parser.add_argument(
         "--delete",
         action="store_true",
         help="Delete the matched entries. Default is dry-run/report only.",
-    )
-    parser.add_argument(
-        "--yes",
-        action="store_true",
-        help="Skip confirmation prompts for destructive actions (deletes, DB reset).",
     )
 
 
