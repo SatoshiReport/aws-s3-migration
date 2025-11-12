@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Iterator
 
-from cleanup_temp_artifacts.categories import Category
+from .categories import Category
 
 PROGRESS_UPDATE_INTERVAL_SECONDS = 0.5
 

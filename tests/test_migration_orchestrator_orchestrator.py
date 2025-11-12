@@ -10,7 +10,11 @@ from unittest import mock
 
 import pytest
 
-from migration_orchestrator import BucketMigrationOrchestrator
+from migration_orchestrator import (
+    BucketMigrationOrchestrator,
+    handle_drive_error,
+    handle_migration_error,
+)
 from migration_state_v2 import Phase
 from tests.assertions import assert_equal
 
@@ -244,10 +248,6 @@ class TestErrorHandlers:
         self, _mock_dependencies
     ):  # pylint: disable=redefined-outer-name
         """Test handle_drive_error prints proper error message"""
-        from migration_orchestrator import (
-            handle_drive_error,  # pylint: disable=import-outside-toplevel
-        )
-
         error = FileNotFoundError("Drive not found")
 
         with mock.patch("builtins.print") as mock_print:
@@ -263,10 +263,6 @@ class TestErrorHandlers:
         self, _mock_dependencies
     ):  # pylint: disable=redefined-outer-name
         """Test handle_migration_error prints error details"""
-        from migration_orchestrator import (
-            handle_migration_error,  # pylint: disable=import-outside-toplevel
-        )
-
         error = RuntimeError("Sync failed")
         bucket = "test-bucket"
 

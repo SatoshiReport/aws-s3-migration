@@ -52,7 +52,7 @@ def test_verify_files_all_file_count_milestone_updates(capsys):
     assert "Progress:" in captured.out
 
 
-class TestBucketDeleterEmptyBuckets:
+class TestBucketDeleterEmptyBuckets:  # pylint: disable=too-few-public-methods
     """Tests for BucketDeleter with empty buckets"""
 
     def test_delete_bucket_with_zero_objects(self):
@@ -91,7 +91,7 @@ def test_scan_large_number_of_files_with_progress_output(tmp_path):
     assert_equal(len(local_files), 10100)
 
 
-class TestBucketDeleterProgressUpdates:
+class TestBucketDeleterProgressUpdates:  # pylint: disable=too-few-public-methods
     """Tests for BucketDeleter progress update functionality"""
 
     def test_delete_bucket_with_pagination_triggers_progress(self):

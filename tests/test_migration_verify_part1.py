@@ -107,7 +107,7 @@ def test_scan_local_files_normalizes_windows_paths(tmp_path):
     assert "subdir\\file.txt" not in local_files
 
 
-class TestFileInventoryCheckerCheckSuccess:
+class TestFileInventoryCheckerCheckSuccess:  # pylint: disable=too-few-public-methods
     """Tests for FileInventoryChecker.check_inventory() success cases"""
 
     def test_check_inventory_success_when_files_match(self):
@@ -123,7 +123,7 @@ class TestFileInventoryCheckerCheckSuccess:
         assert errors == []
 
 
-class TestFileInventoryCheckerCheckMissingFiles:
+class TestFileInventoryCheckerCheckMissingFiles:  # pylint: disable=too-few-public-methods
     """Tests for FileInventoryChecker.check_inventory() missing file cases"""
 
     def test_check_inventory_fails_on_missing_files(self):

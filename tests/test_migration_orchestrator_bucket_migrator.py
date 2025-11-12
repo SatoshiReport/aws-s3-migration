@@ -11,7 +11,7 @@ from unittest import mock
 
 import pytest
 
-from migration_orchestrator import BucketMigrator
+from migration_orchestrator import BucketMigrator, show_verification_summary
 
 
 @pytest.fixture
@@ -266,8 +266,6 @@ def test_delete_with_confirmation_user_confirms_other_input(
 
 def test_show_verification_summary_formats_output():
     """Test show_verification_summary displays all stats correctly"""
-    from migration_orchestrator import show_verification_summary
-
     bucket_info = {
         "file_count": 1000,
         "total_size": 10737418240,  # 10 GB
@@ -290,8 +288,6 @@ def test_show_verification_summary_formats_output():
 
 def test_show_verification_summary_matches_verified_file_count():
     """Test show_verification_summary with all files verified"""
-    from migration_orchestrator import show_verification_summary
-
     bucket_info = {
         "file_count": 500,
         "total_size": 5242880,  # 5 MB

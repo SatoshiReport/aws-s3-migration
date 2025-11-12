@@ -192,7 +192,7 @@ def test_verify_files_with_mixed_single_and_multipart(tmp_path):
     assert_equal(results["checksum_verified"], 2)
 
 
-class TestBucketDeletionLargeBatch:
+class TestBucketDeletionLargeBatch:  # pylint: disable=too-few-public-methods
     """Tests for bucket deletion with large batches"""
 
     def test_delete_bucket_large_batch(self):
@@ -217,7 +217,7 @@ class TestBucketDeletionLargeBatch:
         assert_equal(len(call_args[1]["Delete"]["Objects"]), 1500)
 
 
-class TestBucketDeletionProgressDisplay:
+class TestBucketDeletionProgressDisplay:  # pylint: disable=too-few-public-methods
     """Tests for bucket deletion progress display"""
 
     def test_delete_bucket_updates_progress(self):

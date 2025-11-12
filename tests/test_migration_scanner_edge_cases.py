@@ -1,5 +1,7 @@
 """Edge case and large-scale tests for migration_scanner.py classes"""
 
+import io
+import sys
 from datetime import datetime
 from unittest import mock
 
@@ -59,9 +61,6 @@ def test_scan_bucket_progress_output():
         )
 
     scanner.s3.get_paginator.return_value.paginate.return_value = [{"Contents": files}]
-
-    import io
-    import sys
 
     captured_output = io.StringIO()
     sys.stdout = captured_output

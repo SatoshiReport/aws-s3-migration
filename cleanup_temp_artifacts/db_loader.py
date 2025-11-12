@@ -13,14 +13,14 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from cleanup_temp_artifacts.cache import (
+from .cache import (
     build_cache_key,
     cache_is_valid,
     load_cache,
     write_cache,
 )
-from cleanup_temp_artifacts.categories import Category
-from cleanup_temp_artifacts.core_scanner import (
+from .categories import Category
+from .core_scanner import (
     Candidate,
     CandidateLoadError,
     CandidateLoadResult,
