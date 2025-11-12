@@ -18,6 +18,8 @@ class TestMainInteractiveMode:
 
     def test_main_interactive_mode_exits_with_zero(self, setup_test_env, mock_aws_identity):
         """Test main() in interactive mode exits with status 0"""
+        _ = setup_test_env  # Used for test isolation
+        _ = setup_test_env  # Used for test isolation
         sample_buckets = ["bucket1", "bucket2"]
 
         with mock.patch("sys.argv", ["block_s3.py"]):
@@ -36,6 +38,7 @@ class TestMainInteractiveMode:
         self, setup_test_env, mock_aws_identity, capsys
     ):
         """Test interactive mode displays help message"""
+        _ = setup_test_env  # Used for test isolation
         sample_buckets = ["bucket1", "bucket2"]
 
         with mock.patch("sys.argv", ["block_s3.py"]):
@@ -56,6 +59,7 @@ class TestMainInteractiveMode:
         self, setup_test_env, mock_aws_identity, capsys
     ):
         """Test interactive mode lists available buckets"""
+        _ = setup_test_env  # Used for test isolation
         sample_buckets = ["my-bucket-1", "my-bucket-2", "my-bucket-3"]
 
         with mock.patch("sys.argv", ["block_s3.py"]):
@@ -77,6 +81,7 @@ class TestMainInteractiveMode:
         self, setup_test_env, mock_aws_identity
     ):
         """Test interactive mode does not generate or save policies"""
+        _ = setup_test_env  # Used for test isolation
         with mock.patch("sys.argv", ["block_s3.py"]):
             with mock.patch(
                 "block_s3.get_aws_identity",
@@ -98,6 +103,8 @@ class TestAwsUtilsIntegration:
 
     def test_main_calls_get_aws_identity(self, setup_test_env, mock_aws_identity):
         """Test that main() calls get_aws_identity()"""
+        _ = setup_test_env  # Used for test isolation
+        _ = setup_test_env  # Used for test isolation
         with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
             with mock.patch("block_s3.get_aws_identity") as mock_identity:
                 mock_identity.return_value = mock_aws_identity
@@ -109,6 +116,8 @@ class TestAwsUtilsIntegration:
 
     def test_main_passes_correct_arn_to_generate_policy(self, setup_test_env):
         """Test that main() passes correct ARN to generate_restrictive_bucket_policy()"""
+        _ = setup_test_env  # Used for test isolation
+        _ = setup_test_env  # Used for test isolation
         test_arn = "arn:aws:iam::123456789012:user/testuser"
 
         with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
@@ -127,6 +136,8 @@ class TestAwsUtilsIntegration:
 
     def test_main_passes_bucket_name_to_generate_policy(self, setup_test_env, mock_aws_identity):
         """Test that main() passes bucket name to generate_restrictive_bucket_policy()"""
+        _ = setup_test_env  # Used for test isolation
+        _ = setup_test_env  # Used for test isolation
         with mock.patch("sys.argv", ["block_s3.py", "my-special-bucket"]):
             with mock.patch(
                 "block_s3.get_aws_identity",
@@ -145,6 +156,7 @@ class TestAwsUtilsIntegration:
         self, setup_test_env, sample_policy, mock_aws_identity
     ):
         """Test that main() calls save_policy_to_file() with correct arguments"""
+        _ = setup_test_env  # Used for test isolation
         with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
             with mock.patch(
                 "block_s3.get_aws_identity",
@@ -171,6 +183,7 @@ class TestOutputMessages:
         self, setup_test_env, mock_aws_identity, capsys
     ):
         """Test that main() prints success message when generating policy"""
+        _ = setup_test_env  # Used for test isolation
         with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
             with mock.patch(
                 "block_s3.get_aws_identity",
@@ -191,6 +204,7 @@ class TestOutputMessages:
         self, setup_test_env, mock_aws_identity, capsys
     ):
         """Test that main() prints correct count for multiple buckets"""
+        _ = setup_test_env  # Used for test isolation
         with mock.patch("sys.argv", ["block_s3.py", "bucket1", "bucket2", "bucket3"]):
             with mock.patch(
                 "block_s3.get_aws_identity",
@@ -210,6 +224,7 @@ class TestOutputMessages:
         self, setup_test_env, mock_aws_identity, capsys
     ):
         """Test that main() prints message for each saved policy file"""
+        _ = setup_test_env  # Used for test isolation
         with mock.patch("sys.argv", ["block_s3.py", "bucket1", "bucket2"]):
             with mock.patch(
                 "block_s3.get_aws_identity",

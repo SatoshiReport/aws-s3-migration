@@ -63,6 +63,44 @@ def _process_single_bucket(bucket_name, bucket_region, storage_class_summary):
     )
 
 
+def _process_all_buckets(buckets):
+    """Process all S3 buckets and return aggregated results."""
+    total_objects = 0
+    total_size_bytes = 0
+    total_monthly_cost = 0
+    all_bucket_analyses = []
+    storage_class_summary = defaultdict(lambda: {"count": 0, "size_bytes": 0, "cost": 0})
+    all_recommendations = []
+
+    for bucket in buckets:
+        bucket_name = bucket["Name"]
+        bucket_region = get_bucket_region(bucket_name)
+
+        (
+            bucket_analysis,
+            bucket_objects,
+            bucket_size,
+            bucket_cost,
+            bucket_recs,
+        ) = _process_single_bucket(bucket_name, bucket_region, storage_class_summary)
+
+        if bucket_analysis:
+            all_bucket_analyses.append(bucket_analysis)
+            total_objects += bucket_objects
+            total_size_bytes += bucket_size
+            total_monthly_cost += bucket_cost
+            all_recommendations.extend(bucket_recs)
+
+    return (
+        all_bucket_analyses,
+        storage_class_summary,
+        all_recommendations,
+        total_objects,
+        total_size_bytes,
+        total_monthly_cost,
+    )
+
+
 def audit_s3_comprehensive():
     """Perform comprehensive S3 audit across all regions"""
     setup_aws_credentials()
@@ -73,10 +111,7 @@ def audit_s3_comprehensive():
     print()
 
     try:
-        # Get all buckets (S3 is global, but we need to check each bucket's region)
-        s3_client = boto3.client("s3")
-        response = s3_client.list_buckets()
-        buckets = response.get("Buckets", [])
+        buckets = boto3.client("s3").list_buckets().get("Buckets", [])
 
         if not buckets:
             print("✅ No S3 buckets found in your account")
@@ -85,31 +120,14 @@ def audit_s3_comprehensive():
         print(f"🔍 Found {len(buckets)} S3 bucket(s) to analyze")
         print()
 
-        total_objects = 0
-        total_size_bytes = 0
-        total_monthly_cost = 0
-        all_bucket_analyses = []
-        storage_class_summary = defaultdict(lambda: {"count": 0, "size_bytes": 0, "cost": 0})
-        all_recommendations = []
-
-        for bucket in buckets:
-            bucket_name = bucket["Name"]
-            bucket_region = get_bucket_region(bucket_name)
-
-            (
-                bucket_analysis,
-                bucket_objects,
-                bucket_size,
-                bucket_cost,
-                bucket_recs,
-            ) = _process_single_bucket(bucket_name, bucket_region, storage_class_summary)
-
-            if bucket_analysis:
-                all_bucket_analyses.append(bucket_analysis)
-                total_objects += bucket_objects
-                total_size_bytes += bucket_size
-                total_monthly_cost += bucket_cost
-                all_recommendations.extend(bucket_recs)
+        (
+            all_bucket_analyses,
+            storage_class_summary,
+            all_recommendations,
+            total_objects,
+            total_size_bytes,
+            total_monthly_cost,
+        ) = _process_all_buckets(buckets)
 
         # Print overall summary and recommendations
         print_overall_summary(

@@ -8,6 +8,14 @@ import subprocess
 import sys
 
 import requests
+
+try:
+    import boto3
+
+    BOTO3_AVAILABLE = True
+except ImportError:
+    BOTO3_AVAILABLE = False
+
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.setup.exceptions import CertificateInfoError
@@ -220,9 +228,11 @@ def check_route53_configuration(domain):
     """Check Route53 configuration"""
     print(f"\n☁️  Checking Route53 configuration for {domain}")
 
-    try:
-        import boto3
+    if not BOTO3_AVAILABLE:
+        print("  ⚠️  boto3 not available, skipping Route53 check")
+        return True
 
+    try:
         route53 = boto3.client("route53")
 
         target_zone = _find_hosted_zone_for_domain(route53, domain)
@@ -236,9 +246,6 @@ def check_route53_configuration(domain):
 
         _print_nameservers(route53, target_zone["Id"], domain)
 
-    except ImportError:
-        print("  ⚠️  boto3 not available, skipping Route53 check")
-        return True
     except ClientError as e:
         print(f"  ❌ Route53 check failed: {e}")
         return False

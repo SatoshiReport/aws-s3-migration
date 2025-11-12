@@ -10,10 +10,10 @@ import argparse
 import sys
 from pathlib import Path
 
-from cleanup_temp_artifacts.cache import _default_cache_dir
-from cleanup_temp_artifacts.categories import build_categories
-from cleanup_temp_artifacts.config import DEFAULT_BASE_PATH, DEFAULT_DB_PATH
-from cleanup_temp_artifacts.reports import parse_size
+from .cache import _default_cache_dir
+from .categories import build_categories
+from .config import DEFAULT_BASE_PATH, DEFAULT_DB_PATH
+from .reports import parse_size
 
 
 def _add_path_arguments(parser: argparse.ArgumentParser) -> None:

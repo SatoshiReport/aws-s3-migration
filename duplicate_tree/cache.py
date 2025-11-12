@@ -15,7 +15,6 @@ try:  # Prefer package-relative imports when packaged
         cache_key,
         clusters_to_rows,
     )
-    from duplicate_tree_core import DuplicateCluster
 except ImportError:  # pragma: no cover - execution as standalone script
     from analysis import (  # type: ignore[import]
         MIN_REPORT_BYTES,
@@ -24,6 +23,10 @@ except ImportError:  # pragma: no cover - execution as standalone script
         cache_key,
         clusters_to_rows,
     )
+
+try:
+    from duplicate_tree_core import DuplicateCluster
+except ImportError:  # pragma: no cover
     from duplicate_tree_core import DuplicateCluster  # type: ignore[import]
 
 

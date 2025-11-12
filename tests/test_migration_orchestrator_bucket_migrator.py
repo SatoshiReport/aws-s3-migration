@@ -15,7 +15,7 @@ from migration_orchestrator import BucketMigrator
 
 
 @pytest.fixture
-def mock_dependencies(tmp_path):
+def mock_dependencies(tmp_path):  # pylint: disable=redefined-outer-name
     """Create mock dependencies for BucketMigrator"""
     mock_s3 = mock.Mock()
     mock_state = mock.Mock()
@@ -30,7 +30,7 @@ def mock_dependencies(tmp_path):
 
 
 @pytest.fixture
-def migrator(mock_dependencies):
+def migrator(mock_dependencies):  # pylint: disable=redefined-outer-name
     """Create BucketMigrator instance with mocked dependencies"""
     with (
         mock.patch("migration_orchestrator.BucketSyncer"),
@@ -48,7 +48,9 @@ def migrator(mock_dependencies):
     return _migrator
 
 
-def test_process_bucket_first_time_sync_verify_delete(migrator, mock_dependencies):
+def test_process_bucket_first_time_sync_verify_delete(
+    migrator, mock_dependencies
+):  # pylint: disable=redefined-outer-name
     """Test process_bucket for first time: sync → verify → delete pipeline"""
     bucket = "test-bucket"
     bucket_info = {
@@ -90,7 +92,9 @@ def test_process_bucket_first_time_sync_verify_delete(migrator, mock_dependencie
     mock_dependencies["state"].mark_bucket_delete_complete.assert_called_once_with(bucket)
 
 
-def test_process_bucket_already_synced_skips_sync(migrator, mock_dependencies):
+def test_process_bucket_already_synced_skips_sync(
+    migrator, mock_dependencies
+):  # pylint: disable=redefined-outer-name
     """Test process_bucket skips sync if already complete"""
     bucket = "test-bucket"
     bucket_info = {
@@ -123,7 +127,9 @@ def test_process_bucket_already_synced_skips_sync(migrator, mock_dependencies):
     migrator.syncer.sync_bucket.assert_not_called()
 
 
-def test_process_bucket_already_deleted_skips_delete(migrator, mock_dependencies):
+def test_process_bucket_already_deleted_skips_delete(
+    migrator, mock_dependencies
+):  # pylint: disable=redefined-outer-name
     """Test process_bucket skips delete if already complete"""
     bucket = "test-bucket"
     bucket_info = {
@@ -147,7 +153,9 @@ def test_process_bucket_already_deleted_skips_delete(migrator, mock_dependencies
     migrator.deleter.delete_bucket.assert_not_called()
 
 
-def test_process_bucket_already_verified_recomputes_stats(migrator, mock_dependencies):
+def test_process_bucket_already_verified_recomputes_stats(
+    migrator, mock_dependencies
+):  # pylint: disable=redefined-outer-name
     """Test process_bucket re-verifies when verify_complete but missing stats"""
     bucket = "test-bucket"
     bucket_info = {
@@ -174,7 +182,7 @@ def test_process_bucket_already_verified_recomputes_stats(migrator, mock_depende
     migrator.verifier.verify_bucket.return_value = verify_results
 
     # After verification, update bucket_info with verified stats
-    def update_bucket_info_on_verify_complete(bucket_name, **kwargs):
+    def update_bucket_info_on_verify_complete(_bucket_name, **_kwargs):
         bucket_info["verified_file_count"] = 75
 
     mock_dependencies["state"].mark_bucket_verify_complete.side_effect = (
@@ -189,7 +197,9 @@ def test_process_bucket_already_verified_recomputes_stats(migrator, mock_depende
     migrator.verifier.verify_bucket.assert_called_once()
 
 
-def test_delete_with_confirmation_user_confirms_yes(migrator, mock_dependencies):
+def test_delete_with_confirmation_user_confirms_yes(
+    migrator, mock_dependencies
+):  # pylint: disable=redefined-outer-name
     """Test _delete_with_confirmation when user inputs 'yes'"""
     bucket = "test-bucket"
     bucket_info = {
@@ -209,7 +219,9 @@ def test_delete_with_confirmation_user_confirms_yes(migrator, mock_dependencies)
     mock_dependencies["state"].mark_bucket_delete_complete.assert_called_once_with(bucket)
 
 
-def test_delete_with_confirmation_user_confirms_no(migrator, mock_dependencies):
+def test_delete_with_confirmation_user_confirms_no(
+    migrator, mock_dependencies
+):  # pylint: disable=redefined-outer-name
     """Test _delete_with_confirmation when user inputs 'no'"""
     bucket = "test-bucket"
     bucket_info = {
@@ -230,7 +242,9 @@ def test_delete_with_confirmation_user_confirms_no(migrator, mock_dependencies):
     mock_dependencies["state"].mark_bucket_delete_complete.assert_not_called()
 
 
-def test_delete_with_confirmation_user_confirms_other_input(migrator, mock_dependencies):
+def test_delete_with_confirmation_user_confirms_other_input(
+    migrator,
+):  # pylint: disable=redefined-outer-name
     """Test _delete_with_confirmation with non-yes, non-no input"""
     bucket = "test-bucket"
     bucket_info = {

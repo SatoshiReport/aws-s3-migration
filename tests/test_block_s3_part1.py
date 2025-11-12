@@ -14,6 +14,7 @@ from tests.assertions import assert_equal
 
 def test_main_with_single_bucket(setup_test_env, sample_policy, mock_aws_identity):
     """Test main() with a single bucket name"""
+    _ = setup_test_env  # Used for test isolation
     with mock.patch("sys.argv", ["block_s3.py", "test-bucket"]):
         with mock.patch(
             "block_s3.get_aws_identity",
@@ -35,6 +36,7 @@ def test_main_with_single_bucket(setup_test_env, sample_policy, mock_aws_identit
 
 def test_main_with_multiple_buckets(setup_test_env, sample_policy, mock_aws_identity, capsys):
     """Test main() with multiple bucket names"""
+    _ = setup_test_env  # Used for test isolation
     with mock.patch("sys.argv", ["block_s3.py", "bucket1", "bucket2"]):
         with mock.patch(
             "block_s3.get_aws_identity",
@@ -55,7 +57,7 @@ def test_main_with_multiple_buckets(setup_test_env, sample_policy, mock_aws_iden
                     assert "Generating policies for 2 specified bucket(s)" in captured.out
 
 
-def test_main_creates_policies_directory(setup_test_env, sample_policy, mock_aws_identity, capsys):
+def test_main_creates_policies_directory(setup_test_env, sample_policy, mock_aws_identity):
     """Test that main() creates the policies directory"""
     # Verify policies directory doesn't exist yet
     policies_dir = setup_test_env / "policies"
@@ -80,6 +82,7 @@ def test_main_creates_policies_directory(setup_test_env, sample_policy, mock_aws
 
 def test_main_saves_policy_with_correct_filename(setup_test_env, sample_policy, mock_aws_identity):
     """Test that policy files are saved with correct bucket names"""
+    _ = setup_test_env  # Used for test isolation
     with mock.patch("sys.argv", ["block_s3.py", "my-bucket"]):
         with mock.patch(
             "block_s3.get_aws_identity",
@@ -101,6 +104,7 @@ def test_main_saves_policy_with_correct_filename(setup_test_env, sample_policy, 
 
 def test_main_with_all_flag(setup_test_env, sample_policy, mock_aws_identity, capsys):
     """Test main() with --all flag processes all buckets"""
+    _ = setup_test_env  # Used for test isolation
     all_buckets = ["bucket1", "bucket2", "bucket3"]
 
     with mock.patch("sys.argv", ["block_s3.py", "--all"]):
@@ -129,6 +133,7 @@ def test_main_with_all_flag(setup_test_env, sample_policy, mock_aws_identity, ca
 
 def test_main_with_all_flag_empty_account(setup_test_env, mock_aws_identity, capsys):
     """Test main() with --all flag when account has no buckets"""
+    _ = setup_test_env  # Used for test isolation
     with mock.patch("sys.argv", ["block_s3.py", "--all"]):
         with mock.patch(
             "block_s3.get_aws_identity",
@@ -150,6 +155,7 @@ def test_main_with_all_flag_empty_account(setup_test_env, mock_aws_identity, cap
 
 def test_main_with_all_flag_retrieves_buckets_from_aws(setup_test_env, mock_aws_identity):
     """Test that --all flag calls list_s3_buckets() to get all buckets"""
+    _ = setup_test_env  # Used for test isolation
     with mock.patch("sys.argv", ["block_s3.py", "--all"]):
         with mock.patch(
             "block_s3.get_aws_identity",

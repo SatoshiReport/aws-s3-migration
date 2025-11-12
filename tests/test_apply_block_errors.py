@@ -7,7 +7,6 @@ Tests cover:
 - Module execution tests
 """
 
-import json
 from unittest import mock
 
 import apply_block
@@ -52,7 +51,7 @@ def test_main_processes_multiple_buckets_despite_failures(create_policy_file, ca
 
     failure_message = "S3 error"
 
-    def apply_side_effect(bucket, policy):
+    def apply_side_effect(bucket, _policy):
         if bucket == "bucket2":
             raise IOError(failure_message)
 

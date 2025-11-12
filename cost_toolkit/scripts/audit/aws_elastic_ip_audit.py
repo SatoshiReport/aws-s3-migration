@@ -13,7 +13,7 @@ import sys
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import load_credentials_from_env
+from cost_toolkit.scripts.aws_client_factory import create_ec2_client, load_credentials_from_env
 from cost_toolkit.scripts.aws_ec2_operations import (
     describe_addresses,
     get_all_regions,
@@ -106,8 +106,6 @@ def _print_associated_eips(region_data, aws_access_key_id, aws_secret_access_key
         return
 
     print(f"✅ Associated Elastic IPs ({len(region_data['associated_eips'])}):")
-
-    from cost_toolkit.scripts.aws_client_factory import create_ec2_client
 
     ec2_client = create_ec2_client(
         region=region_data["region"],

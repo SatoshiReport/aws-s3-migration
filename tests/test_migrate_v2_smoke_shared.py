@@ -31,7 +31,7 @@ def test_materialize_tree_and_manifest(tmp_path):
     assert len(manifest) == file_count
 
 
-def test_create_sample_objects_in_s3_matches_structure(tmp_path):
+def test_create_sample_objects_in_s3_matches_structure():
     """Test create_sample_objects_in_s3 creates objects matching structure."""
     fake_s3 = _FakeS3()
     manifest, files_created, dirs_created, total_bytes = shared.create_sample_objects_in_s3(

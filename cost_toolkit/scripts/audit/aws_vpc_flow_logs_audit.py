@@ -84,6 +84,35 @@ def audit_flow_logs_in_region(region_name):
     return region_summary
 
 
+def _check_vpc_peering_connections(ec2):
+    """Check VPC peering connections."""
+    peering_connections = ec2.describe_vpc_peering_connections().get("VpcPeeringConnections", [])
+    print(f"VPC Peering Connections: {len(peering_connections)}")
+    for peering in peering_connections:
+        status = peering.get("Status", {}).get("Code", "Unknown")
+        print(f"  Peering: {peering['VpcPeeringConnectionId']} - {status}")
+
+
+def _check_vpc_endpoints(ec2):
+    """Check VPC endpoints."""
+    endpoints = ec2.describe_vpc_endpoints().get("VpcEndpoints", [])
+    print(f"VPC Endpoints: {len(endpoints)}")
+    for endpoint in endpoints:
+        endpoint_type = endpoint.get("VpcEndpointType", "Unknown")
+        print(f"  Endpoint: {endpoint['VpcEndpointId']} ({endpoint_type})")
+        print(f"    Service: {endpoint.get('ServiceName', 'Unknown')}")
+        print(f"    State: {endpoint.get('State', 'Unknown')}")
+        print(f"    Created: {endpoint.get('CreationTimestamp')}")
+
+
+def _check_vpc_resource_counts(ec2):
+    """Check counts of various VPC resources."""
+    print(f"Security Groups: {len(ec2.describe_security_groups().get('SecurityGroups', []))}")
+    print(f"Network ACLs: {len(ec2.describe_network_acls().get('NetworkAcls', []))}")
+    print(f"Route Tables: {len(ec2.describe_route_tables().get('RouteTables', []))}")
+    print(f"Subnets: {len(ec2.describe_subnets().get('Subnets', []))}")
+
+
 def audit_additional_vpc_costs_in_region(region_name):
     """Check for other potential VPC cost sources"""
     print(f"\n🔍 Checking additional VPC cost sources in {region_name}")
@@ -91,48 +120,9 @@ def audit_additional_vpc_costs_in_region(region_name):
 
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
-
-        # Check for VPC Peering Connections
-        peering_response = ec2.describe_vpc_peering_connections()
-        peering_connections = peering_response.get("VpcPeeringConnections", [])
-        print(f"VPC Peering Connections: {len(peering_connections)}")
-        for peering in peering_connections:
-            status = peering.get("Status", {}).get("Code", "Unknown")
-            print(f"  Peering: {peering['VpcPeeringConnectionId']} - {status}")
-
-        # Check for VPC Endpoints (more detailed)
-        endpoints_response = ec2.describe_vpc_endpoints()
-        endpoints = endpoints_response.get("VpcEndpoints", [])
-        print(f"VPC Endpoints: {len(endpoints)}")
-        for endpoint in endpoints:
-            endpoint_type = endpoint.get("VpcEndpointType", "Unknown")
-            state = endpoint.get("State", "Unknown")
-            service_name = endpoint.get("ServiceName", "Unknown")
-            creation_time = endpoint.get("CreationTimestamp")
-            print(f"  Endpoint: {endpoint['VpcEndpointId']} ({endpoint_type})")
-            print(f"    Service: {service_name}")
-            print(f"    State: {state}")
-            print(f"    Created: {creation_time}")
-
-        # Check for Security Groups (large numbers can indicate complexity)
-        sg_response = ec2.describe_security_groups()
-        security_groups = sg_response.get("SecurityGroups", [])
-        print(f"Security Groups: {len(security_groups)}")
-
-        # Check for Network ACLs
-        nacl_response = ec2.describe_network_acls()
-        network_acls = nacl_response.get("NetworkAcls", [])
-        print(f"Network ACLs: {len(network_acls)}")
-
-        # Check for Route Tables
-        rt_response = ec2.describe_route_tables()
-        route_tables = rt_response.get("RouteTables", [])
-        print(f"Route Tables: {len(route_tables)}")
-
-        # Check for Subnets
-        subnet_response = ec2.describe_subnets()
-        subnets = subnet_response.get("Subnets", [])
-        print(f"Subnets: {len(subnets)}")
+        _check_vpc_peering_connections(ec2)
+        _check_vpc_endpoints(ec2)
+        _check_vpc_resource_counts(ec2)
 
     except ClientError as e:
         print(f"❌ Error checking additional VPC costs in {region_name}: {e}")

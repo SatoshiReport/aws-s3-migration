@@ -138,7 +138,7 @@ def test_mark_glacier_restored(_file_manager, db_conn):
     assert row["glacier_restored_at"] is not None
 
 
-def test_get_glacier_files_needing_restore(_file_manager, db_conn):
+def test_get_glacier_files_needing_restore(_file_manager):
     """Test retrieving Glacier files that need restore"""
     _file_manager.add_file(
         bucket="test-bucket",
@@ -187,7 +187,7 @@ def test_get_glacier_files_needing_restore(_file_manager, db_conn):
     assert_equal(len(files), 2)
 
 
-def test_get_files_restoring(_file_manager, db_conn):
+def test_get_files_restoring(_file_manager):
     """Test retrieving files currently being restored"""
     _file_manager.add_file(
         bucket="test-bucket",

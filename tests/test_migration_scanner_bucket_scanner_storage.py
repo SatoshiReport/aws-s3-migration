@@ -39,7 +39,7 @@ class TestBucketScannerInterruption:
         mock_s3.get_paginator.return_value.paginate.return_value = []
 
         # Interrupt after first bucket
-        def interrupt_on_second_call(*args, **kwargs):
+        def interrupt_on_second_call(*_args, **_kwargs):
             scanner.interrupted = True
 
         mock_state.save_bucket_status.side_effect = interrupt_on_second_call
@@ -68,7 +68,7 @@ class TestBucketScannerMixedStorageClasses:
         """Create BucketScanner instance"""
         return BucketScanner(mock_s3, mock_state)
 
-    def test_scan_bucket_with_mixed_storage_classes(self, scanner, mock_s3, mock_state):
+    def test_scan_bucket_with_mixed_storage_classes(self, scanner, mock_state):
         """Test scanning bucket with multiple storage classes"""
         files = [
             {
@@ -118,7 +118,7 @@ class TestBucketScannerMissingStorageClass:
         """Create BucketScanner instance"""
         return BucketScanner(mock_s3, mock_state)
 
-    def test_scan_bucket_handles_missing_storage_class(self, scanner, mock_s3, mock_state):
+    def test_scan_bucket_handles_missing_storage_class(self, scanner, mock_state):
         """Test handling of objects without StorageClass field"""
         scanner.s3.get_paginator.return_value.paginate.return_value = [
             {
@@ -158,7 +158,7 @@ class TestBucketScannerSizeAccumulation:
         """Create BucketScanner instance"""
         return BucketScanner(mock_s3, mock_state)
 
-    def test_scan_bucket_accumulates_size(self, scanner, mock_s3, mock_state):
+    def test_scan_bucket_accumulates_size(self, scanner, mock_state):
         """Test that file sizes are accumulated correctly"""
         scanner.s3.get_paginator.return_value.paginate.return_value = [
             {

@@ -77,7 +77,7 @@ class TestGlacierRestorerSingleFile:
         """Create GlacierRestorer instance"""
         return GlacierRestorer(mock_s3, mock_state)
 
-    def test_request_all_restores_with_files(self, restorer, mock_s3, mock_state, capsys):
+    def test_request_all_restores_with_files(self, restorer, mock_s3, mock_state):
         """Test requesting restores for Glacier files"""
         mock_state.get_glacier_files_needing_restore.return_value = [
             {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
@@ -147,7 +147,7 @@ class TestGlacierRestorerInterruption:
             {"bucket": "test-bucket", "key": "file2.txt", "storage_class": "GLACIER"},
         ]
 
-        def interrupt_on_first_call(*args, **kwargs):
+        def interrupt_on_first_call(*_args, **_kwargs):
             restorer.interrupted = True
 
         mock_s3.restore_object.side_effect = interrupt_on_first_call

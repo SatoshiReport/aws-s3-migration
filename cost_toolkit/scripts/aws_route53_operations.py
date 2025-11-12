@@ -96,6 +96,7 @@ def list_resource_record_sets(
 def create_hosted_zone(
     name: str,
     caller_reference: str,
+    *,
     comment: Optional[str] = None,
     private_zone: bool = False,
     vpc_config: Optional[tuple[str, str]] = None,

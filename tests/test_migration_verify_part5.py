@@ -1,6 +1,5 @@
 """Unit tests for migration_verify.py - Part 5: Edge Cases (Part 2) and Integration Tests"""
 
-import hashlib
 import time
 from unittest import mock
 

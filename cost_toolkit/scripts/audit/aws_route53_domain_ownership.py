@@ -19,71 +19,66 @@ def _get_domain_annual_cost(domain_name):
     return 15.00
 
 
+def _process_single_domain(route53domains, domain):
+    """Process a single domain and return its details."""
+    domain_name = domain.get("DomainName", "")
+    expiry = domain.get("Expiry")
+    auto_renew = domain.get("AutoRenew", False)
+
+    print(f"Domain: {domain_name}")
+    print(f"  Expiry: {expiry}")
+    print(f"  Auto-renew: {auto_renew}")
+
+    try:
+        domain_detail = route53domains.get_domain_detail(DomainName=domain_name)
+        registrar = domain_detail.get("RegistrarName", "Unknown")
+        status = domain_detail.get("StatusList", [])
+        nameservers = domain_detail.get("Nameservers", [])
+
+        print(f"  Registrar: {registrar}")
+        print(f"  Status: {', '.join(status) if status else 'Unknown'}")
+        print("  Nameservers:")
+        for ns in nameservers:
+            print(f"    {ns.get('Name', '')}")
+
+        annual_cost = _get_domain_annual_cost(domain_name)
+        print(f"  Estimated annual cost: ${annual_cost:.2f}")
+        print()
+
+    except ClientError as e:
+        print(f"  ❌ Error getting domain details: {e}")
+        print()
+        return None
+    return {
+        "domain_name": domain_name,
+        "expiry": expiry,
+        "auto_renew": auto_renew,
+        "registrar": registrar,
+        "status": status,
+        "nameservers": nameservers,
+        "annual_cost": annual_cost,
+    }
+
+
 def check_route53_registered_domains():
     """Check domains registered through Route 53"""
     print("\n🏠 Checking Route 53 Registered Domains")
     print("=" * 80)
 
     try:
-        route53domains = boto3.client(
-            "route53domains", region_name="us-east-1"
-        )  # Route 53 domains is only in us-east-1
-
-        # Get all registered domains
-        response = route53domains.list_domains()
-        domains = response.get("Domains", [])
+        route53domains = boto3.client("route53domains", region_name="us-east-1")
+        domains = route53domains.list_domains().get("Domains", [])
 
         if not domains:
             print("✅ No domains registered through Route 53")
             return []
 
-        domain_details = []
-        total_annual_cost = 0
-
-        for domain in domains:
-            domain_name = domain.get("DomainName", "")
-            expiry = domain.get("Expiry")
-            auto_renew = domain.get("AutoRenew", False)
-
-            print(f"Domain: {domain_name}")
-            print(f"  Expiry: {expiry}")
-            print(f"  Auto-renew: {auto_renew}")
-
-            try:
-                detail_response = route53domains.get_domain_detail(DomainName=domain_name)
-                domain_detail = detail_response
-
-                registrar = domain_detail.get("RegistrarName", "Unknown")
-                status = domain_detail.get("StatusList", [])
-                nameservers = domain_detail.get("Nameservers", [])
-
-                print(f"  Registrar: {registrar}")
-                print(f"  Status: {', '.join(status) if status else 'Unknown'}")
-                print("  Nameservers:")
-                for ns in nameservers:
-                    ns_name = ns.get("Name", "")
-                    print(f"    {ns_name}")
-
-                annual_cost = _get_domain_annual_cost(domain_name)
-                total_annual_cost += annual_cost
-                print(f"  Estimated annual cost: ${annual_cost:.2f}")
-
-                domain_details.append(
-                    {
-                        "domain_name": domain_name,
-                        "expiry": expiry,
-                        "auto_renew": auto_renew,
-                        "registrar": registrar,
-                        "status": status,
-                        "nameservers": nameservers,
-                        "annual_cost": annual_cost,
-                    }
-                )
-
-            except ClientError as e:
-                print(f"  ❌ Error getting domain details: {e}")
-
-            print()
+        domain_details = [
+            detail
+            for domain in domains
+            if (detail := _process_single_domain(route53domains, domain)) is not None
+        ]
+        total_annual_cost = sum(d["annual_cost"] for d in domain_details)
 
         print("📊 Domain Registration Summary:")
         print(f"  Total registered domains: {len(domains)}")

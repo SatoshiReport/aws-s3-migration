@@ -21,11 +21,13 @@ class TestGetBucketsWithPolicyFiles:
 
     def test_returns_empty_list_when_policies_dir_missing(self, setup_test_env):
         """Test that empty list is returned when policies directory doesn't exist"""
+        _ = setup_test_env  # Used for test isolation
         result = apply_block.get_buckets_with_policy_files()
         assert result == []
 
     def test_returns_empty_list_when_policies_dir_empty(self, policies_dir):
         """Test that empty list is returned when policies directory is empty"""
+        _ = policies_dir  # Creates empty policies directory
         result = apply_block.get_buckets_with_policy_files()
         assert result == []
 
@@ -76,6 +78,7 @@ class TestDetermineBuckets:
 
     def test_exits_when_all_flag_but_no_policies(self, setup_test_env, capsys):
         """Test that sys.exit(1) is called when --all flag but no policy files exist"""
+        _ = setup_test_env  # Used for test isolation
         args = mock.Mock(all=True, buckets=[])
 
         with pytest.raises(SystemExit) as exc_info:
@@ -87,6 +90,7 @@ class TestDetermineBuckets:
 
     def test_returns_specified_buckets(self, setup_test_env):
         """Test that specified bucket names are returned"""
+        _ = setup_test_env  # Used for test isolation
         args = mock.Mock(all=False, buckets=["bucket1", "bucket2", "bucket3"])
         result = apply_block.determine_buckets(args)
 
@@ -94,6 +98,7 @@ class TestDetermineBuckets:
 
     def test_shows_interactive_help_when_no_args(self, setup_test_env, capsys):
         """Test that interactive help is shown when no args provided"""
+        _ = setup_test_env  # Used for test isolation
         args = mock.Mock(all=False, buckets=[])
 
         with pytest.raises(SystemExit) as exc_info:
@@ -109,6 +114,7 @@ class TestShowInteractiveHelp:
 
     def test_shows_usage_instructions(self, setup_test_env, capsys):
         """Test that usage instructions are displayed"""
+        _ = setup_test_env  # Used for test isolation
         apply_block.show_interactive_help()
 
         captured = capsys.readouterr()
@@ -130,6 +136,7 @@ class TestShowInteractiveHelp:
 
     def test_shows_none_when_no_policies(self, setup_test_env, capsys):
         """Test that (none found) is shown when no policies exist"""
+        _ = setup_test_env  # Used for test isolation
         apply_block.show_interactive_help()
 
         captured = capsys.readouterr()
@@ -138,6 +145,7 @@ class TestShowInteractiveHelp:
 
 def test_apply_policy_returns_false_when_policy_file_missing(policies_dir, capsys):
     """Test that False is returned when policy file doesn't exist"""
+    _ = policies_dir  # Creates policies directory
     result = apply_block.apply_policy_to_bucket("missing-bucket", dry_run=False)
 
     assert result is False

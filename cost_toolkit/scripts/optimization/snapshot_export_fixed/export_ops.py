@@ -1,5 +1,6 @@
 """Export operations with fail-fast error handling"""
 
+from ..snapshot_export_common import _register_ami, wait_for_ami_available
 from . import constants
 from .constants import ExportTaskDeletedException
 
@@ -25,8 +26,6 @@ def create_s3_bucket_new(s3_client, bucket_name, region):
 
 def create_ami_from_snapshot(ec2_client, snapshot_id, snapshot_description):
     """Create an AMI from an EBS snapshot - fail fast on errors"""
-    from ..snapshot_export_common import _register_ami, wait_for_ami_available
-
     ami_id = _register_ami(
         ec2_client,
         snapshot_id,

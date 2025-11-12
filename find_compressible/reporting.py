@@ -4,12 +4,23 @@ from __future__ import annotations
 
 import sys
 from collections import Counter
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
 from find_compressible.analysis import CandidateFile
 from find_compressible.cache import format_size
 from find_compressible.compression import compress_with_xz, verify_compressed_file
+
+
+@dataclass
+class CompressionStats:
+    """Track compression statistics during processing."""
+
+    compressed_files: int = 0
+    compression_failures: int = 0
+    total_original_space: int = 0
+    total_compressed_space: int = 0
 
 
 def _process_single_compression(
@@ -29,6 +40,48 @@ def _process_single_compression(
         return False, 0, str(exc)
 
 
+def _report_single_candidate(
+    candidate: CandidateFile,
+    idx: int,
+    index_width: int,
+    *,
+    compress_enabled: bool,
+    compression_stats: CompressionStats,
+    stats: Counter,
+    reported_extensions: set[str],
+) -> None:
+    """Report and optionally compress a single candidate."""
+    prefix = f"{idx:>{index_width}}."
+    ext = candidate.path.suffix.lstrip(".").lower()
+    if not ext:
+        stats["skipped_no_extension"] += 1
+        return
+    reported_extensions.add(ext)
+    print(
+        f"{prefix} {format_size(candidate.size_bytes):>12}  {candidate.path}  "
+        f"(bucket={candidate.bucket})"
+    )
+    if not compress_enabled:
+        return
+
+    compression_stats.total_original_space += candidate.size_bytes
+    success, compressed_size, error = _process_single_compression(candidate)
+
+    if not success:
+        compression_stats.compression_failures += 1
+        print(f"    ! Compression failed: {error}", file=sys.stderr)
+        return
+
+    compression_stats.compressed_files += 1
+    compression_stats.total_compressed_space += compressed_size
+    savings = candidate.size_bytes - compressed_size
+    compressed_path = Path(str(candidate.path) + ".xz")
+    print(
+        f"    → Compressed to {compressed_path} (saved {format_size(savings)}, "
+        f"verified with xz -t)"
+    )
+
+
 def report_and_compress_candidates(
     reported_candidates: Sequence[CandidateFile],
     compress_enabled: bool,
@@ -37,48 +90,25 @@ def report_and_compress_candidates(
     """Report candidates and optionally compress them."""
     total_reported = len(reported_candidates)
     index_width = max(2, len(str(total_reported))) if total_reported else 2
-    compressed_files = 0
-    compression_failures = 0
-    total_original_space = 0
-    total_compressed_space = 0
+    compression_stats = CompressionStats()
     reported_extensions: set[str] = set()
 
     for idx, candidate in enumerate(reported_candidates, start=1):
-        prefix = f"{idx:>{index_width}}."
-        ext = candidate.path.suffix.lstrip(".").lower()
-        if not ext:
-            stats["skipped_no_extension"] += 1
-            continue
-        reported_extensions.add(ext)
-        print(
-            f"{prefix} {format_size(candidate.size_bytes):>12}  {candidate.path}  "
-            f"(bucket={candidate.bucket})"
-        )
-        if not compress_enabled:
-            continue
-
-        total_original_space += candidate.size_bytes
-        success, compressed_size, error = _process_single_compression(candidate)
-
-        if not success:
-            compression_failures += 1
-            print(f"    ! Compression failed: {error}", file=sys.stderr)
-            continue
-
-        compressed_files += 1
-        total_compressed_space += compressed_size
-        savings = candidate.size_bytes - compressed_size
-        compressed_path = Path(str(candidate.path) + ".xz")
-        print(
-            f"    → Compressed to {compressed_path} (saved {format_size(savings)}, "
-            f"verified with xz -t)"
+        _report_single_candidate(
+            candidate,
+            idx,
+            index_width,
+            compress_enabled=compress_enabled,
+            compression_stats=compression_stats,
+            stats=stats,
+            reported_extensions=reported_extensions,
         )
 
     return (
-        compressed_files,
-        compression_failures,
-        total_original_space,
-        total_compressed_space,
+        compression_stats.compressed_files,
+        compression_stats.compression_failures,
+        compression_stats.total_original_space,
+        compression_stats.total_compressed_space,
         reported_extensions,
     )
 

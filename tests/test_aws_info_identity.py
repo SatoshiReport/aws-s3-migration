@@ -58,8 +58,6 @@ def test_main_displays_identity_in_correct_order(mock_aws_info_context):
 
 def test_main_with_long_account_id(mock_aws_info_context):
     """Test that main() handles long account IDs correctly."""
-    from unittest import mock
-
     mock_identity = {
         "account_id": "999999999999999999",
         "username": "test-user",
@@ -78,8 +76,6 @@ def test_main_with_long_account_id(mock_aws_info_context):
 
 def test_main_with_long_username(mock_aws_info_context):
     """Test that main() handles long usernames correctly."""
-    from unittest import mock
-
     mock_identity = {
         "account_id": "123456789012",
         "username": "very-long-username-with-many-characters-and-dashes",
@@ -102,8 +98,6 @@ def test_main_with_long_username(mock_aws_info_context):
 
 def test_main_with_various_arn_formats(mock_aws_info_context):
     """Test that main() displays various ARN formats correctly."""
-    from unittest import mock
-
     mock_identity = {
         "account_id": "123456789012",
         "username": "service-role",

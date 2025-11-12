@@ -2,10 +2,8 @@
 Unit tests for aws_info.py - Output Format and Integration
 
 Tests the main() function's output formatting and integration with aws_utils.
-Uses pytest and unittest.mock to mock aws_utils functions.
+Uses pytest to mock aws_utils functions.
 """
-
-from unittest import mock
 
 import aws_info
 from tests.assertions import assert_equal

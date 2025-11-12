@@ -16,17 +16,20 @@ try:  # Prefer package-relative imports when packaged
         DuplicateCluster,
         find_exact_duplicates,
     )
-    from duplicate_tree_models import (
-        FilesTableReadError,
-        PathTuple,
-        ProgressPrinter,
-    )
 except ImportError:  # pragma: no cover - execution as standalone script
     from duplicate_tree_core import (  # type: ignore[import]
         DirectoryIndex,
         DuplicateCluster,
         find_exact_duplicates,
     )
+
+try:
+    from duplicate_tree_models import (
+        FilesTableReadError,
+        PathTuple,
+        ProgressPrinter,
+    )
+except ImportError:  # pragma: no cover
     from duplicate_tree_models import (  # type: ignore[import]
         FilesTableReadError,
         PathTuple,

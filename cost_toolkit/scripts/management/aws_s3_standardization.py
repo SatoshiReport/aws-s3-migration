@@ -11,7 +11,7 @@ Implements specific S3 bucket configurations:
 from botocore.exceptions import ClientError, NoCredentialsError
 
 from cost_toolkit.scripts.aws_client_factory import create_s3_client
-from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
+from cost_toolkit.scripts.aws_s3_operations import get_bucket_location, list_buckets
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 # Bucket to exclude from standardization - DO NOT TOUCH
@@ -147,7 +147,7 @@ def remove_lifecycle_policy(bucket_name, region):
                 return True
             print(f"❌ Error removing lifecycle policy from {bucket_name}: {e}")
             return False
-        return True
+        return True  # noqa: TRY300
     except ClientError as e:
         print(f"❌ Unexpected error removing lifecycle policy from {bucket_name}: {e}")
         return False
@@ -254,8 +254,6 @@ def standardize_s3_buckets():
 
     try:
         # Get all buckets
-        from cost_toolkit.scripts.aws_s3_operations import list_buckets
-
         buckets = list_buckets()
 
         if not buckets:

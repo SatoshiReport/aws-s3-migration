@@ -16,7 +16,7 @@ from tests.assertions import assert_equal
 
 
 @pytest.fixture
-def mock_dependencies(tmp_path):
+def mock_dependencies(tmp_path):  # pylint: disable=redefined-outer-name
     """Create mock dependencies"""
     mock_s3 = mock.Mock()
     mock_state = mock.Mock()
@@ -35,7 +35,7 @@ def mock_dependencies(tmp_path):
 
 
 @pytest.fixture
-def orchestrator(mock_dependencies):
+def orchestrator(mock_dependencies):  # pylint: disable=redefined-outer-name
     """Create BucketMigrationOrchestrator instance"""
     return BucketMigrationOrchestrator(
         mock_dependencies["s3"],
@@ -49,7 +49,9 @@ def orchestrator(mock_dependencies):
 class TestOrchestratorBasicMigration:
     """Tests for basic multi-bucket migration orchestration"""
 
-    def test_migrate_all_buckets_single_bucket(self, orchestrator, mock_dependencies):
+    def test_migrate_all_buckets_single_bucket(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test migrate_all_buckets with single bucket"""
         mock_dependencies["state"].get_all_buckets.return_value = ["bucket-1"]
         mock_dependencies["state"].get_completed_buckets_for_phase.return_value = []
@@ -60,7 +62,9 @@ class TestOrchestratorBasicMigration:
         mock_dependencies["drive_checker"].check_available.assert_called_once()
         mock_dependencies["bucket_migrator"].process_bucket.assert_called_once_with("bucket-1")
 
-    def test_migrate_all_buckets_multiple_buckets(self, orchestrator, mock_dependencies):
+    def test_migrate_all_buckets_multiple_buckets(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test migrate_all_buckets with multiple buckets"""
         buckets = ["bucket-1", "bucket-2", "bucket-3"]
         mock_dependencies["state"].get_all_buckets.return_value = buckets
@@ -81,7 +85,9 @@ class TestOrchestratorBasicMigration:
 class TestOrchestratorCompletedBuckets:
     """Tests for orchestrator handling of already-completed buckets"""
 
-    def test_migrate_all_buckets_skips_already_completed(self, orchestrator, mock_dependencies):
+    def test_migrate_all_buckets_skips_already_completed(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test migrate_all_buckets skips already completed buckets"""
         all_buckets = ["bucket-1", "bucket-2"]
         completed_buckets = ["bucket-1"]
@@ -94,7 +100,9 @@ class TestOrchestratorCompletedBuckets:
         # Only bucket-2 should be processed
         mock_dependencies["bucket_migrator"].process_bucket.assert_called_once_with("bucket-2")
 
-    def test_migrate_all_buckets_all_already_complete(self, orchestrator, mock_dependencies):
+    def test_migrate_all_buckets_all_already_complete(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test migrate_all_buckets when all buckets are complete"""
         all_buckets = ["bucket-1", "bucket-2"]
         mock_dependencies["state"].get_all_buckets.return_value = all_buckets
@@ -113,14 +121,16 @@ class TestOrchestratorInterruption:
     def __repr__(self):
         return f"{self.__class__.__name__}()"
 
-    def test_migrate_all_buckets_respects_interrupted_flag(self, orchestrator, mock_dependencies):
+    def test_migrate_all_buckets_respects_interrupted_flag(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test migrate_all_buckets stops when interrupted"""
         all_buckets = ["bucket-1", "bucket-2", "bucket-3"]
         mock_dependencies["state"].get_all_buckets.return_value = all_buckets
         mock_dependencies["state"].get_completed_buckets_for_phase.return_value = []
 
         # Set interrupted flag during processing
-        def side_effect(*args, **kwargs):
+        def side_effect(*_args, **_kwargs):
             orchestrator.interrupted = True
 
         mock_dependencies["bucket_migrator"].process_bucket.side_effect = side_effect
@@ -138,7 +148,9 @@ class TestSingleBucketMigration:
     def __repr__(self):
         return f"{self.__class__.__name__}()"
 
-    def test_migrate_single_bucket_success(self, orchestrator, mock_dependencies):
+    def test_migrate_single_bucket_success(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test _migrate_single_bucket successful processing"""
         with mock.patch("builtins.print"):
             orchestrator.migrate_single_bucket(1, "bucket-1", 3)
@@ -152,7 +164,7 @@ class TestSingleBucketDriveErrors:
 
     def test_migrate_single_bucket_handles_file_not_found_error(
         self, orchestrator, mock_dependencies
-    ):
+    ):  # pylint: disable=redefined-outer-name
         """Test _migrate_single_bucket handles FileNotFoundError"""
         mock_dependencies["bucket_migrator"].process_bucket.side_effect = FileNotFoundError(
             "Local path not found"
@@ -164,7 +176,9 @@ class TestSingleBucketDriveErrors:
 
         assert exc_info.value.code == 1
 
-    def test_migrate_single_bucket_handles_permission_error(self, orchestrator, mock_dependencies):
+    def test_migrate_single_bucket_handles_permission_error(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test _migrate_single_bucket handles PermissionError"""
         mock_dependencies["bucket_migrator"].process_bucket.side_effect = PermissionError(
             "Permission denied"
@@ -176,7 +190,9 @@ class TestSingleBucketDriveErrors:
 
         assert exc_info.value.code == 1
 
-    def test_migrate_single_bucket_handles_oserror(self, orchestrator, mock_dependencies):
+    def test_migrate_single_bucket_handles_oserror(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test _migrate_single_bucket handles OSError"""
         mock_dependencies["bucket_migrator"].process_bucket.side_effect = OSError(
             "Drive disconnected"
@@ -192,7 +208,9 @@ class TestSingleBucketDriveErrors:
 class TestSingleBucketMigrationErrors:
     """Tests for single bucket migration error handling"""
 
-    def test_migrate_single_bucket_handles_runtime_error(self, orchestrator, mock_dependencies):
+    def test_migrate_single_bucket_handles_runtime_error(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test _migrate_single_bucket handles RuntimeError from migration"""
         mock_dependencies["bucket_migrator"].process_bucket.side_effect = RuntimeError(
             "Sync failed"
@@ -204,7 +222,9 @@ class TestSingleBucketMigrationErrors:
 
         assert exc_info.value.code == 1
 
-    def test_migrate_single_bucket_handles_value_error(self, orchestrator, mock_dependencies):
+    def test_migrate_single_bucket_handles_value_error(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test _migrate_single_bucket handles ValueError from verification"""
         mock_dependencies["bucket_migrator"].process_bucket.side_effect = ValueError(
             "File count mismatch"
@@ -220,7 +240,9 @@ class TestSingleBucketMigrationErrors:
 class TestErrorHandlers:
     """Tests for global error handler functions"""
 
-    def test_handle_drive_error_prints_error_message(self, _mock_dependencies):
+    def test_handle_drive_error_prints_error_message(
+        self, _mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test handle_drive_error prints proper error message"""
         from migration_orchestrator import (
             handle_drive_error,  # pylint: disable=import-outside-toplevel
@@ -237,7 +259,9 @@ class TestErrorHandlers:
         assert "Drive error" in printed_text
         assert "MIGRATION INTERRUPTED" in printed_text
 
-    def test_handle_migration_error_prints_error_details(self, _mock_dependencies):
+    def test_handle_migration_error_prints_error_details(
+        self, _mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test handle_migration_error prints error details"""
         from migration_orchestrator import (
             handle_migration_error,  # pylint: disable=import-outside-toplevel
@@ -259,7 +283,9 @@ class TestErrorHandlers:
 class TestCompletionStatusReporting:
     """Tests for completion status reporting"""
 
-    def test_print_completion_status_all_complete(self, orchestrator, mock_dependencies):
+    def test_print_completion_status_all_complete(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test _print_completion_status when all buckets complete"""
         all_buckets = ["bucket-1", "bucket-2"]
         mock_dependencies["state"].get_completed_buckets_for_phase.return_value = all_buckets
@@ -271,7 +297,9 @@ class TestCompletionStatusReporting:
         printed_text = " ".join([str(call) for call in mock_print.call_args_list])
         assert "PHASE 4 COMPLETE" in printed_text
 
-    def test_print_completion_status_partial_complete(self, orchestrator, mock_dependencies):
+    def test_print_completion_status_partial_complete(
+        self, orchestrator, mock_dependencies
+    ):  # pylint: disable=redefined-outer-name
         """Test _print_completion_status when some buckets remain"""
         all_buckets = ["bucket-1", "bucket-2", "bucket-3"]
         completed_buckets = ["bucket-1"]

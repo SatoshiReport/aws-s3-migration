@@ -100,7 +100,7 @@ def test_bucket_scanner_early_exit_on_interrupt():
 
     call_count = 0
 
-    def count_calls(*args, **kwargs):
+    def count_calls(*_args, **_kwargs):
         nonlocal call_count
         call_count += 1
         if call_count == 1:
@@ -128,7 +128,7 @@ def test_glacier_restorer_early_exit_on_interrupt():
 
     call_count = 0
 
-    def count_calls(*args, **kwargs):
+    def count_calls(*_args, **_kwargs):
         nonlocal call_count
         call_count += 1
         if call_count == 1:

@@ -74,6 +74,7 @@ def create_ami_from_snapshot(
     ec2_client,
     snapshot_id,
     snapshot_description,
+    *,
     volume_type="gp3",
     boot_mode=None,
     ena_support=True,
@@ -98,10 +99,10 @@ def create_ami_from_snapshot(
             ec2_client,
             snapshot_id,
             snapshot_description,
-            volume_type,
-            boot_mode,
-            ena_support,
-            attempt_suffix,
+            volume_type=volume_type,
+            boot_mode=boot_mode,
+            ena_support=ena_support,
+            attempt_suffix=attempt_suffix,
         )
         return wait_for_ami_available(ec2_client, ami_id)
 
@@ -111,7 +112,7 @@ def create_ami_from_snapshot(
 
 
 def _register_ami(
-    ec2_client, snapshot_id, description, volume_type, boot_mode, ena_support, attempt_suffix
+    ec2_client, snapshot_id, description, *, volume_type, boot_mode, ena_support, attempt_suffix
 ):
     """Register AMI from snapshot and return AMI ID"""
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")

@@ -203,6 +203,41 @@ def get_instance_hourly_cost(instance_type, region_name):
     return base_cost * regional_multiplier
 
 
+def _process_single_volume(volume):
+    """Process a single EBS volume and return its details."""
+    volume_id = volume["VolumeId"]
+    volume_type = volume["VolumeType"]
+    size_gb = volume["Size"]
+    state = volume["State"]
+    iops = volume.get("Iops", 0)
+    throughput = volume.get("Throughput", 0)
+
+    monthly_cost = calculate_ebs_monthly_cost(volume_type, size_gb, iops, throughput)
+
+    attachments = volume.get("Attachments", [])
+    attached_to = attachments[0].get("InstanceId") if attachments else None
+
+    print(f"Volume: {volume_id}")
+    print(f"  Type: {volume_type}")
+    print(f"  Size: {size_gb} GB")
+    print(f"  State: {state}")
+    print(f"  IOPS: {iops}")
+    if throughput:
+        print(f"  Throughput: {throughput} MB/s")
+    print(f"  Attached to: {attached_to or 'None'}")
+    print(f"  Monthly cost: ${monthly_cost:.2f}")
+    print()
+
+    return {
+        "volume_id": volume_id,
+        "volume_type": volume_type,
+        "size_gb": size_gb,
+        "state": state,
+        "attached_to": attached_to,
+        "monthly_cost": monthly_cost,
+    }
+
+
 def analyze_ebs_volumes_in_region(region_name):
     """Analyze EBS volumes and their costs"""
     print(f"\n💾 Analyzing EBS Storage in {region_name}")
@@ -210,56 +245,14 @@ def analyze_ebs_volumes_in_region(region_name):
 
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
-
-        response = ec2.describe_volumes()
-        volumes = response.get("Volumes", [])
+        volumes = ec2.describe_volumes().get("Volumes", [])
 
         if not volumes:
             print(f"✅ No EBS volumes found in {region_name}")
             return []
 
-        total_storage_cost = 0
-        volume_details = []
-
-        for volume in volumes:
-            volume_id = volume["VolumeId"]
-            volume_type = volume["VolumeType"]
-            size_gb = volume["Size"]
-            state = volume["State"]
-            iops = volume.get("Iops", 0)
-            throughput = volume.get("Throughput", 0)
-
-            # Calculate monthly storage cost
-            monthly_cost = calculate_ebs_monthly_cost(volume_type, size_gb, iops, throughput)
-            total_storage_cost += monthly_cost
-
-            # Check if attached to instance
-            attachments = volume.get("Attachments", [])
-            attached_to = None
-            if attachments:
-                attached_to = attachments[0].get("InstanceId")
-
-            print(f"Volume: {volume_id}")
-            print(f"  Type: {volume_type}")
-            print(f"  Size: {size_gb} GB")
-            print(f"  State: {state}")
-            print(f"  IOPS: {iops}")
-            if throughput:
-                print(f"  Throughput: {throughput} MB/s")
-            print(f"  Attached to: {attached_to or 'None'}")
-            print(f"  Monthly cost: ${monthly_cost:.2f}")
-
-            volume_details.append(
-                {
-                    "volume_id": volume_id,
-                    "volume_type": volume_type,
-                    "size_gb": size_gb,
-                    "state": state,
-                    "attached_to": attached_to,
-                    "monthly_cost": monthly_cost,
-                }
-            )
-            print()
+        volume_details = [_process_single_volume(volume) for volume in volumes]
+        total_storage_cost = sum(vol["monthly_cost"] for vol in volume_details)
 
         print(f"📊 EBS Summary for {region_name}:")
         print(f"  Total volumes: {len(volumes)}")

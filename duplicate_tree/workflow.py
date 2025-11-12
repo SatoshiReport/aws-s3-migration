@@ -15,10 +15,6 @@ try:  # Prefer package-relative imports when packaged
         render_report_rows,
     )
     from duplicate_tree.cache import load_cached_report, store_cached_report
-    from duplicate_tree_core import (
-        DirectoryIndex,
-        find_exact_duplicates,
-    )
 except ImportError:  # pragma: no cover - execution as standalone script
     from analysis import (  # type: ignore[import]
         ClusterRow,
@@ -28,6 +24,13 @@ except ImportError:  # pragma: no cover - execution as standalone script
         render_report_rows,
     )
     from cache import load_cached_report, store_cached_report  # type: ignore[import]
+
+try:
+    from duplicate_tree_core import (
+        DirectoryIndex,
+        find_exact_duplicates,
+    )
+except ImportError:  # pragma: no cover
     from duplicate_tree_core import (  # type: ignore[import]
         DirectoryIndex,
         find_exact_duplicates,

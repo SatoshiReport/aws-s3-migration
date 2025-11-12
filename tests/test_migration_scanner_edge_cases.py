@@ -16,7 +16,7 @@ def test_scan_bucket_respects_pagination_interrupt():
 
     page_count = 0
 
-    def paginate_with_interrupt(*args, **kwargs):
+    def paginate_with_interrupt(*_args, **_kwargs):
         nonlocal page_count
         page_count += 1
         scanner.interrupted = True
@@ -160,7 +160,7 @@ def test_check_restore_status_partial_restore_string(waiter, mock_s3, mock_state
     mock_state.mark_glacier_restored.assert_called_once()
 
 
-def test_wait_for_restores_prints_restored_files(waiter, mock_s3, mock_state, capsys):
+def test_wait_for_restores_prints_restored_files(waiter, mock_state, capsys):
     """Test output shows restored files"""
     # Mock _check_restore_status to return True for both files
     waiter.check_restore_status = mock.Mock(return_value=True)

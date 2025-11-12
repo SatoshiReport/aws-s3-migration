@@ -60,7 +60,7 @@ class TestDriveChecker:
         checker.check_available()
         assert base_path.exists()
 
-    def test_check_available_permission_denied(self, tmp_path, capsys, monkeypatch):
+    def test_check_available_permission_denied(self, tmp_path, capsys):
         """check_available exits when directory creation raises PermissionError."""
         base_path = tmp_path / "s3_backup"
         checker = DriveChecker(base_path)

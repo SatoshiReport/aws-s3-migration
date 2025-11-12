@@ -28,7 +28,7 @@ class TestGlacierRestorerStorageClassTiers:
         """Create GlacierRestorer instance"""
         return GlacierRestorer(mock_s3, mock_state)
 
-    def test_request_restore_for_glacier(self, restorer, mock_s3, mock_state):
+    def test_request_restore_for_glacier(self, restorer, mock_s3):
         """Test requesting restore for GLACIER storage class"""
         with mock.patch("migration_scanner.config.GLACIER_RESTORE_TIER", "Standard"):
             with mock.patch("migration_scanner.config.GLACIER_RESTORE_DAYS", 1):
@@ -44,7 +44,7 @@ class TestGlacierRestorerStorageClassTiers:
                 call_args = mock_s3.restore_object.call_args
                 assert call_args[1]["RestoreRequest"]["GlacierJobParameters"]["Tier"] == "Standard"
 
-    def test_request_restore_for_deep_archive(self, restorer, mock_s3, mock_state):
+    def test_request_restore_for_deep_archive(self, restorer, mock_s3):
         """Test requesting restore for DEEP_ARCHIVE uses Bulk tier"""
         with mock.patch("migration_scanner.config.GLACIER_RESTORE_DAYS", 1):
             file_info = {
@@ -99,7 +99,7 @@ class TestGlacierRestorerErrorHandling:
 
         mock_state.mark_glacier_restore_requested.assert_called_once()
 
-    def test_request_restore_other_error(self, restorer, mock_s3, mock_state):
+    def test_request_restore_other_error(self, restorer, mock_s3):
         """Test that other errors are raised"""
         error_response = {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}
         mock_s3.restore_object.side_effect = ClientError(error_response, "RestoreObject")
@@ -133,7 +133,7 @@ class TestGlacierRestorerConfiguration:
         """Create GlacierRestorer instance"""
         return GlacierRestorer(mock_s3, mock_state)
 
-    def test_request_restore_uses_correct_config_values(self, restorer, mock_s3, mock_state):
+    def test_request_restore_uses_correct_config_values(self, restorer, mock_s3):
         """Test that restore request uses config values"""
         with mock.patch("migration_scanner.config.GLACIER_RESTORE_TIER", "Expedited"):
             with mock.patch("migration_scanner.config.GLACIER_RESTORE_DAYS", 5):

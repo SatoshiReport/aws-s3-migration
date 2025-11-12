@@ -27,7 +27,7 @@ class TestBucketScannerMissingETag:
         """Create BucketScanner instance"""
         return BucketScanner(mock_s3, mock_state)
 
-    def test_scan_bucket_handles_missing_etag(self, scanner, mock_s3, mock_state):
+    def test_scan_bucket_handles_missing_etag(self, scanner, mock_state):
         """Test handling of objects without ETag field"""
         scanner.s3.get_paginator.return_value.paginate.return_value = [
             {
@@ -68,7 +68,7 @@ class TestBucketScannerETagQuotes:
         """Create BucketScanner instance"""
         return BucketScanner(mock_s3, mock_state)
 
-    def test_scan_bucket_strips_etag_quotes(self, scanner, mock_s3, mock_state):
+    def test_scan_bucket_strips_etag_quotes(self, scanner, mock_state):
         """Test that ETags are stripped of quotes"""
         scanner.s3.get_paginator.return_value.paginate.return_value = [
             {

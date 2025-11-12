@@ -4,6 +4,7 @@ Monitor Manual AWS Export Tasks
 This script helps you monitor the progress of manual export tasks and check S3 files.
 """
 
+import argparse
 import time
 from datetime import datetime
 
@@ -221,8 +222,6 @@ def check_specific_ami(region, ami_id):
 
 def main():
     """Main function"""
-    import argparse
-
     parser = argparse.ArgumentParser(description="Monitor manual AWS export tasks")
     parser.add_argument("--region", help="Specific region to check")
     parser.add_argument("--ami", help="Specific AMI ID to check")

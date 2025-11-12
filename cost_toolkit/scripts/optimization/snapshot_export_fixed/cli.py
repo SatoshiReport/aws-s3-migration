@@ -1,10 +1,15 @@
 """CLI interface for fixed snapshot export"""
 
 import argparse
+from datetime import datetime
 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
+from cost_toolkit.scripts.optimization.snapshot_export_common import (
+    load_aws_credentials,
+    setup_s3_bucket_versioning,
+)
 from cost_toolkit.scripts.snapshot_export_common import (
     print_export_results,
     print_export_summary,
@@ -20,8 +25,6 @@ from .export_ops import (
     create_ami_from_snapshot,
     create_s3_bucket_if_not_exists,
     create_s3_bucket_new,
-    load_aws_credentials,
-    setup_s3_bucket_versioning,
 )
 from .monitoring import calculate_cost_savings, verify_s3_export_final
 from .recovery import (
@@ -38,8 +41,6 @@ def _setup_aws_clients(region, aws_access_key_id, aws_secret_access_key):
 
 def _setup_s3_bucket_for_export(s3_client, region):
     """Create and configure S3 bucket for snapshot export."""
-    from datetime import datetime
-
     bucket_name = f"ebs-snapshot-archive-{region}-{datetime.now().strftime('%Y%m%d')}"
 
     print(f"   🔍 Checking for existing completed exports in {region}...")
@@ -56,7 +57,7 @@ def _setup_s3_bucket_for_export(s3_client, region):
 
 
 def _build_export_result(
-    snapshot_id, ami_id, bucket_name, s3_key, export_task_id, size_gb, savings
+    snapshot_id, ami_id, bucket_name, *, s3_key, export_task_id, size_gb, savings
 ):
     """Build export result dictionary."""
     return {
@@ -101,7 +102,13 @@ def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_ac
         print(f"   💰 Monthly savings: ${savings['monthly_savings']:.2f}")
 
         return _build_export_result(
-            snapshot_id, ami_id, bucket_name, s3_key, export_task_id, size_gb, savings
+            snapshot_id,
+            ami_id,
+            bucket_name,
+            s3_key=s3_key,
+            export_task_id=export_task_id,
+            size_gb=size_gb,
+            savings=savings,
         )
 
     except (ExportTaskDeletedException, ExportTaskStuckException):

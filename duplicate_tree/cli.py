@@ -7,9 +7,17 @@ import sys
 from pathlib import Path
 from typing import Optional, Sequence
 
-try:  # Prefer package-relative imports when packaged
+try:
     import config as config_module
+except ImportError:  # pragma: no cover
+    import config as config_module  # type: ignore[import]
+
+try:
     from cost_toolkit.common.cli_utils import confirm_reset_state_db
+except ImportError:  # pragma: no cover
+    from cost_toolkit.common.cli_utils import confirm_reset_state_db  # type: ignore[import]
+
+try:  # Prefer package-relative imports when packaged
     from duplicate_tree.analysis import (
         MIN_REPORT_BYTES,
         MIN_REPORT_FILES,
@@ -22,10 +30,7 @@ try:  # Prefer package-relative imports when packaged
         DuplicateAnalysisContext,
         load_or_compute_duplicates,
     )
-    from state_db_admin import reseed_state_db_from_local_drive
 except ImportError:  # pragma: no cover - execution as standalone script
-    import config as config_module  # type: ignore[import]
-
     from analysis import (  # type: ignore[import]
         MIN_REPORT_BYTES,
         MIN_REPORT_FILES,
@@ -33,13 +38,16 @@ except ImportError:  # pragma: no cover - execution as standalone script
         format_bytes,
         recompute_clusters_for_deletion,
     )
-    from cost_toolkit.common.cli_utils import confirm_reset_state_db  # type: ignore[import]
     from deletion import delete_duplicate_directories  # type: ignore[import]
-    from state_db_admin import reseed_state_db_from_local_drive  # type: ignore[import]
     from workflow import (  # type: ignore[import]
         DuplicateAnalysisContext,
         load_or_compute_duplicates,
     )
+
+try:
+    from state_db_admin import reseed_state_db_from_local_drive
+except ImportError:  # pragma: no cover
+    from state_db_admin import reseed_state_db_from_local_drive  # type: ignore[import]
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:

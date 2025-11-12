@@ -39,7 +39,7 @@ def bucket_manager(db_conn):
 class TestGetAllBuckets:
     """Test get_all_buckets operations"""
 
-    def test_get_all_buckets(self, _bucket_manager, db_conn):
+    def test_get_all_buckets(self, _bucket_manager):
         """Test retrieving all buckets"""
         _bucket_manager.save_bucket_status(
             bucket="bucket-a",
@@ -71,7 +71,7 @@ class TestGetAllBuckets:
         assert buckets == []
 
 
-def test_get_completed_buckets_for_phase(_bucket_manager, db_conn):
+def test_get_completed_buckets_for_phase(_bucket_manager):
     """Test retrieving buckets completed for a specific phase"""
     _bucket_manager.save_bucket_status(
         bucket="bucket-a",
@@ -103,7 +103,7 @@ def test_get_completed_buckets_for_phase(_bucket_manager, db_conn):
 class TestGetBucketInfo:
     """Test get_bucket_info operations"""
 
-    def test_get_bucket_info(self, _bucket_manager, db_conn):
+    def test_get_bucket_info(self, _bucket_manager):
         """Test retrieving bucket information"""
         _bucket_manager.save_bucket_status(
             bucket="test-bucket",
@@ -179,7 +179,7 @@ def test_get_scan_summary(_bucket_manager, db_conn):
     assert summary["storage_classes"]["GLACIER"] == SUMMARY_GLACIER_CLASS_COUNT
 
 
-def test_get_scan_summary_excludes_incomplete_scans(_bucket_manager, db_conn):
+def test_get_scan_summary_excludes_incomplete_scans(_bucket_manager):
     """Test that scan summary only includes complete scans"""
     _bucket_manager.save_bucket_status(
         bucket="incomplete-bucket",

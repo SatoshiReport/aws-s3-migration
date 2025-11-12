@@ -1,6 +1,5 @@
 """Unit tests for migration_verify.py - Part 3: BucketVerifier and BucketDeleter"""
 
-import hashlib
 from unittest import mock
 
 import pytest

@@ -41,6 +41,7 @@ def get_month_date_range() -> tuple[str, str]:
 def get_cost_and_usage(
     start_date: str,
     end_date: str,
+    *,
     granularity: str = "DAILY",
     metrics: Optional[list[str]] = None,
     group_by: Optional[list[dict]] = None,

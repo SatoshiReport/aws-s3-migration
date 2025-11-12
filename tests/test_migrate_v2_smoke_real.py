@@ -23,7 +23,7 @@ class _FakeWaiter:
 
 
 class _FakePaginator:
-    def paginate(self, **kwargs):
+    def paginate(self, **_kwargs):
         """Yield empty object versions."""
         yield {"Versions": [], "DeleteMarkers": []}
 

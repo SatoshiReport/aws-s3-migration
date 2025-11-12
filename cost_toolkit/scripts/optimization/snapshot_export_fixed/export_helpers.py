@@ -1,9 +1,11 @@
 """Helper functions for fixed export operations"""
 
 import time
+from dataclasses import dataclass
 
 from botocore.exceptions import ClientError
 
+from ..snapshot_export_common import print_export_status, start_ami_export_task
 from . import constants
 from .constants import (
     EXPORT_STATUS_CHECK_INTERVAL_SECONDS,
@@ -12,12 +14,22 @@ from .constants import (
     ExportTaskFailedException,
     ExportTaskStuckException,
 )
+from .export_ops import validate_export_task_exists
+from .monitoring import check_s3_file_completion
+
+
+@dataclass
+class MonitoringState:
+    """Track monitoring state for export progress."""
+
+    start_time: float
+    last_progress_change_time: float
+    last_progress_value: int = 0
+    consecutive_api_errors: int = 0
 
 
 def _start_export_task_fixed(ec2_client, ami_id, bucket_name):
     """Start AMI export task and return task ID and S3 key."""
-    from ..snapshot_export_common import start_ami_export_task
-
     export_task_id, s3_key = start_ami_export_task(ec2_client, ami_id, bucket_name)
     print("   ⏳ Monitoring export progress with intelligent completion detection...")
 
@@ -26,8 +38,6 @@ def _start_export_task_fixed(ec2_client, ami_id, bucket_name):
 
 def _handle_task_deletion_recovery(s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours):
     """Handle export task deletion by checking S3 file."""
-    from .monitoring import check_s3_file_completion
-
     print(f"   ⚠️  Export task was deleted after {elapsed_hours:.1f} hours")
     print("   🔍 Checking if S3 file was completed before task deletion...")
 
@@ -51,8 +61,6 @@ def _handle_task_deletion_recovery(s3_client, bucket_name, s3_key, snapshot_size
 
 def _fetch_export_task_status(ec2_client, export_task_id):
     """Fetch export task status with error handling."""
-    from .export_ops import validate_export_task_exists
-
     task = validate_export_task_exists(ec2_client, export_task_id)
     return task, 0
 
@@ -77,48 +85,43 @@ def _check_terminal_state_fixed(task, status, elapsed_hours):
 
 def _print_export_status(status, progress, status_msg, elapsed_hours):
     """Print formatted export status."""
-    from ..snapshot_export_common import print_export_status
-
     print_export_status(status, progress, status_msg, elapsed_hours)
 
 
-def _track_progress_change(current_progress, last_progress_value, current_time, last_change_time):
+def _track_progress_change(
+    state: MonitoringState, current_progress: int, current_time: float
+) -> None:
     """Track and log progress changes."""
-    if current_progress != last_progress_value:
+    if current_progress != state.last_progress_value:
         print(f"   📈 Progress updated to {current_progress}%")
-        return current_progress, current_time
-    return last_progress_value, last_change_time
+        state.last_progress_value = current_progress
+        state.last_progress_change_time = current_time
 
 
-def _handle_api_errors(consecutive_api_errors, exception):
+def _handle_api_errors(state: MonitoringState, exception: ClientError) -> None:
     """Handle API errors with retry logic."""
-    consecutive_api_errors += 1
+    state.consecutive_api_errors += 1
     print(
-        f"   ❌ API error {consecutive_api_errors}/"
+        f"   ❌ API error {state.consecutive_api_errors}/"
         f"{constants.MAX_CONSECUTIVE_API_ERRORS}: {exception}"
     )
 
-    if consecutive_api_errors >= constants.MAX_CONSECUTIVE_API_ERRORS:
+    if state.consecutive_api_errors >= constants.MAX_CONSECUTIVE_API_ERRORS:
         raise ExportAPIException(  # noqa: TRY003
-            f"Too many consecutive API errors ({consecutive_api_errors}) - failing fast"
+            f"Too many consecutive API errors ({state.consecutive_api_errors}) - failing fast"
         )
-
-    return consecutive_api_errors
 
 
 def monitor_export_with_recovery(
-    ec2_client, s3_client, export_task_id, s3_key, bucket_name, snapshot_size_gb
+    ec2_client, s3_client, export_task_id, s3_key, *, bucket_name, snapshot_size_gb
 ):
     """Monitor export progress with recovery mechanisms."""
-    start_time = time.time()
-    last_progress_change_time = start_time
-    last_progress_value = 0
-    consecutive_api_errors = 0
+    current_time = time.time()
+    state = MonitoringState(start_time=current_time, last_progress_change_time=current_time)
 
     while True:
         current_time = time.time()
-        elapsed_time = current_time - start_time
-        elapsed_hours = elapsed_time / 3600
+        elapsed_hours = (current_time - state.start_time) / 3600
 
         if elapsed_hours >= constants.EXPORT_MAX_DURATION_HOURS:
             raise ExportTaskStuckException(  # noqa: TRY003
@@ -128,36 +131,36 @@ def monitor_export_with_recovery(
 
         try:
             task, _ = _fetch_export_task_status(ec2_client, export_task_id)
-            consecutive_api_errors = 0
+            state.consecutive_api_errors = 0
         except ExportTaskDeletedException:
             return _handle_task_deletion_recovery(
                 s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours
             )
         except ClientError as e:
-            consecutive_api_errors = _handle_api_errors(consecutive_api_errors, e)
+            _handle_api_errors(state, e)
             time.sleep(constants.EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
             continue
 
-        status = task["Status"]
-        progress = task.get("Progress", "N/A")
-        status_msg = task.get("StatusMessage", "")
-
-        _print_export_status(status, progress, status_msg, elapsed_hours)
-
-        current_progress = int(progress) if progress != "N/A" else 0
-        last_progress_value, last_progress_change_time = _track_progress_change(
-            current_progress, last_progress_value, current_time, last_progress_change_time
+        _print_export_status(
+            task["Status"],
+            task.get("Progress", "N/A"),
+            task.get("StatusMessage", ""),
+            elapsed_hours,
         )
 
-        is_terminal, terminal_type = _check_terminal_state_fixed(task, status, elapsed_hours)
+        current_progress = int(task.get("Progress", "N/A")) if task.get("Progress") != "N/A" else 0
+        _track_progress_change(state, current_progress, current_time)
+
+        is_terminal, terminal_type = _check_terminal_state_fixed(
+            task, task["Status"], elapsed_hours
+        )
         if is_terminal:
             if terminal_type == "completed":
                 return True, s3_key
             if terminal_type == "deleted":
-                result = _handle_task_deletion_recovery(
+                return _handle_task_deletion_recovery(
                     s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours
                 )
-                return result
 
         time.sleep(EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
 
@@ -171,7 +174,12 @@ def export_ami_to_s3_with_recovery(
     export_task_id, s3_key = _start_export_task_fixed(ec2_client, ami_id, bucket_name)
 
     success, result_key = monitor_export_with_recovery(
-        ec2_client, s3_client, export_task_id, s3_key, bucket_name, snapshot_size_gb
+        ec2_client,
+        s3_client,
+        export_task_id,
+        s3_key,
+        bucket_name=bucket_name,
+        snapshot_size_gb=snapshot_size_gb,
     )
 
     if success:

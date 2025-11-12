@@ -69,6 +69,58 @@ def rename_instance(instance_id, new_name, region_name):
     return True
 
 
+def _get_instance_name_tag(instance):
+    """Extract instance name from tags."""
+    for tag in instance.get("Tags", []):
+        if tag["Key"] == "Name":
+            return tag["Value"]
+    return "Unknown"
+
+
+def _get_last_activity_from_metrics(cloudwatch, instance_id):
+    """Get last activity time from CloudWatch CPU metrics."""
+    try:
+        end_time = datetime.now(timezone.utc)
+        start_time = end_time - timedelta(days=90)  # Look back 90 days
+
+        metrics_response = cloudwatch.get_metric_statistics(
+            Namespace="AWS/EC2",
+            MetricName="CPUUtilization",
+            Dimensions=[{"Name": "InstanceId", "Value": instance_id}],
+            StartTime=start_time,
+            EndTime=end_time,
+            Period=3600,  # 1 hour periods
+            Statistics=["Average"],
+        )
+
+        datapoints = metrics_response.get("Datapoints", [])
+        if datapoints:
+            datapoints.sort(key=lambda x: x["Timestamp"])
+            last_activity = datapoints[-1]["Timestamp"]
+            print(f"  Last Activity (CPU metrics): {last_activity}")
+        else:
+            print("  Last Activity: No CPU metrics found (may not have run recently)")
+
+    except ClientError as e:
+        print(f"  Last Activity: Could not retrieve metrics - {e}")
+
+
+def _print_instance_details(instance_id, name_tag, instance_type, state, launch_time):
+    """Print formatted instance details."""
+    print(f"  Instance: {instance_id}")
+    print(f"  Name: {name_tag}")
+    print(f"  Type: {instance_type}")
+    print(f"  State: {state}")
+    print(f"  Launch Time: {launch_time}")
+
+
+def _print_instance_age(launch_time):
+    """Calculate and print instance age."""
+    if launch_time:
+        age = datetime.now(timezone.utc) - launch_time
+        print(f"  Age: {age.days} days")
+
+
 def get_instance_detailed_info(instance_id, region_name):
     """Get detailed information about an instance including creation and last run times"""
     print(f"\n🔍 Getting detailed info for {instance_id} in {region_name}")
@@ -85,51 +137,11 @@ def get_instance_detailed_info(instance_id, region_name):
         instance_type = instance["InstanceType"]
         state = instance["State"]["Name"]
         launch_time = instance.get("LaunchTime")
+        name_tag = _get_instance_name_tag(instance)
 
-        name_tag = "Unknown"
-        for tag in instance.get("Tags", []):
-            if tag["Key"] == "Name":
-                name_tag = tag["Value"]
-                break
-
-        print(f"  Instance: {instance_id}")
-        print(f"  Name: {name_tag}")
-        print(f"  Type: {instance_type}")
-        print(f"  State: {state}")
-        print(f"  Launch Time: {launch_time}")
-
-        # Try to get last activity from CloudWatch metrics
-        try:
-            # Get CPU utilization to determine last activity
-            end_time = datetime.now(timezone.utc)
-            start_time = end_time - timedelta(days=90)  # Look back 90 days
-
-            metrics_response = cloudwatch.get_metric_statistics(
-                Namespace="AWS/EC2",
-                MetricName="CPUUtilization",
-                Dimensions=[{"Name": "InstanceId", "Value": instance_id}],
-                StartTime=start_time,
-                EndTime=end_time,
-                Period=3600,  # 1 hour periods
-                Statistics=["Average"],
-            )
-
-            datapoints = metrics_response.get("Datapoints", [])
-            if datapoints:
-                # Sort by timestamp and get the most recent
-                datapoints.sort(key=lambda x: x["Timestamp"])
-                last_activity = datapoints[-1]["Timestamp"]
-                print(f"  Last Activity (CPU metrics): {last_activity}")
-            else:
-                print("  Last Activity: No CPU metrics found (may not have run recently)")
-
-        except ClientError as e:
-            print(f"  Last Activity: Could not retrieve metrics - {e}")
-
-        # Calculate age
-        if launch_time:
-            age = datetime.now(timezone.utc) - launch_time
-            print(f"  Age: {age.days} days")
+        _print_instance_details(instance_id, name_tag, instance_type, state, launch_time)
+        _get_last_activity_from_metrics(cloudwatch, instance_id)
+        _print_instance_age(launch_time)
 
     except ClientError as e:
         print(f"  ❌ Error getting instance info: {e}")

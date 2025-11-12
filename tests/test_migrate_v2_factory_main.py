@@ -25,7 +25,7 @@ class TestCreateMigrator:
             mock_cfg.LOCAL_BASE_PATH = "/tmp/s3_backup"
             yield mock_cfg
 
-    def test_create_migrator_returns_s3_migration_v2(self, mock_config):
+    def test_create_migrator_returns_s3_migration_v2(self):
         """create_migrator returns S3MigrationV2 instance."""
         with (
             mock.patch("migrate_v2.MigrationStateV2"),

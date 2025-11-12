@@ -14,10 +14,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cleanup_temp_artifacts.scanner import Candidate
+from cleanup_temp_artifacts.core_scanner import Candidate
 
 if TYPE_CHECKING:
     from cleanup_temp_artifacts.categories import Category
+    from cleanup_temp_artifacts.db_loader import DatabaseInfo
 
 CACHE_VERSION = 2
 
@@ -89,26 +90,23 @@ def load_cache(
     return candidates, metadata
 
 
-def write_cache(  # noqa: PLR0913 - function arguments reflect cache metadata requirements
+def write_cache(
     cache_path: Path,
     candidates: list[Candidate],
     *,
     scan_params: dict[str, object],
     base_path: Path,
-    db_path: Path,
-    rowcount: int,
-    max_rowid: int,
-    db_mtime_ns: int,
+    db_info: "DatabaseInfo",
 ) -> None:
     """Write scan results and metadata to cache file."""
     payload = {
         "version": CACHE_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "base_path": str(base_path),
-        "db_path": str(db_path),
-        "rowcount": rowcount,
-        "max_rowid": max_rowid,
-        "db_mtime_ns": db_mtime_ns,
+        "db_path": str(db_info.db_path),
+        "rowcount": db_info.total_files,
+        "max_rowid": db_info.max_rowid,
+        "db_mtime_ns": db_info.db_stat.st_mtime_ns,
         "scan_params": scan_params,
         "candidates": [
             {

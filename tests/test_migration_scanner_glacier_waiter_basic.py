@@ -59,7 +59,7 @@ class TestGlacierWaiterBasicWaiting:
         assert "PHASE 3 COMPLETE" in output
         mock_state.set_current_phase.assert_called_once_with(Phase.SYNCING)
 
-    def test_wait_for_restores_with_sleep(self, waiter, mock_s3, mock_state):
+    def test_wait_for_restores_with_sleep(self, waiter, mock_state):
         """Test that wait_for_restores sleeps between checks"""
         # Mock _check_restore_status to avoid side_effect issues
         waiter.check_restore_status = mock.Mock(return_value=False)
@@ -104,14 +104,14 @@ class TestGlacierWaiterInterruption:
         # Should still transition to SYNCING phase after loop exits
         mock_state.set_current_phase.assert_called_once_with(Phase.SYNCING)
 
-    def test_wait_for_restores_stops_on_interrupt_during_check(self, waiter, mock_s3, mock_state):
+    def test_wait_for_restores_stops_on_interrupt_during_check(self, waiter, mock_state):
         """Test interrupt during restore status check"""
         mock_state.get_files_restoring.return_value = [
             {"bucket": "test-bucket", "key": "file1.txt"},
             {"bucket": "test-bucket", "key": "file2.txt"},
         ]
 
-        def interrupt_on_second_file(*args, **kwargs):
+        def interrupt_on_second_file(*_args, **_kwargs):
             waiter.interrupted = True
             return False
 
@@ -141,7 +141,7 @@ class TestGlacierWaiterLooping:
         """Create GlacierWaiter instance"""
         return GlacierWaiter(mock_s3, mock_state)
 
-    def test_wait_for_restores_loops_until_complete(self, waiter, mock_s3, mock_state):
+    def test_wait_for_restores_loops_until_complete(self, waiter, mock_state):
         """Test that wait_for_restores loops multiple times"""
         # Mock _check_restore_status to avoid complications
         waiter.check_restore_status = mock.Mock(return_value=False)

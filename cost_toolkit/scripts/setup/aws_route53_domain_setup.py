@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Setup Route53 domain records for DNS configuration."""
 
+import subprocess
 import sys
 import time
 
@@ -86,7 +87,7 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
                 )
                 return False
             raise
-        return True
+        return True  # noqa: TRY300
     except ClientError as e:
         print(f"❌ Route53 Domains API error: {e}")
         return False
@@ -141,20 +142,17 @@ def create_missing_dns_records(domain_name, zone_id, canva_ip):
         # Apply changes if any
         if changes:
             _apply_dns_changes(route53, zone_id, changes)
-            return True
-        return True
+        else:
+            print("  ✅ All required DNS records already exist")
 
     except ClientError as e:
         raise DNSRecordCreationError(e) from e
-    print("  ✅ All required DNS records already exist")
     return True
 
 
 def test_dns_resolution(domain_name):
     """Test DNS resolution for the domain"""
     print(f"\n🧪 Testing DNS resolution for {domain_name}")
-
-    import subprocess
 
     # Test root domain
     try:

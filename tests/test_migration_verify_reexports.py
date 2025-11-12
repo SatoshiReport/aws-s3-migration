@@ -34,7 +34,7 @@ def test_fallback_import_path_executes():
     assert hasattr(module, "BucketVerifier")
 
 
-def test_package_import_triggers_relative_branch(monkeypatch):
+def test_package_import_triggers_relative_branch():
     """Import the module via the aws package to exercise the relative import path."""
     import importlib
     import sys

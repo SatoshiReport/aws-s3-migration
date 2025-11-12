@@ -120,6 +120,47 @@ def _estimate_monthly_cost(instance_type, state):
     return estimated_monthly_cost if state == "running" else 0
 
 
+def _process_instance_details(cloudwatch, instance, region_name, start_time, end_time):
+    """Process detailed metrics for a single EC2 instance."""
+    instance_id = instance["InstanceId"]
+    instance_type = instance["InstanceType"]
+    state = instance["State"]["Name"]
+    launch_time = instance.get("LaunchTime")
+    name = _get_instance_name(instance)
+
+    print(f"Instance: {instance_id} ({name})")
+    print(f"  Type: {instance_type}")
+    print(f"  State: {state}")
+    print(f"  Launch Time: {launch_time}")
+
+    avg_cpu, max_cpu, latest_datapoint = _calculate_cpu_metrics(cloudwatch, instance_id)
+    _print_cpu_metrics(avg_cpu, max_cpu, latest_datapoint)
+    usage_level = _determine_usage_level(avg_cpu)
+    if avg_cpu is not None:
+        print(f"    Usage Level: {usage_level}")
+
+    _get_network_metrics(cloudwatch, instance_id, start_time, end_time)
+
+    estimated_monthly_cost = _estimate_monthly_cost(instance_type, state)
+    if state == "running":
+        print(f"  Estimated monthly cost: ${estimated_monthly_cost:.2f} (if running 24/7)")
+    else:
+        print(f"  Estimated monthly cost: $0 (currently {state})")
+
+    print()
+
+    return {
+        "region": region_name,
+        "instance_id": instance_id,
+        "name": name,
+        "instance_type": instance_type,
+        "state": state,
+        "launch_time": launch_time,
+        "usage_level": usage_level,
+        "estimated_monthly_cost": estimated_monthly_cost,
+    }
+
+
 def get_instance_details_in_region(region_name):
     """Get detailed information about EC2 instances in a region"""
     print(f"\n🔍 Auditing EC2 instances in {region_name}")
@@ -129,59 +170,23 @@ def get_instance_details_in_region(region_name):
         ec2 = boto3.client("ec2", region_name=region_name)
         cloudwatch = boto3.client("cloudwatch", region_name=region_name)
 
-        response = ec2.describe_instances()
-        instances = []
-        for reservation in response["Reservations"]:
-            for instance in reservation["Instances"]:
-                instances.append(instance)
+        instances = [
+            instance
+            for reservation in ec2.describe_instances()["Reservations"]
+            for instance in reservation["Instances"]
+        ]
 
         if not instances:
             print(f"✅ No EC2 instances found in {region_name}")
             return []
 
-        region_summary = []
         end_time = datetime.now(timezone.utc)
         start_time = end_time - timedelta(days=7)
 
-        for instance in instances:
-            instance_id = instance["InstanceId"]
-            instance_type = instance["InstanceType"]
-            state = instance["State"]["Name"]
-            launch_time = instance.get("LaunchTime")
-            name = _get_instance_name(instance)
-
-            print(f"Instance: {instance_id} ({name})")
-            print(f"  Type: {instance_type}")
-            print(f"  State: {state}")
-            print(f"  Launch Time: {launch_time}")
-
-            avg_cpu, max_cpu, latest_datapoint = _calculate_cpu_metrics(cloudwatch, instance_id)
-            _print_cpu_metrics(avg_cpu, max_cpu, latest_datapoint)
-            usage_level = _determine_usage_level(avg_cpu)
-            if avg_cpu is not None:
-                print(f"    Usage Level: {usage_level}")
-
-            _get_network_metrics(cloudwatch, instance_id, start_time, end_time)
-
-            estimated_monthly_cost = _estimate_monthly_cost(instance_type, state)
-            if state == "running":
-                print(f"  Estimated monthly cost: ${estimated_monthly_cost:.2f} (if running 24/7)")
-            else:
-                print(f"  Estimated monthly cost: $0 (currently {state})")
-
-            instance_info = {
-                "region": region_name,
-                "instance_id": instance_id,
-                "name": name,
-                "instance_type": instance_type,
-                "state": state,
-                "launch_time": launch_time,
-                "usage_level": usage_level,
-                "estimated_monthly_cost": estimated_monthly_cost,
-            }
-
-            region_summary.append(instance_info)
-            print()
+        region_summary = [
+            _process_instance_details(cloudwatch, instance, region_name, start_time, end_time)
+            for instance in instances
+        ]
 
     except ClientError as e:
         print(f"❌ Error auditing instances in {region_name}: {e}")
