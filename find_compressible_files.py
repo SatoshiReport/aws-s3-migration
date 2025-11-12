@@ -12,11 +12,11 @@ from find_compressible.cli import main
 
 # Ensure the repository root is importable even when this script is run via an absolute path.
 REPO_ROOT = Path(__file__).resolve().parent
-if str(REPO_ROOT) not in sys.path:
+if str(REPO_ROOT) not in sys.path:  # pragma: no cover - import context dependent
     sys.path.insert(0, str(REPO_ROOT))
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     try:
         main()
-    except KeyboardInterrupt as exc:  # pragma: no cover - manual abort
+    except KeyboardInterrupt as exc:
         raise SystemExit("\nAborted by user.") from exc

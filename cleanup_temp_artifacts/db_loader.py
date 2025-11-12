@@ -13,9 +13,14 @@ import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
 
-from .cache import build_cache_key, cache_is_valid, load_cache, write_cache
-from .categories import Category
-from .core_scanner import (
+from .cache import (  # pylint: disable=no-name-in-module
+    build_cache_key,
+    cache_is_valid,
+    load_cache,
+    write_cache,
+)
+from .categories import Category  # pylint: disable=no-name-in-module
+from .core_scanner import (  # pylint: disable=no-name-in-module
     Candidate,
     CandidateLoadError,
     CandidateLoadResult,
@@ -51,8 +56,6 @@ class ScanContext:
     scan_params: dict[str, object]
     category_map: dict[str, Category]
     cutoff_ts: float | None
-
-
 
 
 def _get_db_file_stats(conn: sqlite3.Connection) -> tuple[int, int]:

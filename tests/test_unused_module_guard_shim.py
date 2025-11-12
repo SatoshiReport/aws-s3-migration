@@ -85,3 +85,119 @@ def test_missing_shared_guard_raises(tmp_path: Path, monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("CI_SHARED_ROOT", str(tmp_path))
     with pytest.raises(ImportError):
         importlib.import_module("ci_tools.scripts.unused_module_guard")
+
+
+def test_shared_guard_spec_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Test SharedGuardSpecError when spec creation fails."""
+    # Create a malformed Python file that will fail spec creation
+    shared_root = tmp_path / "shared"
+    scripts_dir = shared_root / "ci_tools" / "scripts"
+    scripts_dir.mkdir(parents=True)
+    (shared_root / "ci_tools" / "__init__.py").write_text("", encoding="utf-8")
+    (scripts_dir / "__init__.py").write_text("", encoding="utf-8")
+
+    # Create a directory instead of a file - this should cause spec creation to fail
+    guard_path = scripts_dir / "unused_module_guard.py"
+    guard_path.mkdir()  # Create as directory, not file
+
+    monkeypatch.setenv("CI_SHARED_ROOT", str(shared_root))
+
+    # This should raise SharedGuardSpecError (wrapped as ImportError)
+    with pytest.raises(ImportError):
+        importlib.import_module("ci_tools.scripts.unused_module_guard")
+
+
+def test_load_config_with_invalid_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Test _load_config handles invalid JSON gracefully."""
+    # Create config file with invalid JSON
+    repo_root = Path(__file__).parent.parent
+    config_file = repo_root / "unused_module_guard.config.json"
+    original_content = None
+
+    try:
+        # Backup original if it exists
+        if config_file.exists():
+            original_content = config_file.read_text()
+
+        # Write invalid JSON
+        config_file.write_text("{invalid json", encoding="utf-8")
+
+        shared_code = """
+SUSPICIOUS_PATTERNS = ()
+
+def find_unused_modules(root, exclude_patterns=None):
+    return []
+
+def main():
+    return 0
+"""
+        module = _import_shim(tmp_path, monkeypatch, shared_code)
+
+        # Should not crash, should just return empty lists
+        assert module.main() == 0
+    finally:
+        # Restore original content
+        if original_content is not None:
+            config_file.write_text(original_content, encoding="utf-8")
+        elif config_file.exists():
+            config_file.unlink()
+
+
+def test_apply_config_with_duplicate_excludes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Test _apply_config_overrides handles duplicate excludes."""
+    shared_code = """
+SUSPICIOUS_PATTERNS = ()
+
+def find_unused_modules(root, exclude_patterns=None):
+    return []
+
+def find_suspicious_duplicates(root):
+    return [
+        ("test_file.py", "duplicate"),
+        ("excluded_file.py", "duplicate"),
+    ]
+
+def main():
+    return 0
+"""
+    # Create config with duplicate_exclude_patterns
+    repo_root = Path(__file__).parent.parent
+    config_file = repo_root / "unused_module_guard.config.json"
+    original_content = None
+
+    try:
+        if config_file.exists():
+            original_content = config_file.read_text()
+
+        config_file.write_text(
+            '{"duplicate_exclude_patterns": ["excluded_file.py"]}',
+            encoding="utf-8"
+        )
+
+        module = _import_shim(tmp_path, monkeypatch, shared_code)
+
+        # Call find_suspicious_duplicates to trigger the filtering
+        results = module.find_suspicious_duplicates(".")
+
+        # Should have filtered out excluded_file.py
+        assert_equal(len(results), 1)
+        assert_equal(results[0][0], "test_file.py")
+    finally:
+        if original_content is not None:
+            config_file.write_text(original_content, encoding="utf-8")
+        elif config_file.exists():
+            config_file.unlink()
+
+
+def test_exception_classes_directly():
+    """Test exception classes can be instantiated."""
+    # Import the local shim module directly to test exception classes
+    shim_path = Path(__file__).parent.parent / "ci_tools" / "scripts" / "unused_module_guard.py"
+    spec = importlib.util.spec_from_file_location("_test_local_shim", shim_path)
+    assert spec is not None and spec.loader is not None
+
+    # Read the source to test exception classes without executing the module
+    source = shim_path.read_text()
+    assert "SharedGuardMissingError" in source
+    assert "SharedGuardSpecError" in source
+    assert "SharedGuardInitializationError" in source

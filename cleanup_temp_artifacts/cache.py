@@ -14,11 +14,11 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cleanup_temp_artifacts.core_scanner import Candidate
+from .core_scanner import Candidate
 
 if TYPE_CHECKING:
-    from cleanup_temp_artifacts.categories import Category
-    from cleanup_temp_artifacts.db_loader import DatabaseInfo
+    from .categories import Category
+    from .db_loader import DatabaseInfo
 
 CACHE_VERSION = 2
 
