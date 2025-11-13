@@ -130,5 +130,10 @@ def cleanup_rds_databases():
     _print_cleanup_summary()
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     cleanup_rds_databases()
+
+
+if __name__ == "__main__":
+    main()

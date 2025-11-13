@@ -355,5 +355,5 @@ def get_bucket_tagging(
         raise
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     pass

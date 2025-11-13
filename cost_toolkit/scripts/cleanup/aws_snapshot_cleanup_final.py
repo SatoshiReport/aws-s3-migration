@@ -188,9 +188,14 @@ def delete_freed_snapshots():
     print_cleanup_summary(successful, failed, savings)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         delete_freed_snapshots()
     except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

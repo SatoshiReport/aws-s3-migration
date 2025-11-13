@@ -8,5 +8,5 @@ This is a thin wrapper around the rds_aurora_migration package.
 
 from cost_toolkit.scripts.migration.rds_aurora_migration import main
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     main()

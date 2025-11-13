@@ -270,5 +270,10 @@ def audit_ebs_volumes():
     _print_recommendations(unattached_volumes, old_snapshots)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     audit_ebs_volumes()
+
+
+if __name__ == "__main__":
+    main()

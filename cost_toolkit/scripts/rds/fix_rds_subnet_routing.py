@@ -50,5 +50,10 @@ def fix_rds_subnet_routing():
         print(f"❌ Error fixing subnet routing: {e}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     fix_rds_subnet_routing()
+
+
+if __name__ == "__main__":
+    main()

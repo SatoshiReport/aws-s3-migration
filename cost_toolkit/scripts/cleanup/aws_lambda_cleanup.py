@@ -68,7 +68,12 @@ def delete_lambda_functions():
         print("ℹ️ No Lambda functions were deleted.")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     print("AWS Lambda Cleanup Script")
     print("=" * 50)
     delete_lambda_functions()
+
+
+if __name__ == "__main__":
+    main()

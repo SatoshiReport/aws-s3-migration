@@ -106,5 +106,10 @@ def cleanup_kms_keys():
     print("Billing will stop once keys are fully deleted")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     cleanup_kms_keys()
+
+
+if __name__ == "__main__":
+    main()

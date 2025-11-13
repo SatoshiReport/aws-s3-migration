@@ -347,5 +347,10 @@ def start_instance_and_migrate():
         print(f"❌ Error during execution: {str(e)}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     start_instance_and_migrate()
+
+
+if __name__ == "__main__":
+    main()

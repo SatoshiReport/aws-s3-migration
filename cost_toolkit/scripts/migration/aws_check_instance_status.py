@@ -128,5 +128,10 @@ def check_instance_status():
         print(f"❌ Error checking instance status: {str(e)}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     check_instance_status()
+
+
+if __name__ == "__main__":
+    main()

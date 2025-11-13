@@ -218,7 +218,8 @@ def export_snapshots_to_s3_fixed():
     _print_final_summary_fixed(len(export_results), export_results, snapshots_to_export)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     parser = argparse.ArgumentParser(
         description="Export EBS snapshots to S3 for cost optimization - FIXED VERSION",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -231,3 +232,7 @@ Examples:
     args = parser.parse_args()
 
     export_snapshots_to_s3_fixed()
+
+
+if __name__ == "__main__":
+    main()

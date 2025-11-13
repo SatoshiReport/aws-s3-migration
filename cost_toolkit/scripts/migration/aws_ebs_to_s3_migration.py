@@ -209,5 +209,10 @@ def create_s3_bucket_and_migrate():
         print(f"❌ Error during setup: {str(e)}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     create_s3_bucket_and_migrate()
+
+
+if __name__ == "__main__":
+    main()

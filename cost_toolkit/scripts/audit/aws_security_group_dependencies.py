@@ -297,9 +297,14 @@ def audit_security_group_dependencies():
     print("🔧 After resolving dependencies, retry security group deletion")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         audit_security_group_dependencies()
     except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

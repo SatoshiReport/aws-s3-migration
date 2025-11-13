@@ -199,5 +199,10 @@ def inspect_volumes_via_ssh():
     _print_recommendations()
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     inspect_volumes_via_ssh()
+
+
+if __name__ == "__main__":
+    main()

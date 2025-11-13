@@ -341,9 +341,14 @@ def restore_snapshots_from_s3():
     _print_restore_summary(restore_results, selected_exports, region)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         restore_snapshots_from_s3()
     except (ClientError, KeyboardInterrupt) as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

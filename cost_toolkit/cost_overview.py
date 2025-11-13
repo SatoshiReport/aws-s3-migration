@@ -9,5 +9,5 @@ All functionality has been moved to cost_toolkit/overview/ for better organizati
 
 from cost_toolkit.overview.cli import main
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     main()

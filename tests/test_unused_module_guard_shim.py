@@ -55,6 +55,7 @@ def _import_shim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, shared_code: s
     return module
 
 
+@pytest.mark.xdist_group(name="config_file")
 def test_shim_applies_config_and_delegates(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Test that guard shim applies config and delegates correctly."""
     shared_code = """
@@ -107,6 +108,7 @@ def test_shared_guard_spec_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
         importlib.import_module("ci_tools.scripts.unused_module_guard")
 
 
+@pytest.mark.xdist_group(name="config_file")
 def test_load_config_with_invalid_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Test _load_config handles invalid JSON gracefully."""
     # Create config file with invalid JSON
@@ -143,6 +145,7 @@ def main():
             config_file.unlink()
 
 
+@pytest.mark.xdist_group(name="config_file")
 def test_apply_config_with_duplicate_excludes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Test _apply_config_overrides handles duplicate excludes."""
     shared_code = """
@@ -170,8 +173,7 @@ def main():
             original_content = config_file.read_text()
 
         config_file.write_text(
-            '{"duplicate_exclude_patterns": ["excluded_file.py"]}',
-            encoding="utf-8"
+            '{"duplicate_exclude_patterns": ["excluded_file.py"]}', encoding="utf-8"
         )
 
         module = _import_shim(tmp_path, monkeypatch, shared_code)

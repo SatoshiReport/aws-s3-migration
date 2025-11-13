@@ -4,7 +4,16 @@ Cleanup temporary artifacts package.
 Scan backup trees for disposable cache/temp artifacts and optionally delete them.
 """
 
-from . import args_parser, cache, categories, config, core_scanner, db_loader, reports, scanner
+from . import (  # pylint: disable=no-name-in-module
+    args_parser,
+    cache,
+    categories,
+    config,
+    core_scanner,
+    db_loader,
+    reports,
+    scanner,
+)
 from .categories import Category, build_categories
 from .scanner import (
     Candidate,

@@ -212,5 +212,10 @@ def analyze_london_ebs():
         print(f"❌ Error analyzing instance: {e}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     analyze_london_ebs()
+
+
+if __name__ == "__main__":
+    main()

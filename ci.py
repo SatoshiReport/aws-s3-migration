@@ -15,5 +15,5 @@ def run() -> int:
     return ci_main(argv)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     raise SystemExit(run())

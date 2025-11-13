@@ -294,7 +294,8 @@ def standardize_s3_buckets():
         print(f"❌ AWS API error: {e}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     # Confirm before running destructive operations
     print("⚠️  WARNING: This script will make changes to your S3 buckets!")
     print(f"   - Exclude {EXCLUDED_BUCKET} from ALL processing")
@@ -308,3 +309,7 @@ if __name__ == "__main__":
         standardize_s3_buckets()
     else:
         print("Operation cancelled.")
+
+
+if __name__ == "__main__":
+    main()

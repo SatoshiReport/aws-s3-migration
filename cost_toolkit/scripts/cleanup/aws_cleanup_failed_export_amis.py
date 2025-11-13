@@ -95,9 +95,14 @@ def cleanup_failed_export_amis():
         print("   Temporary AMIs have been removed.")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         cleanup_failed_export_amis()
     except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

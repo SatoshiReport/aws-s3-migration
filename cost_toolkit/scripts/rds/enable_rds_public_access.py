@@ -39,5 +39,10 @@ def enable_public_access():
         print(f"❌ Error enabling public access: {e}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     enable_public_access()
+
+
+if __name__ == "__main__":
+    main()

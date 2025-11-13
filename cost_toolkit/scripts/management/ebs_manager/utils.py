@@ -6,6 +6,7 @@ Contains helper functions for region discovery and tag management.
 from typing import Dict, List, Optional
 
 import boto3
+from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import get_instance_name as _get_instance_name_with_client
 
@@ -40,7 +41,7 @@ def find_volume_region(volume_id: str) -> Optional[str]:
             response = ec2_client.describe_volumes(VolumeIds=[volume_id])
             if response["Volumes"]:
                 return region
-        except ec2_client.exceptions.ClientError as e:
+        except ClientError as e:
             if "InvalidVolume.NotFound" in str(e):
                 continue
             raise
@@ -81,5 +82,5 @@ def get_volume_tags(volume: Dict) -> Dict[str, str]:
     return tags
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     pass

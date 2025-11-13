@@ -256,9 +256,14 @@ def cleanup_unused_vpc_resources():
     print_cleanup_summary(successful_deletions, failed_deletions)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         cleanup_unused_vpc_resources()
     except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

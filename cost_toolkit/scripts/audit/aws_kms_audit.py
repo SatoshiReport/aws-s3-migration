@@ -173,5 +173,10 @@ def audit_kms_keys():
         _check_vpn_resources(region)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     audit_kms_keys()
+
+
+if __name__ == "__main__":
+    main()

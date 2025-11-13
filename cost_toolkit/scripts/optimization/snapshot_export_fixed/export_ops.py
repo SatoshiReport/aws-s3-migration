@@ -53,5 +53,5 @@ def validate_export_task_exists(ec2_client, export_task_id):
     return response["ExportImageTasks"][0]
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     pass

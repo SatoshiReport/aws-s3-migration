@@ -185,5 +185,10 @@ def cleanup_london_ebs_volumes():
     print("   Unattached volume removed")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     cleanup_london_ebs_volumes()
+
+
+if __name__ == "__main__":
+    main()

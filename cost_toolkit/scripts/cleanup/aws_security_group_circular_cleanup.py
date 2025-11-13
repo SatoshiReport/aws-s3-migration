@@ -233,9 +233,14 @@ def cleanup_circular_security_groups():
     _print_final_summary(total_rules_removed, total_groups_deleted, len(circular_security_groups))
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         cleanup_circular_security_groups()
     except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

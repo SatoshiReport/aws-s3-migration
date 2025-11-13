@@ -212,9 +212,14 @@ def audit_all_elastic_ips():
         _print_cleanup_recommendations(regions_with_eips, total_monthly_cost)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         audit_all_elastic_ips()
     except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

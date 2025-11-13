@@ -132,5 +132,10 @@ def final_analysis_summary():
     _print_final_recommendations()
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     final_analysis_summary()
+
+
+if __name__ == "__main__":
+    main()

@@ -8,5 +8,5 @@ This module serves as a backward-compatible entry point to the billing_report pa
 
 from cost_toolkit.scripts.billing.billing_report import main
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     main()

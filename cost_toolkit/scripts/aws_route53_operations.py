@@ -298,5 +298,5 @@ def get_hosted_zone_cost(hosted_zone_count: int, query_count: int = 0) -> dict:
     }
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     pass

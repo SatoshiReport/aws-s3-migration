@@ -192,9 +192,14 @@ def bulk_deregister_unused_amis():
     print_deregistration_summary(successful, failed, savings)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         bulk_deregister_unused_amis()
     except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

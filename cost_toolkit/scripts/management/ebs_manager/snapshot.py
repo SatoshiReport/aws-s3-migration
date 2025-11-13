@@ -117,5 +117,5 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
         raise SnapshotCreationError(volume_id, e) from e
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     pass

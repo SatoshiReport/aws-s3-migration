@@ -81,5 +81,10 @@ def fix_default_subnet_group():
         print(f"❌ Error: {e}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     fix_default_subnet_group()
+
+
+if __name__ == "__main__":
+    main()

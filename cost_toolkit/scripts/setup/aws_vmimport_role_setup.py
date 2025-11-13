@@ -169,9 +169,14 @@ def create_vmimport_role():
     return True
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         create_vmimport_role()
     except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

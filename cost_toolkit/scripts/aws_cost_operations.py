@@ -281,5 +281,5 @@ def calculate_cost_savings(
     }
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     pass

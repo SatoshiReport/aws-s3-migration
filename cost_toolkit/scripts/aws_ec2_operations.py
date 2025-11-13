@@ -372,5 +372,5 @@ def describe_volumes(
     return response.get("Volumes", [])
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     pass

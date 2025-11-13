@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from cleanup_temp_artifacts.categories import (
+from cleanup_temp_artifacts.categories import (  # pylint: disable=no-name-in-module
     Category,
     _match_generic_dot_cache,
     _match_go_module_cache,

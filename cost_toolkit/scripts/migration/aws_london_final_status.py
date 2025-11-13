@@ -123,5 +123,10 @@ def show_final_london_status():
     _print_optimization_summary()
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     show_final_london_status()
+
+
+if __name__ == "__main__":
+    main()

@@ -126,5 +126,10 @@ def monitor_migration():
         print(f"❌ Error monitoring migration: {str(e)}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     monitor_migration()
+
+
+if __name__ == "__main__":
+    main()

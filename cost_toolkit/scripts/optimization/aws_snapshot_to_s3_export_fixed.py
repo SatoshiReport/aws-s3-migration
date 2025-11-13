@@ -10,7 +10,7 @@ from cost_toolkit.scripts.optimization.snapshot_export_fixed.cli import (
     export_snapshots_to_s3_fixed,
 )
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover - script entry point
     import argparse
 
     parser = argparse.ArgumentParser(

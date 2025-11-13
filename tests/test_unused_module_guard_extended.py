@@ -6,6 +6,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+import pytest
+
 
 # Import the local shim module directly to access its classes
 def _import_local_shim():
@@ -31,6 +33,7 @@ def test_shared_guard_error_classes_exist():
     assert "SharedGuardInitializationError" in _local_shim_source
 
 
+@pytest.mark.xdist_group(name="config_file")
 def test_load_config_missing_file():
     """Test _load_config behavior with missing file."""
     # The actual function is embedded in the module after bootstrap
@@ -41,6 +44,7 @@ def test_load_config_missing_file():
         assert isinstance(data.get("exclude_patterns", []), list)
 
 
+@pytest.mark.xdist_group(name="config_file")
 def test_load_config_structure():
     """Test config file has expected structure."""
     config_path = Path(__file__).parent.parent / "unused_module_guard.config.json"

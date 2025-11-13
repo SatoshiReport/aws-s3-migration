@@ -121,7 +121,12 @@ def delete_efs_resources():
         print("ℹ️ No EFS resources were deleted.")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     print("AWS EFS Cleanup Script")
     print("=" * 50)
     delete_efs_resources()
+
+
+if __name__ == "__main__":
+    main()

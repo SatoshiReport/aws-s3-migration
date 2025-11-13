@@ -41,7 +41,7 @@ def determine_default_base_path() -> Path | None:
     )
     seen: set[Path] = set()
     for candidate in candidates:
-        if not candidate:
+        if not candidate:  # pragma: no cover - defensive, all candidates are Path objects
             continue
         if candidate in seen:
             continue

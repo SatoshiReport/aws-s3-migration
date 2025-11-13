@@ -2,7 +2,12 @@
 """Explore Aurora database data."""
 
 
-import psycopg2  # type: ignore[import-not-found]
+try:
+    import psycopg2  # type: ignore[import-not-found]
+
+    PSYCOPG2_AVAILABLE = True
+except ImportError:
+    PSYCOPG2_AVAILABLE = False
 
 from cost_toolkit.scripts.rds.db_inspection_common import (
     analyze_tables,
@@ -21,6 +26,9 @@ MAX_SAMPLE_COLUMNS = 5
 
 def explore_aurora_database():
     """Connect to the Aurora Serverless v2 cluster and explore user data"""
+    if not PSYCOPG2_AVAILABLE:
+        print("❌ psycopg2 module not found. Install with: pip install psycopg2-binary")
+        return
 
     # Connection to Aurora Serverless v2 cluster
     host = "simba-db-aurora-serverless.cluster-cx5li9mlv1tt.us-east-1.rds.amazonaws.com"
@@ -79,5 +87,10 @@ def explore_aurora_database():
         print("   4. Once migrated, you can delete the expensive RDS instance")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     explore_aurora_database()
+
+
+if __name__ == "__main__":
+    main()

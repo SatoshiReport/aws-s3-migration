@@ -59,5 +59,10 @@ def update_security_group():
             print(f"❌ Error updating security group: {e}")
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     update_security_group()
+
+
+if __name__ == "__main__":
+    main()

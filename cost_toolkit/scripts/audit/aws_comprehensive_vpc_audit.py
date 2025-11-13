@@ -414,9 +414,14 @@ def audit_comprehensive_vpc():
     _print_cleanup_recommendations(total_unused_resources)
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     try:
         audit_comprehensive_vpc()
     except ClientError as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

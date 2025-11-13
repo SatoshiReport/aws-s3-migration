@@ -153,5 +153,10 @@ def audit_rds_databases():
     _print_billing_analysis()
 
 
-if __name__ == "__main__":
+def main():
+    """Main function."""
     audit_rds_databases()
+
+
+if __name__ == "__main__":
+    main()
