@@ -1,8 +1,10 @@
 """Tests for CLI entry point modules."""
 
+import duplicate_tree_cli
 import duplicate_tree_cli_exports
 import find_compressible_files
 from cost_toolkit import cost_overview
+from cost_toolkit.scripts import config
 from cost_toolkit.scripts.audit import (
     aws_ami_snapshot_analysis,
     aws_comprehensive_vpc_audit,
@@ -40,6 +42,17 @@ from cost_toolkit.scripts.setup import aws_vmimport_role_setup
 def test_cost_overview_imports():
     """Test that cost_overview module can be imported."""
     assert cost_overview is not None
+
+
+def test_config_imports():
+    """Test that config module can be imported."""
+    assert config is not None
+
+
+def test_duplicate_tree_cli_imports():
+    """Test that duplicate_tree_cli module can be imported."""
+    assert duplicate_tree_cli is not None
+    assert hasattr(duplicate_tree_cli, "main")
 
 
 def test_duplicate_tree_cli_exports_imports():

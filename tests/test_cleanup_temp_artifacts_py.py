@@ -7,7 +7,8 @@ from pathlib import Path
 from unittest import mock
 
 import cleanup_temp_artifacts
-from cleanup_temp_artifacts.cli import main as cli_main
+
+cli_main = cleanup_temp_artifacts.cli.main  # pylint: disable=no-member
 
 
 def test_cleanup_temp_artifacts_entry_point_imports():

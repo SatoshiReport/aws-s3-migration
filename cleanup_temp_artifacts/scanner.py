@@ -4,7 +4,7 @@ Database scanning and candidate processing for cleanup_temp_artifacts.
 This module provides backward compatibility by re-exporting from core_scanner and db_loader.
 """
 
-from cleanup_temp_artifacts.core_scanner import (
+from .core_scanner import (
     Candidate,
     CandidateLoadError,
     CandidateLoadResult,
@@ -14,7 +14,7 @@ from cleanup_temp_artifacts.core_scanner import (
     match_category,
     scan_candidates_from_db,
 )
-from cleanup_temp_artifacts.db_loader import (
+from .db_loader import (
     CacheConfig,
     DatabaseInfo,
     load_candidates_from_db,

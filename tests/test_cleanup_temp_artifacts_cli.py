@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from cleanup_temp_artifacts.cli import (
+from cleanup_temp_artifacts.cli import (  # pylint: disable=no-name-in-module
     _handle_deletion,
     _setup_paths,
     main,

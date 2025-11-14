@@ -38,6 +38,23 @@ def _cleanup_modules():
     _clear_guard_modules()
 
 
+@pytest.fixture(autouse=True)
+def _backup_config():
+    """Backup and restore config file for all tests."""
+    config_file = Path(__file__).parent.parent / "unused_module_guard.config.json"
+    original_content = None
+    if config_file.exists():
+        original_content = config_file.read_text()
+
+    yield
+
+    # Always restore original content after each test
+    if original_content is not None:
+        config_file.write_text(original_content, encoding="utf-8")
+    elif config_file.exists():
+        config_file.unlink()
+
+
 def _import_shim(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, shared_code: str):
     _write_shared_guard(tmp_path, shared_code)
     monkeypatch.setenv("CI_SHARED_ROOT", str(tmp_path))
@@ -71,13 +88,28 @@ def find_unused_modules(root, exclude_patterns=None):
 def main():
     return 123
 """
-    module = _import_shim(tmp_path, monkeypatch, shared_code)
+    # Create a config file that allows _v2 pattern
+    config_file = Path(__file__).parent.parent / "unused_module_guard.config.json"
+    original_content = None
 
-    assert_equal(module.main(), 123)
-    module.find_unused_modules(".", ["existing"])
-    shared_module = sys.modules["_ci_shared_unused_module_guard"]
-    assert shared_module.LAST_EXCLUDES[0] == "existing"
-    assert "_v2" not in module.SUSPICIOUS_PATTERNS
+    try:
+        if config_file.exists():
+            original_content = config_file.read_text()
+
+        config_file.write_text('{"suspicious_allow_patterns": ["_v2"]}', encoding="utf-8")
+
+        module = _import_shim(tmp_path, monkeypatch, shared_code)
+
+        assert_equal(module.main(), 123)
+        module.find_unused_modules(".", ["existing"])
+        shared_module = sys.modules["_ci_shared_unused_module_guard"]
+        assert shared_module.LAST_EXCLUDES[0] == "existing"
+        assert "_v2" not in module.SUSPICIOUS_PATTERNS
+    finally:
+        if original_content is not None:
+            config_file.write_text(original_content, encoding="utf-8")
+        elif config_file.exists():
+            config_file.unlink()
 
 
 def test_missing_shared_guard_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -172,7 +204,9 @@ def main():
             original_content = config_file.read_text()
 
         config_file.write_text(
-            '{"duplicate_exclude_patterns": ["excluded_file.py"]}', encoding="utf-8"
+            '{"suspicious_allow_patterns": ["_v2"], '
+            '"duplicate_exclude_patterns": ["excluded_file.py"]}',
+            encoding="utf-8",
         )
 
         module = _import_shim(tmp_path, monkeypatch, shared_code)

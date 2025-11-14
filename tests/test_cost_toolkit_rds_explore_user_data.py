@@ -33,6 +33,43 @@ def test_function_exists():
     assert callable(explore_user_data._try_database_connection)
 
 
+class TestTryDatabaseConnection:
+    """Tests for _try_database_connection function."""
+
+    def test_module_psycopg2_availability_flag(self):
+        """Test that PSYCOPG2_AVAILABLE flag is correctly set."""
+        assert hasattr(explore_user_data, "PSYCOPG2_AVAILABLE")
+        assert isinstance(explore_user_data.PSYCOPG2_AVAILABLE, bool)
+
+    def test_successful_connection_first_attempt(self, capsys):
+        """Test successful connection on first attempt."""
+        mock_conn = MagicMock()
+        mock_psycopg2 = MagicMock()
+        mock_psycopg2.connect.return_value = mock_conn
+
+        # Inject psycopg2 into the module's globals
+        original_global = explore_user_data.__dict__.get("psycopg2")
+        explore_user_data.__dict__["psycopg2"] = mock_psycopg2
+
+        try:
+            result_conn, result_db = (
+                explore_user_data._try_database_connection(  # pylint: disable=protected-access
+                    "localhost", 5432, ["testdb"], "testuser", ["testpass"]
+                )
+            )
+
+            assert result_conn == mock_conn
+            assert result_db == "testdb"
+            captured = capsys.readouterr()
+            assert "Trying database='testdb'" in captured.out
+            assert "Connected successfully!" in captured.out
+        finally:
+            if original_global is not None:
+                explore_user_data.__dict__["psycopg2"] = original_global
+            else:
+                explore_user_data.__dict__.pop("psycopg2", None)
+
+
 class TestExploreRestoredDatabase:
     """Tests for explore_restored_database function."""
 

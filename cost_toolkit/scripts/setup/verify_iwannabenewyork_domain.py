@@ -326,7 +326,7 @@ def main():
     print("=" * 80)
     print(f"Testing domain: {domain}")
     print("Target: Canva website")
-    print(f"Timestamp: {datetime.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}")
+    print(f"Timestamp: {datetime.datetime.now(datetime.UTC).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print("=" * 80)
 
     results = _run_tests(domain)
