@@ -31,7 +31,7 @@ CERT_TUPLE_MIN_LENGTH = 2
 MIN_TESTS_FOR_MOSTLY_WORKING = 4
 
 
-def test_dns_resolution(domain):
+def verify_dns_resolution(domain):
     """Test DNS resolution for the domain"""
     print(f"🔍 Testing DNS resolution for {domain}")
 
@@ -52,7 +52,7 @@ def test_dns_resolution(domain):
     return True, ip_address
 
 
-def test_http_connectivity(domain):
+def verify_http_connectivity(domain):
     """Test HTTP connectivity and redirects"""
     print(f"\n🌐 Testing HTTP connectivity for {domain}")
 
@@ -79,7 +79,7 @@ def test_http_connectivity(domain):
     return True
 
 
-def test_https_connectivity(domain):
+def verify_https_connectivity(domain):
     """Test HTTPS connectivity and SSL certificate"""
     print(f"\n🔒 Testing HTTPS connectivity for {domain}")
 
@@ -172,7 +172,7 @@ def check_ssl_certificate(domain):
         return False
 
 
-def test_canva_verification(domain):
+def verify_canva_verification(domain):
     """Check if Canva domain verification is in place"""
     print(f"\n🎨 Checking Canva domain verification for {domain}")
 
@@ -256,11 +256,11 @@ def check_route53_configuration(domain):
 def _run_tests(domain):
     """Run all verification tests"""
     tests = [
-        ("DNS Resolution", lambda: test_dns_resolution(domain)),
-        ("HTTP Connectivity", lambda: test_http_connectivity(domain)),
-        ("HTTPS Connectivity", lambda: test_https_connectivity(domain)),
+        ("DNS Resolution", lambda: verify_dns_resolution(domain)),
+        ("HTTP Connectivity", lambda: verify_http_connectivity(domain)),
+        ("HTTPS Connectivity", lambda: verify_https_connectivity(domain)),
         ("SSL Certificate", lambda: check_ssl_certificate(domain)),
-        ("Canva Verification", lambda: test_canva_verification(domain)),
+        ("Canva Verification", lambda: verify_canva_verification(domain)),
         ("Route53 Configuration", lambda: check_route53_configuration(domain)),
     ]
 

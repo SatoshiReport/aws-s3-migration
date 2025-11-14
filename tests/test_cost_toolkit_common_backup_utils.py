@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from cost_toolkit.common.backup_utils import (
     check_aws_backup_plans,
     check_dlm_lifecycle_policies,
@@ -113,7 +111,7 @@ def test_get_backup_plan_details_success(capsys):
         "BackupPlan": {"BackupPlanName": "TestPlan", "Rules": [{"RuleName": "DailyBackup"}]}
     }
 
-    result = get_backup_plan_details(mock_backup_client, "plan-123", "TestPlan", "2024-01-01")
+    _ = get_backup_plan_details(mock_backup_client, "plan-123", "TestPlan", "2024-01-01")
 
     captured = capsys.readouterr()
     assert "TestPlan" in captured.out
@@ -126,7 +124,7 @@ def test_get_backup_plan_details_error(capsys):
     mock_backup_client = MagicMock()
     mock_backup_client.get_backup_plan.side_effect = Exception("API error")
 
-    result = get_backup_plan_details(mock_backup_client, "plan-123", "TestPlan", "2024-01-01")
+    _ = get_backup_plan_details(mock_backup_client, "plan-123", "TestPlan", "2024-01-01")
 
     captured = capsys.readouterr()
     assert "Error getting details" in captured.out

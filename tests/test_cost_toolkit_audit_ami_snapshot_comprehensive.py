@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.audit.aws_ami_snapshot_analysis import (
@@ -20,20 +19,17 @@ from cost_toolkit.scripts.audit.aws_ami_snapshot_analysis import (
 )
 
 
-class TestLoadAwsCredentials:
-    """Tests for load_aws_credentials function."""
+def test_load_aws_credentials_calls_setup_credentials():
+    """Test that function calls setup utility."""
+    with patch(
+        "cost_toolkit.scripts.audit.aws_ami_snapshot_analysis.setup_aws_credentials"
+    ) as mock_setup:
+        mock_setup.return_value = ("key", "secret")
 
-    def test_calls_setup_credentials(self):
-        """Test that function calls setup utility."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_ami_snapshot_analysis.setup_aws_credentials"
-        ) as mock_setup:
-            mock_setup.return_value = ("key", "secret")
+        result = load_aws_credentials()
 
-            result = load_aws_credentials()
-
-            mock_setup.assert_called_once()
-            assert result == ("key", "secret")
+        mock_setup.assert_called_once()
+        assert result == ("key", "secret")
 
 
 class TestGetAmiDetails:
@@ -129,7 +125,7 @@ class TestCheckAmiUsage:
 
         instances = check_ami_usage(mock_client, "ami-123")
 
-        assert instances == []
+        assert not instances
 
     def test_check_usage_error(self, capsys):
         """Test error when checking AMI usage."""
@@ -140,34 +136,31 @@ class TestCheckAmiUsage:
 
         instances = check_ami_usage(mock_client, "ami-123")
 
-        assert instances == []
+        assert not instances
         captured = capsys.readouterr()
         assert "Error checking AMI usage" in captured.out
 
 
-class TestPrintAmiDetails:
-    """Tests for _print_ami_details function."""
+def test_print_ami_details_print_details(capsys):
+    """Test printing AMI details."""
+    ami_details = {
+        "name": "test-ami",
+        "description": "Test AMI",
+        "creation_date": "2024-01-01",
+        "architecture": "x86_64",
+        "platform": "Linux",
+        "state": "available",
+        "public": False,
+    }
 
-    def test_print_details(self, capsys):
-        """Test printing AMI details."""
-        ami_details = {
-            "name": "test-ami",
-            "description": "Test AMI",
-            "creation_date": "2024-01-01",
-            "architecture": "x86_64",
-            "platform": "Linux",
-            "state": "available",
-            "public": False,
-        }
+    _print_ami_details(ami_details)
 
-        _print_ami_details(ami_details)
-
-        captured = capsys.readouterr()
-        assert "test-ami" in captured.out
-        assert "Test AMI" in captured.out
-        assert "2024-01-01" in captured.out
-        assert "x86_64" in captured.out
-        assert "Linux" in captured.out
+    captured = capsys.readouterr()
+    assert "test-ami" in captured.out
+    assert "Test AMI" in captured.out
+    assert "2024-01-01" in captured.out
+    assert "x86_64" in captured.out
+    assert "Linux" in captured.out
 
 
 class TestPrintAmiTags:

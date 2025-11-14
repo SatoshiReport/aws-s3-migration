@@ -2,9 +2,22 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
-import pytest
+from cost_toolkit.scripts.migration import (
+    aws_check_instance_status,
+    aws_ebs_to_s3_migration,
+    aws_london_ebs_analysis,
+    aws_london_ebs_cleanup,
+    aws_london_final_analysis_summary,
+    aws_london_final_status,
+    aws_london_volume_inspector,
+    aws_migration_monitor,
+    aws_start_and_migrate,
+)
+from cost_toolkit.scripts.migration.rds_aurora_migration import (
+    cli,
+    cluster_ops,
+    migration_workflow,
+)
 
 
 class TestCheckInstanceStatus:
@@ -12,14 +25,10 @@ class TestCheckInstanceStatus:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration import aws_check_instance_status
-
         assert aws_check_instance_status is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration import aws_check_instance_status
-
         assert hasattr(aws_check_instance_status, "main")
 
 
@@ -28,14 +37,10 @@ class TestEbsToS3Migration:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration import aws_ebs_to_s3_migration
-
         assert aws_ebs_to_s3_migration is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration import aws_ebs_to_s3_migration
-
         assert hasattr(aws_ebs_to_s3_migration, "main")
 
 
@@ -44,14 +49,10 @@ class TestLondonEbsAnalysis:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration import aws_london_ebs_analysis
-
         assert aws_london_ebs_analysis is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration import aws_london_ebs_analysis
-
         assert hasattr(aws_london_ebs_analysis, "main")
 
 
@@ -60,14 +61,10 @@ class TestLondonEbsCleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration import aws_london_ebs_cleanup
-
         assert aws_london_ebs_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration import aws_london_ebs_cleanup
-
         assert hasattr(aws_london_ebs_cleanup, "main")
 
 
@@ -76,14 +73,10 @@ class TestLondonFinalAnalysisSummary:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration import aws_london_final_analysis_summary
-
         assert aws_london_final_analysis_summary is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration import aws_london_final_analysis_summary
-
         assert hasattr(aws_london_final_analysis_summary, "main")
 
 
@@ -92,14 +85,10 @@ class TestLondonFinalStatus:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration import aws_london_final_status
-
         assert aws_london_final_status is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration import aws_london_final_status
-
         assert hasattr(aws_london_final_status, "main")
 
 
@@ -108,14 +97,10 @@ class TestLondonVolumeInspector:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration import aws_london_volume_inspector
-
         assert aws_london_volume_inspector is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration import aws_london_volume_inspector
-
         assert hasattr(aws_london_volume_inspector, "main")
 
 
@@ -124,14 +109,10 @@ class TestMigrationMonitor:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration import aws_migration_monitor
-
         assert aws_migration_monitor is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration import aws_migration_monitor
-
         assert hasattr(aws_migration_monitor, "main")
 
 
@@ -140,14 +121,10 @@ class TestStartAndMigrate:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration import aws_start_and_migrate
-
         assert aws_start_and_migrate is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration import aws_start_and_migrate
-
         assert hasattr(aws_start_and_migrate, "main")
 
 
@@ -156,32 +133,18 @@ class TestRdsAuroraMigrationCli:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.migration.rds_aurora_migration import cli
-
         assert cli is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.migration.rds_aurora_migration import cli
-
         assert hasattr(cli, "main")
 
 
-class TestRdsAuroraMigrationClusterOps:
-    """Tests for rds_aurora_migration/cluster_ops.py."""
-
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.migration.rds_aurora_migration import cluster_ops
-
-        assert cluster_ops is not None
+def test_rds_aurora_migration_cluster_ops_module_imports():
+    """Test module can be imported."""
+    assert cluster_ops is not None
 
 
-class TestRdsAuroraMigrationWorkflow:
-    """Tests for rds_aurora_migration/migration_workflow.py."""
-
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.migration.rds_aurora_migration import migration_workflow
-
-        assert migration_workflow is not None
+def test_rds_aurora_migration_workflow_module_imports():
+    """Test module can be imported."""
+    assert migration_workflow is not None

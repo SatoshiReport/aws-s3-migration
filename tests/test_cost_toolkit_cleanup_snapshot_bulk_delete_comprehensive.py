@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete import (
@@ -13,6 +12,7 @@ from cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete import (
     find_snapshot_region,
     get_bulk_deletion_snapshots,
     get_snapshot_details,
+    main,
     print_bulk_deletion_summary,
     print_bulk_deletion_warning,
     process_bulk_deletions,
@@ -39,7 +39,7 @@ class TestFindSnapshotRegion:
             mock_ec2 = MagicMock()
 
             # Simulate not found in first region, found in second
-            def describe_side_effect(**kwargs):
+            def describe_side_effect(**_):
                 nonlocal call_count
                 call_count += 1
                 if call_count == 1:
@@ -80,7 +80,7 @@ class TestFindSnapshotRegion:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
 
-            def describe_side_effect(**kwargs):
+            def describe_side_effect(**_):
                 nonlocal call_count
                 call_count += 1
                 if call_count == 1:
@@ -242,31 +242,25 @@ class TestDeleteSnapshotSafely:
                 assert "Error deleting snapshot" in captured.out
 
 
-class TestGetBulkDeletionSnapshots:
-    """Tests for get_bulk_deletion_snapshots function."""
+def test_get_bulk_deletion_snapshots_returns_list_of_snapshots():
+    """Test that function returns expected list."""
+    snapshots = get_bulk_deletion_snapshots()
 
-    def test_returns_list_of_snapshots(self):
-        """Test that function returns expected list."""
-        snapshots = get_bulk_deletion_snapshots()
-
-        assert isinstance(snapshots, list)
-        assert len(snapshots) > 0
-        assert all(snap.startswith("snap-") for snap in snapshots)
+    assert isinstance(snapshots, list)
+    assert len(snapshots) > 0
+    assert all(snap.startswith("snap-") for snap in snapshots)
 
 
-class TestPrintBulkDeletionWarning:
-    """Tests for print_bulk_deletion_warning function."""
+def test_print_bulk_deletion_warning_print_warning(capsys):
+    """Test printing bulk deletion warning."""
+    snapshots = ["snap-1", "snap-2", "snap-3"]
 
-    def test_print_warning(self, capsys):
-        """Test printing bulk deletion warning."""
-        snapshots = ["snap-1", "snap-2", "snap-3"]
+    print_bulk_deletion_warning(snapshots)
 
-        print_bulk_deletion_warning(snapshots)
-
-        captured = capsys.readouterr()
-        assert "Bulk Deletion" in captured.out
-        assert "3 snapshots" in captured.out
-        assert "WARNING" in captured.out
+    captured = capsys.readouterr()
+    assert "Bulk Deletion" in captured.out
+    assert "3 snapshots" in captured.out
+    assert "WARNING" in captured.out
 
 
 class TestConfirmBulkDeletion:
@@ -290,7 +284,7 @@ class TestConfirmBulkDeletion:
 class TestProcessBulkDeletions:
     """Tests for process_bulk_deletions function."""
 
-    def test_process_all_successful(self, capsys):
+    def test_process_all_successful(self):
         """Test processing with all deletions successful."""
         snapshots = ["snap-1", "snap-2"]
 
@@ -346,7 +340,7 @@ class TestProcessBulkDeletions:
                 ):
                     mock_get.return_value = {"size_gb": 50}
 
-                    successful, failed, savings = process_bulk_deletions(snapshots)
+                    successful, failed, _ = process_bulk_deletions(snapshots)
 
         assert successful == 2
         assert failed == 1
@@ -381,3 +375,30 @@ class TestPrintBulkDeletionSummary:
         captured = capsys.readouterr()
         assert "Successfully deleted: 0" in captured.out
         assert "cleanup completed successfully" not in captured.out
+
+
+class TestMain:
+    """Tests for main function."""
+
+    def test_main_cancelled(self, capsys):
+        """Test main when user cancels."""
+        with patch("cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.setup_aws_credentials"):
+            with patch("builtins.input", return_value="NO"):
+                main()
+
+        captured = capsys.readouterr()
+        assert "Deletion cancelled" in captured.out
+
+    def test_main_success(self, capsys):
+        """Test main with successful deletions."""
+        with patch("cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.setup_aws_credentials"):
+            with patch("builtins.input", return_value="DELETE ALL SNAPSHOTS"):
+                with patch(
+                    "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.process_bulk_deletions",
+                    return_value=(5, 0, 50.0),
+                ):
+                    main()
+
+        captured = capsys.readouterr()
+        assert "Proceeding with bulk snapshot deletion" in captured.out
+        assert "BULK DELETION SUMMARY" in captured.out

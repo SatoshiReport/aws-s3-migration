@@ -6,15 +6,15 @@ import argparse
 from pathlib import Path
 from unittest.mock import patch
 
-from cleanup_temp_artifacts.args_parser import (
-    _add_action_arguments,
-    _add_cache_arguments,
-    _add_filter_arguments,
-    _add_output_arguments,
-    _add_parser_arguments,
-    _add_path_arguments,
-)
+from cleanup_temp_artifacts import args_parser  # pylint: disable=no-name-in-module
 from tests.assertions import assert_equal
+
+_add_action_arguments = args_parser._add_action_arguments  # pylint: disable=protected-access
+_add_cache_arguments = args_parser._add_cache_arguments  # pylint: disable=protected-access
+_add_filter_arguments = args_parser._add_filter_arguments  # pylint: disable=protected-access
+_add_output_arguments = args_parser._add_output_arguments  # pylint: disable=protected-access
+_add_parser_arguments = args_parser._add_parser_arguments  # pylint: disable=protected-access
+_add_path_arguments = args_parser._add_path_arguments  # pylint: disable=protected-access
 
 
 def test_add_path_arguments_with_default():

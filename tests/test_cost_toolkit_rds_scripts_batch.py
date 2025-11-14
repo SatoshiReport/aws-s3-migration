@@ -2,29 +2,26 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
-import pytest
-
-
-class TestRdsConstants:
-    """Tests for rds/constants.py."""
-
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.rds import constants
-
-        assert constants is not None
+from cost_toolkit.scripts.rds import (
+    constants,
+    db_inspection_common,
+    enable_rds_public_access,
+    explore_aurora_data,
+    explore_user_data,
+    fix_default_subnet_group,
+    fix_rds_subnet_routing,
+    update_rds_security_group,
+)
 
 
-class TestDbInspectionCommon:
-    """Tests for rds/db_inspection_common.py."""
+def test_rds_constants_module_imports():
+    """Test rds/constants.py module can be imported."""
+    assert constants is not None
 
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.rds import db_inspection_common
 
-        assert db_inspection_common is not None
+def test_db_inspection_common_module_imports():
+    """Test rds/db_inspection_common.py module can be imported."""
+    assert db_inspection_common is not None
 
 
 class TestEnableRdsPublicAccess:
@@ -32,14 +29,10 @@ class TestEnableRdsPublicAccess:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.rds import enable_rds_public_access
-
         assert enable_rds_public_access is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.rds import enable_rds_public_access
-
         assert hasattr(enable_rds_public_access, "main")
 
 
@@ -48,14 +41,10 @@ class TestExploreAuroraData:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.rds import explore_aurora_data
-
         assert explore_aurora_data is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.rds import explore_aurora_data
-
         assert hasattr(explore_aurora_data, "main")
 
 
@@ -64,14 +53,10 @@ class TestExploreUserData:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.rds import explore_user_data
-
         assert explore_user_data is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.rds import explore_user_data
-
         assert hasattr(explore_user_data, "main")
 
 
@@ -80,14 +65,10 @@ class TestFixDefaultSubnetGroup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.rds import fix_default_subnet_group
-
         assert fix_default_subnet_group is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.rds import fix_default_subnet_group
-
         assert hasattr(fix_default_subnet_group, "main")
 
 
@@ -96,14 +77,10 @@ class TestFixRdsSubnetRouting:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.rds import fix_rds_subnet_routing
-
         assert fix_rds_subnet_routing is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.rds import fix_rds_subnet_routing
-
         assert hasattr(fix_rds_subnet_routing, "main")
 
 
@@ -112,12 +89,8 @@ class TestUpdateRdsSecurityGroup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.rds import update_rds_security_group
-
         assert update_rds_security_group is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.rds import update_rds_security_group
-
         assert hasattr(update_rds_security_group, "main")

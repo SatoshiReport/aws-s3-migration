@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_kms_cleanup import (
@@ -54,7 +53,7 @@ class TestScheduleKeyDeletion:
         captured = capsys.readouterr()
         assert "Scheduled for deletion" in captured.out
 
-    def test_schedule_disabled_key(self, capsys):
+    def test_schedule_disabled_key(self):
         """Test scheduling deletion for disabled key."""
         mock_client = MagicMock()
         mock_client.schedule_key_deletion.return_value = {"DeletionDate": "2024-01-15"}
@@ -114,7 +113,7 @@ class TestScheduleKeyDeletion:
 class TestProcessSingleKey:
     """Tests for process_single_key function."""
 
-    def test_process_key_success(self, capsys):
+    def test_process_key_success(self):
         """Test successful key processing."""
         key_info = {
             "region": "us-east-1",

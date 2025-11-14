@@ -9,6 +9,7 @@ from unittest.mock import patch
 import pytest
 
 from duplicate_tree.analysis import (
+    ScanFingerprint,
     apply_thresholds,
     build_directory_index_from_db,
     cache_key,
@@ -99,8 +100,6 @@ def test_apply_thresholds_removes_single_node_clusters():
 
 def test_cache_key_format():
     """Test cache key format includes all parameters."""
-    from duplicate_tree.analysis import ScanFingerprint
-
     fingerprint = ScanFingerprint(total_files=100, checksum="abc123")
     key = cache_key(fingerprint, min_files=5, min_bytes=1000)
     assert "abc123" in key

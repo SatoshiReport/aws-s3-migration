@@ -11,16 +11,15 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from cleanup_temp_artifacts.categories import Category  # pylint: disable=no-name-in-module
-from cleanup_temp_artifacts.core_scanner import (
-    CandidateLoadError,  # pylint: disable=no-name-in-module
-)
-from cleanup_temp_artifacts.db_loader import (  # pylint: disable=no-name-in-module
-    _build_cache_and_db_info,
-    _create_db_connection,
-    _get_db_file_stats,
-)
+# pylint: disable=no-name-in-module
+from cleanup_temp_artifacts import categories, core_scanner, db_loader
 from tests.assertions import assert_equal
+
+Category = categories.Category
+CandidateLoadError = core_scanner.CandidateLoadError
+_build_cache_and_db_info = db_loader._build_cache_and_db_info  # pylint: disable=protected-access
+_create_db_connection = db_loader._create_db_connection  # pylint: disable=protected-access
+_get_db_file_stats = db_loader._get_db_file_stats  # pylint: disable=protected-access
 
 
 def _dummy_matcher(path: Path, is_dir: bool) -> bool:  # pylint: disable=unused-argument

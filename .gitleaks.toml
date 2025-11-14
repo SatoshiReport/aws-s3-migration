@@ -46,6 +46,8 @@ regexes = [
     '''EXAMPLE_API_KEY''',
     '''YOUR_API_KEY_HERE''',
     '''INSERT_YOUR_''',
+    # Test class names (to avoid false positives on long descriptive test class names)
+    '''class\s+Test[A-Za-z0-9_]+''',
 ]
 
 # Allowlist specific commits (if needed)

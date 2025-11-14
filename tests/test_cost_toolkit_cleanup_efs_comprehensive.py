@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_efs_cleanup import (
@@ -13,20 +12,18 @@ from cost_toolkit.scripts.cleanup.aws_efs_cleanup import (
     _process_region,
     _wait_for_mount_targets_deletion,
     delete_efs_resources,
+    main,
     setup_aws_credentials,
 )
 
 
-class TestSetupAwsCredentials:
-    """Tests for setup_aws_credentials function."""
-
-    def test_calls_shared_setup(self):
-        """Test that setup calls the shared utility."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_efs_cleanup.aws_utils.setup_aws_credentials"
-        ) as mock_setup:
-            setup_aws_credentials()
-            mock_setup.assert_called_once()
+def test_setup_aws_credentials_calls_shared_setup():
+    """Test that setup calls the shared utility."""
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_efs_cleanup.aws_utils.setup_aws_credentials"
+    ) as mock_setup:
+        setup_aws_credentials()
+        mock_setup.assert_called_once()
 
 
 class TestDeleteMountTargets:
@@ -60,7 +57,7 @@ class TestDeleteMountTargets:
         assert count == 0
         mock_client.delete_mount_target.assert_not_called()
 
-    def test_delete_single_mount_target(self, capsys):
+    def test_delete_single_mount_target(self):
         """Test deleting single mount target."""
         mock_client = MagicMock()
         mock_client.describe_mount_targets.return_value = {
@@ -140,7 +137,7 @@ class TestDeleteSingleFilesystem:
         captured = capsys.readouterr()
         assert "Successfully deleted" in captured.out
 
-    def test_delete_filesystem_no_mount_targets(self, capsys):
+    def test_delete_filesystem_no_mount_targets(self):
         """Test deleting filesystem without mount targets."""
         mock_client = MagicMock()
 
@@ -152,7 +149,7 @@ class TestDeleteSingleFilesystem:
             ) as mock_wait:
                 fs = {"FileSystemId": "fs-123"}
 
-                success, mt_count = _delete_single_filesystem(mock_client, fs)
+                success, _ = _delete_single_filesystem(mock_client, fs)
 
         assert success is True
         mock_wait.assert_not_called()
@@ -218,7 +215,7 @@ class TestProcessRegion:
         captured = capsys.readouterr()
         assert "No EFS file systems found" in captured.out
 
-    def test_process_region_partial_failures(self, capsys):
+    def test_process_region_partial_failures(self):
         """Test processing region with some failures."""
         with patch("boto3.client") as mock_client:
             mock_efs = MagicMock()
@@ -285,3 +282,24 @@ class TestDeleteEfsResources:
         captured = capsys.readouterr()
         assert "Error accessing EFS" in captured.out
         assert "Total EFS file systems deleted: 1" in captured.out
+
+
+class TestMain:
+    """Tests for main function."""
+
+    def test_main_calls_delete_resources(self, capsys):
+        """Test main function calls delete_efs_resources."""
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup.delete_efs_resources"):
+            main()
+
+        captured = capsys.readouterr()
+        assert "AWS EFS Cleanup Script" in captured.out
+
+    def test_main_prints_header(self, capsys):
+        """Test main function prints proper header."""
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup.delete_efs_resources"):
+            main()
+
+        captured = capsys.readouterr()
+        assert "AWS EFS Cleanup Script" in captured.out
+        assert "=" in captured.out

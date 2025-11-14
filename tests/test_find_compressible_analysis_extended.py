@@ -50,9 +50,7 @@ def test_find_candidates_with_invalid_path(tmp_path):
     base_path.mkdir()
 
     stats: Counter = Counter()
-    candidates = list(
-        find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats)
-    )
+    _ = list(find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats))
     conn.close()
 
     # Invalid path should be counted as skipped_invalid_path

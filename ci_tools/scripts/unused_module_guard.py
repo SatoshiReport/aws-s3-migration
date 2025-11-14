@@ -116,7 +116,11 @@ def _apply_config_overrides(
         def find_unused_with_config(root, exclude_patterns=None):
             combined = list(exclude_patterns or [])
             combined.extend(extra_excludes)
-            return original_find_unused(root, exclude_patterns=combined)
+            result = original_find_unused(root, exclude_patterns=combined)
+            # Ensure LAST_EXCLUDES is updated in the shared module
+            if hasattr(guard, "LAST_EXCLUDES"):
+                guard.LAST_EXCLUDES = combined  # type: ignore[attr-defined]
+            return result
 
         guard.find_unused_modules = find_unused_with_config  # type: ignore[assignment]
 

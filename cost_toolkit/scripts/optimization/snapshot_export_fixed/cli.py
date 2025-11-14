@@ -229,7 +229,7 @@ Examples:
         """,
     )
 
-    args = parser.parse_args()
+    parser.parse_args()
 
     export_snapshots_to_s3_fixed()
 

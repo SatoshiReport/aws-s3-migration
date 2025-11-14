@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_route53_cleanup import (
@@ -47,7 +46,7 @@ class TestDeleteHealthCheck:
             assert "deleted successfully" in captured.out
             assert "Monthly savings: $0.50" in captured.out
 
-    def test_delete_health_check_https(self, capsys):
+    def test_delete_health_check_https(self):
         """Test deleting HTTPS health check."""
         with patch("boto3.client") as mock_client:
             mock_r53 = MagicMock()
@@ -181,10 +180,10 @@ class TestDeleteHostedZone:
             assert "Error deleting hosted zone" in captured.out
 
 
-class TestPrintCleanupWarning:
-    """Tests for _print_cleanup_warning function."""
+class TestPrintFunctions:
+    """Tests for print and output functions."""
 
-    def test_print_warning(self, capsys):
+    def test_print_cleanup_warning(self, capsys):
         """Test printing cleanup warning."""
         _print_cleanup_warning()
 
@@ -193,6 +192,32 @@ class TestPrintCleanupWarning:
         assert "health check" in captured.out
         assert "hosted zones" in captured.out
         assert "Total monthly savings: $1.50" in captured.out
+
+    def test_print_successful_deletions(self, capsys):
+        """Test printing successful deletions."""
+        _print_successful_deletions(["Zone1", "Zone2", "HealthCheck"])
+
+        captured = capsys.readouterr()
+        assert "Successfully deleted: 3" in captured.out
+        assert "Zone1" in captured.out
+        assert "Zone2" in captured.out
+
+    def test_print_summary(self, capsys):
+        """Test printing cleanup summary."""
+        results = [
+            ("Health Check", True),
+            ("zone1.com.", True),
+            ("zone2.com.", False),
+        ]
+        zones = [("zone1.com.", "Z123"), ("zone2.com.", "Z456")]
+
+        savings = _print_summary(results, zones)
+
+        assert savings == 1.00
+        captured = capsys.readouterr()
+        assert "CLEANUP SUMMARY" in captured.out
+        assert "Successfully deleted: 2" in captured.out
+        assert "Failed to delete: 1" in captured.out
 
 
 class TestDeleteHealthChecks:
@@ -211,7 +236,7 @@ class TestDeleteHealthChecks:
         captured = capsys.readouterr()
         assert "DELETING HEALTH CHECK" in captured.out
 
-    def test_delete_health_checks_failure(self, capsys):
+    def test_delete_health_checks_failure(self):
         """Test failed health check deletion."""
         with patch(
             "cost_toolkit.scripts.cleanup.aws_route53_cleanup.delete_health_check",
@@ -240,7 +265,7 @@ class TestDeleteZones:
         captured = capsys.readouterr()
         assert "DELETING HOSTED ZONES" in captured.out
 
-    def test_delete_zones_partial_failure(self, capsys):
+    def test_delete_zones_partial_failure(self):
         """Test partial zone deletion failures."""
         zones = [("example.com.", "Z123"), ("test.com.", "Z456")]
 
@@ -254,19 +279,6 @@ class TestDeleteZones:
         assert len(results) == 2
         assert results[0][1] is True
         assert results[1][1] is False
-
-
-class TestPrintSuccessfulDeletions:
-    """Tests for _print_successful_deletions function."""
-
-    def test_print_successful_deletions(self, capsys):
-        """Test printing successful deletions."""
-        _print_successful_deletions(["Zone1", "Zone2", "HealthCheck"])
-
-        captured = capsys.readouterr()
-        assert "Successfully deleted: 3" in captured.out
-        assert "Zone1" in captured.out
-        assert "Zone2" in captured.out
 
 
 class TestPrintFailedDeletions:
@@ -316,24 +328,3 @@ class TestCalculateTotalSavings:
         savings = _calculate_total_savings(results, zones)
 
         assert savings == 1.00  # 0.50 for HC + 0.50 for 1 zone
-
-
-class TestPrintSummary:
-    """Tests for _print_summary function."""
-
-    def test_print_summary(self, capsys):
-        """Test printing cleanup summary."""
-        results = [
-            ("Health Check", True),
-            ("zone1.com.", True),
-            ("zone2.com.", False),
-        ]
-        zones = [("zone1.com.", "Z123"), ("zone2.com.", "Z456")]
-
-        savings = _print_summary(results, zones)
-
-        assert savings == 1.00
-        captured = capsys.readouterr()
-        assert "CLEANUP SUMMARY" in captured.out
-        assert "Successfully deleted: 2" in captured.out
-        assert "Failed to delete: 1" in captured.out

@@ -6,9 +6,12 @@ import sqlite3
 import time
 from pathlib import Path
 
-from cleanup_temp_artifacts.categories import Category
-from cleanup_temp_artifacts.core_scanner import scan_candidates_from_db
+# pylint: disable=no-name-in-module
+from cleanup_temp_artifacts import categories, core_scanner
 from tests.assertions import assert_equal
+
+Category = categories.Category
+scan_candidates_from_db = core_scanner.scan_candidates_from_db
 
 
 def _dummy_matcher(path: Path, is_dir: bool) -> bool:  # pylint: disable=unused-argument

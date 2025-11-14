@@ -10,19 +10,20 @@ from unittest.mock import patch
 
 import pytest
 
-from cleanup_temp_artifacts.categories import Category
-from cleanup_temp_artifacts.core_scanner import Candidate
-from cleanup_temp_artifacts.reports import (
-    BYTES_PER_GIB,
-    BYTES_PER_KIB,
-    BYTES_PER_MIB,
-    BYTES_PER_TIB,
-    order_candidates,
-    parse_size,
-    print_candidates_report,
-    write_reports,
-)
+# pylint: disable=no-name-in-module
+from cleanup_temp_artifacts import categories, core_scanner, reports
 from tests.assertions import assert_equal
+
+Category = categories.Category
+Candidate = core_scanner.Candidate
+BYTES_PER_GIB = reports.BYTES_PER_GIB
+BYTES_PER_KIB = reports.BYTES_PER_KIB
+BYTES_PER_MIB = reports.BYTES_PER_MIB
+BYTES_PER_TIB = reports.BYTES_PER_TIB
+order_candidates = reports.order_candidates
+parse_size = reports.parse_size
+print_candidates_report = reports.print_candidates_report
+write_reports = reports.write_reports
 
 
 def make_candidate(

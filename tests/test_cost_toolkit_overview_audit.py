@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-import os
 import subprocess
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.overview.audit import (

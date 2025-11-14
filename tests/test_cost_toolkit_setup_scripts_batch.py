@@ -2,74 +2,46 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from cost_toolkit.scripts.setup import (
+    aws_route53_domain_setup,
+    aws_vmimport_role_setup,
+    exceptions,
+    route53_helpers,
+    verify_iwannabenewyork_domain,
+)
 
-import pytest
 
+class TestSetupModules:
+    """Tests for setup modules."""
 
-class TestSetupExceptions:
-    """Tests for setup/exceptions.py."""
-
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.setup import exceptions
-
+    def test_exceptions_imports(self):
+        """Test exceptions module can be imported."""
         assert exceptions is not None
 
-
-class TestRoute53DomainSetup:
-    """Tests for aws_route53_domain_setup.py."""
-
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.setup import aws_route53_domain_setup
-
+    def test_route53_domain_setup_imports(self):
+        """Test aws_route53_domain_setup module can be imported."""
         assert aws_route53_domain_setup is not None
 
-    def test_main_function_exists(self):
-        """Test main function exists."""
-        from cost_toolkit.scripts.setup import aws_route53_domain_setup
-
+    def test_route53_domain_setup_main_exists(self):
+        """Test aws_route53_domain_setup has main function."""
         assert hasattr(aws_route53_domain_setup, "main")
 
-
-class TestVmimportRoleSetup:
-    """Tests for aws_vmimport_role_setup.py."""
-
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.setup import aws_vmimport_role_setup
-
+    def test_vmimport_role_setup_imports(self):
+        """Test aws_vmimport_role_setup module can be imported."""
         assert aws_vmimport_role_setup is not None
 
-    def test_main_function_exists(self):
-        """Test main function exists."""
-        from cost_toolkit.scripts.setup import aws_vmimport_role_setup
-
+    def test_vmimport_role_setup_main_exists(self):
+        """Test aws_vmimport_role_setup has main function."""
         assert hasattr(aws_vmimport_role_setup, "main")
 
-
-class TestRoute53Helpers:
-    """Tests for route53_helpers.py."""
-
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.setup import route53_helpers
-
+    def test_route53_helpers_imports(self):
+        """Test route53_helpers module can be imported."""
         assert route53_helpers is not None
 
-
-class TestVerifyIwannabenewyorkDomain:
-    """Tests for verify_iwannabenewyork_domain.py."""
-
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.setup import verify_iwannabenewyork_domain
-
+    def test_verify_iwannabenewyork_domain_imports(self):
+        """Test verify_iwannabenewyork_domain module can be imported."""
         assert verify_iwannabenewyork_domain is not None
 
-    def test_main_function_exists(self):
-        """Test main function exists."""
-        from cost_toolkit.scripts.setup import verify_iwannabenewyork_domain
-
+    def test_verify_iwannabenewyork_domain_main_exists(self):
+        """Test verify_iwannabenewyork_domain has main function."""
         assert hasattr(verify_iwannabenewyork_domain, "main")

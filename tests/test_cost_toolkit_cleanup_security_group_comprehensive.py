@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup import (
@@ -23,18 +22,15 @@ from cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup import (
 )
 
 
-class TestLoadAwsCredentials:
-    """Tests for load_aws_credentials function."""
-
-    def test_calls_setup_credentials(self):
-        """Test that function calls setup utility."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.setup_aws_credentials"
-        ) as mock_setup:
-            mock_setup.return_value = ("key", "secret")
-            result = load_aws_credentials()
-            mock_setup.assert_called_once()
-            assert result == ("key", "secret")
+def test_load_aws_credentials_calls_setup_credentials():
+    """Test that function calls setup utility."""
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.setup_aws_credentials"
+    ) as mock_setup:
+        mock_setup.return_value = ("key", "secret")
+        result = load_aws_credentials()
+        mock_setup.assert_called_once()
+        assert result == ("key", "secret")
 
 
 class TestRemoveSecurityGroupRule:
@@ -129,26 +125,23 @@ class TestCheckInboundRules:
         assert len(rules) == 0
 
 
-class TestCheckOutboundRules:
-    """Tests for _check_outbound_rules function."""
-
-    def test_check_outbound_rules_with_reference(self):
-        """Test checking outbound rules that reference target group."""
-        sg = {
-            "GroupId": "sg-source",
-            "GroupName": "source-sg",
-            "IpPermissionsEgress": [
-                {
-                    "IpProtocol": "tcp",
-                    "FromPort": 80,
-                    "ToPort": 80,
-                    "UserIdGroupPairs": [{"GroupId": "sg-target"}],
-                }
-            ],
-        }
-        rules = _check_outbound_rules(sg, "sg-target")
-        assert len(rules) == 1
-        assert rules[0]["rule_type"] == "outbound"
+def test_check_outbound_rules_check_outbound_rules_with_reference():
+    """Test checking outbound rules that reference target group."""
+    sg = {
+        "GroupId": "sg-source",
+        "GroupName": "source-sg",
+        "IpPermissionsEgress": [
+            {
+                "IpProtocol": "tcp",
+                "FromPort": 80,
+                "ToPort": 80,
+                "UserIdGroupPairs": [{"GroupId": "sg-target"}],
+            }
+        ],
+    }
+    rules = _check_outbound_rules(sg, "sg-target")
+    assert len(rules) == 1
+    assert rules[0]["rule_type"] == "outbound"
 
 
 class TestGetSecurityGroupRulesReferencingGroup:
@@ -184,7 +177,7 @@ class TestGetSecurityGroupRulesReferencingGroup:
             {"Error": {"Code": "ServiceError"}}, "describe_security_groups"
         )
         rules = get_security_group_rules_referencing_group(mock_client, "sg-target")
-        assert rules == []
+        assert not rules
         captured = capsys.readouterr()
         assert "Error getting security group rules" in captured.out
 
@@ -213,44 +206,40 @@ class TestDeleteSecurityGroup:
         assert "Error deleting" in captured.out
 
 
-class TestGetCircularSecurityGroups:
-    """Tests for _get_circular_security_groups function."""
-
-    def test_returns_list(self):
-        """Test that function returns a list."""
-        groups = _get_circular_security_groups()
-        assert isinstance(groups, list)
+def test_get_circular_security_groups_returns_list():
+    """Test that function returns a list."""
+    groups = _get_circular_security_groups()
+    assert isinstance(groups, list)
 
 
-class TestRemoveCrossReferences:
-    """Tests for _remove_cross_references function."""
-
-    def test_remove_references(self, capsys):
-        """Test removing cross-references."""
-        mock_client = MagicMock()
-        sgs = [
-            {"group_id": "sg-1", "name": "test-sg-1"},
-            {"group_id": "sg-2", "name": "test-sg-2"},
-        ]
+def test_remove_cross_references_remove_references(capsys):
+    """Test removing cross-references."""
+    mock_client = MagicMock()
+    sgs = [
+        {"group_id": "sg-1", "name": "test-sg-1"},
+        {"group_id": "sg-2", "name": "test-sg-2"},
+    ]
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+        "get_security_group_rules_referencing_group"
+    ) as mock_get:
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.get_security_group_rules_referencing_group"
-        ) as mock_get:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.remove_security_group_rule",
-                return_value=True,
-            ):
-                mock_get.return_value = [
-                    {
-                        "source_sg_id": "sg-other",
-                        "source_sg_name": "other-sg",
-                        "rule_type": "inbound",
-                        "rule_data": {},
-                    }
-                ]
-                count = _remove_cross_references(mock_client, sgs)
-        assert count == 2  # 1 rule per group
-        captured = capsys.readouterr()
-        assert "Removing cross-references" in captured.out
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+            "remove_security_group_rule",
+            return_value=True,
+        ):
+            mock_get.return_value = [
+                {
+                    "source_sg_id": "sg-other",
+                    "source_sg_name": "other-sg",
+                    "rule_type": "inbound",
+                    "rule_data": {},
+                }
+            ]
+            count = _remove_cross_references(mock_client, sgs)
+    assert count == 2  # 1 rule per group
+    captured = capsys.readouterr()
+    assert "Removing cross-references" in captured.out
 
 
 class TestDeleteSecurityGroups:
@@ -264,7 +253,8 @@ class TestDeleteSecurityGroups:
             {"group_id": "sg-2", "name": "test-sg-2"},
         ]
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.delete_security_group",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+            "delete_security_group",
             return_value=True,
         ):
             count = _delete_security_groups(mock_client, sgs)
@@ -272,7 +262,7 @@ class TestDeleteSecurityGroups:
         captured = capsys.readouterr()
         assert "Deleting security groups" in captured.out
 
-    def test_delete_groups_partial_failures(self, capsys):
+    def test_delete_groups_partial_failures(self):
         """Test deleting with some failures."""
         mock_client = MagicMock()
         sgs = [
@@ -280,34 +270,34 @@ class TestDeleteSecurityGroups:
             {"group_id": "sg-2", "name": "test-sg-2"},
         ]
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.delete_security_group",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+            "delete_security_group",
             side_effect=[True, False],
         ):
             count = _delete_security_groups(mock_client, sgs)
         assert count == 1
 
 
-class TestProcessRegions:
-    """Tests for _process_regions function."""
-
-    def test_process_multiple_regions(self):
-        """Test processing multiple regions."""
-        regions = {
-            "us-east-1": [{"group_id": "sg-1", "name": "sg-1"}],
-            "us-west-2": [{"group_id": "sg-2", "name": "sg-2"}],
-        }
-        with patch("boto3.client"):
+def test_process_regions_process_multiple_regions():
+    """Test processing multiple regions."""
+    regions = {
+        "us-east-1": [{"group_id": "sg-1", "name": "sg-1"}],
+        "us-west-2": [{"group_id": "sg-2", "name": "sg-2"}],
+    }
+    with patch("boto3.client"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+            "_remove_cross_references",
+            return_value=2,
+        ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._remove_cross_references",
+                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+                "_delete_security_groups",
                 return_value=2,
             ):
-                with patch(
-                    "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._delete_security_groups",
-                    return_value=2,
-                ):
-                    rules_removed, groups_deleted = _process_regions(regions, "key", "secret")
-        assert rules_removed == 4  # 2 per region
-        assert groups_deleted == 4  # 2 per region
+                rules_removed, groups_deleted = _process_regions(regions, "key", "secret")
+    assert rules_removed == 4  # 2 per region
+    assert groups_deleted == 4  # 2 per region
 
 
 class TestPrintFinalSummary:
@@ -336,11 +326,13 @@ class TestCleanupCircularSecurityGroups:
     def test_cleanup_with_user_cancellation(self, capsys):
         """Test when user cancels operation."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.load_aws_credentials",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+            "load_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._get_circular_security_groups",
+                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+                "_get_circular_security_groups",
                 return_value=[],
             ):
                 with patch("builtins.input", return_value="NO"):
@@ -355,27 +347,31 @@ class TestCleanupCircularSecurityGroups:
             {"group_id": "sg-2", "name": "sg-2", "region": "us-east-1"},
         ]
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.load_aws_credentials",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+            "load_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._get_circular_security_groups",
+                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+                "_get_circular_security_groups",
                 return_value=mock_groups,
             ):
                 with patch("builtins.input", return_value="RESOLVE CIRCULAR DEPENDENCIES"):
                     with patch(
-                        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._process_regions",
+                        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+                        "_process_regions",
                         return_value=(5, 2),
                     ):
                         with patch(
-                            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._print_final_summary"
+                            "cost_toolkit.scripts.cleanup."
+                            "aws_security_group_circular_cleanup._print_final_summary"
                         ):
                             cleanup_circular_security_groups()
         captured = capsys.readouterr()
         assert "Proceeding with circular dependency resolution" in captured.out
         assert "Target: 2 security groups" in captured.out
 
-    def test_cleanup_region_grouping(self, capsys):
+    def test_cleanup_region_grouping(self):
         """Test that regions are grouped correctly."""
         mock_groups = [
             {"group_id": "sg-1", "name": "sg-1", "region": "us-east-1"},
@@ -383,19 +379,23 @@ class TestCleanupCircularSecurityGroups:
             {"group_id": "sg-3", "name": "sg-3", "region": "us-east-1"},
         ]
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.load_aws_credentials",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+            "load_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._get_circular_security_groups",
+                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+                "_get_circular_security_groups",
                 return_value=mock_groups,
             ):
                 with patch("builtins.input", return_value="RESOLVE CIRCULAR DEPENDENCIES"):
                     with patch(
-                        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._process_regions"
+                        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
+                        "_process_regions"
                     ) as mock_process:
                         with patch(
-                            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._print_final_summary"
+                            "cost_toolkit.scripts.cleanup."
+                            "aws_security_group_circular_cleanup._print_final_summary"
                         ):
                             mock_process.return_value = (0, 0)
                             cleanup_circular_security_groups()

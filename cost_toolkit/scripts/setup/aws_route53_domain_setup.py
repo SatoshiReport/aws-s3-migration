@@ -150,8 +150,8 @@ def create_missing_dns_records(domain_name, zone_id, canva_ip):
     return True
 
 
-def test_dns_resolution(domain_name):
-    """Test DNS resolution for the domain"""
+def verify_dns_resolution(domain_name):
+    """Verify DNS resolution for the domain"""
     print(f"\n🧪 Testing DNS resolution for {domain_name}")
 
     # Test root domain
@@ -226,7 +226,7 @@ def main():
             print("\n⏳ Waiting 30 seconds for initial DNS propagation...")
             time.sleep(30)
 
-        test_dns_resolution(domain_name)
+        verify_dns_resolution(domain_name)
 
         # Summary
         print("\n" + "=" * 80)

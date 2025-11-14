@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from cost_toolkit.scripts.management.ebs_manager.reporting import (
     print_snapshot_summary,
     print_volume_detailed_report,

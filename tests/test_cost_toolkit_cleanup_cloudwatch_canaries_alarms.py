@@ -1,10 +1,9 @@
-"""Comprehensive tests for aws_cloudwatch_cleanup.py."""
+"""Comprehensive tests for aws_cloudwatch_cleanup.py - Canaries and Alarms."""
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup import (
@@ -12,27 +11,20 @@ from cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup import (
     _delete_single_canary,
     _disable_alarms_in_region,
     _process_canaries_in_region,
-    _reduce_retention_in_region,
     _stop_canary_if_running,
-    _update_log_group_retention,
     delete_cloudwatch_canaries,
-    delete_custom_metrics,
     disable_cloudwatch_alarms,
-    reduce_log_retention,
     setup_aws_credentials,
 )
 
 
-class TestSetupAwsCredentials:
-    """Tests for setup_aws_credentials function."""
-
-    def test_calls_shared_setup(self):
-        """Test that setup calls the shared utility."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
-        ) as mock_setup:
-            setup_aws_credentials()
-            mock_setup.assert_called_once()
+def test_setup_aws_credentials_calls_shared_setup():
+    """Test that setup calls the shared utility."""
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
+    ) as mock_setup:
+        setup_aws_credentials()
+        mock_setup.assert_called_once()
 
 
 class TestStopCanaryIfRunning:
@@ -77,7 +69,7 @@ class TestDeleteSingleCanary:
         captured = capsys.readouterr()
         assert "Successfully deleted canary" in captured.out
 
-    def test_delete_stopped_canary(self, capsys):
+    def test_delete_stopped_canary(self):
         """Test deleting a stopped canary."""
         mock_client = MagicMock()
         canary = {"Name": "test-canary", "Status": {"State": "STOPPED"}}
@@ -157,7 +149,7 @@ class TestDeleteCloudwatchCanaries:
 class TestCollectAlarmNamesToDisable:
     """Tests for _collect_alarm_names_to_disable function."""
 
-    def test_collect_enabled_alarms(self, capsys):
+    def test_collect_enabled_alarms(self):
         """Test collecting enabled alarms."""
         alarms = [
             {
@@ -251,137 +243,38 @@ class TestDisableAlarmsInRegion:
         assert "Error disabling alarm actions" in captured.out
 
 
-class TestDisableCloudwatchAlarms:
-    """Tests for disable_cloudwatch_alarms function."""
-
-    def test_disable_alarms_multiple_regions(self, capsys):
-        """Test disabling alarms across regions."""
-        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._disable_alarms_in_region"
-            ):
-                disable_cloudwatch_alarms()
-        captured = capsys.readouterr()
-        assert "Checking CloudWatch alarms" in captured.out
+def test_disable_cloudwatch_alarms_disable_alarms_multiple_regions(capsys):
+    """Test disabling alarms across regions."""
+    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._disable_alarms_in_region"):
+            disable_cloudwatch_alarms()
+    captured = capsys.readouterr()
+    assert "Checking CloudWatch alarms" in captured.out
 
 
-class TestDeleteCustomMetrics:
-    """Tests for delete_custom_metrics function."""
-
-    def test_print_custom_metrics_info(self, capsys):
-        """Test printing custom metrics information."""
-        delete_custom_metrics()
-        captured = capsys.readouterr()
-        assert "Custom Metrics Information" in captured.out
-        assert "cannot be directly deleted" in captured.out
-        assert "15 months" in captured.out
-
-
-class TestUpdateLogGroupRetention:
-    """Tests for _update_log_group_retention function."""
-
-    def test_update_retention_never_expire(self, capsys):
-        """Test updating log group with never expire retention."""
-        mock_client = MagicMock()
-        log_group = {
-            "logGroupName": "/aws/lambda/test",
-            "retentionInDays": "Never expire",
-            "storedBytes": 1048576,
-        }
-        _update_log_group_retention(mock_client, log_group)
-        mock_client.put_retention_policy.assert_called_once_with(
-            logGroupName="/aws/lambda/test", retentionInDays=1
-        )
-        captured = capsys.readouterr()
-        assert "Setting retention to 1 day" in captured.out
-
-    def test_update_retention_long_period(self, capsys):
-        """Test updating log group with long retention period."""
-        mock_client = MagicMock()
-        log_group = {
-            "logGroupName": "/aws/lambda/test",
-            "retentionInDays": 30,
-            "storedBytes": 2097152,
-        }
-        _update_log_group_retention(mock_client, log_group)
-        mock_client.put_retention_policy.assert_called_once()
-
-    def test_update_retention_already_optimized(self, capsys):
-        """Test log group with already optimized retention."""
-        mock_client = MagicMock()
-        log_group = {
-            "logGroupName": "/aws/lambda/test",
-            "retentionInDays": 1,
-            "storedBytes": 512000,
-        }
-        _update_log_group_retention(mock_client, log_group)
-        mock_client.put_retention_policy.assert_not_called()
-        captured = capsys.readouterr()
-        assert "already optimized" in captured.out
-
-    def test_update_retention_error(self, capsys):
-        """Test error when updating retention."""
-        mock_client = MagicMock()
-        mock_client.put_retention_policy.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "put_retention_policy"
-        )
-        log_group = {
-            "logGroupName": "/aws/lambda/test",
-            "retentionInDays": "Never expire",
-            "storedBytes": 1024,
-        }
-        _update_log_group_retention(mock_client, log_group)
-        captured = capsys.readouterr()
-        assert "Error setting retention" in captured.out
+def test_disable_cloudwatch_alarms_with_client_error(capsys):
+    """Test disabling alarms with ClientError."""
+    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._disable_alarms_in_region"
+        ) as mock_disable:
+            mock_disable.side_effect = ClientError(
+                {"Error": {"Code": "ServiceError"}}, "describe_alarms"
+            )
+            disable_cloudwatch_alarms()
+    captured = capsys.readouterr()
+    assert "Error accessing CloudWatch" in captured.out
 
 
-class TestReduceRetentionInRegion:
-    """Tests for _reduce_retention_in_region function."""
-
-    def test_reduce_retention_multiple_log_groups(self, capsys):
-        """Test reducing retention for multiple log groups."""
-        with patch("boto3.client") as mock_client:
-            mock_logs = MagicMock()
-            mock_logs.describe_log_groups.return_value = {
-                "logGroups": [
-                    {
-                        "logGroupName": "/aws/lambda/test1",
-                        "retentionInDays": 30,
-                        "storedBytes": 1024,
-                    },
-                    {
-                        "logGroupName": "/aws/lambda/test2",
-                        "retentionInDays": 7,
-                        "storedBytes": 2048,
-                    },
-                ]
-            }
-            mock_client.return_value = mock_logs
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._update_log_group_retention"
-            ):
-                _reduce_retention_in_region("us-east-1")
-
-    def test_reduce_retention_no_log_groups(self, capsys):
-        """Test when no log groups exist."""
-        with patch("boto3.client") as mock_client:
-            mock_logs = MagicMock()
-            mock_logs.describe_log_groups.return_value = {"logGroups": []}
-            mock_client.return_value = mock_logs
-            _reduce_retention_in_region("us-east-1")
-        captured = capsys.readouterr()
-        assert "No log groups found" in captured.out
-
-
-class TestReduceLogRetention:
-    """Tests for reduce_log_retention function."""
-
-    def test_reduce_retention_multiple_regions(self, capsys):
-        """Test reducing retention across regions."""
-        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._reduce_retention_in_region"
-            ):
-                reduce_log_retention()
-        captured = capsys.readouterr()
-        assert "Checking CloudWatch log groups" in captured.out
+def test_delete_canaries_with_generic_error(capsys):
+    """Test delete canaries with generic ClientError."""
+    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region"
+        ) as mock_process:
+            mock_process.side_effect = ClientError(
+                {"Error": {"Code": "ServiceError", "Message": "Some error"}}, "describe_canaries"
+            )
+            delete_cloudwatch_canaries()
+    captured = capsys.readouterr()
+    assert "Error accessing CloudWatch Synthetics" in captured.out

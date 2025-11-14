@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from pathlib import Path
 
-from duplicate_tree.analysis import ScanFingerprint
+from duplicate_tree.analysis import ScanFingerprint, cache_key
 from duplicate_tree.cache import (
     EXACT_TOLERANCE,
     ensure_cache_table,
@@ -48,8 +47,6 @@ def test_load_cached_report_file_count_mismatch(tmp_path):
     conn = sqlite3.connect(str(db_path))
     ensure_cache_table(conn)
 
-    from duplicate_tree.analysis import cache_key
-
     fingerprint = ScanFingerprint(total_files=10, checksum="abc123")
     key = cache_key(fingerprint, min_files=2, min_bytes=512 * 1024 * 1024)
 
@@ -73,8 +70,6 @@ def test_load_cached_report_invalid_json(tmp_path):
     db_path = tmp_path / "cache.db"
     conn = sqlite3.connect(str(db_path))
     ensure_cache_table(conn)
-
-    from duplicate_tree.analysis import cache_key
 
     fingerprint = ScanFingerprint(total_files=10, checksum="abc123")
     key = cache_key(fingerprint, min_files=2, min_bytes=512 * 1024 * 1024)

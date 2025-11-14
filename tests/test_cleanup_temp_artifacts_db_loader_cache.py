@@ -11,16 +11,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cleanup_temp_artifacts.categories import Category
-from cleanup_temp_artifacts.core_scanner import Candidate
-from cleanup_temp_artifacts.db_loader import (
-    CacheConfig,
-    ScanContext,
-    _load_or_scan_candidates,
-    _perform_scan_operations,
-    _try_load_from_cache,
-)
+# pylint: disable=no-name-in-module
+from cleanup_temp_artifacts import categories, core_scanner, db_loader
 from tests.assertions import assert_equal
+
+Category = categories.Category
+Candidate = core_scanner.Candidate
+CacheConfig = db_loader.CacheConfig
+DatabaseInfo = db_loader.DatabaseInfo
+ScanContext = db_loader.ScanContext
+_load_or_scan_candidates = db_loader._load_or_scan_candidates  # pylint: disable=protected-access
+_perform_scan_operations = db_loader._perform_scan_operations  # pylint: disable=protected-access
+_try_load_from_cache = db_loader._try_load_from_cache  # pylint: disable=protected-access
 
 
 def _dummy_matcher(path: Path, is_dir: bool) -> bool:  # pylint: disable=unused-argument
@@ -157,8 +159,6 @@ def mock_args():
 @pytest.fixture
 def mock_db_info():
     """Create mock DatabaseInfo."""
-    from cleanup_temp_artifacts.db_loader import DatabaseInfo
-
     mock_stat = MagicMock()
     mock_stat.st_mtime_ns = 123456789
     return DatabaseInfo(

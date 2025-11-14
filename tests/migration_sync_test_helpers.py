@@ -24,5 +24,5 @@ def create_mock_process(
     poll_iter: Iterable[int | None] = iter(poll_returns)
     process.poll = lambda: next(poll_iter, 0)
     process.returncode = 0
-    process.stderr.read.return_value = stderr_output
+    process.stderr.read.return_value = stderr_output  # pylint: disable=no-member
     return process

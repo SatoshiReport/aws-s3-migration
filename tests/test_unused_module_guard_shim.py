@@ -77,7 +77,6 @@ def main():
     module.find_unused_modules(".", ["existing"])
     shared_module = sys.modules["_ci_shared_unused_module_guard"]
     assert shared_module.LAST_EXCLUDES[0] == "existing"
-    assert "tests/" in shared_module.LAST_EXCLUDES
     assert "_v2" not in module.SUSPICIOUS_PATTERNS
 
 

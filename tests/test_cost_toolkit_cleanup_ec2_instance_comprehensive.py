@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup import (
@@ -15,14 +14,17 @@ from cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup import (
     _get_last_activity_from_metrics,
     _print_instance_age,
     _print_instance_details,
+    _print_summary,
     _terminate_instances,
     get_instance_detailed_info,
+    main,
     rename_instance,
     terminate_instance,
 )
 
 
 class TestTerminateInstance:
+    """Test EC2 instance termination functionality."""
 
     def test_terminate_instance_success(self, capsys):
         """Test successful instance termination."""
@@ -87,6 +89,7 @@ class TestTerminateInstance:
 
 
 class TestRenameInstance:
+    """Test EC2 instance renaming functionality."""
 
     def test_rename_instance_success(self, capsys):
         """Test successful instance renaming."""
@@ -116,6 +119,7 @@ class TestRenameInstance:
 
 
 class TestGetInstanceNameTag:
+    """Test retrieving instance name tags."""
 
     def test_get_name_from_tags(self):
         """Test extracting name from tags."""
@@ -176,17 +180,14 @@ class TestGetLastActivityFromMetrics:
         assert "Could not retrieve metrics" in captured.out
 
 
-class TestPrintInstanceDetails:
-    """Tests for _print_instance_details function."""
-
-    def test_print_details(self, capsys):
-        """Test printing instance details."""
-        _print_instance_details("i-123", "test-instance", "t2.micro", "running", "2024-01-01")
-        captured = capsys.readouterr()
-        assert "i-123" in captured.out
-        assert "test-instance" in captured.out
-        assert "t2.micro" in captured.out
-        assert "running" in captured.out
+def test_print_instance_details_print_details(capsys):
+    """Test printing instance details."""
+    _print_instance_details("i-123", "test-instance", "t2.micro", "running", "2024-01-01")
+    captured = capsys.readouterr()
+    assert "i-123" in captured.out
+    assert "test-instance" in captured.out
+    assert "t2.micro" in captured.out
+    assert "running" in captured.out
 
 
 class TestPrintInstanceAge:
@@ -209,7 +210,7 @@ class TestPrintInstanceAge:
 class TestGetInstanceDetailedInfo:
     """Tests for get_instance_detailed_info function."""
 
-    def test_get_detailed_info_success(self, capsys):
+    def test_get_detailed_info_success(self):
         """Test successful retrieval of detailed info."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
@@ -230,7 +231,8 @@ class TestGetInstanceDetailedInfo:
             }
             mock_client.side_effect = [mock_ec2, mock_cw]
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._get_last_activity_from_metrics"
+                "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup."
+                "_get_last_activity_from_metrics"
             ):
                 result = get_instance_detailed_info("i-123", "us-east-1")
         assert result is not None
@@ -279,7 +281,7 @@ class TestTerminateInstances:
             "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup.terminate_instance",
             return_value=True,
         ):
-            results, savings = _terminate_instances(instances)
+            results, _ = _terminate_instances(instances)
         assert len(results) == 2
         assert all(result[2] for result in results)
 
@@ -346,8 +348,6 @@ class TestPrintSummary:
 
     def test_print_summary_success(self, capsys):
         """Test printing summary with successful operations."""
-        from cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup import _print_summary
-
         termination_results = [
             ("i-1", "instance-1", True),
             ("i-2", "instance-2", True),
@@ -370,8 +370,6 @@ class TestPrintSummary:
 
     def test_print_summary_with_failures(self, capsys):
         """Test printing summary with some failures."""
-        from cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup import _print_summary
-
         termination_results = [
             ("i-1", "instance-1", True),
             ("i-2", "instance-2", False),
@@ -383,33 +381,28 @@ class TestPrintSummary:
         assert "Instance rename: ❌ Failed" in captured.out
 
 
-class TestMain:
-    """Tests for main function."""
-
-    def test_main_function(self, capsys):
-        """Test main function execution."""
-        from cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup import main
-
+def test_main_main_function(capsys):
+    """Test main function execution."""
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._terminate_instances"
+    ) as mock_term:
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._terminate_instances"
-        ) as mock_term:
+            "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup.rename_instance"
+        ) as mock_rename:
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup.rename_instance"
-            ) as mock_rename:
+                "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._analyze_instances"
+            ) as mock_analyze:
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._analyze_instances"
-                ) as mock_analyze:
-                    with patch(
-                        "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._print_summary"
-                    ) as mock_summary:
-                        mock_term.return_value = ([], 0)
-                        mock_rename.return_value = True
-                        mock_analyze.return_value = []
-                        main()
-        captured = capsys.readouterr()
-        assert "AWS EC2 Instance Cleanup and Analysis" in captured.out
-        assert "WARNING" in captured.out
-        mock_term.assert_called_once()
-        mock_rename.assert_called_once()
-        mock_analyze.assert_called_once()
-        mock_summary.assert_called_once()
+                    "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._print_summary"
+                ) as mock_summary:
+                    mock_term.return_value = ([], 0)
+                    mock_rename.return_value = True
+                    mock_analyze.return_value = []
+                    main()
+    captured = capsys.readouterr()
+    assert "AWS EC2 Instance Cleanup and Analysis" in captured.out
+    assert "WARNING" in captured.out
+    mock_term.assert_called_once()
+    mock_rename.assert_called_once()
+    mock_analyze.assert_called_once()
+    mock_summary.assert_called_once()

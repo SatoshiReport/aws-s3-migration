@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
-import pytest
+from cost_toolkit.scripts.billing import (
+    aws_hourly_billing_report,
+    aws_today_billing_report,
+)
+from cost_toolkit.scripts.billing.billing_report import (
+    service_checks,
+    service_checks_extended,
+)
 
 
 class TestAwsHourlyBillingReport:
@@ -12,14 +17,10 @@ class TestAwsHourlyBillingReport:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.billing import aws_hourly_billing_report
-
         assert aws_hourly_billing_report is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.billing import aws_hourly_billing_report
-
         assert hasattr(aws_hourly_billing_report, "main")
 
 
@@ -28,32 +29,20 @@ class TestAwsTodayBillingReport:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.billing import aws_today_billing_report
-
         assert aws_today_billing_report is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.billing import aws_today_billing_report
-
         assert hasattr(aws_today_billing_report, "main")
 
 
-class TestBillingReportServiceChecks:
-    """Tests for billing_report/service_checks.py."""
+class TestBillingReportModules:
+    """Tests for billing_report sub-modules."""
 
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.billing.billing_report import service_checks
-
+    def test_service_checks_imports(self):
+        """Test service_checks module can be imported."""
         assert service_checks is not None
 
-
-class TestBillingReportServiceChecksExtended:
-    """Tests for billing_report/service_checks_extended.py."""
-
-    def test_module_imports(self):
-        """Test module can be imported."""
-        from cost_toolkit.scripts.billing.billing_report import service_checks_extended
-
+    def test_service_checks_extended_imports(self):
+        """Test service_checks_extended module can be imported."""
         assert service_checks_extended is not None

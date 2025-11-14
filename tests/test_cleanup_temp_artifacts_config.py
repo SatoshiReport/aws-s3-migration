@@ -5,14 +5,14 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-from cleanup_temp_artifacts.config import (
-    DEFAULT_BASE_PATH,
-    DEFAULT_DB_PATH,
-    REPO_ROOT,
-    determine_default_base_path,
-    determine_default_db_path,
-    get_repo_root,
-)
+from cleanup_temp_artifacts import config  # pylint: disable=no-name-in-module
+
+DEFAULT_BASE_PATH = config.DEFAULT_BASE_PATH
+DEFAULT_DB_PATH = config.DEFAULT_DB_PATH
+REPO_ROOT = config.REPO_ROOT
+determine_default_base_path = config.determine_default_base_path
+determine_default_db_path = config.determine_default_db_path
+get_repo_root = config.get_repo_root
 
 
 def test_get_repo_root():

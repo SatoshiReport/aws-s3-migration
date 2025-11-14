@@ -78,7 +78,7 @@ class TestCheckSyncErrors:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         mock_process = mock.Mock()
         mock_process.returncode = 0
-        mock_process.stderr.read.return_value = ""
+        mock_process.stderr.read.return_value = ""  # pylint: disable=no-member
 
         syncer.check_sync_errors(mock_process)
 
@@ -87,7 +87,7 @@ class TestCheckSyncErrors:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         mock_process = mock.Mock()
         mock_process.returncode = 1
-        mock_process.stderr.read.return_value = ""
+        mock_process.stderr.read.return_value = ""  # pylint: disable=no-member
 
         with pytest.raises(RuntimeError) as exc_info:
             syncer.check_sync_errors(mock_process)
@@ -100,7 +100,9 @@ class TestCheckSyncErrors:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         mock_process = mock.Mock()
         mock_process.returncode = 1
-        mock_process.stderr.read.return_value = "Permission denied\nAccess error"
+        mock_process.stderr.read.return_value = (  # pylint: disable=no-member
+            "Permission denied\nAccess error"
+        )
 
         with pytest.raises(RuntimeError) as exc_info:
             syncer.check_sync_errors(mock_process)
@@ -114,7 +116,9 @@ class TestCheckSyncErrors:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         mock_process = mock.Mock()
         mock_process.returncode = 1
-        mock_process.stderr.read.return_value = "Completed s3://bucket/file.txt\nReal error"
+        mock_process.stderr.read.return_value = (  # pylint: disable=no-member
+            "Completed s3://bucket/file.txt\nReal error"
+        )
 
         with pytest.raises(RuntimeError) as exc_info:
             syncer.check_sync_errors(mock_process)
@@ -128,7 +132,7 @@ class TestCheckSyncErrors:
         syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         mock_process = mock.Mock()
         mock_process.returncode = 1
-        mock_process.stderr.read.return_value = ""
+        mock_process.stderr.read.return_value = ""  # pylint: disable=no-member
 
         with pytest.raises(RuntimeError) as exc_info:
             syncer.check_sync_errors(mock_process)

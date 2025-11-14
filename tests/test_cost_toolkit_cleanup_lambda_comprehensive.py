@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_lambda_cleanup import (
@@ -13,16 +12,13 @@ from cost_toolkit.scripts.cleanup.aws_lambda_cleanup import (
 )
 
 
-class TestSetupAwsCredentials:
-    """Tests for setup_aws_credentials function."""
-
-    def test_calls_shared_setup(self):
-        """Test that setup calls the shared utility."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_lambda_cleanup.aws_utils.setup_aws_credentials"
-        ) as mock_setup:
-            setup_aws_credentials()
-            mock_setup.assert_called_once()
+def test_setup_aws_credentials_calls_shared_setup():
+    """Test that setup calls the shared utility."""
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_lambda_cleanup.aws_utils.setup_aws_credentials"
+    ) as mock_setup:
+        setup_aws_credentials()
+        mock_setup.assert_called_once()
 
 
 class TestDeleteLambdaFunctions:
@@ -98,7 +94,7 @@ class TestDeleteLambdaFunctions:
                     call_count += 1
                     if call_count == 1:
                         return {"Functions": [{"FunctionName": "func-us-east-1"}]}
-                    elif call_count == 2:
+                    if call_count == 2:
                         return {"Functions": [{"FunctionName": "func-us-east-2"}]}
                     return {"Functions": [{"FunctionName": "func-us-west-2"}]}
 

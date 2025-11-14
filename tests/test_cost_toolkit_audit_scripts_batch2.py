@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
-import pytest
+from cost_toolkit.scripts.audit import (
+    aws_route53_audit,
+    aws_route53_domain_ownership,
+    aws_security_group_dependencies,
+    aws_vpc_audit,
+    aws_vpc_flow_logs_audit,
+)
 
 
 class TestRoute53Audit:
@@ -12,14 +16,10 @@ class TestRoute53Audit:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.audit import aws_route53_audit
-
         assert aws_route53_audit is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.audit import aws_route53_audit
-
         assert hasattr(aws_route53_audit, "main")
 
 
@@ -28,14 +28,10 @@ class TestRoute53DomainOwnership:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.audit import aws_route53_domain_ownership
-
         assert aws_route53_domain_ownership is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.audit import aws_route53_domain_ownership
-
         assert hasattr(aws_route53_domain_ownership, "main")
 
 
@@ -44,14 +40,10 @@ class TestSecurityGroupDependencies:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.audit import aws_security_group_dependencies
-
         assert aws_security_group_dependencies is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.audit import aws_security_group_dependencies
-
         assert hasattr(aws_security_group_dependencies, "main")
 
 
@@ -60,14 +52,10 @@ class TestVpcAudit:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.audit import aws_vpc_audit
-
         assert aws_vpc_audit is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.audit import aws_vpc_audit
-
         assert hasattr(aws_vpc_audit, "main")
 
 
@@ -76,12 +64,8 @@ class TestVpcFlowLogsAudit:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.audit import aws_vpc_flow_logs_audit
-
         assert aws_vpc_flow_logs_audit is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.audit import aws_vpc_flow_logs_audit
-
         assert hasattr(aws_vpc_flow_logs_audit, "main")

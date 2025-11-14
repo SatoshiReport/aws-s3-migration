@@ -1,3 +1,4 @@
 tests/test_cost_toolkit_audit_backup_comprehensive.py
-tests/test_cost_toolkit_cleanup_backup_disable_comprehensive.py
+tests/test_cost_toolkit_cleanup_backup_plans.py
+tests/test_cost_toolkit_cleanup_backup_eventbridge_vaults.py
 tests/test_cost_toolkit_common_backup_utils.py

@@ -1,10 +1,9 @@
-"""Comprehensive tests for aws_stopped_instance_cleanup.py."""
+"""Comprehensive tests for aws_stopped_instance_cleanup.py - helper functions."""
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup import (
@@ -118,57 +117,51 @@ class TestGetInstanceDetails:
         assert result["volumes"][1]["delete_on_termination"] is False
 
 
-class TestGetStoppedInstances:
-    """Tests for _get_stopped_instances function."""
+def test_get_stopped_instances_returns_list_of_instances():
+    """Test that function returns expected list."""
+    instances = _get_stopped_instances()
 
-    def test_returns_list_of_instances(self):
-        """Test that function returns expected list."""
-        instances = _get_stopped_instances()
-
-        assert isinstance(instances, list)
-        assert len(instances) > 0
-        for instance in instances:
-            assert "region" in instance
-            assert "instance_id" in instance
-            assert "type" in instance
+    assert isinstance(instances, list)
+    assert len(instances) > 0
+    for instance in instances:
+        assert "region" in instance
+        assert "instance_id" in instance
+        assert "type" in instance
 
 
-class TestPrintInstanceDetails:
-    """Tests for _print_instance_details function."""
+def test_print_instance_details_print_details_with_volumes(capsys):
+    """Test printing instance details with volumes."""
+    details = {
+        "name": "test-instance",
+        "instance_type": "t2.micro",
+        "state": "stopped",
+        "vpc_id": "vpc-123",
+        "launch_time": "2024-01-01",
+        "volumes": [
+            {
+                "volume_id": "vol-1",
+                "device_name": "/dev/sda1",
+                "delete_on_termination": True,
+            },
+            {
+                "volume_id": "vol-2",
+                "device_name": "/dev/sdb",
+                "delete_on_termination": False,
+            },
+        ],
+        "network_interfaces": ["eni-1", "eni-2"],
+    }
 
-    def test_print_details_with_volumes(self, capsys):
-        """Test printing instance details with volumes."""
-        details = {
-            "name": "test-instance",
-            "instance_type": "t2.micro",
-            "state": "stopped",
-            "vpc_id": "vpc-123",
-            "launch_time": "2024-01-01",
-            "volumes": [
-                {
-                    "volume_id": "vol-1",
-                    "device_name": "/dev/sda1",
-                    "delete_on_termination": True,
-                },
-                {
-                    "volume_id": "vol-2",
-                    "device_name": "/dev/sdb",
-                    "delete_on_termination": False,
-                },
-            ],
-            "network_interfaces": ["eni-1", "eni-2"],
-        }
+    _print_instance_details(details)
 
-        _print_instance_details(details)
-
-        captured = capsys.readouterr()
-        assert "test-instance" in captured.out
-        assert "t2.micro" in captured.out
-        assert "stopped" in captured.out
-        assert "vol-1" in captured.out
-        assert "will be deleted" in captured.out
-        assert "vol-2" in captured.out
-        assert "will be preserved" in captured.out
+    captured = capsys.readouterr()
+    assert "test-instance" in captured.out
+    assert "t2.micro" in captured.out
+    assert "stopped" in captured.out
+    assert "vol-1" in captured.out
+    assert "will be deleted" in captured.out
+    assert "vol-2" in captured.out
+    assert "will be preserved" in captured.out
 
 
 class TestAnalyzeInstances:
@@ -205,7 +198,7 @@ class TestAnalyzeInstances:
         captured = capsys.readouterr()
         assert "Analyzing instance" in captured.out
 
-    def test_analyze_instances_with_failures(self, capsys):
+    def test_analyze_instances_with_failures(self):
         """Test analyzing with some failures."""
         stopped_instances = [
             {"region": "us-east-1", "instance_id": "i-1", "type": "t2.micro"},

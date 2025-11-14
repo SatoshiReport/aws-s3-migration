@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import subprocess
 from unittest.mock import Mock, patch
 
 import pytest
@@ -39,8 +39,6 @@ def test_compress_with_xz_subprocess_error(tmp_path):
 
 def test_compress_with_xz_called_process_error(tmp_path):
     """Test compress_with_xz handles CalledProcessError."""
-    import subprocess
-
     test_file = tmp_path / "test.txt"
     test_file.write_bytes(b"test data")
 
@@ -61,8 +59,6 @@ def test_verify_compressed_file_success(tmp_path):
 
 def test_verify_compressed_file_subprocess_error(tmp_path):
     """Test verify_compressed_file handles CalledProcessError."""
-    import subprocess
-
     test_file = tmp_path / "test.txt.xz"
     test_file.write_bytes(b"invalid xz data")
 

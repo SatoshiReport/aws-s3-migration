@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_lightsail_cleanup import (
@@ -13,13 +13,17 @@ from cost_toolkit.scripts.cleanup.aws_lightsail_cleanup import (
     _print_summary,
     _process_region,
     delete_lightsail_instances,
+    estimate_database_cost,
+    estimate_instance_cost,
+    main,
+    record_cleanup_action,
 )
 
 
 class TestDeleteInstance:
     """Tests for _delete_instance function."""
 
-    def test_delete_instance_success(self, capsys):
+    def test_delete_instance_success(self):
         """Test successful instance deletion."""
         mock_client = MagicMock()
         instance = {
@@ -40,7 +44,7 @@ class TestDeleteInstance:
             instanceName="test-instance", forceDeleteAddOns=True
         )
 
-    def test_delete_instance_error(self, capsys):
+    def test_delete_instance_error(self):
         """Test instance deletion with error."""
         mock_client = MagicMock()
         mock_client.delete_instance.side_effect = ClientError(
@@ -61,7 +65,7 @@ class TestDeleteInstance:
         assert deleted == 0
         assert cost == 0.0
 
-    def test_delete_instance_no_bundle(self, capsys):
+    def test_delete_instance_no_bundle(self):
         """Test instance deletion when bundle ID is missing."""
         mock_client = MagicMock()
         instance = {
@@ -73,7 +77,7 @@ class TestDeleteInstance:
             "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.estimate_instance_cost",
             return_value=0.0,
         ):
-            deleted, cost = _delete_instance(mock_client, instance)
+            deleted, _ = _delete_instance(mock_client, instance)
 
         assert deleted == 1
 
@@ -81,7 +85,7 @@ class TestDeleteInstance:
 class TestDeleteDatabase:
     """Tests for _delete_database function."""
 
-    def test_delete_database_success(self, capsys):
+    def test_delete_database_success(self):
         """Test successful database deletion."""
         mock_client = MagicMock()
         database = {
@@ -102,7 +106,7 @@ class TestDeleteDatabase:
             relationalDatabaseName="test-db", skipFinalSnapshot=True
         )
 
-    def test_delete_database_error(self, capsys):
+    def test_delete_database_error(self):
         """Test database deletion with error."""
         mock_client = MagicMock()
         mock_client.delete_relational_database.side_effect = ClientError(
@@ -127,7 +131,7 @@ class TestDeleteDatabase:
 class TestProcessRegion:
     """Tests for _process_region function."""
 
-    def test_process_region_with_resources(self, capsys):
+    def test_process_region_with_resources(self):
         """Test processing region with instances and databases."""
         with patch("boto3.client") as mock_client:
             mock_ls = MagicMock()
@@ -157,7 +161,7 @@ class TestProcessRegion:
         assert databases == 1
         assert savings == 20.0
 
-    def test_process_region_no_resources(self, capsys):
+    def test_process_region_no_resources(self):
         """Test processing region with no resources."""
         with patch("boto3.client") as mock_client:
             mock_ls = MagicMock()
@@ -171,7 +175,7 @@ class TestProcessRegion:
         assert databases == 0
         assert savings == 0.0
 
-    def test_process_region_not_available(self, capsys):
+    def test_process_region_not_available(self):
         """Test processing region where Lightsail is not available."""
         with patch("boto3.client") as mock_client:
             mock_ls = MagicMock()
@@ -211,25 +215,170 @@ class TestPrintSummary:
         assert "IMPORTANT NOTES" not in captured.out
 
 
-class TestDeleteLightsailInstances:
-    """Tests for delete_lightsail_instances function."""
-
-    def test_delete_lightsail_instances_success(self, capsys):
-        """Test full Lightsail deletion workflow."""
-        with patch("cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.setup_aws_credentials"):
+def test_delete_lightsail_instances_delete_lightsail_instances_success(capsys):
+    """Test full Lightsail deletion workflow."""
+    with patch("cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.get_default_regions",
+            return_value=["us-east-1"],
+        ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.get_default_regions",
-                return_value=["us-east-1"],
+                "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup._process_region",
+                return_value=(2, 1, 30.0),
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup._process_region",
-                    return_value=(2, 1, 30.0),
+                    "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.record_cleanup_action"
                 ):
-                    with patch(
-                        "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.record_cleanup_action"
-                    ):
-                        delete_lightsail_instances()
+                    delete_lightsail_instances()
+
+    captured = capsys.readouterr()
+    assert "LIGHTSAIL INSTANCE CLEANUP" in captured.out
+    assert "WARNING" in captured.out
+
+
+class TestEstimateCosts:
+    """Tests for cost estimation functions."""
+
+    def test_estimate_instance_cost_known_bundle(self):
+        """Test cost estimation for known instance bundle."""
+        cost = estimate_instance_cost("nano_2_0")
+        assert cost == 3.50
+
+        cost = estimate_instance_cost("small_2_0")
+        assert cost == 10.00
+
+        cost = estimate_instance_cost("xlarge_2_0")
+        assert cost == 80.00
+
+    def test_estimate_instance_cost_unknown_bundle(self):
+        """Test cost estimation for unknown instance bundle."""
+        cost = estimate_instance_cost("unknown_bundle")
+        assert cost == 10.00
+
+    def test_estimate_database_cost_known_bundle(self):
+        """Test cost estimation for known database bundle."""
+        cost = estimate_database_cost("micro_1_0")
+        assert cost == 15.00
+
+        cost = estimate_database_cost("large_1_0")
+        assert cost == 115.00
+
+    def test_estimate_database_cost_unknown_bundle(self):
+        """Test cost estimation for unknown database bundle."""
+        cost = estimate_database_cost("unknown_bundle")
+        assert cost == 30.00
+
+
+class TestRecordCleanupAction:
+    """Tests for record_cleanup_action function."""
+
+    def test_record_cleanup_action_new_log(self, tmp_path):
+        """Test recording cleanup action when log file doesn't exist."""
+        test_dir = tmp_path / "cost_toolkit" / "scripts" / "config"
+        test_dir.mkdir(parents=True, exist_ok=True)
+        log_file = test_dir / "cleanup_log.json"
+
+        with patch("os.path.dirname", return_value=str(test_dir.parent)):
+            with patch("os.path.join", return_value=str(log_file)):
+                record_cleanup_action("lightsail", 5, 150.50)
+
+        assert log_file.exists()
+        with open(log_file, encoding="utf-8") as f:
+            data = json.load(f)
+
+        assert "cleanup_actions" in data
+        assert len(data["cleanup_actions"]) == 1
+        assert data["cleanup_actions"][0]["service"] == "lightsail"
+        assert data["cleanup_actions"][0]["resources_deleted"] == 5
+        assert data["cleanup_actions"][0]["estimated_monthly_savings"] == 150.50
+
+    def test_record_cleanup_action_existing_log(self, tmp_path):
+        """Test recording cleanup action when log file already exists."""
+        test_dir = tmp_path / "cost_toolkit" / "scripts" / "config"
+        test_dir.mkdir(parents=True, exist_ok=True)
+        log_file = test_dir / "cleanup_log.json"
+
+        existing_data = {"cleanup_actions": [{"service": "ec2", "resources_deleted": 3}]}
+        with open(log_file, "w", encoding="utf-8") as f:
+            json.dump(existing_data, f)
+
+        with patch("os.path.dirname", return_value=str(test_dir.parent)):
+            with patch("os.path.join", return_value=str(log_file)):
+                record_cleanup_action("lightsail", 2, 50.0)
+
+        with open(log_file, encoding="utf-8") as f:
+            data = json.load(f)
+
+        assert len(data["cleanup_actions"]) == 2
+
+    def test_record_cleanup_action_error_handling(self, capsys):
+        """Test error handling during cleanup action recording."""
+        with patch(
+            "builtins.open", side_effect=ClientError({"Error": {"Code": "AccessDenied"}}, "open")
+        ):
+            record_cleanup_action("lightsail", 1, 10.0)
 
         captured = capsys.readouterr()
-        assert "LIGHTSAIL INSTANCE CLEANUP" in captured.out
-        assert "WARNING" in captured.out
+        assert "Could not record cleanup action" in captured.out
+
+
+def test_process_region_other_client_error(capsys):
+    """Test process_region with generic client error."""
+    with patch("boto3.client") as mock_client:
+        mock_ls = MagicMock()
+        mock_ls.get_instances.side_effect = ClientError(
+            {"Error": {"Code": "UnauthorizedOperation", "Message": "Unauthorized"}},
+            "get_instances",
+        )
+        mock_client.return_value = mock_ls
+
+        instances, databases, savings = _process_region("us-west-2")
+
+    assert instances == 0
+    assert databases == 0
+    assert savings == 0.0
+    captured = capsys.readouterr()
+    assert "Error accessing Lightsail" in captured.out
+
+
+def test_main_function_user_confirms_deletion(capsys, monkeypatch):
+    """Test main function when user confirms deletion."""
+    monkeypatch.setattr("builtins.input", lambda _: "DELETE")
+
+    with patch("cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.delete_lightsail_instances",
+            return_value=(3, 2, 75.0),
+        ):
+            main()
+
+    captured = capsys.readouterr()
+    assert "AWS Lightsail Complete Cleanup" in captured.out
+    assert "Cleanup completed" in captured.out
+    assert "$75.00" in captured.out
+
+
+def test_main_function_user_cancels(capsys, monkeypatch):
+    """Test main function when user cancels deletion."""
+    monkeypatch.setattr("builtins.input", lambda _: "NO")
+
+    with patch("cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.setup_aws_credentials"):
+        main()
+
+    captured = capsys.readouterr()
+    assert "Cleanup cancelled" in captured.out
+
+
+def test_main_function_no_resources_found(capsys, monkeypatch):
+    """Test main function when no resources are found."""
+    monkeypatch.setattr("builtins.input", lambda _: "DELETE")
+
+    with patch("cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.delete_lightsail_instances",
+            return_value=(0, 0, 0.0),
+        ):
+            main()
+
+    captured = capsys.readouterr()
+    assert "No Lightsail resources found" in captured.out

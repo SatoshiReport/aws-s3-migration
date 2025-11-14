@@ -2,7 +2,6 @@
 
 import hashlib
 import time
-from pathlib import Path
 
 from migration_utils import (
     ProgressTracker,
@@ -12,7 +11,6 @@ from migration_utils import (
     get_utc_now,
     hash_file_in_chunks,
 )
-from tests.assertions import assert_equal
 
 
 class TestDeriveLocalPath:
@@ -215,7 +213,7 @@ class TestProgressTracker:
         tracker = ProgressTracker(update_interval=10.0)
         # First call should return False since no time has passed
         time.sleep(0.01)  # Small delay
-        result = tracker.should_update()
+        _ = tracker.should_update()
         # Could be True or False depending on timing
 
     def test_progress_tracker_should_update_force(self):

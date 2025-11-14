@@ -2,9 +2,22 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
-
-import pytest
+from cost_toolkit.scripts.cleanup import (
+    aws_global_accelerator_cleanup,
+    aws_instance_termination,
+    aws_kms_cleanup,
+    aws_lambda_cleanup,
+    aws_lightsail_cleanup,
+    aws_orphaned_rds_network_interface_cleanup,
+    aws_rds_cleanup,
+    aws_remove_public_ip,
+    aws_remove_public_ip_advanced,
+    aws_route53_cleanup,
+    aws_security_group_circular_cleanup,
+    aws_snapshot_bulk_delete,
+    aws_snapshot_cleanup_final,
+    aws_stopped_instance_cleanup,
+)
 
 
 class TestGlobalAcceleratorCleanup:
@@ -12,14 +25,10 @@ class TestGlobalAcceleratorCleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_global_accelerator_cleanup
-
         assert aws_global_accelerator_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_global_accelerator_cleanup
-
         assert hasattr(aws_global_accelerator_cleanup, "main")
 
 
@@ -28,14 +37,10 @@ class TestInstanceTermination:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_instance_termination
-
         assert aws_instance_termination is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_instance_termination
-
         assert hasattr(aws_instance_termination, "main")
 
 
@@ -44,14 +49,10 @@ class TestKmsCleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_kms_cleanup
-
         assert aws_kms_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_kms_cleanup
-
         assert hasattr(aws_kms_cleanup, "main")
 
 
@@ -60,14 +61,10 @@ class TestLambdaCleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_lambda_cleanup
-
         assert aws_lambda_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_lambda_cleanup
-
         assert hasattr(aws_lambda_cleanup, "main")
 
 
@@ -76,14 +73,10 @@ class TestLightsailCleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_lightsail_cleanup
-
         assert aws_lightsail_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_lightsail_cleanup
-
         assert hasattr(aws_lightsail_cleanup, "main")
 
 
@@ -92,14 +85,10 @@ class TestOrphanedRdsNetworkInterfaceCleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_orphaned_rds_network_interface_cleanup
-
         assert aws_orphaned_rds_network_interface_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_orphaned_rds_network_interface_cleanup
-
         assert hasattr(aws_orphaned_rds_network_interface_cleanup, "main")
 
 
@@ -108,14 +97,10 @@ class TestRdsCleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_rds_cleanup
-
         assert aws_rds_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_rds_cleanup
-
         assert hasattr(aws_rds_cleanup, "main")
 
 
@@ -124,14 +109,10 @@ class TestRemovePublicIp:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_remove_public_ip
-
         assert aws_remove_public_ip is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_remove_public_ip
-
         assert hasattr(aws_remove_public_ip, "main")
 
 
@@ -140,14 +121,10 @@ class TestRemovePublicIpAdvanced:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_remove_public_ip_advanced
-
         assert aws_remove_public_ip_advanced is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_remove_public_ip_advanced
-
         assert hasattr(aws_remove_public_ip_advanced, "main")
 
 
@@ -156,14 +133,10 @@ class TestRoute53Cleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_route53_cleanup
-
         assert aws_route53_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_route53_cleanup
-
         assert hasattr(aws_route53_cleanup, "main")
 
 
@@ -172,14 +145,10 @@ class TestSecurityGroupCircularCleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_security_group_circular_cleanup
-
         assert aws_security_group_circular_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_security_group_circular_cleanup
-
         assert hasattr(aws_security_group_circular_cleanup, "main")
 
 
@@ -188,14 +157,10 @@ class TestSnapshotBulkDelete:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_snapshot_bulk_delete
-
         assert aws_snapshot_bulk_delete is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_snapshot_bulk_delete
-
         assert hasattr(aws_snapshot_bulk_delete, "main")
 
 
@@ -204,14 +169,10 @@ class TestSnapshotCleanupFinal:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_snapshot_cleanup_final
-
         assert aws_snapshot_cleanup_final is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_snapshot_cleanup_final
-
         assert hasattr(aws_snapshot_cleanup_final, "main")
 
 
@@ -220,12 +181,8 @@ class TestStoppedInstanceCleanup:
 
     def test_module_imports(self):
         """Test module can be imported."""
-        from cost_toolkit.scripts.cleanup import aws_stopped_instance_cleanup
-
         assert aws_stopped_instance_cleanup is not None
 
     def test_main_function_exists(self):
         """Test main function exists."""
-        from cost_toolkit.scripts.cleanup import aws_stopped_instance_cleanup
-
         assert hasattr(aws_stopped_instance_cleanup, "main")

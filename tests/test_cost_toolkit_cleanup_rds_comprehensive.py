@@ -16,6 +16,7 @@ from cost_toolkit.scripts.cleanup.aws_rds_cleanup import (
     _stop_mariadb_instance,
     _wait_for_instance_deletion,
     cleanup_rds_databases,
+    main,
 )
 
 
@@ -64,7 +65,7 @@ class TestDeleteAuroraInstance:
         captured = capsys.readouterr()
         assert "already being deleted" in captured.out
 
-    def test_delete_instance_other_error(self, capsys):
+    def test_delete_instance_other_error(self):
         """Test other deletion errors."""
         mock_client = MagicMock()
         mock_client.delete_db_instance.side_effect = ClientError(
@@ -151,7 +152,7 @@ class TestCleanupAuroraCluster:
 
     def test_cleanup_aurora_success(self, capsys):
         """Test successful Aurora cleanup."""
-        with patch("boto3.client") as mock_client:
+        with patch("boto3.client"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_rds_cleanup._delete_aurora_instance",
                 return_value=True,
@@ -239,7 +240,7 @@ class TestCleanupMariadbInstance:
 
     def test_cleanup_mariadb_success(self, capsys):
         """Test successful MariaDB cleanup."""
-        with patch("boto3.client") as mock_client:
+        with patch("boto3.client"):
             with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup._stop_mariadb_instance"):
                 _cleanup_mariadb_instance()
 
@@ -257,29 +258,52 @@ class TestCleanupMariadbInstance:
         assert "Error accessing us-east-1" in captured.out
 
 
-class TestPrintCleanupSummary:
-    """Tests for _print_cleanup_summary function."""
+def test_print_cleanup_summary_print_summary(capsys):
+    """Test printing cleanup summary."""
+    _print_cleanup_summary()
 
-    def test_print_summary(self, capsys):
-        """Test printing cleanup summary."""
-        _print_cleanup_summary()
+    captured = capsys.readouterr()
+    assert "RDS CLEANUP SUMMARY" in captured.out
+    assert "Aurora Cluster" in captured.out
+    assert "MariaDB Instance" in captured.out
+    assert "Estimated savings" in captured.out
+
+
+def test_cleanup_rds_databases_cleanup_all_databases(capsys):
+    """Test full RDS cleanup workflow."""
+    with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup._cleanup_aurora_cluster"):
+        with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup._cleanup_mariadb_instance"):
+            with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup._print_cleanup_summary"):
+                cleanup_rds_databases()
+
+    captured = capsys.readouterr()
+    assert "AWS RDS Database Cleanup" in captured.out
+
+
+class TestMain:
+    """Tests for main function and edge cases."""
+
+    def test_main_calls_cleanup_rds_databases(self):
+        """Test main function calls cleanup_rds_databases."""
+        with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup.cleanup_rds_databases"):
+            main()
+
+    def test_main_handles_execution(self, capsys):
+        """Test main function executes cleanup successfully."""
+        with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup.cleanup_rds_databases"):
+            main()
+        captured = capsys.readouterr()
+        # Main should execute cleanup_rds_databases which has its own output
+        assert captured.out is not None
+
+    def test_stop_instance_other_error(self, capsys):
+        """Test other errors when stopping instance."""
+        mock_client = MagicMock()
+        mock_client.describe_db_instances.side_effect = ClientError(
+            {"Error": {"Code": "ServiceError"}}, "describe_db_instances"
+        )
+
+        _stop_mariadb_instance(mock_client, "test-db")
 
         captured = capsys.readouterr()
-        assert "RDS CLEANUP SUMMARY" in captured.out
-        assert "Aurora Cluster" in captured.out
-        assert "MariaDB Instance" in captured.out
-        assert "Estimated savings" in captured.out
-
-
-class TestCleanupRdsDatabases:
-    """Tests for cleanup_rds_databases function."""
-
-    def test_cleanup_all_databases(self, capsys):
-        """Test full RDS cleanup workflow."""
-        with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup._cleanup_aurora_cluster"):
-            with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup._cleanup_mariadb_instance"):
-                with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup._print_cleanup_summary"):
-                    cleanup_rds_databases()
-
-        captured = capsys.readouterr()
-        assert "AWS RDS Database Cleanup" in captured.out
+        assert "Error" in captured.out

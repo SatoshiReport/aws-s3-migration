@@ -11,17 +11,18 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cleanup_temp_artifacts.categories import Category
-from cleanup_temp_artifacts.core_scanner import Candidate
-from cleanup_temp_artifacts.db_loader import (
-    CacheConfig,
-    DatabaseInfo,
-    ScanContext,
-    _try_load_from_cache,
-    load_candidates_from_db,
-    write_cache_if_needed,
-)
+# pylint: disable=no-name-in-module
+from cleanup_temp_artifacts import categories, core_scanner, db_loader
 from tests.assertions import assert_equal
+
+Category = categories.Category
+Candidate = core_scanner.Candidate
+CacheConfig = db_loader.CacheConfig
+DatabaseInfo = db_loader.DatabaseInfo
+ScanContext = db_loader.ScanContext
+_try_load_from_cache = db_loader._try_load_from_cache  # pylint: disable=protected-access
+load_candidates_from_db = db_loader.load_candidates_from_db
+write_cache_if_needed = db_loader.write_cache_if_needed
 
 
 def _dummy_matcher(path: Path, is_dir: bool) -> bool:  # pylint: disable=unused-argument

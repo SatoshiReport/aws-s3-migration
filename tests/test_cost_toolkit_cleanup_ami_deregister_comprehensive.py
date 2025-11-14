@@ -4,34 +4,32 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk import (
+    bulk_deregister_unused_amis,
     confirm_deregistration,
     deregister_ami,
     get_amis_to_deregister,
     load_aws_credentials,
+    main,
     print_deregistration_summary,
     print_deregistration_warning,
     process_ami_deregistrations,
 )
 
 
-class TestLoadAwsCredentials:
-    """Tests for load_aws_credentials function."""
+def test_load_aws_credentials_calls_setup_credentials():
+    """Test that function calls setup utility."""
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.setup_aws_credentials"
+    ) as mock_setup:
+        mock_setup.return_value = ("key", "secret")
 
-    def test_calls_setup_credentials(self):
-        """Test that function calls setup utility."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.setup_aws_credentials"
-        ) as mock_setup:
-            mock_setup.return_value = ("key", "secret")
+        result = load_aws_credentials()
 
-            result = load_aws_credentials()
-
-            mock_setup.assert_called_once()
-            assert result == ("key", "secret")
+        mock_setup.assert_called_once()
+        assert result == ("key", "secret")
 
 
 class TestDeregisterAmi:
@@ -62,52 +60,46 @@ class TestDeregisterAmi:
         assert "Error deregistering" in captured.out
 
 
-class TestGetAmisToDeregister:
-    """Tests for get_amis_to_deregister function."""
+def test_get_amis_to_deregister_returns_list_of_amis():
+    """Test that function returns expected list."""
+    amis = get_amis_to_deregister()
 
-    def test_returns_list_of_amis(self):
-        """Test that function returns expected list."""
-        amis = get_amis_to_deregister()
-
-        assert isinstance(amis, list)
-        assert len(amis) > 0
-        for ami in amis:
-            assert "ami_id" in ami
-            assert "region" in ami
-            assert "name" in ami
-            assert "snapshot" in ami
-            assert "savings" in ami
+    assert isinstance(amis, list)
+    assert len(amis) > 0
+    for ami in amis:
+        assert "ami_id" in ami
+        assert "region" in ami
+        assert "name" in ami
+        assert "snapshot" in ami
+        assert "savings" in ami
 
 
-class TestPrintDeregistrationWarning:
-    """Tests for print_deregistration_warning function."""
+def test_print_deregistration_warning_print_warning(capsys):
+    """Test printing deregistration warning."""
+    amis = [
+        {
+            "ami_id": "ami-1",
+            "region": "us-east-1",
+            "name": "test-ami-1",
+            "snapshot": "snap-1",
+            "savings": 10.0,
+        },
+        {
+            "ami_id": "ami-2",
+            "region": "us-east-2",
+            "name": "test-ami-2",
+            "snapshot": "snap-2",
+            "savings": 5.0,
+        },
+    ]
 
-    def test_print_warning(self, capsys):
-        """Test printing deregistration warning."""
-        amis = [
-            {
-                "ami_id": "ami-1",
-                "region": "us-east-1",
-                "name": "test-ami-1",
-                "snapshot": "snap-1",
-                "savings": 10.0,
-            },
-            {
-                "ami_id": "ami-2",
-                "region": "us-east-2",
-                "name": "test-ami-2",
-                "snapshot": "snap-2",
-                "savings": 5.0,
-            },
-        ]
+    print_deregistration_warning(amis)
 
-        print_deregistration_warning(amis)
-
-        captured = capsys.readouterr()
-        assert "AMI Bulk Deregistration" in captured.out
-        assert "2 unused AMIs" in captured.out
-        assert "$15.00" in captured.out
-        assert "FINAL WARNING" in captured.out
+    captured = capsys.readouterr()
+    assert "AMI Bulk Deregistration" in captured.out
+    assert "2 unused AMIs" in captured.out
+    assert "$15.00" in captured.out
+    assert "FINAL WARNING" in captured.out
 
 
 class TestConfirmDeregistration:
@@ -150,7 +142,7 @@ class TestProcessAmiDeregistrations:
             },
         ]
 
-        with patch("boto3.client") as mock_client:
+        with patch("boto3.client"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.deregister_ami",
                 return_value=True,
@@ -163,7 +155,7 @@ class TestProcessAmiDeregistrations:
         captured = capsys.readouterr()
         assert "Processing ami-1" in captured.out
 
-    def test_process_partial_failures(self, capsys):
+    def test_process_partial_failures(self):
         """Test processing with some failures."""
         amis = [
             {
@@ -251,3 +243,61 @@ class TestPrintDeregistrationSummary:
         captured = capsys.readouterr()
         assert "Successfully deregistered: 0" in captured.out
         assert "No AMIs were successfully deregistered" in captured.out
+
+
+class TestBulkDeregisterUnusedAmis:
+    """Tests for bulk_deregister_unused_amis function."""
+
+    def test_bulk_deregister_cancelled(self, capsys):
+        """Test when user cancels operation."""
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.load_aws_credentials",
+            return_value=("key", "secret"),
+        ):
+            with patch("builtins.input", return_value="NO"):
+                bulk_deregister_unused_amis()
+
+        captured = capsys.readouterr()
+        assert "cancelled" in captured.out
+
+    def test_bulk_deregister_success(self, capsys):
+        """Test successful bulk deregistration."""
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.load_aws_credentials",
+            return_value=("key", "secret"),
+        ):
+            with patch("builtins.input", return_value="DEREGISTER ALL AMIS"):
+                with patch(
+                    "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk."
+                    "process_ami_deregistrations",
+                    return_value=(5, 0, 50.0),
+                ):
+                    bulk_deregister_unused_amis()
+
+        captured = capsys.readouterr()
+        assert "Proceeding with bulk AMI deregistration" in captured.out
+        assert "BULK DEREGISTRATION SUMMARY" in captured.out
+
+
+class TestMain:
+    """Tests for main function."""
+
+    def test_main_success(self):
+        """Test main function successful execution."""
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.bulk_deregister_unused_amis"
+        ):
+            main()
+
+    def test_main_client_error(self, capsys):
+        """Test main function with ClientError."""
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.bulk_deregister_unused_amis",
+            side_effect=ClientError({"Error": {"Code": "AccessDenied"}}, "operation"),
+        ):
+            try:
+                main()
+            except SystemExit as e:
+                assert e.code == 1
+                captured = capsys.readouterr()
+                assert "Script failed" in captured.out

@@ -1,10 +1,9 @@
-"""Comprehensive tests for aws_global_accelerator_cleanup.py."""
+"""Comprehensive tests for aws_global_accelerator_cleanup.py - Core operations."""
 
 from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup import (
@@ -12,8 +11,6 @@ from cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup import (
     delete_listeners,
     disable_accelerator,
     list_accelerators,
-    print_cleanup_summary,
-    process_single_accelerator,
 )
 
 
@@ -118,7 +115,8 @@ class TestDisableAccelerator:
                 mock_client.return_value = mock_ga
 
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.MAX_ACCELERATOR_WAIT_SECONDS",
+                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup."
+                    "MAX_ACCELERATOR_WAIT_SECONDS",
                     1,
                 ):
                     result = disable_accelerator(
@@ -150,7 +148,7 @@ class TestDisableAccelerator:
 class TestDeleteListeners:
     """Tests for delete_listeners function."""
 
-    def test_delete_listeners_with_endpoint_groups(self, capsys):
+    def test_delete_listeners_with_endpoint_groups(self):
         """Test deleting listeners with endpoint groups."""
         with patch("boto3.client") as mock_client:
             with patch("time.sleep"):
@@ -169,7 +167,7 @@ class TestDeleteListeners:
                 mock_ga.delete_endpoint_group.assert_called_once()
                 mock_ga.delete_listener.assert_called_once()
 
-    def test_delete_listeners_no_endpoint_groups(self, capsys):
+    def test_delete_listeners_no_endpoint_groups(self):
         """Test deleting listeners without endpoint groups."""
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
@@ -232,131 +230,3 @@ class TestDeleteAccelerator:
             assert result is False
             captured = capsys.readouterr()
             assert "Error deleting accelerator" in captured.out
-
-
-class TestProcessSingleAccelerator:
-    """Tests for process_single_accelerator function."""
-
-    def test_process_accelerator_success(self, capsys):
-        """Test successful processing of single accelerator."""
-        accelerator = {
-            "AcceleratorArn": "arn:aws:accelerator/abc",
-            "Name": "test-accelerator",
-            "Status": "DEPLOYED",
-            "Enabled": True,
-        }
-
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.disable_accelerator",
-            return_value=True,
-        ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.delete_listeners",
-                return_value=True,
-            ):
-                with patch(
-                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.delete_accelerator",
-                    return_value=True,
-                ):
-                    success, cost = process_single_accelerator(accelerator)
-
-        assert success is True
-        assert cost == 18.0
-        captured = capsys.readouterr()
-        assert "Successfully deleted" in captured.out
-
-    def test_process_accelerator_disable_fails(self, capsys):
-        """Test when disabling accelerator fails."""
-        accelerator = {
-            "AcceleratorArn": "arn:aws:accelerator/abc",
-            "Name": "test-accelerator",
-            "Status": "DEPLOYED",
-            "Enabled": True,
-        }
-
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.disable_accelerator",
-            return_value=False,
-        ):
-            success, cost = process_single_accelerator(accelerator)
-
-        assert success is False
-        assert cost == 18.0
-
-    def test_process_accelerator_delete_listeners_fails(self, capsys):
-        """Test when deleting listeners fails."""
-        accelerator = {
-            "AcceleratorArn": "arn:aws:accelerator/abc",
-            "Name": "test-accelerator",
-            "Status": "DEPLOYED",
-            "Enabled": True,
-        }
-
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.disable_accelerator",
-            return_value=True,
-        ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.delete_listeners",
-                return_value=False,
-            ):
-                success, cost = process_single_accelerator(accelerator)
-
-        assert success is False
-
-    def test_process_accelerator_unnamed(self, capsys):
-        """Test processing accelerator without name."""
-        accelerator = {
-            "AcceleratorArn": "arn:aws:accelerator/abc",
-            "Status": "DEPLOYED",
-            "Enabled": False,
-        }
-
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.disable_accelerator",
-            return_value=True,
-        ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.delete_listeners",
-                return_value=True,
-            ):
-                with patch(
-                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.delete_accelerator",
-                    return_value=True,
-                ):
-                    success, cost = process_single_accelerator(accelerator)
-
-        captured = capsys.readouterr()
-        assert "Unnamed" in captured.out
-
-
-class TestPrintCleanupSummary:
-    """Tests for print_cleanup_summary function."""
-
-    def test_print_summary_with_deletions(self, capsys):
-        """Test summary with successful deletions."""
-        print_cleanup_summary(5, 4, 72.0)
-
-        captured = capsys.readouterr()
-        assert "CLEANUP SUMMARY" in captured.out
-        assert "Total accelerators processed: 5" in captured.out
-        assert "Successfully deleted: 4" in captured.out
-        assert "$72.00" in captured.out
-        assert "IMPORTANT NOTES" in captured.out
-
-    def test_print_summary_no_deletions(self, capsys):
-        """Test summary with no deletions."""
-        print_cleanup_summary(2, 0, 0.0)
-
-        captured = capsys.readouterr()
-        assert "CLEANUP SUMMARY" in captured.out
-        assert "No accelerators were successfully deleted" in captured.out
-
-    def test_print_summary_partial_success(self, capsys):
-        """Test summary with partial success."""
-        print_cleanup_summary(3, 2, 36.0)
-
-        captured = capsys.readouterr()
-        assert "Total accelerators processed: 3" in captured.out
-        assert "Successfully deleted: 2" in captured.out
-        assert "$36.00" in captured.out
