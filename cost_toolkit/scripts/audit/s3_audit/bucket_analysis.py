@@ -9,19 +9,16 @@ from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
+
 
 def get_bucket_region(bucket_name):
     """Get the region where a bucket is located"""
     try:
-        s3_client = boto3.client("s3")
-        response = s3_client.get_bucket_location(Bucket=bucket_name)
-        region = response.get("LocationConstraint")
-        # us-east-1 returns None for LocationConstraint
+        return get_bucket_location(bucket_name)
     except ClientError as e:
         print(f"Error getting region for bucket {bucket_name}: {e}")
         return "us-east-1"
-
-    return region if region else "us-east-1"
 
 
 def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):

@@ -7,22 +7,11 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.aws_common import get_default_regions
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 # Constants
 OLD_SNAPSHOT_AGE_DAYS = 30
-
-
-def get_all_regions():
-    """Get all available AWS regions"""
-    try:
-        ec2 = boto3.client("ec2", region_name="us-east-1")
-        response = ec2.describe_regions()
-        return [region["RegionName"] for region in response["Regions"]]
-    except ClientError as e:
-        print(f"Error getting regions: {e}")
-        return get_default_regions()
 
 
 def _calculate_volume_cost(size_gb, volume_type):

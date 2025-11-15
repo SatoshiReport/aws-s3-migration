@@ -15,23 +15,22 @@ from tests.assertions import assert_equal
 
 def test_get_bucket_region_us_east_1():
     """Test get_bucket_region returns us-east-1 when LocationConstraint is None."""
-    with patch("cost_toolkit.scripts.audit.s3_audit.bucket_analysis.boto3") as mock_boto:
-        mock_client = MagicMock()
-        mock_boto.client.return_value = mock_client
-        mock_client.get_bucket_location.return_value = {"LocationConstraint": None}
+    with patch(
+        "cost_toolkit.scripts.audit.s3_audit.bucket_analysis.get_bucket_location"
+    ) as mock_get_location:
+        mock_get_location.return_value = "us-east-1"
 
         region = get_bucket_region("test-bucket")
         assert_equal(region, "us-east-1")
-        mock_boto.client.assert_called_once_with("s3")
-        mock_client.get_bucket_location.assert_called_once_with(Bucket="test-bucket")
+        mock_get_location.assert_called_once_with("test-bucket")
 
 
 def test_get_bucket_region_specific_region():
     """Test get_bucket_region returns the correct region."""
-    with patch("cost_toolkit.scripts.audit.s3_audit.bucket_analysis.boto3") as mock_boto:
-        mock_client = MagicMock()
-        mock_boto.client.return_value = mock_client
-        mock_client.get_bucket_location.return_value = {"LocationConstraint": "us-west-2"}
+    with patch(
+        "cost_toolkit.scripts.audit.s3_audit.bucket_analysis.get_bucket_location"
+    ) as mock_get_location:
+        mock_get_location.return_value = "us-west-2"
 
         region = get_bucket_region("test-bucket")
         assert_equal(region, "us-west-2")
@@ -39,11 +38,11 @@ def test_get_bucket_region_specific_region():
 
 def test_get_bucket_region_client_error():
     """Test get_bucket_region returns us-east-1 on ClientError."""
-    with patch("cost_toolkit.scripts.audit.s3_audit.bucket_analysis.boto3") as mock_boto:
-        mock_client = MagicMock()
-        mock_boto.client.return_value = mock_client
-        mock_client.get_bucket_location.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchBucket", "Message": "The bucket does not exist"}},
+    with patch(
+        "cost_toolkit.scripts.audit.s3_audit.bucket_analysis.get_bucket_location"
+    ) as mock_get_location:
+        mock_get_location.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied"}},
             "GetBucketLocation",
         )
 

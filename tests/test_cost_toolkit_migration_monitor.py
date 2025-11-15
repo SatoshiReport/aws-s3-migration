@@ -12,15 +12,29 @@ from cost_toolkit.scripts.migration.aws_migration_monitor import (
     _print_cost_summary,
     main,
     monitor_migration,
-    setup_aws_credentials,
 )
 
 
-def test_setup_credentials_calls_utils():
-    """Test credentials setup delegates to aws_utils."""
-    with patch("cost_toolkit.scripts.migration.aws_migration_monitor.aws_utils") as mock_utils:
-        setup_aws_credentials()
-    mock_utils.setup_aws_credentials.assert_called_once()
+@patch("cost_toolkit.scripts.migration.aws_migration_monitor._print_cost_summary")
+@patch("cost_toolkit.scripts.migration.aws_migration_monitor._check_migration_log")
+@patch("cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents")
+@patch("cost_toolkit.scripts.migration.aws_migration_monitor.aws_utils.setup_aws_credentials")
+@patch("cost_toolkit.scripts.migration.aws_migration_monitor.boto3.client")
+def test_setup_credentials_calls_utils(
+    mock_boto_client,
+    mock_setup_creds,
+    _mock_check_bucket,
+    _mock_check_log,
+    _mock_cost_summary,
+):
+    """monitor_migration should initialize shared credentials."""
+    mock_s3 = MagicMock()
+    mock_boto_client.return_value = mock_s3
+
+    monitor_migration()
+
+    mock_setup_creds.assert_called_once()
+    mock_boto_client.assert_called_once_with("s3", region_name="eu-west-2")
 
 
 class TestCheckBucketContents:
@@ -205,18 +219,17 @@ class TestMonitorMigration:
 
     def test_monitor_migration_success(self, capsys):
         """Test successful migration monitoring."""
-        with patch("cost_toolkit.scripts.migration.aws_migration_monitor.setup_aws_credentials"):
-            with patch("boto3.client") as mock_client:
-                mock_s3 = MagicMock()
-                mock_s3.list_objects_v2.return_value = {
-                    "Contents": [{"Key": "home/file.txt", "Size": 1024}]
-                }
-                mock_response = MagicMock()
-                mock_response.read.return_value = b"Migration log"
-                mock_s3.get_object.return_value = {"Body": mock_response}
-                mock_client.return_value = mock_s3
+        with patch("boto3.client") as mock_client:
+            mock_s3 = MagicMock()
+            mock_s3.list_objects_v2.return_value = {
+                "Contents": [{"Key": "home/file.txt", "Size": 1024}]
+            }
+            mock_response = MagicMock()
+            mock_response.read.return_value = b"Migration log"
+            mock_s3.get_object.return_value = {"Body": mock_response}
+            mock_client.return_value = mock_s3
 
-                monitor_migration()
+            monitor_migration()
 
         captured = capsys.readouterr()
         assert "AWS Migration Monitor" in captured.out
@@ -224,52 +237,49 @@ class TestMonitorMigration:
 
     def test_monitor_migration_handles_error(self, capsys):
         """Test error handling during migration monitoring."""
-        with patch("cost_toolkit.scripts.migration.aws_migration_monitor.setup_aws_credentials"):
-            with patch("boto3.client") as mock_client:
-                with patch(
-                    "cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents"
-                ) as mock_check:
-                    mock_check.side_effect = ClientError(
-                        {"Error": {"Code": "ServiceError"}}, "list_objects_v2"
-                    )
-                    mock_s3 = MagicMock()
-                    mock_client.return_value = mock_s3
+        with patch("boto3.client") as mock_client:
+            with patch(
+                "cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents"
+            ) as mock_check:
+                mock_check.side_effect = ClientError(
+                    {"Error": {"Code": "ServiceError"}}, "list_objects_v2"
+                )
+                mock_s3 = MagicMock()
+                mock_client.return_value = mock_s3
 
-                    monitor_migration()
+                monitor_migration()
 
         captured = capsys.readouterr()
         assert "Error monitoring migration" in captured.out
 
     def test_monitor_uses_correct_region(self):
         """Test monitor uses correct AWS region."""
-        with patch("cost_toolkit.scripts.migration.aws_migration_monitor.setup_aws_credentials"):
-            with patch("boto3.client") as mock_client:
-                mock_s3 = MagicMock()
-                mock_s3.list_objects_v2.return_value = {}
-                mock_client.return_value = mock_s3
+        with patch("boto3.client") as mock_client:
+            mock_s3 = MagicMock()
+            mock_s3.list_objects_v2.return_value = {}
+            mock_client.return_value = mock_s3
 
-                monitor_migration()
+            monitor_migration()
 
         mock_client.assert_called_once_with("s3", region_name="eu-west-2")
 
     def test_monitor_calls_all_checks(self):
         """Test monitor calls all check functions."""
-        with patch("cost_toolkit.scripts.migration.aws_migration_monitor.setup_aws_credentials"):
-            with patch("boto3.client") as mock_client:
+        with patch("boto3.client") as mock_client:
+            with patch(
+                "cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents"
+            ) as mock_bucket:
                 with patch(
-                    "cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents"
-                ) as mock_bucket:
+                    "cost_toolkit.scripts.migration.aws_migration_monitor._check_migration_log"
+                ) as mock_log:
                     with patch(
-                        "cost_toolkit.scripts.migration.aws_migration_monitor._check_migration_log"
-                    ) as mock_log:
-                        with patch(
-                            "cost_toolkit.scripts.migration.aws_migration_monitor."
-                            "_print_cost_summary"
-                        ) as mock_summary:
-                            mock_s3 = MagicMock()
-                            mock_client.return_value = mock_s3
+                        "cost_toolkit.scripts.migration.aws_migration_monitor."
+                        "_print_cost_summary"
+                    ) as mock_summary:
+                        mock_s3 = MagicMock()
+                        mock_client.return_value = mock_s3
 
-                            monitor_migration()
+                        monitor_migration()
 
         mock_bucket.assert_called_once()
         mock_log.assert_called_once()

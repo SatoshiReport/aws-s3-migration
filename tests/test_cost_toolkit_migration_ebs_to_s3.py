@@ -16,15 +16,36 @@ from cost_toolkit.scripts.migration.aws_ebs_to_s3_migration import (
     _write_migration_script,
     create_s3_bucket_and_migrate,
     main,
-    setup_aws_credentials,
 )
 
 
-def test_setup_credentials_calls_utils():
-    """Test credentials setup delegates to aws_utils."""
-    with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils") as mock_utils:
-        setup_aws_credentials()
-    mock_utils.setup_aws_credentials.assert_called_once()
+@patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._print_next_steps")
+@patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._write_migration_script")
+@patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._generate_migration_script")
+@patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._display_volume_info")
+@patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._create_s3_bucket")
+@patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials")
+@patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.boto3.client")
+def test_setup_credentials_calls_utils(
+    mock_boto_client,
+    mock_setup_creds,
+    mock_create_bucket,
+    mock_display_volume_info,
+    mock_generate_script,
+    _mock_write_script,
+    _mock_print_next_steps,
+):
+    """create_s3_bucket_and_migrate should load credentials before running."""
+    mock_generate_script.return_value = "#!/bin/bash\n echo test"
+    mock_s3 = MagicMock()
+    mock_ec2 = MagicMock()
+    mock_boto_client.side_effect = [mock_s3, mock_ec2]
+
+    create_s3_bucket_and_migrate()
+
+    mock_setup_creds.assert_called_once()
+    mock_create_bucket.assert_called_once_with(mock_s3, "aws-user-files-backup-london")
+    mock_display_volume_info.assert_called_once_with(mock_ec2)
 
 
 def test_print_header_output(capsys):
@@ -53,7 +74,7 @@ class TestCreateS3Bucket:
         assert "CREATING S3 BUCKET" in captured.out
         assert "test-bucket" in captured.out
         assert "eu-west-2" in captured.out
-        assert "S3 bucket created successfully" in captured.out
+        assert "Created S3 bucket: test-bucket" in captured.out
 
     def test_create_bucket_already_exists(self, capsys):
         """Test when bucket already exists."""
@@ -255,7 +276,9 @@ class TestCreateS3BucketAndMigrate:
 
     def test_create_and_migrate_success(self, capsys):
         """Test successful bucket creation and script generation."""
-        with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"
+        ):
             with patch("boto3.client") as mock_client:
                 with patch("builtins.open", create=True):
                     with patch("os.chmod"):
@@ -271,7 +294,9 @@ class TestCreateS3BucketAndMigrate:
 
     def test_create_and_migrate_handles_error(self, capsys):
         """Test error handling during setup."""
-        with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"
+        ):
             with patch("boto3.client") as mock_client:
                 mock_s3 = MagicMock()
                 mock_s3.create_bucket.side_effect = ClientError(
@@ -286,7 +311,9 @@ class TestCreateS3BucketAndMigrate:
 
     def test_create_and_migrate_uses_correct_region(self):
         """Test correct AWS region is used."""
-        with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"
+        ):
             with patch("boto3.client") as mock_client:
                 with patch("builtins.open", create=True):
                     with patch("os.chmod"):
@@ -306,7 +333,9 @@ class TestCreateS3BucketAndMigrate:
 
     def test_create_and_migrate_calls_all_functions(self):
         """Test all helper functions are called."""
-        with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"
+        ):
             with patch("boto3.client") as mock_client:
                 with (
                     patch(

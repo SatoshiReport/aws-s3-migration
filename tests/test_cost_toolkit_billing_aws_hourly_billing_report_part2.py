@@ -161,17 +161,14 @@ class TestMain:
         mod = "cost_toolkit.scripts.billing.aws_hourly_billing_report"
         with (
             patch(f"{mod}.clear_screen") as mock_clear_screen,
-            patch(f"{mod}.setup_aws_credentials") as mock_setup_creds,
             patch(f"{mod}.get_hourly_billing_data") as mock_get_data,
             patch(f"{mod}.format_hourly_billing_report") as mock_format_report,
         ):
-            mock_setup_creds.return_value = True
             mock_get_data.return_value = ({"ResultsByTime": []}, {"ResultsByTime": []})
 
             main()
 
             mock_clear_screen.assert_called_once()
-            mock_setup_creds.assert_called_once()
             mock_get_data.assert_called_once()
             mock_format_report.assert_called_once()
 
@@ -179,23 +176,16 @@ class TestMain:
             assert "AWS HOURLY BILLING REPORT" in captured.out
 
     @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.clear_screen")
-    @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.setup_aws_credentials")
-    def test_main_no_credentials(self, mock_setup_creds, mock_clear_screen):
+    def test_main_no_credentials(self, mock_clear_screen):
         """Test main function with no credentials."""
-        mock_setup_creds.return_value = False
-
         main()
 
         mock_clear_screen.assert_called_once()
 
     @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.clear_screen")
-    @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.setup_aws_credentials")
     @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.get_hourly_billing_data")
-    def test_main_failed_data_retrieval(
-        self, mock_get_data, mock_setup_creds, _mock_clear_screen, capsys
-    ):
+    def test_main_failed_data_retrieval(self, mock_get_data, _mock_clear_screen, capsys):
         """Test main function with failed data retrieval."""
-        mock_setup_creds.return_value = True
         mock_get_data.return_value = (None, None)
 
         main()
@@ -208,11 +198,9 @@ class TestMain:
         mod = "cost_toolkit.scripts.billing.aws_hourly_billing_report"
         with (
             patch(f"{mod}.clear_screen"),
-            patch(f"{mod}.setup_aws_credentials") as mock_setup_creds,
             patch(f"{mod}.get_hourly_billing_data") as mock_get_data,
             patch(f"{mod}.format_hourly_billing_report") as mock_format_report,
         ):
-            mock_setup_creds.return_value = True
             mock_get_data.return_value = ({"ResultsByTime": []}, None)
 
             main()
@@ -226,11 +214,9 @@ class TestMain:
         mod = "cost_toolkit.scripts.billing.aws_hourly_billing_report"
         with (
             patch(f"{mod}.clear_screen"),
-            patch(f"{mod}.setup_aws_credentials") as mock_setup_creds,
             patch(f"{mod}.get_hourly_billing_data") as mock_get_data,
             patch(f"{mod}.format_hourly_billing_report"),
         ):
-            mock_setup_creds.return_value = True
             mock_get_data.return_value = ({"ResultsByTime": []}, {"ResultsByTime": []})
 
             main()

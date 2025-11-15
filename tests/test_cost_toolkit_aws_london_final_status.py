@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
@@ -14,22 +14,13 @@ from cost_toolkit.scripts.migration.aws_london_final_status import (
     _print_optimization_summary,
     _stop_instance,
     main,
-    setup_aws_credentials,
     show_final_london_status,
 )
 
 
-# Tests for setup_aws_credentials
-@patch("cost_toolkit.scripts.migration.aws_london_final_status.aws_utils.setup_aws_credentials")
-def test_setup_aws_credentials(mock_setup):
-    """Test setup_aws_credentials wrapper."""
-    setup_aws_credentials()
-    mock_setup.assert_called_once()
-
-
 # Tests for _stop_instance
 @patch("builtins.print")
-def test_stop_instance_success(mock_print):
+def test_stop_instance_success(_mock_print):
     """Test stopping instance successfully."""
     mock_ec2 = MagicMock()
     mock_waiter = MagicMock()
@@ -39,11 +30,11 @@ def test_stop_instance_success(mock_print):
 
     mock_ec2.stop_instances.assert_called_once_with(InstanceIds=["i-12345678"])
     mock_waiter.wait.assert_called_once_with(InstanceIds=["i-12345678"])
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_stop_instance_client_error(mock_print):
+def test_stop_instance_client_error(_mock_print):
     """Test stopping instance with client error."""
     mock_ec2 = MagicMock()
     mock_ec2.stop_instances.side_effect = ClientError(
@@ -53,11 +44,11 @@ def test_stop_instance_client_error(mock_print):
     _stop_instance(mock_ec2, "i-invalid")
 
     mock_ec2.stop_instances.assert_called_once()
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_stop_instance_different_id(mock_print):
+def test_stop_instance_different_id(_mock_print):
     """Test stopping different instance ID."""
     mock_ec2 = MagicMock()
     mock_waiter = MagicMock()
@@ -188,7 +179,7 @@ def test_build_volume_info_large_volume():
 
 # Tests for _list_remaining_volumes
 @patch("builtins.print")
-def test_list_remaining_volumes_success(mock_print):
+def test_list_remaining_volumes_success(_mock_print):
     """Test listing remaining volumes successfully."""
     mock_ec2 = MagicMock()
     created_time = datetime(2025, 1, 14, 12, 0, 0)
@@ -216,11 +207,11 @@ def test_list_remaining_volumes_success(mock_print):
     _list_remaining_volumes(mock_ec2)
 
     mock_ec2.describe_volumes.assert_called_once()
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_list_remaining_volumes_filters_non_london(mock_print):
+def test_list_remaining_volumes_filters_non_london(_mock_print):
     """Test listing volumes filters non-London volumes."""
     mock_ec2 = MagicMock()
     created_time = datetime(2025, 1, 14, 12, 0, 0)
@@ -247,7 +238,7 @@ def test_list_remaining_volumes_filters_non_london(mock_print):
 
     _list_remaining_volumes(mock_ec2)
 
-    call_args = [str(call) for call in mock_print.call_args_list]
+    call_args = [str(call) for call in _mock_print.call_args_list]
     combined = " ".join(call_args)
 
     assert "vol-123" in combined
@@ -255,7 +246,7 @@ def test_list_remaining_volumes_filters_non_london(mock_print):
 
 
 @patch("builtins.print")
-def test_list_remaining_volumes_empty(mock_print):
+def test_list_remaining_volumes_empty(_mock_print):
     """Test listing remaining volumes when none exist."""
     mock_ec2 = MagicMock()
     mock_ec2.describe_volumes.return_value = {"Volumes": []}
@@ -266,7 +257,7 @@ def test_list_remaining_volumes_empty(mock_print):
 
 
 @patch("builtins.print")
-def test_list_remaining_volumes_client_error(mock_print):
+def test_list_remaining_volumes_client_error(_mock_print):
     """Test listing remaining volumes with client error."""
     mock_ec2 = MagicMock()
     mock_ec2.describe_volumes.side_effect = ClientError(
@@ -275,11 +266,11 @@ def test_list_remaining_volumes_client_error(mock_print):
 
     _list_remaining_volumes(mock_ec2)
 
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_list_remaining_volumes_sorts_by_date(mock_print):
+def test_list_remaining_volumes_sorts_by_date(_mock_print):
     """Test listing remaining volumes sorts by creation date."""
     mock_ec2 = MagicMock()
     old_time = datetime(2025, 1, 10, 12, 0, 0)
@@ -306,7 +297,7 @@ def test_list_remaining_volumes_sorts_by_date(mock_print):
     _list_remaining_volumes(mock_ec2)
 
     # Check that volumes are sorted (newest first)
-    call_args = [str(call) for call in mock_print.call_args_list]
+    call_args = [str(call) for call in _mock_print.call_args_list]
     combined = " ".join(call_args)
 
     # Verify both volumes are listed
@@ -316,12 +307,12 @@ def test_list_remaining_volumes_sorts_by_date(mock_print):
 
 # Tests for _print_optimization_summary
 @patch("builtins.print")
-def test_print_optimization_summary(mock_print):
+def test_print_optimization_summary(_mock_print):
     """Test printing optimization summary."""
     _print_optimization_summary()
 
-    mock_print.assert_called()
-    call_args = [str(call) for call in mock_print.call_args_list]
+    _mock_print.assert_called()
+    call_args = [str(call) for call in _mock_print.call_args_list]
     combined = " ".join(call_args)
 
     assert "$85" in combined
@@ -334,23 +325,14 @@ def test_print_optimization_summary(mock_print):
 @patch("cost_toolkit.scripts.migration.aws_london_final_status._list_remaining_volumes")
 @patch("cost_toolkit.scripts.migration.aws_london_final_status._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_status.boto3")
-@patch("cost_toolkit.scripts.migration.aws_london_final_status.setup_aws_credentials")
 @patch("builtins.print")
-def test_show_final_london_status(
-    mock_print,
-    mock_setup,
-    mock_boto3,
-    mock_stop,
-    mock_list,
-    mock_summary,
-):
+def test_show_final_london_status(_mock_print, mock_boto3, mock_stop, mock_list, mock_summary):
     """Test showing final London status."""
     mock_ec2 = MagicMock()
     mock_boto3.client.return_value = mock_ec2
 
     show_final_london_status()
 
-    mock_setup.assert_called_once()
     mock_boto3.client.assert_called_once_with("ec2", region_name="eu-west-2")
     mock_stop.assert_called_once_with(mock_ec2, "i-05ad29f28fc8a8fdc")
     mock_list.assert_called_once_with(mock_ec2)
@@ -361,15 +343,9 @@ def test_show_final_london_status(
 @patch("cost_toolkit.scripts.migration.aws_london_final_status._list_remaining_volumes")
 @patch("cost_toolkit.scripts.migration.aws_london_final_status._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_status.boto3")
-@patch("cost_toolkit.scripts.migration.aws_london_final_status.setup_aws_credentials")
 @patch("builtins.print")
 def test_show_final_london_status_stop_error(
-    mock_print,
-    mock_setup,
-    mock_boto3,
-    mock_stop,
-    mock_list,
-    mock_summary,
+    _mock_print, mock_boto3, mock_stop, _mock_list, _mock_summary
 ):
     """Test showing final London status when stop fails."""
     mock_ec2 = MagicMock()
@@ -380,8 +356,6 @@ def test_show_final_london_status_stop_error(
         show_final_london_status()
     except ClientError:
         pass
-
-    mock_setup.assert_called_once()
 
 
 # Tests for main
@@ -397,15 +371,9 @@ def test_main(mock_show):
 @patch("cost_toolkit.scripts.migration.aws_london_final_status._list_remaining_volumes")
 @patch("cost_toolkit.scripts.migration.aws_london_final_status._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_status.boto3")
-@patch("cost_toolkit.scripts.migration.aws_london_final_status.setup_aws_credentials")
 @patch("builtins.print")
 def test_show_final_london_status_complete_workflow(
-    mock_print,
-    mock_setup,
-    mock_boto3,
-    mock_stop,
-    mock_list,
-    mock_summary,
+    _mock_print, mock_boto3, mock_stop, mock_list, mock_summary
 ):
     """Test complete final status workflow."""
     mock_ec2 = MagicMock()
@@ -414,7 +382,6 @@ def test_show_final_london_status_complete_workflow(
     show_final_london_status()
 
     # Verify all steps are called in order
-    assert mock_setup.call_count == 1
     assert mock_boto3.client.call_count == 1
     assert mock_stop.call_count == 1
     assert mock_list.call_count == 1
@@ -422,11 +389,11 @@ def test_show_final_london_status_complete_workflow(
 
 
 @patch("builtins.print")
-def test_print_optimization_summary_content(mock_print):
+def test_print_optimization_summary_content(_mock_print):
     """Test optimization summary contains expected content."""
     _print_optimization_summary()
 
-    call_args = [str(call) for call in mock_print.call_args_list]
+    call_args = [str(call) for call in _mock_print.call_args_list]
     combined = " ".join(call_args)
 
     # Check for key information

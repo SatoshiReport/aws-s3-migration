@@ -104,7 +104,7 @@ def main():
         module.find_unused_modules(".", ["existing"])
         shared_module = sys.modules["_ci_shared_unused_module_guard"]
         assert shared_module.LAST_EXCLUDES[0] == "existing"
-        assert "_v2" not in module.SUSPICIOUS_PATTERNS
+        assert "_v2" not in shared_module.SUSPICIOUS_PATTERNS
     finally:
         if original_content is not None:
             config_file.write_text(original_content, encoding="utf-8")
@@ -212,6 +212,7 @@ def main():
         module = _import_shim(tmp_path, monkeypatch, shared_code)
 
         # Call find_suspicious_duplicates to trigger the filtering
+        # Must call through the shim module which has the wrapped version
         results = module.find_suspicious_duplicates(".")
 
         # Should have filtered out excluded_file.py

@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Sequence
 
+from cost_toolkit.common.format_utils import format_bytes
 from find_compressible.analysis import CandidateFile
-from find_compressible.cache import format_size
 from find_compressible.compression import compress_with_xz, verify_compressed_file
 
 
@@ -40,6 +40,20 @@ def _process_single_compression(
         return False, 0, str(exc)
 
 
+def _format_candidate_line(prefix: str, candidate: CandidateFile) -> str:
+    """Return formatted header line for a candidate."""
+    size_str = format_bytes(candidate.size_bytes, use_comma_separators=True)
+    return f"{prefix} {size_str:>12}  {candidate.path}  (bucket={candidate.bucket})"
+
+
+def _print_compression_success(candidate: CandidateFile, compressed_size: int) -> None:
+    """Print compression success details."""
+    compressed_path = Path(str(candidate.path) + ".xz")
+    savings = candidate.size_bytes - compressed_size
+    savings_str = format_bytes(savings, use_comma_separators=True)
+    print(f"    → Compressed to {compressed_path} (saved {savings_str}, verified with xz -t)")
+
+
 def _report_single_candidate(
     candidate: CandidateFile,
     idx: int,
@@ -57,10 +71,7 @@ def _report_single_candidate(
         stats["skipped_no_extension"] += 1
         return
     reported_extensions.add(ext)
-    print(
-        f"{prefix} {format_size(candidate.size_bytes):>12}  {candidate.path}  "
-        f"(bucket={candidate.bucket})"
-    )
+    print(_format_candidate_line(prefix, candidate))
     if not compress_enabled:
         return
 
@@ -74,12 +85,7 @@ def _report_single_candidate(
 
     compression_stats.compressed_files += 1
     compression_stats.total_compressed_space += compressed_size
-    savings = candidate.size_bytes - compressed_size
-    compressed_path = Path(str(candidate.path) + ".xz")
-    print(
-        f"    → Compressed to {compressed_path} (saved {format_size(savings)}, "
-        f"verified with xz -t)"
-    )
+    _print_compression_success(candidate, compressed_size)
 
 
 def report_and_compress_candidates(
@@ -130,7 +136,8 @@ def print_scan_summary(
     print(f"Rows examined:   {stats['rows_examined']:,}")
     print(f"Candidates:      {stats['candidates_found']:,}")
     print(f"Reported (desc): {total_reported:,}")
-    print(f"Total size:      {format_size(total_bytes)}")
+    total_size_str = format_bytes(total_bytes, use_comma_separators=True)
+    print(f"Total size:      {total_size_str}")
     print(f"Missing files:   {stats['missing_local_files']:,}")
     print(f"Skipped images:  {stats['skipped_image']:,}")
     print(f"Skipped videos:  {stats['skipped_video']:,}")
@@ -155,9 +162,12 @@ def print_compression_summary(
     print("\nCompression summary")
     print("===================")
     print(f"Files compressed: {compressed_files:,}")
-    print(f"Total original:   {format_size(total_original_space)}")
-    print(f"Compressed size:  {format_size(total_compressed_space)}")
+    original_str = format_bytes(total_original_space, use_comma_separators=True)
+    compressed_str = format_bytes(total_compressed_space, use_comma_separators=True)
+    print(f"Total original:   {original_str}")
+    print(f"Compressed size:  {compressed_str}")
     space_saved = total_original_space - total_compressed_space
     pct = (space_saved / total_original_space) * 100 if total_original_space > 0 else 0.0
-    print(f"Space saved:      {format_size(space_saved)} ({pct:.2f}% reduction)")
+    space_saved_str = format_bytes(space_saved, use_comma_separators=True)
+    print(f"Space saved:      {space_saved_str} ({pct:.2f}% reduction)")
     print(f"Failures:         {compression_failures:,}")

@@ -6,15 +6,15 @@ from unittest.mock import MagicMock
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion import (
-    _delete_internet_gateways,
-    _delete_nat_gateways,
-    _delete_network_acls,
-    _delete_route_tables,
-    _delete_security_groups,
-    _delete_subnets,
-    _delete_vpc_endpoints,
+from cost_toolkit.common.vpc_cleanup_utils import (
+    delete_internet_gateways as _delete_internet_gateways,
 )
+from cost_toolkit.common.vpc_cleanup_utils import delete_nat_gateways as _delete_nat_gateways
+from cost_toolkit.common.vpc_cleanup_utils import delete_network_acls as _delete_network_acls
+from cost_toolkit.common.vpc_cleanup_utils import delete_route_tables as _delete_route_tables
+from cost_toolkit.common.vpc_cleanup_utils import delete_security_groups as _delete_security_groups
+from cost_toolkit.common.vpc_cleanup_utils import delete_subnets as _delete_subnets
+from cost_toolkit.common.vpc_cleanup_utils import delete_vpc_endpoints as _delete_vpc_endpoints
 
 
 class TestDeleteInternetGateways:

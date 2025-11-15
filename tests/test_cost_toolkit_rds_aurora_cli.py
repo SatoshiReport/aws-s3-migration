@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -53,7 +53,7 @@ def test_validate_choice_zero_max():
 # Tests for _select_instance_for_migration
 @patch("builtins.input", return_value="2")
 @patch("builtins.print")
-def test_select_instance_interactive_valid(mock_print, mock_input):
+def test_select_instance_interactive_valid(_mock_print, mock_input):
     """Test interactive instance selection with valid choice."""
     instances = [
         {
@@ -78,7 +78,7 @@ def test_select_instance_interactive_valid(mock_print, mock_input):
 
 @patch("builtins.input", return_value="0")
 @patch("builtins.print")
-def test_select_instance_interactive_invalid_zero(mock_print, mock_input):
+def test_select_instance_interactive_invalid_zero(_mock_print, _mock_input):
     """Test interactive instance selection with invalid zero choice."""
     instances = [
         {
@@ -96,7 +96,7 @@ def test_select_instance_interactive_invalid_zero(mock_print, mock_input):
 
 @patch("builtins.input", return_value="abc")
 @patch("builtins.print")
-def test_select_instance_interactive_invalid_string(mock_print, mock_input):
+def test_select_instance_interactive_invalid_string(_mock_print, _mock_input2):
     """Test interactive instance selection with invalid string."""
     instances = [
         {
@@ -157,7 +157,7 @@ def test_select_instance_by_identifier_with_region():
 
 
 @patch("builtins.print")
-def test_select_instance_not_found(mock_print):
+def test_select_instance_not_found(_mock_print):
     """Test instance selection when identifier not found."""
     instances = [
         {
@@ -177,7 +177,7 @@ def test_select_instance_not_found(mock_print):
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.estimate_aurora_serverless_cost")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.estimate_rds_monthly_cost")
 @patch("builtins.print")
-def test_print_cost_analysis(mock_print, mock_rds_cost, mock_aurora_cost):
+def test_print_cost_analysis(_mock_print, mock_rds_cost, mock_aurora_cost):
     """Test cost analysis printing."""
     mock_rds_cost.return_value = 120.0
     mock_aurora_cost.return_value = 43.0
@@ -194,7 +194,7 @@ def test_print_cost_analysis(mock_print, mock_rds_cost, mock_aurora_cost):
 # Tests for _confirm_migration
 @patch("builtins.input", return_value="MIGRATE")
 @patch("builtins.print")
-def test_confirm_migration_confirmed(mock_print, mock_input):
+def test_confirm_migration_confirmed(_mock_print, mock_input):
     """Test migration confirmation when user confirms."""
     instance = {"identifier": "db-1"}
 
@@ -206,7 +206,7 @@ def test_confirm_migration_confirmed(mock_print, mock_input):
 
 @patch("builtins.input", return_value="NO")
 @patch("builtins.print")
-def test_confirm_migration_declined(mock_print, mock_input):
+def test_confirm_migration_declined(_mock_print, _mock_input2):
     """Test migration confirmation when user declines."""
     instance = {"identifier": "db-1"}
 
@@ -217,7 +217,7 @@ def test_confirm_migration_declined(mock_print, mock_input):
 
 @patch("builtins.input", return_value="migrate")
 @patch("builtins.print")
-def test_confirm_migration_case_sensitive(mock_print, mock_input):
+def test_confirm_migration_case_sensitive(_mock_print, _mock_input3):
     """Test migration confirmation is case sensitive."""
     instance = {"identifier": "db-1"}
 
@@ -238,10 +238,12 @@ def test_migrate_rds_to_aurora_serverless_success():
             "cost_toolkit.scripts.migration.rds_aurora_migration.cli.discover_rds_instances"
         ) as mock_discover,
         patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli._select_instance_for_migration"
+            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
+            "_select_instance_for_migration"
         ) as mock_select,
         patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.validate_migration_compatibility"
+            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
+            "validate_migration_compatibility"
         ) as mock_validate,
         patch(
             "cost_toolkit.scripts.migration.rds_aurora_migration.cli._print_cost_analysis"
@@ -254,7 +256,8 @@ def test_migrate_rds_to_aurora_serverless_success():
             "cost_toolkit.scripts.migration.rds_aurora_migration.cli.create_rds_snapshot"
         ) as mock_snapshot,
         patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.create_aurora_serverless_cluster"
+            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
+            "create_aurora_serverless_cluster"
         ) as mock_create_cluster,
         patch(
             "cost_toolkit.scripts.migration.rds_aurora_migration.cli.print_migration_results"
@@ -287,7 +290,7 @@ def test_migrate_rds_to_aurora_serverless_success():
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.discover_rds_instances")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.setup_aws_credentials")
 @patch("builtins.print")
-def test_migrate_rds_to_aurora_serverless_no_instances(mock_print, mock_setup, mock_discover):
+def test_migrate_rds_to_aurora_serverless_no_instances(_mock_print, mock_setup, mock_discover):
     """Test migration when no instances found."""
     mock_discover.return_value = []
 
@@ -302,7 +305,7 @@ def test_migrate_rds_to_aurora_serverless_no_instances(mock_print, mock_setup, m
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.setup_aws_credentials")
 @patch("builtins.print")
 def test_migrate_rds_to_aurora_serverless_no_selection(
-    mock_print, mock_setup, mock_discover, mock_select
+    _mock_print, _mock_setup, mock_discover, mock_select
 ):
     """Test migration when no instance selected."""
     mock_discover.return_value = [{"identifier": "db-1"}]
@@ -319,7 +322,7 @@ def test_migrate_rds_to_aurora_serverless_no_selection(
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.setup_aws_credentials")
 @patch("builtins.print")
 def test_migrate_rds_to_aurora_serverless_incompatible(
-    mock_print, mock_setup, mock_discover, mock_select, mock_validate
+    _mock_print, _mock_setup, mock_discover, mock_select, mock_validate
 ):
     """Test migration when instance is incompatible."""
     mock_discover.return_value = [{"identifier": "db-1"}]
@@ -339,7 +342,7 @@ def test_migrate_rds_to_aurora_serverless_incompatible(
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.setup_aws_credentials")
 @patch("builtins.print")
 def test_migrate_rds_to_aurora_serverless_cancelled(
-    mock_print, mock_setup, mock_discover, mock_select, mock_validate, mock_cost, mock_confirm
+    _mock_print, _mock_setup, mock_discover, mock_select, mock_validate, mock_cost, mock_confirm
 ):
     """Test migration when user cancels."""
     mock_discover.return_value = [{"identifier": "db-1"}]
@@ -362,10 +365,12 @@ def test_migrate_rds_to_aurora_serverless_snapshot_error():
             "cost_toolkit.scripts.migration.rds_aurora_migration.cli.discover_rds_instances"
         ) as mock_discover,
         patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli._select_instance_for_migration"
+            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
+            "_select_instance_for_migration"
         ) as mock_select,
         patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.validate_migration_compatibility"
+            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
+            "validate_migration_compatibility"
         ) as mock_validate,
         patch(
             "cost_toolkit.scripts.migration.rds_aurora_migration.cli._print_cost_analysis"

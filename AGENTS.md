@@ -96,6 +96,72 @@ Treat `migration_state_v2.py`, `aws_utils.py`, and the CLI argument contracts as
 - For new guard scripts or config loaders, ship pytest coverage plus golden-files/fixtures to document expected output.
 - Keep runtime artifacts (`s3_migration_state.db`, generated policies) out of git; use temp dirs or pytest fixtures to stage them during tests.
 
+## Code Duplication Policy - CRITICAL
+
+**ALWAYS search for existing implementations before creating new functions.**
+
+### Before Writing Any New Function
+
+1. **Search the codebase first**:
+   ```bash
+   # Search for similar function names
+   grep -r "def function_name" .
+
+   # Search for similar functionality by keyword
+   grep -r "keyword" . | grep "def "
+   ```
+
+2. **Check for common utilities**: Look for existing implementations in helper modules (`aws_utils.py`, `migration_state_v2.py`, etc.) before creating new functions
+
+3. **Use the exploration agent**: When unsure if functionality exists:
+   ```
+   "Search the codebase for functions that process X"
+   "Find all implementations of Y"
+   ```
+
+### When You Find Duplicate Functions
+
+**Consolidate them immediately.** Do NOT add another duplicate.
+
+1. Identify the most complete/tested implementation
+2. Move it to an appropriate shared location if needed (e.g., `aws_utils.py`, new utility module)
+3. Update duplicates to delegate to the canonical version
+4. Add clear documentation about the delegation
+5. Test that behavior is preserved
+
+Example consolidation:
+```python
+# BEFORE: Duplicate implementation
+def process_data(data):
+    return data.strip().lower()
+
+# AFTER: Delegate to canonical
+from aws_utils import normalize_string
+
+def process_data(data):
+    """Delegates to canonical implementation in aws_utils."""
+    return normalize_string(data)
+```
+
+### Leverage Shared Utilities
+
+- **DO**: Create reusable utilities for common AWS operations
+- **DO**: Put shared functions in appropriate modules (`aws_utils.py`, etc.)
+- **DO**: Document and test shared utilities thoroughly
+- **DON'T**: Duplicate logic across CLI scripts
+- **DON'T**: Create script-specific versions of common utilities
+
+### Why This Matters
+
+Duplicate functions cause:
+- **Behavioral drift**: Different parts of code using slightly different logic
+- **Bug multiplication**: Same bug must be fixed in multiple places
+- **Maintenance burden**: Changes must be made in multiple locations
+- **Testing complexity**: Same logic tested multiple times
+- **Code bloat**: Unnecessary increase in codebase size
+
+**Keep it DRY (Don't Repeat Yourself).**
+
 ## Commit & PR Hygiene
 
 - Subjects are short and imperative (`Tighten glacier restore pacing`). Include motivation, impacted scripts, and links to tracking issues in the body.

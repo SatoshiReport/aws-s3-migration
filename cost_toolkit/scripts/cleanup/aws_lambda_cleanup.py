@@ -12,14 +12,9 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts import aws_utils
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def delete_lambda_functions():
     """Delete all Lambda functions across regions"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     # Regions where Lambda functions were detected
     regions = ["us-east-1", "us-east-2", "us-west-2"]

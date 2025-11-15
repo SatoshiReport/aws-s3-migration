@@ -170,7 +170,7 @@ class TestGetEbsVolumesByRegion:
 
             result = get_ebs_volumes_by_region("us-east-1")
 
-            assert result == []
+            assert not result
 
     def test_get_volumes_error(self, capsys):
         """Test error handling during volume retrieval."""
@@ -183,7 +183,7 @@ class TestGetEbsVolumesByRegion:
 
             result = get_ebs_volumes_by_region("us-east-1")
 
-            assert result == []
+            assert not result
             captured = capsys.readouterr()
             assert "Error getting volumes" in captured.out
 
@@ -273,9 +273,9 @@ class TestMain:
 
     def test_main_with_orphaned_volumes(self, capsys):
         """Test main function with orphaned volumes."""
+        audit_mod = "cost_toolkit.scripts.audit.aws_ebs_post_termination_audit"
         with patch(
-            "cost_toolkit.scripts.audit.aws_ebs_post_termination_audit."
-            "check_terminated_instances_volumes",
+            f"{audit_mod}.check_terminated_instances_volumes",
             return_value=[
                 {
                     "volume": {"VolumeId": "vol-123", "MonthlyCost": 5.0},
@@ -291,9 +291,9 @@ class TestMain:
 
     def test_main_without_orphaned_volumes(self, capsys):
         """Test main function without orphaned volumes."""
+        audit_mod = "cost_toolkit.scripts.audit.aws_ebs_post_termination_audit"
         with patch(
-            "cost_toolkit.scripts.audit.aws_ebs_post_termination_audit."
-            "check_terminated_instances_volumes",
+            f"{audit_mod}.check_terminated_instances_volumes",
             return_value=[],
         ):
             main()

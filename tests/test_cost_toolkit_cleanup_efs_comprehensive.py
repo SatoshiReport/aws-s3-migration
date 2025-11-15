@@ -13,17 +13,17 @@ from cost_toolkit.scripts.cleanup.aws_efs_cleanup import (
     _wait_for_mount_targets_deletion,
     delete_efs_resources,
     main,
-    setup_aws_credentials,
 )
 
 
-def test_setup_aws_credentials_calls_shared_setup():
-    """Test that setup calls the shared utility."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_efs_cleanup.aws_utils.setup_aws_credentials"
-    ) as mock_setup:
-        setup_aws_credentials()
-        mock_setup.assert_called_once()
+@patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(0, 0))
+@patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup.aws_utils.setup_aws_credentials")
+def test_delete_efs_resources_calls_shared_setup(mock_setup, mock_process):
+    """delete_efs_resources should load credentials once before processing regions."""
+    delete_efs_resources()
+    mock_setup.assert_called_once()
+    # ensure each configured region is processed
+    assert mock_process.call_count == 2
 
 
 class TestDeleteMountTargets:
@@ -243,11 +243,10 @@ class TestDeleteEfsResources:
 
     def test_delete_resources_multiple_regions(self, capsys):
         """Test deleting resources across multiple regions."""
-        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup.setup_aws_credentials"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(2, 4)
-            ):
-                delete_efs_resources()
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(2, 4)
+        ):
+            delete_efs_resources()
 
         captured = capsys.readouterr()
         assert "EFS Cleanup Summary" in captured.out
@@ -257,27 +256,23 @@ class TestDeleteEfsResources:
 
     def test_delete_resources_no_resources(self, capsys):
         """Test when no resources found."""
-        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup.setup_aws_credentials"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(0, 0)
-            ):
-                delete_efs_resources()
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(0, 0)
+        ):
+            delete_efs_resources()
 
         captured = capsys.readouterr()
         assert "No EFS resources were deleted" in captured.out
 
     def test_delete_resources_handles_errors(self, capsys):
         """Test error handling during resource deletion."""
-        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup.setup_aws_credentials"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region"
-            ) as mock_process:
-                mock_process.side_effect = [
-                    (1, 2),
-                    ClientError({"Error": {"Code": "AccessDenied"}}, "describe_file_systems"),
-                ]
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region") as mock_process:
+            mock_process.side_effect = [
+                (1, 2),
+                ClientError({"Error": {"Code": "AccessDenied"}}, "describe_file_systems"),
+            ]
 
-                delete_efs_resources()
+            delete_efs_resources()
 
         captured = capsys.readouterr()
         assert "Error accessing EFS" in captured.out

@@ -15,10 +15,10 @@ from cleanup_temp_artifacts.reports import (  # pylint: disable=no-name-in-modul
     BYTES_PER_MIB,
     BYTES_PER_TIB,
     delete_paths,
-    format_size,
     print_candidates_report,
     summarise,
 )
+from cost_toolkit.common.format_utils import format_bytes
 from tests.assertions import assert_equal
 
 
@@ -43,59 +43,119 @@ def make_candidate(
     )
 
 
-class TestFormatSize:
-    """Test format_size function for human-readable output."""
+class TestFormatSizeBasic:
+    """Test format_size function - basic units (bytes, KB, MB)."""
 
     def test_format_none(self):
         """Test formatting None returns 'n/a'."""
-        assert_equal(format_size(None), "n/a")
+        assert_equal(
+            format_bytes(None, decimal_places=1, binary_units=False).replace(" ", ""), "n/a"
+        )
 
     def test_format_bytes(self):
         """Test formatting byte values less than 1KB."""
-        assert_equal(format_size(0), "0.0B")
-        assert_equal(format_size(1), "1.0B")
-        assert_equal(format_size(999), "999.0B")
-        assert_equal(format_size(1023), "1023.0B")
+        assert_equal(format_bytes(0, decimal_places=1, binary_units=False).replace(" ", ""), "0.0B")
+        assert_equal(format_bytes(1, decimal_places=1, binary_units=False).replace(" ", ""), "1.0B")
+        assert_equal(
+            format_bytes(999, decimal_places=1, binary_units=False).replace(" ", ""), "999.0B"
+        )
+        assert_equal(
+            format_bytes(1023, decimal_places=1, binary_units=False).replace(" ", ""), "1023.0B"
+        )
 
     def test_format_kilobytes(self):
         """Test formatting kilobyte values."""
-        assert_equal(format_size(BYTES_PER_KIB), "1.0KB")
-        assert_equal(format_size(10 * BYTES_PER_KIB), "10.0KB")
-        assert_equal(format_size(int(1.5 * BYTES_PER_KIB)), "1.5KB")
+        assert_equal(
+            format_bytes(BYTES_PER_KIB, decimal_places=1, binary_units=False).replace(" ", ""),
+            "1.0KB",
+        )
+        assert_equal(
+            format_bytes(10 * BYTES_PER_KIB, decimal_places=1, binary_units=False).replace(" ", ""),
+            "10.0KB",
+        )
+        assert_equal(
+            format_bytes(int(1.5 * BYTES_PER_KIB), decimal_places=1, binary_units=False).replace(
+                " ", ""
+            ),
+            "1.5KB",
+        )
 
     def test_format_megabytes(self):
         """Test formatting megabyte values."""
-        assert_equal(format_size(BYTES_PER_MIB), "1.0MB")
-        assert_equal(format_size(10 * BYTES_PER_MIB), "10.0MB")
-        assert_equal(format_size(int(2.5 * BYTES_PER_MIB)), "2.5MB")
+        assert_equal(
+            format_bytes(BYTES_PER_MIB, decimal_places=1, binary_units=False).replace(" ", ""),
+            "1.0MB",
+        )
+        assert_equal(
+            format_bytes(10 * BYTES_PER_MIB, decimal_places=1, binary_units=False).replace(" ", ""),
+            "10.0MB",
+        )
+        assert_equal(
+            format_bytes(int(2.5 * BYTES_PER_MIB), decimal_places=1, binary_units=False).replace(
+                " ", ""
+            ),
+            "2.5MB",
+        )
+
+
+class TestFormatSizeLarge:
+    """Test format_size function - large units (GB, TB, PB)."""
 
     def test_format_gigabytes(self):
         """Test formatting gigabyte values."""
-        assert_equal(format_size(BYTES_PER_GIB), "1.0GB")
-        assert_equal(format_size(5 * BYTES_PER_GIB), "5.0GB")
-        assert_equal(format_size(int(1.5 * BYTES_PER_GIB)), "1.5GB")
+        assert_equal(
+            format_bytes(BYTES_PER_GIB, decimal_places=1, binary_units=False).replace(" ", ""),
+            "1.0GB",
+        )
+        assert_equal(
+            format_bytes(5 * BYTES_PER_GIB, decimal_places=1, binary_units=False).replace(" ", ""),
+            "5.0GB",
+        )
+        assert_equal(
+            format_bytes(int(1.5 * BYTES_PER_GIB), decimal_places=1, binary_units=False).replace(
+                " ", ""
+            ),
+            "1.5GB",
+        )
 
     def test_format_terabytes(self):
         """Test formatting terabyte values."""
-        assert_equal(format_size(BYTES_PER_TIB), "1.0TB")
-        assert_equal(format_size(2 * BYTES_PER_TIB), "2.0TB")
+        assert_equal(
+            format_bytes(BYTES_PER_TIB, decimal_places=1, binary_units=False).replace(" ", ""),
+            "1.0TB",
+        )
+        assert_equal(
+            format_bytes(2 * BYTES_PER_TIB, decimal_places=1, binary_units=False).replace(" ", ""),
+            "2.0TB",
+        )
 
     def test_format_petabytes(self):
         """Test formatting petabyte values."""
         peta = BYTES_PER_TIB * 1024
-        assert_equal(format_size(peta), "1.0PB")
-        assert_equal(format_size(5 * peta), "5.0PB")
+        assert_equal(
+            format_bytes(peta, decimal_places=1, binary_units=False).replace(" ", ""), "1.0PB"
+        )
+        assert_equal(
+            format_bytes(5 * peta, decimal_places=1, binary_units=False).replace(" ", ""), "5.0PB"
+        )
 
     def test_format_very_large_values(self):
         """Test formatting values beyond petabytes."""
         exa = BYTES_PER_TIB * 1024 * 1024
-        result = format_size(exa)
+        result = format_bytes(exa, decimal_places=1, binary_units=False).replace(" ", "")
         assert result.endswith("PB")
 
     def test_format_precision(self):
         """Test formatting maintains one decimal place."""
-        assert_equal(format_size(1536), "1.5KB")
-        assert_equal(format_size(int(2.7 * BYTES_PER_MIB)), "2.7MB")
+        assert_equal(
+            format_bytes(1536, decimal_places=1, binary_units=False).replace(" ", ""), "1.5KB"
+        )
+        assert_equal(
+            format_bytes(int(2.7 * BYTES_PER_MIB), decimal_places=1, binary_units=False).replace(
+                " ", ""
+            ),
+            "2.7MB",
+        )
 
 
 class TestSummarise:

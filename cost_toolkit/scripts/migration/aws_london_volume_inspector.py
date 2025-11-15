@@ -23,11 +23,6 @@ VOLUME_INSPECTION_COMMANDS = [
 ]
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _print_header(instance_ip):
     """Print the script header and connection information."""
     print("AWS London Volume Content Inspector")
@@ -179,7 +174,7 @@ def _print_recommendations():
 
 def inspect_volumes_via_ssh():
     """Connect to the London instance and inspect volume contents"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     instance_ip = "35.179.157.191"
 

@@ -6,12 +6,14 @@ from unittest.mock import MagicMock, patch
 
 from cost_toolkit.common.aws_common import (
     create_ec2_and_s3_clients,
-    create_ec2_client,
-    create_s3_client,
     get_default_regions,
     get_instance_name,
-    terminate_instance,
 )
+from cost_toolkit.scripts.aws_client_factory import (
+    create_ec2_client,
+    create_s3_client,
+)
+from cost_toolkit.scripts.aws_ec2_operations import terminate_instance
 from tests.assertions import assert_equal
 
 
@@ -49,25 +51,35 @@ def test_create_s3_client(mock_boto_client):
     )
 
 
-@patch("cost_toolkit.common.aws_common.create_s3_client")
-@patch("cost_toolkit.common.aws_common.create_ec2_client")
-def test_create_ec2_and_s3_clients(mock_ec2, mock_s3):
+@patch("boto3.client")
+def test_create_ec2_and_s3_clients(mock_boto_client):
     """Test create_ec2_and_s3_clients creates both clients."""
     mock_ec2_client = MagicMock()
     mock_s3_client = MagicMock()
-    mock_ec2.return_value = mock_ec2_client
-    mock_s3.return_value = mock_s3_client
+    # Return different clients for ec2 and s3
+    mock_boto_client.side_effect = [mock_ec2_client, mock_s3_client]
 
     ec2, s3 = create_ec2_and_s3_clients("us-west-2", "test_key", "test_secret")
 
     assert_equal(ec2, mock_ec2_client)
     assert_equal(s3, mock_s3_client)
-    mock_ec2.assert_called_once_with("us-west-2", "test_key", "test_secret")
-    mock_s3.assert_called_once_with("us-west-2", "test_key", "test_secret")
+    assert mock_boto_client.call_count == 2
+    mock_boto_client.assert_any_call(
+        "ec2",
+        region_name="us-west-2",
+        aws_access_key_id="test_key",
+        aws_secret_access_key="test_secret",
+    )
+    mock_boto_client.assert_any_call(
+        "s3",
+        region_name="us-west-2",
+        aws_access_key_id="test_key",
+        aws_secret_access_key="test_secret",
+    )
 
 
 @patch("builtins.print")
-@patch("cost_toolkit.common.aws_common.create_ec2_client")
+@patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client")
 def test_terminate_instance(mock_create_ec2, _mock_print):
     """Test terminate_instance calls terminate_instances."""
     mock_ec2 = MagicMock()
@@ -80,9 +92,11 @@ def test_terminate_instance(mock_create_ec2, _mock_print):
 
     result = terminate_instance("us-east-1", "i-1234567890abcdef0", "test_key", "test_secret")
 
-    mock_create_ec2.assert_called_once_with("us-east-1", "test_key", "test_secret")
+    mock_create_ec2.assert_called_once_with(
+        region="us-east-1", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
+    )
     mock_ec2.terminate_instances.assert_called_once_with(InstanceIds=["i-1234567890abcdef0"])
-    assert "TerminatingInstances" in result
+    assert result is True
 
 
 def test_get_instance_name_with_name_tag():

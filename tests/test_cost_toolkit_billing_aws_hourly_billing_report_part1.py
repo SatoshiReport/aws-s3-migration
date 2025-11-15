@@ -14,34 +14,7 @@ from cost_toolkit.scripts.billing.aws_hourly_billing_report import (
     _process_daily_data,
     _process_hourly_data,
     get_hourly_billing_data,
-    setup_aws_credentials,
 )
-
-
-class TestSetupAwsCredentials:
-    """Tests for setup_aws_credentials function."""
-
-    @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.load_credentials_from_env")
-    def test_setup_credentials_success(self, mock_load_creds):
-        """Test successful credential setup."""
-        mock_load_creds.return_value = None
-
-        result = setup_aws_credentials()
-
-        assert result is True
-        mock_load_creds.assert_called_once()
-
-    @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.load_credentials_from_env")
-    def test_setup_credentials_failure(self, mock_load_creds, capsys):
-        """Test credential setup failure."""
-        mock_load_creds.side_effect = ValueError("No credentials")
-
-        result = setup_aws_credentials()
-
-        assert result is False
-        captured = capsys.readouterr()
-        assert "AWS credentials not found" in captured.out
-        assert "~/.env" in captured.out
 
 
 class TestGetHourlyBillingData:
@@ -51,7 +24,6 @@ class TestGetHourlyBillingData:
         """Test successful hourly billing data retrieval."""
         mod = "cost_toolkit.scripts.billing.aws_hourly_billing_report"
         with (
-            patch(f"{mod}.setup_aws_credentials"),
             patch(f"{mod}.get_today_date_range") as mock_get_date_range,
             patch(f"{mod}.get_hourly_costs_by_service") as mock_get_hourly,
             patch(f"{mod}.get_daily_costs_by_service") as mock_get_daily,
@@ -93,14 +65,12 @@ class TestGetHourlyBillingData:
             captured = capsys.readouterr()
             assert "Retrieving hourly billing data" in captured.out
 
-    @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.setup_aws_credentials")
     @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.get_today_date_range")
     @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.get_hourly_costs_by_service")
     def test_get_hourly_billing_data_error(
         self,
         mock_get_hourly,
         mock_get_date_range,
-        _mock_setup_creds,
         capsys,
     ):
         """Test hourly billing data retrieval with error."""

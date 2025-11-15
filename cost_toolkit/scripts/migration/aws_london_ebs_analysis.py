@@ -8,11 +8,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts import aws_utils
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _print_volume_details(ec2, vol):
     """Print detailed information for a single volume."""
     try:
@@ -149,7 +144,7 @@ def _print_recommendations(attached_volumes, unattached_volume, current_state):
 
 def analyze_london_ebs():
     """Analyze London EBS volumes and start instance for inspection"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("AWS London EBS Analysis")
     print("=" * 80)

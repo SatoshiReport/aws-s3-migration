@@ -12,11 +12,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts import aws_utils
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _delete_mount_targets(efs_client, file_system_id):
     """Delete all mount targets for a file system."""
     mount_targets_response = efs_client.describe_mount_targets(FileSystemId=file_system_id)
@@ -95,7 +90,7 @@ def _process_region(region):
 
 def delete_efs_resources():
     """Delete all EFS file systems and mount targets across regions"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     regions = ["us-east-1", "us-east-2"]
 

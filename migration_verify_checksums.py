@@ -8,18 +8,19 @@ from pathlib import Path
 from typing import Dict, Tuple
 
 try:  # Prefer package-relative imports for tooling like pylint
+    from cost_toolkit.common.format_utils import format_bytes
+
     from .migration_utils import (
         ProgressTracker,
         calculate_eta_bytes,
-        format_size,
         hash_file_in_chunks,
     )
     from .migration_verify_common import check_verification_errors
 except ImportError:  # pragma: no cover - allow running as standalone script
+    from cost_toolkit.common.format_utils import format_bytes
     from migration_utils import (
         ProgressTracker,
         calculate_eta_bytes,
-        format_size,
         hash_file_in_chunks,
     )
     from migration_verify_common import check_verification_errors
@@ -47,10 +48,11 @@ class VerificationProgressTracker:  # pylint: disable=too-few-public-methods
         file_pct = (verified_count / expected_files * 100) if expected_files > 0 else 0
         byte_pct = (total_bytes_verified / expected_size * 100) if expected_size > 0 else 0
         eta_str = calculate_eta_bytes(elapsed, total_bytes_verified, expected_size)
+        verified_bytes = format_bytes(total_bytes_verified, binary_units=False)
+        expected_bytes = format_bytes(expected_size, binary_units=False)
         progress_str = (
             f"Progress: {verified_count:,}/{expected_files:,} files ({file_pct:.1f}%), "
-            f"{format_size(total_bytes_verified)}/{format_size(expected_size)} "
-            f"({byte_pct:.1f}%), ETA: {eta_str}  "
+            f"{verified_bytes}/{expected_bytes} ({byte_pct:.1f}%), ETA: {eta_str}  "
         )
         print(f"\r  {progress_str}", end="", flush=True)
 
@@ -101,10 +103,9 @@ def verify_single_file(
     expected_etag = expected_meta["etag"]
     actual_size = file_path.stat().st_size
     if actual_size != expected_file_size:
-        error_msg = (
-            f"{s3_key}: size mismatch "
-            f"(expected {format_size(expected_file_size)}, got {format_size(actual_size)})"
-        )
+        expected_size_str = format_bytes(expected_file_size, binary_units=False)
+        actual_size_str = format_bytes(actual_size, binary_units=False)
+        error_msg = f"{s3_key}: size mismatch (expected {expected_size_str}, got {actual_size_str})"
         stats["verification_errors"].append(error_msg)
         return
     stats["size_verified"] += 1

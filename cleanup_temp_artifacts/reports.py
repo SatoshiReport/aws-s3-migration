@@ -13,6 +13,8 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from cost_toolkit.common.format_utils import format_bytes
+
 if TYPE_CHECKING:
     from cleanup_temp_artifacts.scanner import Candidate
 
@@ -41,17 +43,12 @@ def parse_size(text: str) -> int:
     return int(float(text) * multiplier)
 
 
-def format_size(num_bytes: int | None) -> str:
-    """Convert byte count to human-readable format (B, KB, MB, GB, etc)."""
-    if num_bytes is None:
-        return "n/a"
-    suffixes = ["B", "KB", "MB", "GB", "TB", "PB"]
-    value = float(num_bytes)
-    for suffix in suffixes:
-        if value < BYTES_PER_KIB or suffix == suffixes[-1]:
-            return f"{value:.1f}{suffix}"
-        value /= BYTES_PER_KIB
-    return f"{value:.1f}PB"
+def _format_size_no_space(num_bytes: int | None) -> str:
+    """Helper to format bytes without space for backward compat output."""
+    # Use 1 decimal place and no space to match original behavior
+    result = format_bytes(num_bytes, decimal_places=1, binary_units=False)
+    # Remove space between number and unit for backward compat
+    return result.replace(" ", "") if result != "n/a" else result
 
 
 def summarise(candidates: list[Candidate]) -> list[tuple[str, int, int]]:
@@ -75,7 +72,7 @@ def write_reports(
             "path": str(c.path),
             "category": c.category.name,
             "size_bytes": c.size_bytes,
-            "size_human": format_size(c.size_bytes),
+            "size_human": _format_size_no_space(c.size_bytes),
             "mtime": c.iso_mtime,
         }
         for c in candidates
@@ -137,7 +134,7 @@ def print_candidates_report(
         f"Identified {len(candidates)} candidate(s) (showing {len(acted_upon)}) under {base_path}:"
     )
     for candidate in acted_upon:
-        size_str = format_size(candidate.size_bytes)
+        size_str = _format_size_no_space(candidate.size_bytes)
         print(
             f"- [{candidate.category.name}] {candidate.path} "
             f"(mtime {candidate.iso_mtime}, size {size_str})"
@@ -146,4 +143,4 @@ def print_candidates_report(
     summary = summarise(candidates)
     print("\nPer-category totals:")
     for name, count, size in summary:
-        print(f"  {name:20} count={count:6d} size={format_size(size)}")
+        print(f"  {name:20} count={count:6d} size={_format_size_no_space(size)}")

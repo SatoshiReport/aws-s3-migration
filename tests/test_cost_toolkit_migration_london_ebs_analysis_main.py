@@ -16,7 +16,7 @@ def test_analyze_running_instance(capsys):
     """Test analyzing a running instance."""
     mod = "cost_toolkit.scripts.migration.aws_london_ebs_analysis"
     with (
-        patch(f"{mod}.setup_aws_credentials") as mock_setup_creds,
+        patch(f"{mod}.aws_utils.setup_aws_credentials") as mock_setup,
         patch(f"{mod}.boto3.client") as mock_boto_client,
         patch(f"{mod}._print_volume_details"),
         patch(f"{mod}._check_unattached_volume"),
@@ -42,7 +42,7 @@ def test_analyze_running_instance(capsys):
         }
         mock_ec2.describe_instances.return_value = instance_data
         analyze_london_ebs()
-        mock_setup_creds.assert_called_once()
+        mock_setup.assert_called_once()
         mock_boto_client.assert_called_once_with("ec2", region_name="eu-west-2")
         captured = capsys.readouterr()
         assert "AWS London EBS Analysis" in captured.out
@@ -53,7 +53,9 @@ def test_analyze_running_instance(capsys):
 def test_analyze_stopped_instance(capsys):
     """Test analyzing a stopped instance."""
     with (
-        patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis.setup_aws_credentials"),
+        patch(
+            "cost_toolkit.scripts.migration.aws_london_ebs_analysis.aws_utils.setup_aws_credentials"
+        ),
         patch(
             "cost_toolkit.scripts.migration.aws_london_ebs_analysis.boto3.client"
         ) as mock_boto_client,
@@ -91,7 +93,7 @@ def test_analyze_instance_other_state(capsys):
     """Test analyzing instance in other state (e.g., pending)."""
     mod = "cost_toolkit.scripts.migration.aws_london_ebs_analysis"
     with (
-        patch(f"{mod}.setup_aws_credentials"),
+        patch(f"{mod}.aws_utils.setup_aws_credentials"),
         patch(f"{mod}.boto3.client") as mock_boto_client,
         patch(f"{mod}._print_volume_details"),
         patch(f"{mod}._check_unattached_volume"),
@@ -126,7 +128,7 @@ class TestAnalyzeLondonEbsAnalysis:
         """Test that analyze function prints all volume details."""
         mod = "cost_toolkit.scripts.migration.aws_london_ebs_analysis"
         with (
-            patch(f"{mod}.setup_aws_credentials"),
+            patch(f"{mod}.aws_utils.setup_aws_credentials"),
             patch(f"{mod}.boto3.client") as mock_boto_client,
             patch(f"{mod}._print_volume_details") as mock_volume_details,
             patch(f"{mod}._check_unattached_volume") as mock_unattached,
@@ -162,7 +164,7 @@ class TestAnalyzeLondonEbsAnalysis:
         """Test that analyze function displays complete summary."""
         mod = "cost_toolkit.scripts.migration.aws_london_ebs_analysis"
         with (
-            patch(f"{mod}.setup_aws_credentials"),
+            patch(f"{mod}.aws_utils.setup_aws_credentials"),
             patch(f"{mod}.boto3.client") as mock_boto_client,
             patch(f"{mod}._print_volume_details"),
             patch(f"{mod}._check_unattached_volume"),
@@ -201,7 +203,7 @@ def test_analyze_running_instance_no_public_ip(capsys):
     """Test analyzing running instance without public IP."""
     mod = "cost_toolkit.scripts.migration.aws_london_ebs_analysis"
     with (
-        patch(f"{mod}.setup_aws_credentials"),
+        patch(f"{mod}.aws_utils.setup_aws_credentials"),
         patch(f"{mod}.boto3.client") as mock_boto_client,
         patch(f"{mod}._print_volume_details"),
         patch(f"{mod}._check_unattached_volume"),
@@ -234,9 +236,9 @@ def test_analyze_running_instance_no_public_ip(capsys):
         assert "Private IP: 10.0.0.1" in captured.out
 
 
-@patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis.setup_aws_credentials")
+@patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis.aws_utils.setup_aws_credentials")
 @patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis.boto3.client")
-def test_analyze_client_error(mock_boto_client, _mock_setup_creds, capsys):
+def test_analyze_client_error(mock_boto_client, _mock_setup, capsys):
     """Test analyzing with ClientError."""
     mock_ec2 = MagicMock()
     mock_boto_client.return_value = mock_ec2

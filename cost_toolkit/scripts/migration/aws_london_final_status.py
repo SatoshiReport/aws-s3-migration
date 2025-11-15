@@ -8,11 +8,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts import aws_utils
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _stop_instance(ec2, instance_id):
     """Stop the specified instance."""
     print(f"🛑 Stopping instance {instance_id}...")
@@ -111,7 +106,7 @@ def _print_optimization_summary():
 
 def show_final_london_status():
     """Show final status after London EBS cleanup"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("AWS London Final Status After EBS Cleanup")
     print("=" * 80)

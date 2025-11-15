@@ -3,8 +3,10 @@ Optimization recommendation functions for S3 audit.
 Generates cost-saving and security recommendations.
 """
 
+from cost_toolkit.common.format_utils import format_bytes
+
 from .constants import DAYS_THRESHOLD_GLACIER, DAYS_THRESHOLD_IA
-from .utils import calculate_monthly_cost, format_bytes
+from .utils import calculate_monthly_cost
 
 
 def _create_ia_recommendation(old_objects):
@@ -22,11 +24,12 @@ def _create_ia_recommendation(old_objects):
     ia_cost = calculate_monthly_cost(old_size, "STANDARD_IA")
     savings = current_cost - ia_cost
 
+    size_str = format_bytes(old_size, binary_units=False)
     return {
         "type": "storage_class_optimization",
         "description": (
-            f"Move {len(old_standard_objects)} objects ({format_bytes(old_size)}) "
-            "older than 30 days to Standard-IA"
+            f"Move {len(old_standard_objects)} objects ({size_str}) older than 30 days "
+            "to Standard-IA"
         ),
         "potential_savings": savings,
         "action": "Create lifecycle policy to transition to Standard-IA after 30 days",
@@ -49,11 +52,11 @@ def _create_glacier_recommendation(old_objects):
     glacier_cost = calculate_monthly_cost(old_size, "GLACIER")
     savings = current_cost - glacier_cost
 
+    size_str = format_bytes(old_size, binary_units=False)
     return {
         "type": "archival_optimization",
         "description": (
-            f"Archive {len(very_old_objects)} objects ({format_bytes(old_size)}) "
-            "older than 90 days to Glacier"
+            f"Archive {len(very_old_objects)} objects ({size_str}) older than 90 days " "to Glacier"
         ),
         "potential_savings": savings,
         "action": "Create lifecycle policy to transition to Glacier after 90 days",
@@ -117,12 +120,11 @@ def _check_large_objects_and_security(bucket_analysis):
     large_objects = bucket_analysis["large_objects"]
     if large_objects:
         total_large_size = sum(obj["size_bytes"] for obj in large_objects)
+        large_size_str = format_bytes(total_large_size, binary_units=False)
         recommendations.append(
             {
                 "type": "large_object_optimization",
-                "description": (
-                    f"{len(large_objects)} large objects ({format_bytes(total_large_size)}) found"
-                ),
+                "description": (f"{len(large_objects)} large objects ({large_size_str}) found"),
                 "potential_savings": 0,
                 "action": "Consider using multipart uploads and compression for large objects",
             }

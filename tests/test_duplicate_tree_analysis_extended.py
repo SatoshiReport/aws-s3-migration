@@ -152,14 +152,14 @@ def test_render_report_rows_with_clusters(tmp_path):
 
 def test_format_bytes_all_units():
     """Test format_bytes for all unit sizes."""
-    assert "bytes" in format_bytes(512)
+    assert "B" in format_bytes(512)
     assert "KiB" in format_bytes(1024)
     assert "MiB" in format_bytes(1024 * 1024)
     assert "GiB" in format_bytes(1024 * 1024 * 1024)
     assert "TiB" in format_bytes(1024 * 1024 * 1024 * 1024)
     # PiB requires going beyond TiB limit in the loop
     result = format_bytes(1024 * 1024 * 1024 * 1024 * 1024)
-    assert "PiB" in result or "TiB" in result  # Depends on implementation
+    assert "PiB" in result
 
 
 def test_sort_node_rows():

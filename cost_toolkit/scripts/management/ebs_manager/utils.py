@@ -3,24 +3,15 @@ AWS EBS Volume Utility Functions Module
 Contains helper functions for region discovery and tag management.
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import (
+    get_all_aws_regions,
+)
 from cost_toolkit.common.aws_common import get_instance_name as _get_instance_name_with_client
-
-
-def get_all_aws_regions() -> List[str]:
-    """
-    Get all available AWS regions by querying the EC2 service.
-
-    Returns:
-        List of AWS region names
-    """
-    ec2_client = boto3.client("ec2", region_name="us-east-1")
-    response = ec2_client.describe_regions()
-    return [region["RegionName"] for region in response["Regions"]]
 
 
 def find_volume_region(volume_id: str) -> Optional[str]:

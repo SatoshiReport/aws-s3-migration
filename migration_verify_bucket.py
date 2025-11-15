@@ -11,8 +11,9 @@ _migration_utils = import_module(f"{_PACKAGE_PREFIX}migration_utils")
 _migration_verify_checksums = import_module(f"{_PACKAGE_PREFIX}migration_verify_checksums")
 _migration_verify_common = import_module(f"{_PACKAGE_PREFIX}migration_verify_common")
 _migration_verify_inventory = import_module(f"{_PACKAGE_PREFIX}migration_verify_inventory")
+_format_utils = import_module("cost_toolkit.common.format_utils")
 
-format_size = _migration_utils.format_size
+format_bytes = _format_utils.format_bytes
 print_verification_success_messages = _migration_utils.print_verification_success_messages
 FileChecksumVerifier = _migration_verify_checksums.FileChecksumVerifier
 LocalPathMissingError = _migration_verify_common.LocalPathMissingError
@@ -43,7 +44,8 @@ class BucketVerifier:  # pylint: disable=too-few-public-methods
         local_path = self.base_path / bucket
         if not local_path.exists():
             raise LocalPathMissingError(local_path)
-        print(f"  Expected: {expected_files:,} files, {format_size(expected_size)}")
+        expected_size_str = format_bytes(expected_size, binary_units=False)
+        print(f"  Expected: {expected_files:,} files, {expected_size_str}")
         print()
         expected_file_map = self.inventory_checker.load_expected_files(bucket)
         local_files = self.inventory_checker.scan_local_files(bucket, expected_files)
@@ -75,7 +77,7 @@ class BucketVerifier:  # pylint: disable=too-few-public-methods
             raise VerificationCountMismatchError(verified_count, expected_files)
         print(f"  ✓ All {verified_count:,} files verified successfully")
         print_verification_success_messages()
-        print(f"  ✓ Total size: {format_size(bucket_info['total_size'])}")
+        print(f"  ✓ Total size: {format_bytes(bucket_info['total_size'], binary_units=False)}")
         print()
         return {
             "verified_count": verified_count,

@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.audit.aws_ec2_usage_audit import (
+from cost_toolkit.scripts.audit.aws_ec2_usage_audit import (  # pyright: ignore[reportPrivateUsage]
     _calculate_cpu_metrics,
     _determine_usage_level,
     _estimate_monthly_cost,

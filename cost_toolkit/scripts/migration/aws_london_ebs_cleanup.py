@@ -8,11 +8,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts import aws_utils
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _print_volumes_to_delete(volumes_to_delete):
     """Print list of volumes scheduled for deletion."""
     print("🗑️  Volumes scheduled for deletion:")
@@ -134,7 +129,7 @@ def _show_remaining_volumes(ec2):
 
 def cleanup_london_ebs_volumes():
     """Clean up duplicate and unattached EBS volumes in London"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("AWS London EBS Volume Cleanup")
     print("=" * 80)

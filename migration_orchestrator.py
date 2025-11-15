@@ -4,14 +4,17 @@ import sys
 from pathlib import Path
 
 try:  # Prefer package-relative imports for tooling
+    from cost_toolkit.common.format_utils import format_bytes
+
     from .migration_state_v2 import MigrationStateV2, Phase
     from .migration_sync import BucketSyncer
-    from .migration_utils import format_size, print_verification_success_messages
+    from .migration_utils import print_verification_success_messages
     from .migration_verify import BucketDeleter, BucketVerifier
 except ImportError:  # pragma: no cover - fallback for script entrypoints
+    from cost_toolkit.common.format_utils import format_bytes
     from migration_state_v2 import MigrationStateV2, Phase
     from migration_sync import BucketSyncer
-    from migration_utils import format_size, print_verification_success_messages
+    from migration_utils import print_verification_success_messages
     from migration_verify import BucketDeleter, BucketVerifier
 
 
@@ -34,7 +37,7 @@ def show_verification_summary(bucket_info: dict):
     print()
     print(f"  ✓ File count matches: {verified_file_count:,} files")
     print_verification_success_messages()
-    print(f"  ✓ Total size: {format_size(total_bytes_verified)}")
+    print(f"  ✓ Total size: {format_bytes(total_bytes_verified, binary_units=False)}")
     print()
     print("  ✓ Verification complete")
     print("  " + "=" * 66)
@@ -111,7 +114,7 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
         print()
         print(f"  Bucket: {bucket}")
         print(f"  Files:  {bucket_info['file_count']:,}")
-        print(f"  Size:   {format_size(bucket_info['total_size'])}")
+        print(f"  Size:   {format_bytes(bucket_info['total_size'], binary_units=False)}")
         print()
         print("  Local verification: ✓ PASSED")
         print()
@@ -180,7 +183,7 @@ class StatusReporter:  # pylint: disable=too-few-public-methods
             print("Overall Summary:")
             print(f"  Total Buckets: {summary['bucket_count']}")
             print(f"  Total Files: {summary['total_files']:,}")
-            print(f"  Total Size: {format_size(summary['total_size'])}")
+            print(f"  Total Size: {format_bytes(summary['total_size'], binary_units=False)}")
             print()
         all_buckets = self.state.get_all_buckets()
         if all_buckets:
@@ -195,7 +198,8 @@ class StatusReporter:  # pylint: disable=too-few-public-methods
                 verify = "✓" if info.get("verify_complete") else "○"
                 delete = "✓" if info.get("delete_complete") else "○"
                 print(f"  {bucket}")
-                file_info = f"{info['file_count']:,} files, {format_size(info['total_size'])}"
+                file_size = format_bytes(info["total_size"], binary_units=False)
+                file_info = f"{info['file_count']:,} files, {file_size}"
                 print(f"    Sync:{sync} Verify:{verify} Delete:{delete}  ({file_info})")
         print("=" * 70)
 

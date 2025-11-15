@@ -10,18 +10,12 @@ import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 
 def load_aws_credentials():
     """Load AWS credentials from environment file"""
     return setup_aws_credentials()
-
-
-def get_all_regions():
-    """Get list of all AWS regions"""
-    ec2 = boto3.client("ec2", region_name="us-east-1")
-    regions = ec2.describe_regions()["Regions"]
-    return [region["RegionName"] for region in regions]
 
 
 def _extract_instance_info(instance):

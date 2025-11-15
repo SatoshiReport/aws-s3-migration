@@ -6,8 +6,8 @@ import sqlite3
 from pathlib import Path
 from unittest.mock import patch
 
+from cost_toolkit.common.cli_utils import confirm_reset_state_db
 from duplicate_tree.cli import (
-    confirm_state_db_reset,
     handle_state_db_reset,
     main,
     parse_args,
@@ -78,9 +78,9 @@ def test_parse_args_with_reset_state_db():
 
 
 def test_confirm_state_db_reset_with_skip_prompt():
-    """Test confirm_state_db_reset when skip_prompt is True."""
+    """Test confirm_reset_state_db when skip_prompt is True."""
     db_path = Path("/tmp/test.db")
-    result = confirm_state_db_reset(db_path, skip_prompt=True)
+    result = confirm_reset_state_db(str(db_path), skip_prompt=True)
     assert result is True
 
 
@@ -98,7 +98,7 @@ def test_handle_state_db_reset_cancelled(tmp_path, capsys):
     base_path = tmp_path / "base"
     base_path.mkdir()
 
-    with patch("duplicate_tree.cli.confirm_state_db_reset", return_value=False):
+    with patch("builtins.input", return_value="n"):
         result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=False)
         assert_equal(result, db_path)
         captured = capsys.readouterr().out

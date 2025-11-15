@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -194,7 +193,7 @@ def test_create_vmimport_role_already_exists(capsys):
     assert "vmimport role already exists" in captured.out
 
 
-def test_create_vmimport_role_creates_new_role(capsys):
+def test_create_vmimport_role_creates_new_role():
     """Test create_vmimport_role creates new role when it doesn't exist."""
     mock_iam = MagicMock()
     mock_iam.exceptions.NoSuchEntityException = type("NoSuchEntityException", (Exception,), {})

@@ -14,11 +14,6 @@ MAX_SSM_MONITOR_SECONDS = 7200
 OUTPUT_TRUNCATE_CHARS = 2000
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _start_ec2_instance(ec2, instance_id):
     """Start the EC2 instance and wait for it to be running."""
     print("🔄 STARTING EC2 INSTANCE:")
@@ -320,7 +315,7 @@ def _print_migration_output(command_status, status):
 
 def start_instance_and_migrate():
     """Start EC2 instance and run migration via SSM"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("AWS Instance Startup and Migration")
     print("=" * 80)

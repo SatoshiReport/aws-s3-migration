@@ -16,62 +16,61 @@ from cost_toolkit.scripts.optimization.snapshot_export_fixed.recovery import (
 from cost_toolkit.scripts.snapshot_export_common import SAMPLE_SNAPSHOTS
 
 
-@pytest.fixture
-def mock_s3_client():
+@pytest.fixture(name="s3_client")
+def fixture_s3_client():
     """Create a mock S3 client."""
     client = MagicMock()
     client.exceptions.NoSuchBucket = type("NoSuchBucket", (Exception,), {})
     return client
 
 
-@pytest.fixture
-def mock_ec2_client():
+@pytest.fixture(name="ec2_client")
+def fixture_ec2_client():
     """Create a mock EC2 client."""
     return MagicMock()
 
 
-def test_cleanup_temporary_ami_success(mock_ec2_client, capsys):
+def test_cleanup_temporary_ami_success(ec2_client, capsys):
     """Test cleanup_temporary_ami successfully deregisters AMI."""
-    result = cleanup_temporary_ami(mock_ec2_client, "ami-12345678", "us-east-1")
+    result = cleanup_temporary_ami(ec2_client, "ami-12345678", "us-east-1")
 
     assert result is True
-    mock_ec2_client.deregister_image.assert_called_once_with(ImageId="ami-12345678")
+    ec2_client.deregister_image.assert_called_once_with(ImageId="ami-12345678")
 
     captured = capsys.readouterr()
     assert "Cleaning up temporary AMI: ami-12345678" in captured.out
     assert "Successfully cleaned up AMI ami-12345678" in captured.out
 
 
-def test_cleanup_temporary_ami_with_different_ami_ids(mock_ec2_client):
+def test_cleanup_temporary_ami_with_different_ami_ids(ec2_client):
     """Test cleanup_temporary_ami with various AMI IDs."""
     test_ami_ids = ["ami-abc123", "ami-xyz789", "ami-test-001"]
 
     for ami_id in test_ami_ids:
-        mock_ec2_client.reset_mock()
-        result = cleanup_temporary_ami(mock_ec2_client, ami_id, "us-west-2")
+        ec2_client.reset_mock()
+        result = cleanup_temporary_ami(ec2_client, ami_id, "us-west-2")
 
         assert result is True
-        mock_ec2_client.deregister_image.assert_called_once_with(ImageId=ami_id)
+        ec2_client.deregister_image.assert_called_once_with(ImageId=ami_id)
 
 
-def test_cleanup_temporary_ami_different_regions(mock_ec2_client):
+def test_cleanup_temporary_ami_different_regions(ec2_client):
     """Test cleanup_temporary_ami works with different regions."""
     regions = ["us-east-1", "us-west-2", "eu-west-1", "ap-northeast-1"]
 
     for region in regions:
-        mock_ec2_client.reset_mock()
-        result = cleanup_temporary_ami(mock_ec2_client, "ami-12345678", region)
+        ec2_client.reset_mock()
+        result = cleanup_temporary_ami(ec2_client, "ami-12345678", region)
 
         assert result is True
-        mock_ec2_client.deregister_image.assert_called_once()
+        ec2_client.deregister_image.assert_called_once()
 
 
-def test_check_existing_completed_exports_with_exports(mock_s3_client, capsys):
+def test_check_existing_completed_exports_with_exports(s3_client, capsys):
     """Test check_existing_completed_exports finds existing exports."""
     test_date = datetime(2024, 1, 15)
-    bucket_name = f"ebs-snapshot-archive-us-east-1-{test_date.strftime('%Y%m%d')}"
 
-    mock_s3_client.list_objects_v2.return_value = {
+    s3_client.list_objects_v2.return_value = {
         "Contents": [
             {
                 "Key": "ebs-snapshots/ami-123/export-task-001.vmdk",
@@ -91,7 +90,7 @@ def test_check_existing_completed_exports_with_exports(mock_s3_client, capsys):
             "cost_toolkit.scripts.optimization.snapshot_export_fixed.recovery.datetime",
             MagicMock(now=lambda: test_date),
         )
-        result = check_existing_completed_exports(mock_s3_client, "us-east-1")
+        result = check_existing_completed_exports(s3_client, "us-east-1")
 
     assert len(result) == 2
     assert result[0]["export_task_id"] == "export-task-001"
@@ -106,11 +105,11 @@ def test_check_existing_completed_exports_with_exports(mock_s3_client, capsys):
     assert "Found 2 completed exports:" in captured.out
 
 
-def test_check_existing_completed_exports_no_exports(mock_s3_client, capsys):
+def test_check_existing_completed_exports_no_exports(s3_client, capsys):
     """Test check_existing_completed_exports when no exports exist."""
-    mock_s3_client.list_objects_v2.return_value = {}
+    s3_client.list_objects_v2.return_value = {}
 
-    result = check_existing_completed_exports(mock_s3_client, "us-east-1")
+    result = check_existing_completed_exports(s3_client, "us-east-1")
 
     assert len(result) == 0
     captured = capsys.readouterr()
@@ -118,35 +117,35 @@ def test_check_existing_completed_exports_no_exports(mock_s3_client, capsys):
     assert "Found" not in captured.out or "0" in captured.out
 
 
-def test_check_existing_completed_exports_bucket_not_found(mock_s3_client, capsys):
+def test_check_existing_completed_exports_bucket_not_found(s3_client, capsys):
     """Test check_existing_completed_exports when bucket doesn't exist."""
-    mock_s3_client.list_objects_v2.side_effect = mock_s3_client.exceptions.NoSuchBucket()
+    s3_client.list_objects_v2.side_effect = s3_client.exceptions.NoSuchBucket()
 
-    result = check_existing_completed_exports(mock_s3_client, "us-east-1")
+    result = check_existing_completed_exports(s3_client, "us-east-1")
 
     assert len(result) == 0
     captured = capsys.readouterr()
     assert "No existing exports found (bucket doesn't exist)" in captured.out
 
 
-def test_check_existing_completed_exports_client_error(mock_s3_client, capsys):
+def test_check_existing_completed_exports_client_error(s3_client, capsys):
     """Test check_existing_completed_exports handles ClientError."""
-    mock_s3_client.list_objects_v2.side_effect = ClientError(
+    s3_client.list_objects_v2.side_effect = ClientError(
         {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "ListObjectsV2"
     )
 
-    result = check_existing_completed_exports(mock_s3_client, "us-east-1")
+    result = check_existing_completed_exports(s3_client, "us-east-1")
 
     assert len(result) == 0
     captured = capsys.readouterr()
     assert "Could not check existing exports" in captured.out
 
 
-def test_check_existing_completed_exports_filters_vmdk_only(mock_s3_client):
+def test_check_existing_completed_exports_filters_vmdk_only(s3_client):
     """Test check_existing_completed_exports only returns .vmdk files."""
     test_date = datetime(2024, 1, 15)
 
-    mock_s3_client.list_objects_v2.return_value = {
+    s3_client.list_objects_v2.return_value = {
         "Contents": [
             {
                 "Key": "ebs-snapshots/ami-123/export-task-001.vmdk",
@@ -166,31 +165,31 @@ def test_check_existing_completed_exports_filters_vmdk_only(mock_s3_client):
         ]
     }
 
-    result = check_existing_completed_exports(mock_s3_client, "us-east-1")
+    result = check_existing_completed_exports(s3_client, "us-east-1")
 
     # Should only return the .vmdk file
     assert len(result) == 1
     assert result[0]["s3_key"] == "ebs-snapshots/ami-123/export-task-001.vmdk"
 
 
-def test_check_existing_completed_exports_with_prefix(mock_s3_client):
+def test_check_existing_completed_exports_with_prefix(s3_client):
     """Test check_existing_completed_exports uses correct prefix."""
-    mock_s3_client.list_objects_v2.return_value = {}
+    s3_client.list_objects_v2.return_value = {}
 
-    check_existing_completed_exports(mock_s3_client, "us-east-1")
+    check_existing_completed_exports(s3_client, "us-east-1")
 
-    # Verify it was called with the prefix, but don't check exact bucket name (depends on current date)
-    mock_s3_client.list_objects_v2.assert_called_once()
-    call_args = mock_s3_client.list_objects_v2.call_args[1]
+    # Verify prefix, bucket name depends on current date
+    s3_client.list_objects_v2.assert_called_once()
+    call_args = s3_client.list_objects_v2.call_args[1]
     assert call_args["Prefix"] == "ebs-snapshots/"
     assert call_args["Bucket"].startswith("ebs-snapshot-archive-us-east-1-")
 
 
-def test_check_existing_completed_exports_handles_malformed_keys(mock_s3_client):
+def test_check_existing_completed_exports_handles_malformed_keys(s3_client):
     """Test check_existing_completed_exports handles malformed S3 keys."""
     test_date = datetime(2024, 1, 15)
 
-    mock_s3_client.list_objects_v2.return_value = {
+    s3_client.list_objects_v2.return_value = {
         "Contents": [
             {
                 "Key": "ebs-snapshots/ami-123/export-task-001.vmdk",
@@ -210,7 +209,7 @@ def test_check_existing_completed_exports_handles_malformed_keys(mock_s3_client)
         ]
     }
 
-    result = check_existing_completed_exports(mock_s3_client, "us-east-1")
+    result = check_existing_completed_exports(s3_client, "us-east-1")
 
     # Should only return the valid key
     assert len(result) == 1
@@ -241,26 +240,24 @@ def test_check_existing_completed_exports_bucket_name_format():
     assert actual_bucket == expected_bucket
 
 
-def test_check_existing_completed_exports_multiple_regions(mock_s3_client):
+def test_check_existing_completed_exports_multiple_regions(s3_client):
     """Test check_existing_completed_exports with different regions."""
-    test_date = datetime(2024, 1, 15)
-    mock_s3_client.list_objects_v2.return_value = {}
+    s3_client.list_objects_v2.return_value = {}
 
     regions = ["us-east-1", "us-west-2", "eu-west-1", "ap-northeast-1"]
 
     for region in regions:
-        mock_s3_client.reset_mock()
-        check_existing_completed_exports(mock_s3_client, region)
+        s3_client.reset_mock()
+        check_existing_completed_exports(s3_client, region)
 
-        expected_bucket = f"ebs-snapshot-archive-{region}-{test_date.strftime('%Y%m%d')}"
-        mock_s3_client.list_objects_v2.assert_called_once()
+        s3_client.list_objects_v2.assert_called_once()
 
 
-def test_check_existing_completed_exports_extracts_correct_fields(mock_s3_client):
+def test_check_existing_completed_exports_extracts_correct_fields(s3_client):
     """Test check_existing_completed_exports extracts all required fields."""
     test_date = datetime(2024, 1, 15, 10, 30, 45)
 
-    mock_s3_client.list_objects_v2.return_value = {
+    s3_client.list_objects_v2.return_value = {
         "Contents": [
             {
                 "Key": "ebs-snapshots/ami-test-123/export-my-task.vmdk",
@@ -270,7 +267,7 @@ def test_check_existing_completed_exports_extracts_correct_fields(mock_s3_client
         ]
     }
 
-    result = check_existing_completed_exports(mock_s3_client, "us-east-1")
+    result = check_existing_completed_exports(s3_client, "us-east-1")
 
     assert len(result) == 1
     export = result[0]
@@ -293,11 +290,11 @@ def test_get_snapshots_to_export_returns_sample_data():
 def test_get_snapshots_to_export_ignores_credentials():
     """Test get_snapshots_to_export ignores provided credentials."""
     # Should return same data regardless of credentials
-    result1 = get_snapshots_to_export("KEY1", "SECRET1")
-    result2 = get_snapshots_to_export("KEY2", "SECRET2")
-    result3 = get_snapshots_to_export(None, None)
+    result_one = get_snapshots_to_export("KEY1", "SECRET1")
+    result_two = get_snapshots_to_export("KEY2", "SECRET2")
+    result_three = get_snapshots_to_export(None, None)
 
-    assert result1 == result2 == result3 == SAMPLE_SNAPSHOTS
+    assert result_one == result_two == result_three == SAMPLE_SNAPSHOTS
 
 
 def test_get_snapshots_to_export_data_structure():
@@ -312,19 +309,19 @@ def test_get_snapshots_to_export_data_structure():
         assert "description" in snapshot
 
 
-def test_cleanup_temporary_ami_region_parameter_unused(mock_ec2_client):
+def test_cleanup_temporary_ami_region_parameter_unused(ec2_client):
     """Test cleanup_temporary_ami region parameter is not used in API call."""
-    cleanup_temporary_ami(mock_ec2_client, "ami-12345", "unused-region")
+    cleanup_temporary_ami(ec2_client, "ami-12345", "unused-region")
 
     # Verify only ImageId is passed, region is not used in the deregister call
-    mock_ec2_client.deregister_image.assert_called_once_with(ImageId="ami-12345")
+    ec2_client.deregister_image.assert_called_once_with(ImageId="ami-12345")
 
 
-def test_check_existing_completed_exports_prints_export_details(mock_s3_client, capsys):
+def test_check_existing_completed_exports_prints_export_details(s3_client, capsys):
     """Test check_existing_completed_exports prints details of found exports."""
     test_date = datetime(2024, 1, 15)
 
-    mock_s3_client.list_objects_v2.return_value = {
+    s3_client.list_objects_v2.return_value = {
         "Contents": [
             {
                 "Key": "ebs-snapshots/ami-abc/task-001.vmdk",
@@ -334,7 +331,7 @@ def test_check_existing_completed_exports_prints_export_details(mock_s3_client, 
         ]
     }
 
-    check_existing_completed_exports(mock_s3_client, "us-east-1")
+    check_existing_completed_exports(s3_client, "us-east-1")
 
     captured = capsys.readouterr()
     assert "task-001" in captured.out
@@ -342,28 +339,28 @@ def test_check_existing_completed_exports_prints_export_details(mock_s3_client, 
     assert "ebs-snapshots/ami-abc/task-001.vmdk" in captured.out
 
 
-def test_check_existing_completed_exports_empty_contents(mock_s3_client):
+def test_check_existing_completed_exports_empty_contents(s3_client):
     """Test check_existing_completed_exports with empty Contents list."""
-    mock_s3_client.list_objects_v2.return_value = {"Contents": []}
+    s3_client.list_objects_v2.return_value = {"Contents": []}
 
-    result = check_existing_completed_exports(mock_s3_client, "us-east-1")
+    result = check_existing_completed_exports(s3_client, "us-east-1")
 
     assert len(result) == 0
 
 
-def test_check_existing_completed_exports_no_contents_key(mock_s3_client):
+def test_check_existing_completed_exports_no_contents_key(s3_client):
     """Test check_existing_completed_exports when Contents key is missing."""
-    mock_s3_client.list_objects_v2.return_value = {"IsTruncated": False}
+    s3_client.list_objects_v2.return_value = {"IsTruncated": False}
 
-    result = check_existing_completed_exports(mock_s3_client, "us-east-1")
+    result = check_existing_completed_exports(s3_client, "us-east-1")
 
     assert len(result) == 0
 
 
-def test_cleanup_temporary_ami_prints_ami_id(mock_ec2_client, capsys):
+def test_cleanup_temporary_ami_prints_ami_id(ec2_client, capsys):
     """Test cleanup_temporary_ami prints the correct AMI ID in output."""
     ami_id = "ami-specific-test-123"
-    cleanup_temporary_ami(mock_ec2_client, ami_id, "us-east-1")
+    cleanup_temporary_ami(ec2_client, ami_id, "us-east-1")
 
     captured = capsys.readouterr()
     assert ami_id in captured.out

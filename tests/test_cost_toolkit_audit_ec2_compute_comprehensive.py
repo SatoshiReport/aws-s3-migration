@@ -51,7 +51,7 @@ class TestGetAllRegions:
 
             regions = get_all_regions()
 
-        assert len(regions) == 5
+        assert len(regions) == 9
         assert "us-east-1" in regions
         assert "us-east-2" in regions
         captured = capsys.readouterr()

@@ -122,7 +122,9 @@ class TestReduceRetentionInRegion:
 
 def test_reduce_log_retention_reduce_retention_multiple_regions(capsys):
     """Test reducing retention across regions."""
-    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
+    ):
         with patch(
             "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._reduce_retention_in_region"
         ):
@@ -133,7 +135,9 @@ def test_reduce_log_retention_reduce_retention_multiple_regions(capsys):
 
 def test_reduce_log_retention_with_client_error(capsys):
     """Test reducing log retention with ClientError."""
-    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
+    ):
         with patch(
             "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._reduce_retention_in_region"
         ) as mock_reduce:

@@ -100,18 +100,13 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def confirm_state_db_reset(db_path: Path, skip_prompt: bool) -> bool:
-    """Prompt user to confirm state DB reset unless skip_prompt is True."""
-    return confirm_reset_state_db(str(db_path), skip_prompt)
-
-
 def handle_state_db_reset(
     base_path: Path, db_path: Path, should_reset: bool, skip_prompt: bool
 ) -> Path:
     """Reset state DB if requested and confirmed."""
     if not should_reset:
         return db_path
-    if not confirm_state_db_reset(db_path, skip_prompt):
+    if not confirm_reset_state_db(str(db_path), skip_prompt):
         print("State database reset cancelled; continuing without reset.")
         return db_path
     db_path, file_count, total_bytes = reseed_state_db_from_local_drive(base_path, db_path)

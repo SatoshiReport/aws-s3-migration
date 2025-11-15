@@ -14,17 +14,17 @@ from cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup import (
     _stop_canary_if_running,
     delete_cloudwatch_canaries,
     disable_cloudwatch_alarms,
-    setup_aws_credentials,
 )
 
 
-def test_setup_aws_credentials_calls_shared_setup():
-    """Test that setup calls the shared utility."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
-    ) as mock_setup:
-        setup_aws_credentials()
-        mock_setup.assert_called_once()
+@patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region")
+@patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials")
+def test_delete_canaries_calls_shared_setup(mock_setup, mock_process):
+    """delete_cloudwatch_canaries should load credentials before running."""
+    delete_cloudwatch_canaries()
+    mock_setup.assert_called_once()
+    # Ensure at least one region was processed (guard against short-circuit)
+    assert mock_process.call_count == 3
 
 
 class TestStopCanaryIfRunning:
@@ -123,7 +123,9 @@ class TestDeleteCloudwatchCanaries:
 
     def test_delete_canaries_multiple_regions(self, capsys):
         """Test deleting canaries across regions."""
-        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
+        ):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region"
             ):
@@ -133,7 +135,9 @@ class TestDeleteCloudwatchCanaries:
 
     def test_delete_canaries_service_not_available(self, capsys):
         """Test when Synthetics not available in region."""
-        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
+        ):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region"
             ) as mock_process:
@@ -245,7 +249,9 @@ class TestDisableAlarmsInRegion:
 
 def test_disable_cloudwatch_alarms_disable_alarms_multiple_regions(capsys):
     """Test disabling alarms across regions."""
-    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
+    ):
         with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._disable_alarms_in_region"):
             disable_cloudwatch_alarms()
     captured = capsys.readouterr()
@@ -254,7 +260,9 @@ def test_disable_cloudwatch_alarms_disable_alarms_multiple_regions(capsys):
 
 def test_disable_cloudwatch_alarms_with_client_error(capsys):
     """Test disabling alarms with ClientError."""
-    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
+    ):
         with patch(
             "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._disable_alarms_in_region"
         ) as mock_disable:
@@ -268,7 +276,9 @@ def test_disable_cloudwatch_alarms_with_client_error(capsys):
 
 def test_delete_canaries_with_generic_error(capsys):
     """Test delete canaries with generic ClientError."""
-    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.setup_aws_credentials"):
+    with patch(
+        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
+    ):
         with patch(
             "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region"
         ) as mock_process:

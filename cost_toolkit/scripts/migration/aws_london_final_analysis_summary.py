@@ -11,11 +11,6 @@ from cost_toolkit.scripts import aws_utils
 INSTANCE_ID = "i-05ad29f28fc8a8fdc"
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _stop_instance(ec2):
     """Stop the EC2 instance and wait for it to stop."""
     print(f"🛑 Stopping instance {INSTANCE_ID}...")
@@ -115,7 +110,7 @@ def _print_final_recommendations():
 
 def final_analysis_summary():
     """Stop instance and provide final analysis summary"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("AWS London EBS Final Analysis Summary")
     print("=" * 80)

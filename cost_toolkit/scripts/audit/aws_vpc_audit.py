@@ -5,17 +5,6 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def get_all_regions():
-    """Get list of all AWS regions"""
-    ec2 = boto3.client("ec2", region_name="us-east-1")
-    try:
-        response = ec2.describe_regions()
-        return [region["RegionName"] for region in response["Regions"]]
-    except ClientError as e:
-        print(f"Error getting regions: {e}")
-        return ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "eu-west-2"]
-
-
 def _process_elastic_ip_address(addr, region_name):
     """Process a single elastic IP address and return its info."""
     ip_info = {

@@ -10,11 +10,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts import aws_utils
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _check_bucket_contents(s3, bucket_name):
     """Check and display S3 bucket contents."""
     print("📊 CHECKING S3 BUCKET CONTENTS:")
@@ -107,7 +102,7 @@ def _print_cost_summary():
 
 def monitor_migration():
     """Monitor the EBS to S3 migration progress"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("AWS Migration Monitor")
     print("=" * 80)

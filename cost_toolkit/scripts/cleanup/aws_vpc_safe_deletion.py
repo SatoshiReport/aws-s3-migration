@@ -6,156 +6,31 @@ import time
 import boto3
 from botocore.exceptions import ClientError
 
-
-def _delete_internet_gateways(ec2, vpc_id):
-    """Detach and delete Internet Gateways"""
-    print("Step 1: Detaching and deleting Internet Gateways...")
-    igw_response = ec2.describe_internet_gateways(
-        Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
-    )
-
-    for igw in igw_response.get("InternetGateways", []):
-        igw_id = igw["InternetGatewayId"]
-        print(f"  Detaching IGW {igw_id} from VPC {vpc_id}")
-        try:
-            ec2.detach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
-            print(f"  ✅ IGW {igw_id} detached")
-
-            print(f"  Deleting IGW {igw_id}")
-            ec2.delete_internet_gateway(InternetGatewayId=igw_id)
-            print(f"  ✅ IGW {igw_id} deleted")
-        except ClientError as e:
-            print(f"  ❌ Error with IGW {igw_id}: {e}")
-
-
-def _delete_vpc_endpoints(ec2, vpc_id):
-    """Delete VPC Endpoints"""
-    print("Step 2: Deleting VPC Endpoints...")
-    endpoints_response = ec2.describe_vpc_endpoints(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )
-
-    for endpoint in endpoints_response.get("VpcEndpoints", []):
-        if endpoint["State"] != "deleted":
-            endpoint_id = endpoint["VpcEndpointId"]
-            print(f"  Deleting VPC Endpoint {endpoint_id}")
-            try:
-                ec2.delete_vpc_endpoint(VpcEndpointId=endpoint_id)
-                print(f"  ✅ VPC Endpoint {endpoint_id} deleted")
-            except ClientError as e:
-                print(f"  ❌ Error deleting endpoint {endpoint_id}: {e}")
-
-
-def _delete_nat_gateways(ec2, vpc_id):
-    """Delete NAT Gateways"""
-    print("Step 3: Deleting NAT Gateways...")
-    nat_response = ec2.describe_nat_gateways(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
-
-    for nat in nat_response.get("NatGateways", []):
-        if nat["State"] not in ["deleted", "deleting"]:
-            nat_id = nat["NatGatewayId"]
-            print(f"  Deleting NAT Gateway {nat_id}")
-            try:
-                ec2.delete_nat_gateway(NatGatewayId=nat_id)
-                print(f"  ✅ NAT Gateway {nat_id} deletion initiated")
-            except ClientError as e:
-                print(f"  ❌ Error deleting NAT Gateway {nat_id}: {e}")
-
-
-def _delete_security_groups(ec2, vpc_id):
-    """Delete Security Groups (except default)"""
-    print("Step 4: Deleting Security Groups...")
-    sg_response = ec2.describe_security_groups(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
-
-    for sg in sg_response.get("SecurityGroups", []):
-        if sg["GroupName"] != "default":
-            sg_id = sg["GroupId"]
-            print(f"  Deleting Security Group {sg_id} ({sg['GroupName']})")
-            try:
-                ec2.delete_security_group(GroupId=sg_id)
-                print(f"  ✅ Security Group {sg_id} deleted")
-            except ClientError as e:
-                print(f"  ❌ Error deleting security group {sg_id}: {e}")
-
-
-def _delete_network_acls(ec2, vpc_id):
-    """Delete Network ACLs (except default)"""
-    print("Step 5: Deleting Network ACLs...")
-    nacl_response = ec2.describe_network_acls(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
-
-    for nacl in nacl_response.get("NetworkAcls", []):
-        if not nacl["IsDefault"]:
-            nacl_id = nacl["NetworkAclId"]
-            print(f"  Deleting Network ACL {nacl_id}")
-            try:
-                ec2.delete_network_acl(NetworkAclId=nacl_id)
-                print(f"  ✅ Network ACL {nacl_id} deleted")
-            except ClientError as e:
-                print(f"  ❌ Error deleting network ACL {nacl_id}: {e}")
-
-
-def _delete_route_tables(ec2, vpc_id):
-    """Delete Route Tables (except main)"""
-    print("Step 6: Deleting Route Tables...")
-    rt_response = ec2.describe_route_tables(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
-
-    for rt in rt_response.get("RouteTables", []):
-        # Check if it's the main route table
-        is_main = any(assoc.get("Main", False) for assoc in rt.get("Associations", []))
-        if not is_main:
-            rt_id = rt["RouteTableId"]
-            print(f"  Deleting Route Table {rt_id}")
-            try:
-                ec2.delete_route_table(RouteTableId=rt_id)
-                print(f"  ✅ Route Table {rt_id} deleted")
-            except ClientError as e:
-                print(f"  ❌ Error deleting route table {rt_id}: {e}")
-
-
-def _delete_subnets(ec2, vpc_id):
-    """Delete Subnets"""
-    print("Step 7: Deleting Subnets...")
-    subnet_response = ec2.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
-
-    for subnet in subnet_response.get("Subnets", []):
-        subnet_id = subnet["SubnetId"]
-        print(f"  Deleting Subnet {subnet_id}")
-        try:
-            ec2.delete_subnet(SubnetId=subnet_id)
-            print(f"  ✅ Subnet {subnet_id} deleted")
-        except ClientError as e:
-            print(f"  ❌ Error deleting subnet {subnet_id}: {e}")
+from cost_toolkit.common.vpc_cleanup_utils import delete_vpc_and_dependencies as _delete_vpc_utils
 
 
 def delete_vpc_and_dependencies(vpc_id, region_name):
-    """Delete a VPC and all its dependencies in the correct order"""
-    print(f"\n🗑️  Deleting VPC {vpc_id} in {region_name}")
-    print("=" * 80)
+    """
+    Delete a VPC and all its dependencies using shared utilities.
 
+    Args:
+        vpc_id: VPC ID to delete
+        region_name: AWS region name
+
+    Returns:
+        bool: True if deletion succeeded, False otherwise
+    """
+    print(f"\n🗑️  Deleting VPC {vpc_id} in {region_name}")
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
-
-        _delete_internet_gateways(ec2, vpc_id)
-        _delete_vpc_endpoints(ec2, vpc_id)
-        _delete_nat_gateways(ec2, vpc_id)
-        _delete_security_groups(ec2, vpc_id)
-        _delete_network_acls(ec2, vpc_id)
-        _delete_route_tables(ec2, vpc_id)
-        _delete_subnets(ec2, vpc_id)
-
-        # Step 8: Delete the VPC itself
-        print("Step 8: Deleting VPC...")
-        print(f"  Deleting VPC {vpc_id}")
-        try:
-            ec2.delete_vpc(VpcId=vpc_id)
-            print(f"  ✅ VPC {vpc_id} deleted successfully")
-        except ClientError as e:
-            print(f"  ❌ Error deleting VPC {vpc_id}: {e}")
-            return False
-        return True  # noqa: TRY300
+        return _delete_vpc_utils(ec2, vpc_id)
     except ClientError as e:
         print(f"❌ Error during VPC deletion process: {e}")
         return False
+
+
+# Alias for backward compatibility
+_delete_vpc_with_region = delete_vpc_and_dependencies
 
 
 def _get_safe_vpcs():

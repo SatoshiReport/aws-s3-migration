@@ -15,11 +15,12 @@ GLACIER_RESTORE_DAYS = config_module.GLACIER_RESTORE_DAYS
 GLACIER_RESTORE_TIER = config_module.GLACIER_RESTORE_TIER
 
 try:  # Prefer package-relative imports when linting/packaged
+    from cost_toolkit.common.format_utils import format_bytes
+
     from .migration_state_v2 import MigrationStateV2, Phase
-    from .migration_utils import format_size
 except ImportError:  # pragma: no cover - allow direct script execution
+    from cost_toolkit.common.format_utils import format_bytes
     from migration_state_v2 import MigrationStateV2, Phase
-    from migration_utils import format_size
 
 
 class BucketScanner:  # pylint: disable=too-few-public-methods
@@ -81,15 +82,19 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
                 total_size += size
                 storage_classes[storage_class] = storage_classes.get(storage_class, 0) + 1
                 if file_count % 10000 == 0:
+                    size_str = format_bytes(total_size, binary_units=False)
                     print(
-                        f"  Found {file_count:,} files, {format_size(total_size)}...",
+                        f"  Found {file_count:,} files, {size_str}...",
                         end="\r",
                         flush=True,
                     )
         self.state.save_bucket_status(
             bucket, file_count, total_size, storage_classes, scan_complete=True
         )
-        print(f"  Found {file_count:,} files, {format_size(total_size)}" + " " * 20)
+        print(
+            f"  Found {file_count:,} files, {format_bytes(total_size, binary_units=False)}"
+            + " " * 20
+        )
 
 
 class GlacierRestorer:  # pylint: disable=too-few-public-methods

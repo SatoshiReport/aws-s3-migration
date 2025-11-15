@@ -201,7 +201,9 @@ class TestStopLightsailInstances:
 
     def test_stop_lightsail_instances_success(self, capsys):
         """Test successful Lightsail instance stop."""
-        with patch("cost_toolkit.scripts.cleanup.aws_cleanup_script.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_cleanup_script.aws_utils.load_aws_credentials"
+        ):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_cleanup_script._process_region",
                 return_value=(2, 1, 25.0),
@@ -216,7 +218,9 @@ class TestStopLightsailInstances:
 
     def test_stop_lightsail_instances_region_not_available(self, capsys):
         """Test when Lightsail not available in region."""
-        with patch("cost_toolkit.scripts.cleanup.aws_cleanup_script.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_cleanup_script.aws_utils.load_aws_credentials"
+        ):
             with patch("boto3.client") as mock_client:
                 mock_ls = MagicMock()
                 mock_ls.get_instances.side_effect = ClientError(
@@ -233,7 +237,9 @@ class TestStopLightsailInstances:
 
     def test_stop_lightsail_instances_other_error(self, capsys):
         """Test with other client errors."""
-        with patch("cost_toolkit.scripts.cleanup.aws_cleanup_script.setup_aws_credentials"):
+        with patch(
+            "cost_toolkit.scripts.cleanup.aws_cleanup_script.aws_utils.load_aws_credentials"
+        ):
             with patch("boto3.client") as mock_client:
                 mock_ls = MagicMock()
                 mock_ls.get_instances.side_effect = ClientError(

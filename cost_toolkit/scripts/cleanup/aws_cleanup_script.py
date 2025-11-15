@@ -34,11 +34,6 @@ DATABASE_BUNDLE_COSTS = {
 }
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def estimate_instance_cost(bundle_id: str | None) -> float:
     """Approximate monthly cost for a Lightsail instance bundle."""
     if not bundle_id:
@@ -55,7 +50,7 @@ def estimate_database_cost(bundle_id: str | None) -> float:
 
 def disable_global_accelerators():
     """Disable all Global Accelerators"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("🔍 Checking Global Accelerators...")
     print("=" * 60)
@@ -190,7 +185,7 @@ def _process_region(region):
 
 def stop_lightsail_instances():
     """Stop all Lightsail instances"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("\n🔍 Checking Lightsail instances...")
     print("=" * 60)

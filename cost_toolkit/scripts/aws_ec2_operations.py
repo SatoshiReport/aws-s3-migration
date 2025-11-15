@@ -25,18 +25,19 @@ def get_all_regions(
 
     Returns:
         list: List of AWS region names
-
-    Raises:
-        ClientError: If API call fails
     """
-    ec2_client = create_ec2_client(
-        region="us-east-1",
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
+    try:
+        ec2_client = create_ec2_client(
+            region="us-east-1",
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
 
-    response = ec2_client.describe_regions()
-    return [region["RegionName"] for region in response["Regions"]]
+        response = ec2_client.describe_regions()
+        return [region["RegionName"] for region in response["Regions"]]
+    except ClientError as e:
+        print(f"Error getting regions: {e}")
+        return get_default_regions()
 
 
 def get_common_regions() -> list[str]:

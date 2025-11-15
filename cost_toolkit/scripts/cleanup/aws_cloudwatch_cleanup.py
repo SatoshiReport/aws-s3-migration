@@ -11,11 +11,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts import aws_utils
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _stop_canary_if_running(synthetics_client, canary_name, canary_state):
     """Stop a canary if it is running."""
     if canary_state == "RUNNING":
@@ -65,7 +60,7 @@ def _process_canaries_in_region(region):
 
 def delete_cloudwatch_canaries():
     """Delete all CloudWatch Synthetics canaries"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("🔍 Checking CloudWatch Synthetics canaries...")
     print("=" * 70)
@@ -131,7 +126,7 @@ def _disable_alarms_in_region(region):
 
 def disable_cloudwatch_alarms():
     """Disable CloudWatch alarms to reduce API requests"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("\n🔍 Checking CloudWatch alarms...")
     print("=" * 70)
@@ -199,7 +194,7 @@ def _reduce_retention_in_region(region):
 
 def reduce_log_retention():
     """Reduce CloudWatch log retention periods"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("\n📝 Checking CloudWatch log groups...")
     print("=" * 70)

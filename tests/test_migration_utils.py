@@ -4,6 +4,7 @@ from io import StringIO
 from unittest import mock
 
 import migration_utils
+from cost_toolkit.common.format_utils import format_bytes
 from tests.assertions import assert_equal
 
 
@@ -12,29 +13,29 @@ class TestFormatSizeBytes:
 
     def test_format_size_zero_bytes(self):
         """Test formatting 0 bytes"""
-        assert migration_utils.format_size(0) == "0.00 B"
+        assert format_bytes(0, binary_units=False) == "0.00 B"
 
     def test_format_size_single_byte(self):
         """Test formatting 1 byte"""
-        assert migration_utils.format_size(1) == "1.00 B"
+        assert format_bytes(1, binary_units=False) == "1.00 B"
 
     def test_format_size_small_bytes(self):
         """Test formatting small number of bytes"""
-        assert migration_utils.format_size(512) == "512.00 B"
+        assert format_bytes(512, binary_units=False) == "512.00 B"
 
     def test_format_size_exact_1024_bytes(self):
         """Test formatting exactly 1024 bytes (boundary between B and KB)"""
-        assert migration_utils.format_size(1024) == "1.00 KB"
+        assert format_bytes(1024, binary_units=False) == "1.00 KB"
 
     def test_format_size_kilobytes(self):
         """Test formatting kilobytes"""
-        assert migration_utils.format_size(2048) == "2.00 KB"
-        assert migration_utils.format_size(5120) == "5.00 KB"
+        assert format_bytes(2048, binary_units=False) == "2.00 KB"
+        assert format_bytes(5120, binary_units=False) == "5.00 KB"
 
     def test_format_size_kilobytes_fractional(self):
         """Test formatting fractional kilobytes"""
-        assert migration_utils.format_size(1536) == "1.50 KB"
-        assert migration_utils.format_size(1843) == "1.80 KB"
+        assert format_bytes(1536, binary_units=False) == "1.50 KB"
+        assert format_bytes(1843, binary_units=False) == "1.80 KB"
 
 
 class TestFormatSizeMegabytes:
@@ -42,16 +43,16 @@ class TestFormatSizeMegabytes:
 
     def test_format_size_exact_1mb(self):
         """Test formatting exactly 1 MB"""
-        assert migration_utils.format_size(1024 * 1024) == "1.00 MB"
+        assert format_bytes(1024 * 1024, binary_units=False) == "1.00 MB"
 
     def test_format_size_megabytes(self):
         """Test formatting megabytes"""
-        assert migration_utils.format_size(5 * 1024 * 1024) == "5.00 MB"
-        assert migration_utils.format_size(512 * 1024 * 1024) == "512.00 MB"
+        assert format_bytes(5 * 1024 * 1024, binary_units=False) == "5.00 MB"
+        assert format_bytes(512 * 1024 * 1024, binary_units=False) == "512.00 MB"
 
     def test_format_size_megabytes_fractional(self):
         """Test formatting fractional megabytes"""
-        assert migration_utils.format_size(1536 * 1024) == "1.50 MB"
+        assert format_bytes(1536 * 1024, binary_units=False) == "1.50 MB"
 
 
 class TestFormatSizeGigabytes:
@@ -59,16 +60,16 @@ class TestFormatSizeGigabytes:
 
     def test_format_size_exact_1gb(self):
         """Test formatting exactly 1 GB"""
-        assert migration_utils.format_size(1024 * 1024 * 1024) == "1.00 GB"
+        assert format_bytes(1024 * 1024 * 1024, binary_units=False) == "1.00 GB"
 
     def test_format_size_gigabytes(self):
         """Test formatting gigabytes"""
-        assert migration_utils.format_size(2 * 1024 * 1024 * 1024) == "2.00 GB"
-        assert migration_utils.format_size(512 * 1024 * 1024 * 1024) == "512.00 GB"
+        assert format_bytes(2 * 1024 * 1024 * 1024, binary_units=False) == "2.00 GB"
+        assert format_bytes(512 * 1024 * 1024 * 1024, binary_units=False) == "512.00 GB"
 
     def test_format_size_gigabytes_fractional(self):
         """Test formatting fractional gigabytes"""
-        assert migration_utils.format_size(1536 * 1024 * 1024) == "1.50 GB"
+        assert format_bytes(1536 * 1024 * 1024, binary_units=False) == "1.50 GB"
 
 
 class TestFormatSizeTerabytes:
@@ -76,16 +77,16 @@ class TestFormatSizeTerabytes:
 
     def test_format_size_exact_1tb(self):
         """Test formatting exactly 1 TB"""
-        assert migration_utils.format_size(1024 * 1024 * 1024 * 1024) == "1.00 TB"
+        assert format_bytes(1024 * 1024 * 1024 * 1024, binary_units=False) == "1.00 TB"
 
     def test_format_size_terabytes(self):
         """Test formatting terabytes"""
-        assert migration_utils.format_size(5 * 1024 * 1024 * 1024 * 1024) == "5.00 TB"
-        assert migration_utils.format_size(100 * 1024 * 1024 * 1024 * 1024) == "100.00 TB"
+        assert format_bytes(5 * 1024 * 1024 * 1024 * 1024, binary_units=False) == "5.00 TB"
+        assert format_bytes(100 * 1024 * 1024 * 1024 * 1024, binary_units=False) == "100.00 TB"
 
     def test_format_size_terabytes_fractional(self):
         """Test formatting fractional terabytes"""
-        assert migration_utils.format_size(1536 * 1024 * 1024 * 1024) == "1.50 TB"
+        assert format_bytes(1536 * 1024 * 1024 * 1024, binary_units=False) == "1.50 TB"
 
 
 class TestFormatSizePetabytes:
@@ -93,18 +94,18 @@ class TestFormatSizePetabytes:
 
     def test_format_size_petabytes(self):
         """Test formatting petabytes (PB)"""
-        assert migration_utils.format_size(1024 * 1024 * 1024 * 1024 * 1024) == "1.00 PB"
-        assert migration_utils.format_size(5 * 1024 * 1024 * 1024 * 1024 * 1024) == "5.00 PB"
+        assert format_bytes(1024 * 1024 * 1024 * 1024 * 1024, binary_units=False) == "1.00 PB"
+        assert format_bytes(5 * 1024 * 1024 * 1024 * 1024 * 1024, binary_units=False) == "5.00 PB"
 
     def test_format_size_petabytes_fractional(self):
         """Test formatting fractional petabytes"""
-        assert migration_utils.format_size(1536 * 1024 * 1024 * 1024 * 1024) == "1.50 PB"
+        assert format_bytes(1536 * 1024 * 1024 * 1024 * 1024, binary_units=False) == "1.50 PB"
 
     def test_format_size_very_large_values(self):
         """Test formatting very large values beyond PB"""
         # Even exabytes should be formatted as PB (no more units defined)
         huge_value = 1000 * 1024 * 1024 * 1024 * 1024 * 1024
-        result = migration_utils.format_size(huge_value)
+        result = format_bytes(huge_value, binary_units=False)
         assert "PB" in result
 
 
@@ -114,30 +115,30 @@ class TestFormatSizeBoundaries:
     def test_format_size_boundary_kb_to_mb(self):
         """Test boundary between KB and MB"""
         # Just below 1 MB
-        assert "KB" in migration_utils.format_size(1023 * 1024)
+        assert "KB" in format_bytes(1023 * 1024, binary_units=False)
         # Just at 1 MB
-        assert migration_utils.format_size(1024 * 1024) == "1.00 MB"
+        assert format_bytes(1024 * 1024, binary_units=False) == "1.00 MB"
 
     def test_format_size_boundary_mb_to_gb(self):
         """Test boundary between MB and GB"""
         # Just below 1 GB
-        assert "MB" in migration_utils.format_size(1023 * 1024 * 1024)
+        assert "MB" in format_bytes(1023 * 1024 * 1024, binary_units=False)
         # Just at 1 GB
-        assert migration_utils.format_size(1024 * 1024 * 1024) == "1.00 GB"
+        assert format_bytes(1024 * 1024 * 1024, binary_units=False) == "1.00 GB"
 
     def test_format_size_boundary_gb_to_tb(self):
         """Test boundary between GB and TB"""
         # Just below 1 TB
-        assert "GB" in migration_utils.format_size(1023 * 1024 * 1024 * 1024)
+        assert "GB" in format_bytes(1023 * 1024 * 1024 * 1024, binary_units=False)
         # Just at 1 TB
-        assert migration_utils.format_size(1024 * 1024 * 1024 * 1024) == "1.00 TB"
+        assert format_bytes(1024 * 1024 * 1024 * 1024, binary_units=False) == "1.00 TB"
 
     def test_format_size_boundary_tb_to_pb(self):
         """Test boundary between TB and PB"""
         # Just below 1 PB
-        assert "TB" in migration_utils.format_size(1023 * 1024 * 1024 * 1024 * 1024)
+        assert "TB" in format_bytes(1023 * 1024 * 1024 * 1024 * 1024, binary_units=False)
         # Just at 1 PB
-        assert migration_utils.format_size(1024 * 1024 * 1024 * 1024 * 1024) == "1.00 PB"
+        assert format_bytes(1024 * 1024 * 1024 * 1024 * 1024, binary_units=False) == "1.00 PB"
 
 
 class TestFormatDurationSeconds:

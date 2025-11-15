@@ -20,13 +20,6 @@ from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 SNAPSHOT_ANALYSIS_DAYS = 30
 
 
-def get_all_aws_regions():
-    """Get all available AWS regions."""
-    ec2_client = boto3.client("ec2", region_name="us-east-1")
-    response = ec2_client.describe_regions()
-    return [region["RegionName"] for region in response["Regions"]]
-
-
 def _display_backup_plan(backup_client, plan):
     """Display details for a single backup plan."""
     plan_id = plan["BackupPlanId"]

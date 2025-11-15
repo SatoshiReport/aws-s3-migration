@@ -7,6 +7,7 @@ import os
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
 from cost_toolkit.scripts import aws_utils
 
 # Volume IDs for migration
@@ -14,11 +15,6 @@ REMAINING_VOLUMES = [
     "vol-089b9ed38099c68f3",  # 384 GB
     "vol-0249308257e5fa64d",  # Tars 3 - 64 GB
 ]
-
-
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
 
 
 def _print_setup_header():
@@ -40,10 +36,7 @@ def _create_s3_bucket(s3, bucket_name):
     print()
 
     try:
-        s3.create_bucket(
-            Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": "eu-west-2"}
-        )
-        print("✅ S3 bucket created successfully")
+        create_s3_bucket_with_region(s3, bucket_name, "eu-west-2")
     except ClientError as e:
         if "BucketAlreadyExists" in str(e):
             print("✅ S3 bucket already exists")
@@ -189,7 +182,7 @@ def _print_next_steps(bucket_name):
 
 def create_s3_bucket_and_migrate():
     """Create S3 bucket and set up migration from EBS to S3"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
     _print_setup_header()
 
     s3 = boto3.client("s3", region_name="eu-west-2")

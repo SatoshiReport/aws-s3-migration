@@ -9,46 +9,6 @@ import boto3
 from botocore.exceptions import ClientError
 
 
-def create_ec2_client(region, aws_access_key_id, aws_secret_access_key):
-    """
-    Create an EC2 boto3 client with the provided credentials.
-
-    Args:
-        region: AWS region name
-        aws_access_key_id: AWS access key ID
-        aws_secret_access_key: AWS secret access key
-
-    Returns:
-        boto3.client: Configured EC2 client
-    """
-    return boto3.client(
-        "ec2",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-
-def create_s3_client(region, aws_access_key_id, aws_secret_access_key):
-    """
-    Create an S3 boto3 client with the provided credentials.
-
-    Args:
-        region: AWS region name
-        aws_access_key_id: AWS access key ID
-        aws_secret_access_key: AWS secret access key
-
-    Returns:
-        boto3.client: Configured S3 client
-    """
-    return boto3.client(
-        "s3",
-        region_name=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-
 def create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key):
     """
     Create both EC2 and S3 boto3 clients with the provided credentials.
@@ -61,39 +21,19 @@ def create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key):
     Returns:
         tuple: (ec2_client, s3_client)
     """
-    ec2_client = create_ec2_client(region, aws_access_key_id, aws_secret_access_key)
-    s3_client = create_s3_client(region, aws_access_key_id, aws_secret_access_key)
+    ec2_client = boto3.client(
+        "ec2",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
+    s3_client = boto3.client(
+        "s3",
+        region_name=region,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
     return ec2_client, s3_client
-
-
-def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
-    """
-    Terminate an EC2 instance and return state information.
-
-    Args:
-        region_name: AWS region name
-        instance_id: EC2 instance ID to terminate
-        aws_access_key_id: AWS access key ID
-        aws_secret_access_key: AWS secret access key
-
-    Returns:
-        dict: Response from terminate_instances API call
-
-    Raises:
-        Exception: If termination fails
-    """
-    ec2 = create_ec2_client(region_name, aws_access_key_id, aws_secret_access_key)
-
-    print(f"🗑️  Terminating instance: {instance_id}")
-    response = ec2.terminate_instances(InstanceIds=[instance_id])
-
-    current_state = response["TerminatingInstances"][0]["CurrentState"]["Name"]
-    previous_state = response["TerminatingInstances"][0]["PreviousState"]["Name"]
-
-    print(f"   Previous state: {previous_state}")
-    print(f"   Current state: {current_state}")
-
-    return response
 
 
 def get_instance_name(ec2_client, instance_id):
@@ -119,12 +59,32 @@ def get_instance_name(ec2_client, instance_id):
     return "Unknown"
 
 
+def get_all_aws_regions():
+    """
+    Get all available AWS regions by querying the EC2 service.
+
+    Returns:
+        list: List of all AWS region names
+
+    Note:
+        This makes an API call to AWS. For a static list of common regions,
+        use get_default_regions() instead.
+    """
+    ec2_client = boto3.client("ec2", region_name="us-east-1")
+    response = ec2_client.describe_regions()
+    return [region["RegionName"] for region in response["Regions"]]
+
+
 def get_default_regions():
     """
     Get the default list of AWS regions commonly used for operations.
 
     Returns:
         list: List of AWS region names
+
+    Note:
+        This returns a static list. For all regions via API call,
+        use get_all_aws_regions() instead.
     """
     return [
         "us-east-1",
@@ -137,3 +97,98 @@ def get_default_regions():
         "ap-southeast-1",
         "ap-southeast-2",
     ]
+
+
+def extract_tag_value(resource, key, default="Unnamed"):
+    """
+    Extract a specific tag value from an AWS resource.
+
+    Args:
+        resource: AWS resource dict containing 'Tags' key
+        key: Tag key to search for
+        default: Default value if tag not found (default: "Unnamed")
+
+    Returns:
+        str: Tag value if found, otherwise default value
+    """
+    for tag in resource.get("Tags", []):
+        if tag["Key"] == key:
+            return tag["Value"]
+    return default
+
+
+def get_resource_tags(resource):
+    """
+    Extract all tags from an AWS resource as a dictionary.
+
+    Args:
+        resource: AWS resource dict containing 'Tags' key
+
+    Returns:
+        dict: Dictionary of tag key-value pairs
+    """
+    return {tag["Key"]: tag["Value"] for tag in resource.get("Tags", [])}
+
+
+def extract_volumes_from_instance(instance):
+    """
+    Extract volume information from an EC2 instance.
+
+    Args:
+        instance: EC2 instance dict from describe_instances
+
+    Returns:
+        list: List of dicts with volume_id, device, and delete_on_termination
+    """
+    volumes = []
+    for bdm in instance.get("BlockDeviceMappings", []):
+        if "Ebs" in bdm:
+            volumes.append(
+                {
+                    "volume_id": bdm["Ebs"]["VolumeId"],
+                    "device": bdm["DeviceName"],
+                    "delete_on_termination": bdm["Ebs"]["DeleteOnTermination"],
+                }
+            )
+    return volumes
+
+
+def get_instance_details(ec2_client, instance_id):
+    """
+    Get detailed information about an EC2 instance.
+
+    Args:
+        ec2_client: Boto3 EC2 client
+        instance_id: The EC2 instance ID
+
+    Returns:
+        dict: Instance details or None on error. Contains keys:
+            - instance_id: Instance ID
+            - name: Instance name from Name tag
+            - state: Current instance state
+            - instance_type: Instance type
+            - launch_time: Launch timestamp
+            - availability_zone: AZ where instance is running
+            - volumes: List of attached volumes
+            - tags: Dict of all instance tags
+    """
+    try:
+        response = ec2_client.describe_instances(InstanceIds=[instance_id])
+
+        for reservation in response["Reservations"]:
+            for instance in reservation["Instances"]:
+                return {
+                    "instance_id": instance_id,
+                    "name": extract_tag_value(instance, "Name"),
+                    "state": instance["State"]["Name"],
+                    "instance_type": instance["InstanceType"],
+                    "launch_time": instance["LaunchTime"],
+                    "availability_zone": instance["Placement"]["AvailabilityZone"],
+                    "volumes": extract_volumes_from_instance(instance),
+                    "tags": get_resource_tags(instance),
+                }
+
+    except ClientError as e:
+        print(f"Error getting instance details for {instance_id}: {e}")
+        return None
+    return None

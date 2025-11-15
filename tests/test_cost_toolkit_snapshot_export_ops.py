@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from cost_toolkit.scripts.optimization.snapshot_export_common import (
+    create_ami_from_snapshot,
+    create_s3_bucket_if_not_exists,
+)
 from cost_toolkit.scripts.optimization.snapshot_export_fixed.constants import (
     ExportTaskDeletedException,
 )
 from cost_toolkit.scripts.optimization.snapshot_export_fixed.export_ops import (
-    create_ami_from_snapshot,
-    create_s3_bucket_if_not_exists,
     create_s3_bucket_new,
     validate_export_task_exists,
 )
@@ -46,12 +48,11 @@ def test_create_ami_from_snapshot():
     mock_ec2 = MagicMock()
 
     with patch(
-        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_ops._register_ami",
+        "cost_toolkit.scripts.optimization.snapshot_export_common._register_ami",
         return_value="ami-12345",
     ) as mock_register:
         with patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_ops."
-            "wait_for_ami_available",
+            "cost_toolkit.scripts.optimization.snapshot_export_common.wait_for_ami_available",
             return_value="ami-12345",
         ) as mock_wait:
             result = create_ami_from_snapshot(mock_ec2, "snap-123", "test snapshot description")

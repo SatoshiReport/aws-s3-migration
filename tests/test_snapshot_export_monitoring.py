@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import time
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,8 +18,8 @@ from cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring import (
 )
 
 
-@pytest.fixture
-def mock_s3_client():
+@pytest.fixture(name="s3")
+def fixture_s3():
     """Create a mock S3 client."""
     client = MagicMock()
     client.exceptions.NoSuchKey = type("NoSuchKey", (Exception,), {})
@@ -64,22 +64,20 @@ def test_calculate_cost_savings_fractional():
     assert abs(result["monthly_savings"] - 0.2835) < 0.001
 
 
-def test_verify_s3_export_final_success(mock_s3_client, capsys):
+def test_verify_s3_export_final_success(s3, capsys):
     """Test verify_s3_export_final with successful verification."""
-    from datetime import datetime
-
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 107374182400,  # 100 GB
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
-    result = verify_s3_export_final(mock_s3_client, "test-bucket", "test-key.vmdk", 100)
+    result = verify_s3_export_final(s3, "test-bucket", "test-key.vmdk", 100)
 
     assert result["size_bytes"] == 107374182400
     assert abs(result["size_gb"] - 100.0) < 0.1
     assert result["last_modified"] == datetime(2024, 1, 1, 12, 0, 0)
 
-    mock_s3_client.head_object.assert_called_once_with(Bucket="test-bucket", Key="test-key.vmdk")
+    s3.head_object.assert_called_once_with(Bucket="test-bucket", Key="test-key.vmdk")
 
     captured = capsys.readouterr()
     assert "Final verification" in captured.out
@@ -87,77 +85,65 @@ def test_verify_s3_export_final_success(mock_s3_client, capsys):
     assert "Size validation passed" in captured.out
 
 
-def test_verify_s3_export_final_size_too_small(mock_s3_client):
+def test_verify_s3_export_final_size_too_small(s3):
     """Test verify_s3_export_final fails when file is too small."""
-    from datetime import datetime
-
     # File is 1 GB but expected is 100 GB (too small even with compression)
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 1073741824,  # 1 GB
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
     with pytest.raises(S3FileValidationException, match="Final size validation failed"):
-        verify_s3_export_final(mock_s3_client, "test-bucket", "test-key.vmdk", 100)
+        verify_s3_export_final(s3, "test-bucket", "test-key.vmdk", 100)
 
 
-def test_verify_s3_export_final_size_too_large(mock_s3_client):
+def test_verify_s3_export_final_size_too_large(s3):
     """Test verify_s3_export_final fails when file is too large."""
-    from datetime import datetime
-
     # File is 200 GB but expected is 100 GB (exceeds max expansion ratio)
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 214748364800,  # 200 GB
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
     with pytest.raises(S3FileValidationException, match="Final size validation failed"):
-        verify_s3_export_final(mock_s3_client, "test-bucket", "test-key.vmdk", 100)
+        verify_s3_export_final(s3, "test-bucket", "test-key.vmdk", 100)
 
 
-def test_verify_s3_export_final_within_compression_range(mock_s3_client):
+def test_verify_s3_export_final_within_compression_range(s3):
     """Test verify_s3_export_final accepts highly compressed files."""
-    from datetime import datetime
-
     # File is 15 GB for 100 GB snapshot (15% of original = valid compression)
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 16106127360,  # 15 GB
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
-    result = verify_s3_export_final(mock_s3_client, "test-bucket", "test-key.vmdk", 100)
+    result = verify_s3_export_final(s3, "test-bucket", "test-key.vmdk", 100)
 
     assert result["size_bytes"] == 16106127360
 
 
-def test_verify_s3_export_final_within_expansion_range(mock_s3_client):
+def test_verify_s3_export_final_within_expansion_range(s3):
     """Test verify_s3_export_final accepts slightly expanded files."""
-    from datetime import datetime
-
     # File is 110 GB for 100 GB snapshot (110% = valid expansion)
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 118111600640,  # 110 GB
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
-    result = verify_s3_export_final(mock_s3_client, "test-bucket", "test-key.vmdk", 100)
+    result = verify_s3_export_final(s3, "test-bucket", "test-key.vmdk", 100)
 
     assert result["size_bytes"] == 118111600640
 
 
-def test_check_s3_file_completion_success_fast_check(mock_s3_client, capsys):
+def test_check_s3_file_completion_success_fast_check(s3, capsys):
     """Test check_s3_file_completion with fast_check mode."""
-    from datetime import datetime
-
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 107374182400,  # 100 GB
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
     with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
-        result = check_s3_file_completion(
-            mock_s3_client, "test-bucket", "test-key.vmdk", 100, fast_check=True
-        )
+        result = check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
     # Fast check requires 2 stable checks (2 minutes / 1 minute interval)
     assert result["stability_checks"] == 2
@@ -168,29 +154,23 @@ def test_check_s3_file_completion_success_fast_check(mock_s3_client, capsys):
     assert "File size stable" in captured.out
 
 
-def test_check_s3_file_completion_success_normal_check(mock_s3_client, capsys):
+def test_check_s3_file_completion_success_normal_check(s3):
     """Test check_s3_file_completion with normal stability check."""
-    from datetime import datetime
-
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 107374182400,  # 100 GB
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
     with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
-        result = check_s3_file_completion(
-            mock_s3_client, "test-bucket", "test-key.vmdk", 100, fast_check=False
-        )
+        result = check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=False)
 
     # Normal check requires 2 stable checks (10 minutes / 5 minute interval)
     assert result["stability_checks"] == 2
     assert abs(result["size_gb"] - 100.0) < 0.1
 
 
-def test_check_s3_file_completion_file_growing(mock_s3_client, capsys):
+def test_check_s3_file_completion_file_growing(s3, capsys):
     """Test check_s3_file_completion when file is still growing then fails."""
-    from datetime import datetime
-
     # The loop runs exactly 2 times (fast_check=True)
     # If file size changes on check 2, it resets but we've already done 2 iterations
     # So the function will fail with only 1 stable check
@@ -201,125 +181,105 @@ def test_check_s3_file_completion_file_growing(mock_s3_client, capsys):
 
     call_count = [0]
 
-    def mock_head_object(*args, **kwargs):
+    def mock_head_object(*_args, **_kwargs):
         size = sizes[call_count[0]]
         call_count[0] += 1
         return {"ContentLength": size, "LastModified": datetime(2024, 1, 1, 12, 0, 0)}
 
-    mock_s3_client.head_object.side_effect = mock_head_object
+    s3.head_object.side_effect = mock_head_object
 
     with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
         # Should fail because file is still growing
         with pytest.raises(S3FileValidationException, match="File not stable"):
-            check_s3_file_completion(
-                mock_s3_client, "test-bucket", "test-key.vmdk", 100, fast_check=True
-            )
+            check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
     captured = capsys.readouterr()
     assert "File size changed" in captured.out
     assert "File still growing" in captured.out
 
 
-def test_check_s3_file_completion_file_not_found_first_check(mock_s3_client, capsys):
+def test_check_s3_file_completion_file_not_found_first_check(s3, capsys):
     """Test check_s3_file_completion when file not found on first check fails."""
-    from datetime import datetime
-
     # The loop runs exactly 2 times (fast_check=True)
     # If first check fails, _handle_file_not_found returns empty list
     # Then check 2 finds the file but only has 1 check - should fail
     call_count = [0]
 
-    def mock_head_object(*args, **kwargs):
+    def mock_head_object(*_args, **_kwargs):
         if call_count[0] == 0:
             call_count[0] += 1
-            raise mock_s3_client.exceptions.NoSuchKey()
+            raise s3.exceptions.NoSuchKey()
         # Second check finds the file
         call_count[0] += 1
         return {"ContentLength": 107374182400, "LastModified": datetime(2024, 1, 1, 12, 0, 0)}
 
-    mock_s3_client.head_object.side_effect = mock_head_object
+    s3.head_object.side_effect = mock_head_object
 
     with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
         # Should fail because only 1 successful check out of 2 required
         with pytest.raises(S3FileValidationException, match="File not stable"):
-            check_s3_file_completion(
-                mock_s3_client, "test-bucket", "test-key.vmdk", 100, fast_check=True
-            )
+            check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
     captured = capsys.readouterr()
     assert "S3 file not found yet - this is normal during export" in captured.out
 
 
-def test_check_s3_file_completion_file_disappeared(mock_s3_client):
+def test_check_s3_file_completion_file_disappeared(s3):
     """Test check_s3_file_completion when file disappears during checks."""
-    from datetime import datetime
-
     # First check succeeds, second check file disappears
     call_count = [0]
 
-    def mock_head_object(*args, **kwargs):
+    def mock_head_object(*_args, **_kwargs):
         if call_count[0] == 0:
             call_count[0] += 1
             return {"ContentLength": 107374182400, "LastModified": datetime(2024, 1, 1, 12, 0, 0)}
-        raise mock_s3_client.exceptions.NoSuchKey()
+        raise s3.exceptions.NoSuchKey()
 
-    mock_s3_client.head_object.side_effect = mock_head_object
+    s3.head_object.side_effect = mock_head_object
 
     with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
         with pytest.raises(S3FileValidationException, match="S3 file disappeared"):
-            check_s3_file_completion(
-                mock_s3_client, "test-bucket", "test-key.vmdk", 100, fast_check=True
-            )
+            check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
 
-def test_check_s3_file_completion_api_error(mock_s3_client):
+def test_check_s3_file_completion_api_error(s3):
     """Test check_s3_file_completion handles API errors."""
-    mock_s3_client.head_object.side_effect = Exception("API Error")
+    s3.head_object.side_effect = Exception("API Error")
 
     with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
         with pytest.raises(S3FileValidationException, match="Failed to check S3 file"):
-            check_s3_file_completion(
-                mock_s3_client, "test-bucket", "test-key.vmdk", 100, fast_check=True
-            )
+            check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
 
-def test_check_s3_file_completion_insufficient_stable_checks(mock_s3_client):
+def test_check_s3_file_completion_insufficient_stable_checks(s3):
     """Test check_s3_file_completion when file doesn't stabilize."""
-    from datetime import datetime
-
     # File keeps growing, never stabilizes
     call_count = [0]
 
-    def mock_head_object(*args, **kwargs):
+    def mock_head_object(*_args, **_kwargs):
         # Each check returns a different size
         size = 53687091200 + (call_count[0] * 10737418240)  # Starts at 50 GB, adds 10 GB each time
         call_count[0] += 1
         return {"ContentLength": size, "LastModified": datetime(2024, 1, 1, 12, 0, 0)}
 
-    mock_s3_client.head_object.side_effect = mock_head_object
+    s3.head_object.side_effect = mock_head_object
 
     with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
         with pytest.raises(S3FileValidationException, match="File not stable"):
-            check_s3_file_completion(
-                mock_s3_client, "test-bucket", "test-key.vmdk", 100, fast_check=True
-            )
+            check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
 
-def test_check_s3_file_completion_size_variance_warning(mock_s3_client, capsys):
+def test_check_s3_file_completion_size_variance_warning(s3, capsys):
     """Test check_s3_file_completion warns about size variance."""
-    from datetime import datetime
-
     # File is 50 GB but expected 100 GB (50% variance, but within valid compression range)
     # The function only shows variance warning at the end via _validate_final_size
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 53687091200,  # 50 GB
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
     with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
-        result = check_s3_file_completion(
-            mock_s3_client, "test-bucket", "test-key.vmdk", 100, fast_check=True
-        )
+        result = check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
     # Should succeed since 50 GB is within the valid compression range
     assert result["stability_checks"] == 2
@@ -333,6 +293,7 @@ def test_check_s3_file_completion_size_variance_warning(mock_s3_client, capsys):
 def test_check_s3_file_completion_uses_correct_config():
     """Test check_s3_file_completion uses correct timing configuration."""
     # Test fast check config
+    # pylint: disable=import-outside-toplevel
     from cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring import (
         _get_stability_config,
     )
@@ -347,11 +308,9 @@ def test_check_s3_file_completion_uses_correct_config():
     assert normal_config["check_interval_minutes"] == constants.S3_STABILITY_CHECK_INTERVAL_MINUTES
 
 
-def test_check_s3_file_completion_waits_between_checks(mock_s3_client):
+def test_check_s3_file_completion_waits_between_checks(s3):
     """Test check_s3_file_completion waits between stability checks."""
-    from datetime import datetime
-
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 107374182400,
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
@@ -359,9 +318,7 @@ def test_check_s3_file_completion_waits_between_checks(mock_s3_client):
     with patch(
         "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"
     ) as mock_sleep:
-        check_s3_file_completion(
-            mock_s3_client, "test-bucket", "test-key.vmdk", 100, fast_check=True
-        )
+        check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
         # Should sleep once (between first and second check)
         assert mock_sleep.call_count == 1
@@ -369,17 +326,15 @@ def test_check_s3_file_completion_waits_between_checks(mock_s3_client):
         mock_sleep.assert_called_with(constants.S3_FAST_CHECK_INTERVAL_MINUTES * 60)
 
 
-def test_verify_s3_export_final_prints_file_info(mock_s3_client, capsys):
+def test_verify_s3_export_final_prints_file_info(s3, capsys):
     """Test verify_s3_export_final prints detailed file information."""
-    from datetime import datetime
-
     test_date = datetime(2024, 1, 1, 12, 30, 45)
-    mock_s3_client.head_object.return_value = {
+    s3.head_object.return_value = {
         "ContentLength": 107374182400,
         "LastModified": test_date,
     }
 
-    verify_s3_export_final(mock_s3_client, "my-bucket", "my-key.vmdk", 100)
+    verify_s3_export_final(s3, "my-bucket", "my-key.vmdk", 100)
 
     captured = capsys.readouterr()
     assert "s3://my-bucket/my-key.vmdk" in captured.out

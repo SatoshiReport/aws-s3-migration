@@ -20,17 +20,17 @@ from cost_toolkit.scripts.migration.aws_london_volume_inspector import (
     _volume_inspect_commands,
     inspect_volumes_via_ssh,
     main,
-    setup_aws_credentials,
 )
 
 
-def test_setup_credentials_calls_utils():
-    """Test credentials setup delegates to aws_utils."""
+def test_inspect_volumes_via_ssh_calls_credentials():
+    """Test inspect_volumes_via_ssh calls aws_utils.setup_aws_credentials."""
     with patch(
-        "cost_toolkit.scripts.migration.aws_london_volume_inspector.aws_utils"
-    ) as mock_utils:
-        setup_aws_credentials()
-    mock_utils.setup_aws_credentials.assert_called_once()
+        "cost_toolkit.scripts.migration.aws_london_volume_inspector.aws_utils.setup_aws_credentials"
+    ) as mock_setup:
+        with patch("builtins.open", create=True):
+            inspect_volumes_via_ssh()
+    mock_setup.assert_called_once()
 
 
 def test_print_header_output(capsys):
@@ -281,7 +281,7 @@ class TestInspectVolumesViaSsh:
     def test_inspect_creates_script_file(self, capsys):
         """Test inspection creates script file."""
         with patch(
-            "cost_toolkit.scripts.migration.aws_london_volume_inspector.setup_aws_credentials"
+            "cost_toolkit.scripts.migration.aws_london_volume_inspector.aws_utils.setup_aws_credentials"  # pylint: disable=line-too-long
         ):
             with patch("builtins.open", create=True) as mock_open:
                 inspect_volumes_via_ssh()
@@ -293,7 +293,7 @@ class TestInspectVolumesViaSsh:
     def test_inspect_prints_all_sections(self, capsys):
         """Test all information sections are printed."""
         with patch(
-            "cost_toolkit.scripts.migration.aws_london_volume_inspector.setup_aws_credentials"
+            "cost_toolkit.scripts.migration.aws_london_volume_inspector.aws_utils.setup_aws_credentials"  # pylint: disable=line-too-long
         ):
             with patch("builtins.open", create=True):
                 inspect_volumes_via_ssh()
@@ -309,7 +309,7 @@ class TestInspectVolumesViaSsh:
     def test_inspect_uses_correct_ip(self, capsys):
         """Test correct instance IP is used."""
         with patch(
-            "cost_toolkit.scripts.migration.aws_london_volume_inspector.setup_aws_credentials"
+            "cost_toolkit.scripts.migration.aws_london_volume_inspector.aws_utils.setup_aws_credentials"  # pylint: disable=line-too-long
         ):
             with patch("builtins.open", create=True):
                 inspect_volumes_via_ssh()

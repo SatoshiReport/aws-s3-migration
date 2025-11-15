@@ -5,8 +5,10 @@ Handles displaying analysis results and recommendations.
 
 from datetime import datetime, timezone
 
+from cost_toolkit.common.format_utils import format_bytes
+
 from .constants import DAYS_THRESHOLD_VERY_OLD
-from .utils import calculate_monthly_cost, format_bytes
+from .utils import calculate_monthly_cost
 
 
 def _print_bucket_storage_classes(storage_classes):
@@ -17,9 +19,10 @@ def _print_bucket_storage_classes(storage_classes):
     print("  Storage classes:")
     for storage_class, data in storage_classes.items():
         class_cost = calculate_monthly_cost(data["size_bytes"], storage_class)
+        size_str = format_bytes(data["size_bytes"], binary_units=False)
         print(
             f"    {storage_class}: {data['count']:,} objects, "
-            f"{format_bytes(data['size_bytes'])}, ${class_cost:.2f}/month"
+            f"{size_str}, ${class_cost:.2f}/month"
         )
 
 
@@ -37,23 +40,22 @@ def _print_bucket_optimization_opportunities(bucket_analysis):
     """Print optimization opportunities for a bucket"""
     if bucket_analysis["old_objects"]:
         old_size = sum(obj["size_bytes"] for obj in bucket_analysis["old_objects"])
-        print(
-            f"  Old objects (>90 days): {len(bucket_analysis['old_objects'])} objects, "
-            f"{format_bytes(old_size)}"
-        )
+        old_size_str = format_bytes(old_size, binary_units=False)
+        count = len(bucket_analysis["old_objects"])
+        print(f"  Old objects (>90 days): {count} objects, {old_size_str}")
 
     if bucket_analysis["large_objects"]:
         large_size = sum(obj["size_bytes"] for obj in bucket_analysis["large_objects"])
-        print(
-            f"  Large objects (>100MB): {len(bucket_analysis['large_objects'])} objects, "
-            f"{format_bytes(large_size)}"
-        )
+        large_size_str = format_bytes(large_size, binary_units=False)
+        count = len(bucket_analysis["large_objects"])
+        print(f"  Large objects (>100MB): {count} objects, {large_size_str}")
 
 
 def display_bucket_summary(bucket_analysis, bucket_cost):
     """Display summary information for a single bucket"""
     print(f"  Objects: {bucket_analysis['total_objects']:,}")
-    print(f"  Total size: {format_bytes(bucket_analysis['total_size_bytes'])}")
+    total_size_str = format_bytes(bucket_analysis["total_size_bytes"], binary_units=False)
+    print(f"  Total size: {total_size_str}")
     print(f"  Estimated monthly cost: ${bucket_cost:.2f}")
     print(f"  Versioning: {'Enabled' if bucket_analysis['versioning_enabled'] else 'Disabled'}")
     print(f"  Lifecycle policies: {len(bucket_analysis['lifecycle_policy'])} configured")
@@ -72,7 +74,8 @@ def print_overall_summary(all_bucket_analyses, total_objects, total_size_bytes, 
     print("=" * 80)
     print(f"Total buckets analyzed: {len(all_bucket_analyses)}")
     print(f"Total objects: {total_objects:,}")
-    print(f"Total storage size: {format_bytes(total_size_bytes)}")
+    total_size_str = format_bytes(total_size_bytes, binary_units=False)
+    print(f"Total storage size: {total_size_str}")
     print(f"Estimated monthly cost: ${total_monthly_cost:.2f}")
     print()
 
@@ -90,7 +93,8 @@ def print_storage_class_breakdown(storage_class_summary, total_size_bytes):
         percentage = (data["size_bytes"] / total_size_bytes * 100) if total_size_bytes > 0 else 0
         print(f"  {storage_class}:")
         print(f"    Objects: {data['count']:,}")
-        print(f"    Size: {format_bytes(data['size_bytes'])} ({percentage:.1f}%)")
+        size_str = format_bytes(data["size_bytes"], binary_units=False)
+        print(f"    Size: {size_str} ({percentage:.1f}%)")
         print(f"    Cost: ${data['cost']:.2f}/month")
         print()
 
@@ -160,14 +164,13 @@ def print_cleanup_opportunities(all_bucket_analyses):
         print(f"Found {len(cleanup_candidates)} cleanup opportunities:")
         for candidate in cleanup_candidates:
             print(f"  • {candidate['description']}")
-            print(f"    {candidate['count']} objects, {format_bytes(candidate['size'])}")
+            candidate_size = format_bytes(candidate["size"], binary_units=False)
+            print(f"    {candidate['count']} objects, {candidate_size}")
             print(f"    Potential savings: ${candidate['monthly_cost']:.2f}/month")
             print()
 
-        print(
-            f"Total cleanup potential: {format_bytes(total_cleanup_size)}, "
-            f"${total_cleanup_cost:.2f}/month savings"
-        )
+        cleanup_size = format_bytes(total_cleanup_size, binary_units=False)
+        print(f"Total cleanup potential: {cleanup_size}, ${total_cleanup_cost:.2f}/month savings")
     else:
         print("No obvious cleanup candidates found (no objects older than 1 year)")
 

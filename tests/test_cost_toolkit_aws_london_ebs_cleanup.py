@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.migration.aws_london_ebs_cleanup import (
@@ -15,21 +14,12 @@ from cost_toolkit.scripts.migration.aws_london_ebs_cleanup import (
     _show_remaining_volumes,
     cleanup_london_ebs_volumes,
     main,
-    setup_aws_credentials,
 )
-
-
-# Tests for setup_aws_credentials
-@patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup.aws_utils.setup_aws_credentials")
-def test_setup_aws_credentials(mock_setup):
-    """Test setup_aws_credentials wrapper."""
-    setup_aws_credentials()
-    mock_setup.assert_called_once()
 
 
 # Tests for _print_volumes_to_delete
 @patch("builtins.print")
-def test_print_volumes_to_delete(mock_print):
+def test_print_volumes_to_delete(_mock_print):
     """Test printing volumes to delete."""
     volumes = [
         {
@@ -51,11 +41,11 @@ def test_print_volumes_to_delete(mock_print):
     total = _print_volumes_to_delete(volumes)
 
     assert total == 12
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_print_volumes_to_delete_empty(mock_print):
+def test_print_volumes_to_delete_empty(_mock_print):
     """Test printing empty volumes list."""
     volumes = []
 
@@ -65,7 +55,7 @@ def test_print_volumes_to_delete_empty(mock_print):
 
 
 @patch("builtins.print")
-def test_print_volumes_to_delete_single(mock_print):
+def test_print_volumes_to_delete_single(_mock_print):
     """Test printing single volume."""
     volumes = [
         {
@@ -84,7 +74,7 @@ def test_print_volumes_to_delete_single(mock_print):
 
 # Tests for _detach_volume
 @patch("builtins.print")
-def test_detach_volume_attached(mock_print):
+def test_detach_volume_attached(_mock_print):
     """Test detaching an attached volume."""
     mock_ec2 = MagicMock()
     mock_waiter = MagicMock()
@@ -115,7 +105,7 @@ def test_detach_volume_attached(mock_print):
 
 
 @patch("builtins.print")
-def test_detach_volume_not_attached(mock_print):
+def test_detach_volume_not_attached(_mock_print):
     """Test detaching a volume that's not attached."""
     mock_ec2 = MagicMock()
     mock_ec2.describe_volumes.return_value = {
@@ -133,7 +123,7 @@ def test_detach_volume_not_attached(mock_print):
 
 
 @patch("builtins.print")
-def test_detach_volume_multiple_attachments(mock_print):
+def test_detach_volume_multiple_attachments(_mock_print):
     """Test detaching a volume with the first attachment."""
     mock_ec2 = MagicMock()
     mock_waiter = MagicMock()
@@ -168,7 +158,7 @@ def test_detach_volume_multiple_attachments(mock_print):
 
 # Tests for _delete_volumes
 @patch("builtins.print")
-def test_delete_volumes_success(mock_print):
+def test_delete_volumes_success(_mock_print):
     """Test successful volume deletion."""
     mock_ec2 = MagicMock()
     volumes = [
@@ -184,7 +174,7 @@ def test_delete_volumes_success(mock_print):
 
 
 @patch("builtins.print")
-def test_delete_volumes_with_failures(mock_print):
+def test_delete_volumes_with_failures(_mock_print):
     """Test volume deletion with some failures."""
     mock_ec2 = MagicMock()
     mock_ec2.delete_volume.side_effect = [
@@ -204,7 +194,7 @@ def test_delete_volumes_with_failures(mock_print):
 
 
 @patch("builtins.print")
-def test_delete_volumes_all_fail(mock_print):
+def test_delete_volumes_all_fail(_mock_print):
     """Test volume deletion when all fail."""
     mock_ec2 = MagicMock()
     mock_ec2.delete_volume.side_effect = ClientError(
@@ -221,7 +211,7 @@ def test_delete_volumes_all_fail(mock_print):
 
 
 @patch("builtins.print")
-def test_delete_volumes_empty_list(mock_print):
+def test_delete_volumes_empty_list(_mock_print):
     """Test deleting empty volume list."""
     mock_ec2 = MagicMock()
     volumes = []
@@ -235,7 +225,7 @@ def test_delete_volumes_empty_list(mock_print):
 
 # Tests for _print_cleanup_summary
 @patch("builtins.print")
-def test_print_cleanup_summary_with_deletions(mock_print):
+def test_print_cleanup_summary_with_deletions(_mock_print):
     """Test printing cleanup summary with deleted volumes."""
     deleted = [
         {"id": "vol-123", "name": "Vol 1", "size": "100 GB", "savings": "$8/month"},
@@ -246,11 +236,11 @@ def test_print_cleanup_summary_with_deletions(mock_print):
     savings = _print_cleanup_summary(deleted, failed)
 
     assert savings == 12
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_print_cleanup_summary_with_failures(mock_print):
+def test_print_cleanup_summary_with_failures(_mock_print):
     """Test printing cleanup summary with failures."""
     deleted = [
         {"id": "vol-123", "name": "Vol 1", "size": "100 GB", "savings": "$8/month"},
@@ -265,11 +255,11 @@ def test_print_cleanup_summary_with_failures(mock_print):
     savings = _print_cleanup_summary(deleted, failed)
 
     assert savings == 8
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_print_cleanup_summary_no_deletions(mock_print):
+def test_print_cleanup_summary_no_deletions(_mock_print):
     """Test printing cleanup summary with no deletions."""
     deleted = []
     failed = [
@@ -282,11 +272,11 @@ def test_print_cleanup_summary_no_deletions(mock_print):
     savings = _print_cleanup_summary(deleted, failed)
 
     assert savings == 0
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_print_cleanup_summary_empty(mock_print):
+def test_print_cleanup_summary_empty(_mock_print):
     """Test printing cleanup summary with no deletions or failures."""
     deleted = []
     failed = []
@@ -298,7 +288,7 @@ def test_print_cleanup_summary_empty(mock_print):
 
 # Tests for _show_remaining_volumes
 @patch("builtins.print")
-def test_show_remaining_volumes(mock_print):
+def test_show_remaining_volumes(_mock_print):
     """Test showing remaining volumes."""
     mock_ec2 = MagicMock()
     mock_ec2.describe_volumes.return_value = {
@@ -321,11 +311,11 @@ def test_show_remaining_volumes(mock_print):
     _show_remaining_volumes(mock_ec2)
 
     mock_ec2.describe_volumes.assert_called_once()
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_show_remaining_volumes_no_tags(mock_print):
+def test_show_remaining_volumes_no_tags(_mock_print):
     """Test showing remaining volumes without tags."""
     mock_ec2 = MagicMock()
     mock_ec2.describe_volumes.return_value = {
@@ -344,7 +334,7 @@ def test_show_remaining_volumes_no_tags(mock_print):
 
 
 @patch("builtins.print")
-def test_show_remaining_volumes_client_error(mock_print):
+def test_show_remaining_volumes_client_error(_mock_print):
     """Test showing remaining volumes with client error."""
     mock_ec2 = MagicMock()
     mock_ec2.describe_volumes.side_effect = ClientError(
@@ -353,11 +343,11 @@ def test_show_remaining_volumes_client_error(mock_print):
 
     _show_remaining_volumes(mock_ec2)
 
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_show_remaining_volumes_empty(mock_print):
+def test_show_remaining_volumes_empty(_mock_print):
     """Test showing remaining volumes when none exist."""
     mock_ec2 = MagicMock()
     mock_ec2.describe_volumes.return_value = {"Volumes": []}
@@ -373,7 +363,7 @@ def test_cleanup_london_ebs_volumes_success():
     with (
         patch("builtins.print"),
         patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_cleanup.setup_aws_credentials"
+            "cost_toolkit.scripts.migration.aws_london_ebs_cleanup.aws_utils.setup_aws_credentials"
         ) as mock_setup,
         patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup.boto3") as mock_boto3,
         patch(
@@ -411,10 +401,9 @@ def test_cleanup_london_ebs_volumes_success():
 @patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup._detach_volume")
 @patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup._print_volumes_to_delete")
 @patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup.boto3")
-@patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup.setup_aws_credentials")
 @patch("builtins.print")
 def test_cleanup_london_ebs_volumes_detach_error(
-    mock_print, mock_setup, mock_boto3, mock_print_vols, mock_detach
+    _mock_print, mock_boto3, mock_print_vols, mock_detach
 ):
     """Test EBS cleanup with detach error."""
     mock_ec2 = MagicMock()

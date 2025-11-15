@@ -15,15 +15,34 @@ from cost_toolkit.scripts.migration.aws_check_instance_status import (
     _print_troubleshooting,
     check_instance_status,
     main,
-    setup_aws_credentials,
 )
 
 
-def test_setup_credentials_calls_utils():
-    """Test credentials setup delegates to aws_utils."""
-    with patch("cost_toolkit.scripts.migration.aws_check_instance_status.aws_utils") as mock_utils:
-        setup_aws_credentials()
-    mock_utils.setup_aws_credentials.assert_called_once()
+@patch("cost_toolkit.scripts.migration.aws_check_instance_status._print_troubleshooting")
+@patch("cost_toolkit.scripts.migration.aws_check_instance_status._check_system_logs")
+@patch("cost_toolkit.scripts.migration.aws_check_instance_status._check_user_data")
+@patch("cost_toolkit.scripts.migration.aws_check_instance_status._print_instance_info")
+@patch("cost_toolkit.scripts.migration.aws_check_instance_status.aws_utils.setup_aws_credentials")
+@patch("cost_toolkit.scripts.migration.aws_check_instance_status.boto3.client")
+def test_setup_credentials_calls_utils(
+    mock_boto_client,
+    mock_setup_creds,
+    _mock_print_info,
+    _mock_check_user_data,
+    _mock_check_logs,
+    _mock_troubleshooting,
+):
+    """check_instance_status should initialize AWS credentials before EC2 calls."""
+    mock_ec2 = MagicMock()
+    mock_ec2.describe_instances.return_value = {
+        "Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]
+    }
+    mock_boto_client.return_value = mock_ec2
+
+    check_instance_status()
+
+    mock_setup_creds.assert_called_once()
+    mock_boto_client.assert_called_once_with("ec2", region_name="eu-west-2")
 
 
 class TestPrintInstanceInfo:
@@ -225,56 +244,50 @@ class TestCheckInstanceStatus:
 
     def test_check_status_success(self, capsys):
         """Test successful instance status check."""
-        with patch(
-            "cost_toolkit.scripts.migration.aws_check_instance_status.setup_aws_credentials"
-        ):
-            with patch("boto3.client") as mock_client:
-                mock_ec2 = MagicMock()
-                mock_ec2.describe_instances.return_value = {
-                    "Reservations": [
-                        {
-                            "Instances": [
-                                {
-                                    "State": {"Name": "running"},
-                                    "InstanceType": "t2.micro",
-                                    "LaunchTime": "2024-01-01",
-                                    "Tags": [{"Key": "Name", "Value": "test"}],
-                                }
-                            ]
-                        }
-                    ]
-                }
-                mock_ec2.describe_instance_attribute.return_value = {}
-                mock_ec2.get_console_output.return_value = {}
-                mock_client.return_value = mock_ec2
-                check_instance_status()
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            mock_ec2.describe_instances.return_value = {
+                "Reservations": [
+                    {
+                        "Instances": [
+                            {
+                                "State": {"Name": "running"},
+                                "InstanceType": "t2.micro",
+                                "LaunchTime": "2024-01-01",
+                                "Tags": [{"Key": "Name", "Value": "test"}],
+                            }
+                        ]
+                    }
+                ]
+            }
+            mock_ec2.describe_instance_attribute.return_value = {}
+            mock_ec2.get_console_output.return_value = {}
+            mock_client.return_value = mock_ec2
+            check_instance_status()
         captured = capsys.readouterr()
         assert "AWS Instance Status Check" in captured.out
 
     def test_check_status_uses_correct_region(self):
         """Test check uses correct AWS region."""
-        with patch(
-            "cost_toolkit.scripts.migration.aws_check_instance_status.setup_aws_credentials"
-        ):
-            with patch("boto3.client") as mock_client:
-                mock_ec2 = MagicMock()
-                mock_ec2.describe_instances.return_value = {
-                    "Reservations": [
-                        {
-                            "Instances": [
-                                {
-                                    "State": {"Name": "running"},
-                                    "InstanceType": "t2.micro",
-                                    "Tags": [],
-                                }
-                            ]
-                        }
-                    ]
-                }
-                mock_ec2.describe_instance_attribute.return_value = {}
-                mock_ec2.get_console_output.return_value = {}
-                mock_client.return_value = mock_ec2
-                check_instance_status()
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            mock_ec2.describe_instances.return_value = {
+                "Reservations": [
+                    {
+                        "Instances": [
+                            {
+                                "State": {"Name": "running"},
+                                "InstanceType": "t2.micro",
+                                "Tags": [],
+                            }
+                        ]
+                    }
+                ]
+            }
+            mock_ec2.describe_instance_attribute.return_value = {}
+            mock_ec2.get_console_output.return_value = {}
+            mock_client.return_value = mock_ec2
+            check_instance_status()
         mock_client.assert_called_once_with("ec2", region_name="eu-west-2")
 
 
@@ -283,49 +296,41 @@ class TestCheckInstanceStatusErrors:
 
     def test_check_status_handles_error(self, capsys):
         """Test error handling during status check."""
-        with patch(
-            "cost_toolkit.scripts.migration.aws_check_instance_status.setup_aws_credentials"
-        ):
-            with patch("boto3.client") as mock_client:
-                mock_ec2 = MagicMock()
-                mock_ec2.describe_instances.side_effect = ClientError(
-                    {"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances"
-                )
-                mock_client.return_value = mock_ec2
-                check_instance_status()
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            mock_ec2.describe_instances.side_effect = ClientError(
+                {"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances"
+            )
+            mock_client.return_value = mock_ec2
+            check_instance_status()
         captured = capsys.readouterr()
         assert "Error checking instance status" in captured.out
 
     def test_check_status_calls_all_checks(self):
         """Test all check functions are called."""
-        with patch(
-            "cost_toolkit.scripts.migration.aws_check_instance_status.setup_aws_credentials"
-        ):
-            with patch("boto3.client") as mock_client:
-                with (
-                    patch(
-                        "cost_toolkit.scripts.migration.aws_check_instance_status."
-                        "_print_instance_info"
-                    ) as mock_info,
-                    patch(
-                        "cost_toolkit.scripts.migration.aws_check_instance_status."
-                        "_check_user_data"
-                    ) as mock_user,
-                    patch(
-                        "cost_toolkit.scripts.migration.aws_check_instance_status."
-                        "_check_system_logs"
-                    ) as mock_logs,
-                    patch(
-                        "cost_toolkit.scripts.migration.aws_check_instance_status."
-                        "_print_troubleshooting"
-                    ) as mock_trouble,
-                ):
-                    mock_ec2 = MagicMock()
-                    mock_ec2.describe_instances.return_value = {
-                        "Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]
-                    }
-                    mock_client.return_value = mock_ec2
-                    check_instance_status()
+        with patch("boto3.client") as mock_client:
+            with (
+                patch(
+                    "cost_toolkit.scripts.migration.aws_check_instance_status."
+                    "_print_instance_info"
+                ) as mock_info,
+                patch(
+                    "cost_toolkit.scripts.migration.aws_check_instance_status._check_user_data"
+                ) as mock_user,
+                patch(
+                    "cost_toolkit.scripts.migration.aws_check_instance_status._check_system_logs"
+                ) as mock_logs,
+                patch(
+                    "cost_toolkit.scripts.migration.aws_check_instance_status."
+                    "_print_troubleshooting"
+                ) as mock_trouble,
+            ):
+                mock_ec2 = MagicMock()
+                mock_ec2.describe_instances.return_value = {
+                    "Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]
+                }
+                mock_client.return_value = mock_ec2
+                check_instance_status()
         mock_info.assert_called_once()
         mock_user.assert_called_once()
         mock_logs.assert_called_once()

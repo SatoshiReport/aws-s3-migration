@@ -15,6 +15,8 @@ from typing import Any
 from boto3.session import Session
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
+
 try:  # Prefer package-relative imports
     from .migrate_v2_smoke_shared import (
         SmokeTestDeps,
@@ -49,10 +51,7 @@ def run_real_smoke_test(deps: SmokeTestDeps):
 
 def _create_bucket(s3_client, bucket_name: str, region: str):
     """Create an S3 bucket in the desired region."""
-    params = {"Bucket": bucket_name}
-    if region != "us-east-1":
-        params["CreateBucketConfiguration"] = {"LocationConstraint": region}
-    s3_client.create_bucket(**params)
+    create_s3_bucket_with_region(s3_client, bucket_name, region)
     waiter = s3_client.get_waiter("bucket_exists")
     waiter.wait(Bucket=bucket_name)
 

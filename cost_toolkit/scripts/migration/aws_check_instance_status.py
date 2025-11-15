@@ -10,11 +10,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts import aws_utils
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from ~/.env via shared helper."""
-    aws_utils.setup_aws_credentials()
-
-
 def _print_instance_info(instance, instance_id):
     """Print instance status information."""
     print("🖥️  INSTANCE STATUS:")
@@ -107,7 +102,7 @@ def _print_troubleshooting():
 
 def check_instance_status():
     """Check EC2 instance status and User Data execution"""
-    setup_aws_credentials()
+    aws_utils.setup_aws_credentials()
 
     print("AWS Instance Status Check")
     print("=" * 80)

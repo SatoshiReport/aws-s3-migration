@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import json
-import os
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import mock_open, patch
 
 from cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow import (
     estimate_aurora_serverless_cost,
@@ -75,7 +73,7 @@ def test_estimate_aurora_serverless_cost():
 
 # Tests for print_migration_results
 @patch("builtins.print")
-def test_print_migration_results_with_reader(mock_print):
+def test_print_migration_results_with_reader(_mock_print):
     """Test printing migration results with reader endpoint."""
     original = {
         "identifier": "db-1",
@@ -92,8 +90,8 @@ def test_print_migration_results_with_reader(mock_print):
 
     print_migration_results(original, endpoint, 120.0, 43.0)
 
-    mock_print.assert_called()
-    call_args = [str(call) for call in mock_print.call_args_list]
+    _mock_print.assert_called()
+    call_args = [str(call) for call in _mock_print.call_args_list]
     combined = " ".join(call_args)
 
     assert "db-1" in combined
@@ -103,7 +101,7 @@ def test_print_migration_results_with_reader(mock_print):
 
 
 @patch("builtins.print")
-def test_print_migration_results_without_reader(mock_print):
+def test_print_migration_results_without_reader(_mock_print):
     """Test printing migration results without reader endpoint."""
     original = {
         "identifier": "db-1",
@@ -120,11 +118,11 @@ def test_print_migration_results_without_reader(mock_print):
 
     print_migration_results(original, endpoint, 180.0, 43.0)
 
-    mock_print.assert_called()
+    _mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_print_migration_results_cost_calculations(mock_print):
+def test_print_migration_results_cost_calculations(_mock_print):
     """Test printing migration results with cost calculations."""
     original = {
         "identifier": "db-1",
@@ -141,7 +139,7 @@ def test_print_migration_results_cost_calculations(mock_print):
 
     print_migration_results(original, endpoint, 240.0, 60.0)
 
-    call_args = [str(call) for call in mock_print.call_args_list]
+    call_args = [str(call) for call in _mock_print.call_args_list]
     combined = " ".join(call_args)
 
     assert "240.00" in combined
@@ -153,7 +151,7 @@ def test_print_migration_results_cost_calculations(mock_print):
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow.datetime")
 @patch("builtins.open", new_callable=mock_open)
 @patch("builtins.print")
-def test_record_migration_action_new_file(mock_print, mock_file, mock_datetime):
+def test_record_migration_action_new_file(_mock_print, mock_file, mock_datetime):
     """Test recording migration action when log file doesn't exist."""
     mock_datetime.now.return_value.isoformat.return_value = "2025-01-14T12:00:00"
 
@@ -174,7 +172,7 @@ def test_record_migration_action_new_file(mock_print, mock_file, mock_datetime):
             record_migration_action(original, endpoint, 77.0)
 
     mock_file.assert_called()
-    write_calls = [call for call in mock_file().write.call_args_list]
+    write_calls = list(mock_file().write.call_args_list)
     written_data = "".join([str(call[0][0]) for call in write_calls])
 
     assert "db-1" in written_data
@@ -185,7 +183,7 @@ def test_record_migration_action_new_file(mock_print, mock_file, mock_datetime):
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow.datetime")
 @patch("builtins.open", new_callable=mock_open, read_data='{"migrations": []}')
 @patch("builtins.print")
-def test_record_migration_action_existing_file(mock_print, mock_file, mock_datetime):
+def test_record_migration_action_existing_file(_mock_print, mock_file, mock_datetime):
     """Test recording migration action when log file exists."""
     mock_datetime.now.return_value.isoformat.return_value = "2025-01-14T12:00:00"
 
@@ -211,7 +209,7 @@ def test_record_migration_action_existing_file(mock_print, mock_file, mock_datet
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow.datetime")
 @patch("builtins.open", new_callable=mock_open)
 @patch("builtins.print")
-def test_record_migration_action_write_error(mock_print, mock_file, mock_datetime):
+def test_record_migration_action_write_error(_mock_print, mock_file, mock_datetime):
     """Test recording migration action with write error."""
     mock_datetime.now.return_value.isoformat.return_value = "2025-01-14T12:00:00"
     mock_file.side_effect = IOError("Permission denied")
@@ -233,7 +231,7 @@ def test_record_migration_action_write_error(mock_print, mock_file, mock_datetim
             record_migration_action(original, endpoint, 77.0)
 
     # Should print warning but not raise
-    call_args = [str(call) for call in mock_print.call_args_list]
+    call_args = [str(call) for call in _mock_print.call_args_list]
     combined = " ".join(call_args)
     assert "Could not record" in combined or "Permission denied" in combined
 
@@ -241,7 +239,7 @@ def test_record_migration_action_write_error(mock_print, mock_file, mock_datetim
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow.datetime")
 @patch("builtins.open", new_callable=mock_open, read_data='{"migrations": [{"old": "data"}]}')
 @patch("builtins.print")
-def test_record_migration_action_appends_to_existing(mock_print, mock_file, mock_datetime):
+def test_record_migration_action_appends_to_existing(_mock_print, mock_file, mock_datetime):
     """Test recording migration action appends to existing migrations."""
     mock_datetime.now.return_value.isoformat.return_value = "2025-01-14T12:00:00"
 
@@ -267,7 +265,7 @@ def test_record_migration_action_appends_to_existing(mock_print, mock_file, mock
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow.datetime")
 @patch("builtins.open", new_callable=mock_open)
 @patch("builtins.print")
-def test_record_migration_action_creates_directory(mock_print, mock_file, mock_datetime):
+def test_record_migration_action_creates_directory(_mock_print, _mock_file, mock_datetime):
     """Test recording migration action creates directory if needed."""
     mock_datetime.now.return_value.isoformat.return_value = "2025-01-14T12:00:00"
 
@@ -292,7 +290,7 @@ def test_record_migration_action_creates_directory(mock_print, mock_file, mock_d
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow.datetime")
 @patch("builtins.open", new_callable=mock_open)
 @patch("builtins.print")
-def test_record_migration_action_complete_log_entry(mock_print, mock_file, mock_datetime):
+def test_record_migration_action_complete_log_entry(_mock_print, mock_file, mock_datetime):
     """Test recording migration action creates complete log entry."""
     mock_datetime.now.return_value.isoformat.return_value = "2025-01-14T12:00:00"
 
@@ -312,7 +310,7 @@ def test_record_migration_action_complete_log_entry(mock_print, mock_file, mock_
         with patch("os.makedirs"):
             record_migration_action(original, endpoint, 397.0)
 
-    write_calls = [call for call in mock_file().write.call_args_list]
+    write_calls = list(mock_file().write.call_args_list)
     written_data = "".join([str(call[0][0]) for call in write_calls])
 
     assert "production-db" in written_data

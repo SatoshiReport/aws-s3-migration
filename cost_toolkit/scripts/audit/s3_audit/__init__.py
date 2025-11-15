@@ -13,7 +13,7 @@ from .reporting import (
     print_overall_summary,
     print_storage_class_breakdown,
 )
-from .utils import calculate_monthly_cost, format_bytes
+from .utils import calculate_monthly_cost
 
 __all__ = [
     "analyze_bucket_objects",
@@ -26,5 +26,4 @@ __all__ = [
     "print_overall_summary",
     "print_storage_class_breakdown",
     "calculate_monthly_cost",
-    "format_bytes",
 ]

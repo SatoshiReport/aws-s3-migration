@@ -19,70 +19,12 @@ This approach gives you control over the problematic AWS export service.
 from datetime import datetime
 
 from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
-from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
 from cost_toolkit.scripts.aws_utils import load_aws_credentials_from_env
+from cost_toolkit.scripts.optimization.snapshot_export_common import (
+    create_ami_from_snapshot,
+    create_s3_bucket_if_not_exists,
+)
 from cost_toolkit.scripts.snapshot_export_common import SAMPLE_SNAPSHOTS
-
-
-def create_s3_bucket_if_not_exists(s3_client, bucket_name, region):
-    """Create S3 bucket if it doesn't exist"""
-    try:
-        s3_client.head_bucket(Bucket=bucket_name)
-        print(f"   ✅ S3 bucket {bucket_name} already exists")
-    except s3_client.exceptions.NoSuchBucket:
-        print(f"   🔄 Creating S3 bucket {bucket_name}...")
-        create_s3_bucket_with_region(s3_client, bucket_name, region)
-
-        # Enable versioning for data protection
-        s3_client.put_bucket_versioning(
-            Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
-        )
-
-        print(f"   ✅ Created S3 bucket {bucket_name} with versioning enabled")
-        return True
-
-    return True
-
-
-def create_ami_from_snapshot(ec2_client, snapshot_id, snapshot_description):
-    """Create an AMI from an EBS snapshot with optimal settings"""
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    ami_name = f"manual-export-{snapshot_id}-{timestamp}"
-
-    print(f"   🔄 Creating AMI from snapshot {snapshot_id}...")
-
-    # Use settings optimized for export compatibility
-    response = ec2_client.register_image(
-        Name=ami_name,
-        Description=f"AMI for manual S3 export from {snapshot_id}: {snapshot_description}",
-        Architecture="x86_64",
-        RootDeviceName="/dev/sda1",
-        BlockDeviceMappings=[
-            {
-                "DeviceName": "/dev/sda1",
-                "Ebs": {
-                    "SnapshotId": snapshot_id,
-                    "VolumeType": "gp2",  # Use gp2 for better compatibility
-                    "DeleteOnTermination": True,
-                },
-            }
-        ],
-        VirtualizationType="hvm",
-        BootMode="legacy-bios",  # Better compatibility
-        EnaSupport=False,  # Disable for compatibility
-        SriovNetSupport="simple",
-    )
-
-    ami_id = response["ImageId"]
-    print(f"   ✅ Created AMI: {ami_id}")
-
-    # Wait for AMI to be available
-    print(f"   ⏳ Waiting for AMI {ami_id} to become available...")
-    waiter = ec2_client.get_waiter("image_available")
-    waiter.wait(ImageIds=[ami_id], WaiterConfig={"Delay": 30, "MaxAttempts": 40})  # 20 minutes max
-    print(f"   ✅ AMI {ami_id} is now available and ready for export")
-
-    return ami_id
 
 
 def prepare_snapshot_for_export(snapshot_info, aws_access_key_id, aws_secret_access_key):
@@ -103,8 +45,15 @@ def prepare_snapshot_for_export(snapshot_info, aws_access_key_id, aws_secret_acc
     bucket_name = f"ebs-snapshot-archive-{region}-{datetime.now().strftime('%Y%m%d')}"
     create_s3_bucket_if_not_exists(s3_client, bucket_name, region)
 
-    # Create AMI
-    ami_id = create_ami_from_snapshot(ec2_client, snapshot_id, description)
+    # Create AMI - use gp2 for better compatibility with manual workflow
+    ami_id = create_ami_from_snapshot(
+        ec2_client,
+        snapshot_id,
+        description,
+        volume_type="gp2",
+        boot_mode="legacy-bios",
+        ena_support=False,
+    )
 
     # Calculate potential savings
     ebs_monthly_cost = size_gb * 0.05

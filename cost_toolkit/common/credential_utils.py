@@ -5,9 +5,10 @@ This module provides common credential loading patterns
 to eliminate duplicate credential setup code across scripts.
 """
 
-import os
-
-from dotenv import load_dotenv
+from cost_toolkit.scripts.aws_client_factory import (
+    _resolve_env_path,
+    load_credentials_from_env,
+)
 
 
 def setup_aws_credentials():
@@ -22,16 +23,7 @@ def setup_aws_credentials():
     Raises:
         ValueError: If AWS credentials are not found in ~/.env file
     """
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+    return load_credentials_from_env()
 
 
 def check_aws_credentials():
@@ -41,14 +33,14 @@ def check_aws_credentials():
     Returns:
         bool: True if credentials found, False otherwise (prints error message)
     """
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    if not os.environ.get("AWS_ACCESS_KEY_ID"):
-        print("⚠️  AWS credentials not found in ~/.env file.")
-        print("Please ensure ~/.env contains:")
+    try:
+        load_credentials_from_env()
+    except ValueError:
+        resolved_path = _resolve_env_path()
+        print(f"⚠️  AWS credentials not found in {resolved_path}.")
+        print(f"Please ensure {resolved_path} contains:")
         print("  AWS_ACCESS_KEY_ID=your-access-key")
         print("  AWS_SECRET_ACCESS_KEY=your-secret-key")
         print("  AWS_DEFAULT_REGION=us-east-1")
         return False
-
     return True

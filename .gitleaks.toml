@@ -46,6 +46,8 @@ regexes = [
     '''EXAMPLE_API_KEY''',
     '''YOUR_API_KEY_HERE''',
     '''INSERT_YOUR_''',
+    # Test class names in test files (long CamelCase names can trigger entropy detection)
+    '''Test[A-Za-z]+''',
 ]
 
 # Allowlist specific commits (if needed)

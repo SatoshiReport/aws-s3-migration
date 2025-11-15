@@ -4,10 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from cost_toolkit.scripts.audit.s3_audit.utils import (
-    calculate_monthly_cost,
-    format_bytes,
-)
+from cost_toolkit.common.format_utils import format_bytes
+from cost_toolkit.scripts.audit.s3_audit.utils import calculate_monthly_cost
 from tests.assertions import assert_equal
 
 
@@ -41,32 +39,27 @@ def test_format_bytes_small_values():
 
 def test_format_bytes_kilobytes():
     """Test format_bytes for kilobyte values."""
-    with patch("cost_toolkit.scripts.audit.s3_audit.utils.BYTES_PER_KB", 1024):
-        assert_equal(format_bytes(1024), "1.00 KB")
-        assert_equal(format_bytes(2048), "2.00 KB")
+    assert_equal(format_bytes(1024, binary_units=False), "1.00 KB")
+    assert_equal(format_bytes(2048, binary_units=False), "2.00 KB")
 
 
 def test_format_bytes_megabytes():
     """Test format_bytes for megabyte values."""
-    with patch("cost_toolkit.scripts.audit.s3_audit.utils.BYTES_PER_KB", 1024):
-        assert_equal(format_bytes(1024 * 1024), "1.00 MB")
-        assert_equal(format_bytes(5 * 1024 * 1024), "5.00 MB")
+    assert_equal(format_bytes(1024 * 1024, binary_units=False), "1.00 MB")
+    assert_equal(format_bytes(5 * 1024 * 1024, binary_units=False), "5.00 MB")
 
 
 def test_format_bytes_gigabytes():
     """Test format_bytes for gigabyte values."""
-    with patch("cost_toolkit.scripts.audit.s3_audit.utils.BYTES_PER_KB", 1024):
-        assert_equal(format_bytes(1024**3), "1.00 GB")
-        assert_equal(format_bytes(10 * 1024**3), "10.00 GB")
+    assert_equal(format_bytes(1024**3, binary_units=False), "1.00 GB")
+    assert_equal(format_bytes(10 * 1024**3, binary_units=False), "10.00 GB")
 
 
 def test_format_bytes_terabytes():
     """Test format_bytes for terabyte values."""
-    with patch("cost_toolkit.scripts.audit.s3_audit.utils.BYTES_PER_KB", 1024):
-        assert_equal(format_bytes(1024**4), "1.00 TB")
+    assert_equal(format_bytes(1024**4, binary_units=False), "1.00 TB")
 
 
 def test_format_bytes_petabytes():
     """Test format_bytes for petabyte values."""
-    with patch("cost_toolkit.scripts.audit.s3_audit.utils.BYTES_PER_KB", 1024):
-        assert_equal(format_bytes(1024**5), "1.00 PB")
+    assert_equal(format_bytes(1024**5, binary_units=False), "1.00 PB")

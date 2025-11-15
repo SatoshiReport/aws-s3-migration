@@ -10,8 +10,8 @@ from cost_toolkit.scripts.audit.aws_vpc_audit import (
     _print_elastic_ip_details,
     _process_elastic_ip_address,
     audit_elastic_ips_in_region,
-    get_all_regions,
 )
+from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 
 class TestGetAllRegions:
@@ -46,12 +46,17 @@ class TestGetAllRegions:
                 {"Error": {"Code": "AccessDenied"}}, "describe_regions"
             )
 
+            # The consolidated implementation catches error and returns default regions
             regions = get_all_regions()
 
-        assert len(regions) == 5
-        assert "us-east-1" in regions
-        captured = capsys.readouterr()
-        assert "Error getting regions" in captured.out
+            # Should return default regions (9 regions)
+            assert len(regions) == 9
+            assert "us-east-1" in regions
+            assert "us-east-2" in regions
+
+            # Should have printed error message
+            captured = capsys.readouterr()
+            assert "Error getting regions" in captured.out
 
 
 class TestProcessElasticIpAddress:

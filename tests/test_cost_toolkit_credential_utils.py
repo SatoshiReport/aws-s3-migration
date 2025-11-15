@@ -12,7 +12,7 @@ from tests.assertions import assert_equal
 
 
 @patch("os.getenv")
-@patch("cost_toolkit.common.credential_utils.load_dotenv")
+@patch("cost_toolkit.scripts.aws_client_factory.load_dotenv")
 @patch("builtins.print")
 def test_setup_aws_credentials_success(mock_print, mock_load_dotenv, mock_getenv):
     """Test setup_aws_credentials with valid credentials."""
@@ -31,7 +31,7 @@ def test_setup_aws_credentials_success(mock_print, mock_load_dotenv, mock_getenv
 
 
 @patch("os.getenv")
-@patch("cost_toolkit.common.credential_utils.load_dotenv")
+@patch("cost_toolkit.scripts.aws_client_factory.load_dotenv")
 def test_setup_aws_credentials_missing(mock_load_dotenv, mock_getenv):
     """Test setup_aws_credentials with missing credentials."""
     mock_getenv.return_value = None
@@ -45,11 +45,15 @@ def test_setup_aws_credentials_missing(mock_load_dotenv, mock_getenv):
     mock_load_dotenv.assert_called_once()
 
 
-@patch("os.environ.get")
-@patch("cost_toolkit.common.credential_utils.load_dotenv")
-def test_check_aws_credentials_success(mock_load_dotenv, mock_environ_get):
+@patch("os.getenv")
+@patch("cost_toolkit.scripts.aws_client_factory.load_dotenv")
+def test_check_aws_credentials_success(mock_load_dotenv, mock_getenv):
     """Test check_aws_credentials with valid credentials."""
-    mock_environ_get.return_value = "test_key"
+
+    def getenv_side_effect(key):
+        return {"AWS_ACCESS_KEY_ID": "test_key", "AWS_SECRET_ACCESS_KEY": "test_secret"}.get(key)
+
+    mock_getenv.side_effect = getenv_side_effect
 
     result = check_aws_credentials()
 
@@ -57,12 +61,12 @@ def test_check_aws_credentials_success(mock_load_dotenv, mock_environ_get):
     mock_load_dotenv.assert_called_once()
 
 
-@patch("os.environ.get")
-@patch("cost_toolkit.common.credential_utils.load_dotenv")
+@patch("os.getenv")
+@patch("cost_toolkit.scripts.aws_client_factory.load_dotenv")
 @patch("builtins.print")
-def test_check_aws_credentials_missing(mock_print, mock_load_dotenv, mock_environ_get):
+def test_check_aws_credentials_missing(mock_print, mock_load_dotenv, mock_getenv):
     """Test check_aws_credentials with missing credentials."""
-    mock_environ_get.return_value = None
+    mock_getenv.return_value = None
 
     result = check_aws_credentials()
 

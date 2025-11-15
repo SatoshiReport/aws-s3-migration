@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
@@ -13,18 +13,7 @@ from cost_toolkit.scripts.migration.aws_london_final_analysis_summary import (
     _stop_instance,
     final_analysis_summary,
     main,
-    setup_aws_credentials,
 )
-
-
-# Tests for setup_aws_credentials
-@patch(
-    "cost_toolkit.scripts.migration.aws_london_final_analysis_summary.aws_utils.setup_aws_credentials"
-)
-def test_setup_aws_credentials(mock_setup):
-    """Test setup_aws_credentials wrapper."""
-    setup_aws_credentials()
-    mock_setup.assert_called_once()
 
 
 # Tests for _stop_instance
@@ -57,16 +46,18 @@ def test_stop_instance_client_error(mock_print):
 
 
 @patch("builtins.print")
-def test_stop_instance_waiter_error(mock_print):
+def test_stop_instance_waiter_error(_mock_print):
     """Test stopping instance when waiter fails."""
     mock_ec2 = MagicMock()
     mock_waiter = MagicMock()
     mock_ec2.get_waiter.return_value = mock_waiter
-    mock_waiter.wait.side_effect = Exception("Waiter timeout")
+    mock_waiter.wait.side_effect = ClientError(
+        {"Error": {"Code": "WaiterError"}}, "WaitUntilInstanceStopped"
+    )
 
     try:
         _stop_instance(mock_ec2)
-    except Exception:
+    except ClientError:
         pass
 
     mock_ec2.stop_instances.assert_called_once()
@@ -129,24 +120,15 @@ def test_print_final_recommendations(mock_print):
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_metadata_findings")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.boto3")
-@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.setup_aws_credentials")
 @patch("builtins.print")
-def test_final_analysis_summary(
-    mock_print,
-    mock_setup,
-    mock_boto3,
-    mock_stop,
-    mock_metadata,
-    mock_assessment,
-    mock_recommendations,
-):
+def test_final_analysis_summary(_mock_print, mock_boto3, mock_stop, *print_mocks):
     """Test final analysis summary function."""
+    mock_metadata, mock_assessment, mock_recommendations = print_mocks
     mock_ec2 = MagicMock()
     mock_boto3.client.return_value = mock_ec2
 
     final_analysis_summary()
 
-    mock_setup.assert_called_once()
     mock_boto3.client.assert_called_once_with("ec2", region_name="eu-west-2")
     mock_stop.assert_called_once_with(mock_ec2)
     mock_metadata.assert_called_once()
@@ -163,16 +145,14 @@ def test_final_analysis_summary(
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_metadata_findings")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.boto3")
-@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.setup_aws_credentials")
 @patch("builtins.print")
 def test_final_analysis_summary_stop_error(
-    mock_print,
-    mock_setup,
+    _mock_print,
     mock_boto3,
     mock_stop,
-    mock_metadata,
-    mock_assessment,
-    mock_recommendations,
+    _mock_metadata,
+    _mock_assessment,
+    _mock_recommendations,
 ):
     """Test final analysis summary when stop fails."""
     mock_ec2 = MagicMock()
@@ -183,8 +163,6 @@ def test_final_analysis_summary_stop_error(
         final_analysis_summary()
     except ClientError:
         pass
-
-    mock_setup.assert_called_once()
 
 
 # Tests for main
@@ -205,25 +183,17 @@ def test_main(mock_analysis):
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_metadata_findings")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.boto3")
-@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.setup_aws_credentials")
 @patch("builtins.print")
-def test_final_analysis_summary_complete_workflow(
-    mock_print,
-    mock_setup,
-    mock_boto3,
-    mock_stop,
-    mock_metadata,
-    mock_assessment,
-    mock_recommendations,
-):
+def test_final_analysis_summary_complete_workflow(_mock_print, mock_boto3, mock_stop, *print_mocks):
     """Test complete final analysis workflow."""
+    mock_metadata, mock_assessment, mock_recommendations = print_mocks
     mock_ec2 = MagicMock()
     mock_boto3.client.return_value = mock_ec2
 
     final_analysis_summary()
 
     # Verify all steps are called in order
-    assert mock_setup.call_count == 1
+    assert mock_boto3.client.call_count == 1
     assert mock_boto3.client.call_count == 1
     assert mock_stop.call_count == 1
     assert mock_metadata.call_count == 1

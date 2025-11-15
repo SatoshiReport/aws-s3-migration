@@ -5,9 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+from cost_toolkit.common.cli_utils import confirm_reset_state_db
+from cost_toolkit.common.format_utils import format_bytes
 from find_compressible.cache import (
-    _confirm_state_db_reset,
-    format_size,
     handle_state_db_reset,
 )
 from tests.assertions import assert_equal
@@ -15,61 +15,60 @@ from tests.assertions import assert_equal
 
 def test_format_size_bytes():
     """Test format_size with bytes."""
-    assert format_size(100) == "100.00 B"
-    assert format_size(1023) == "1,023.00 B"
+    assert format_bytes(100, use_comma_separators=True) == "100.00 B"
+    assert format_bytes(1023, use_comma_separators=True) == "1,023.00 B"
 
 
 def test_format_size_kilobytes():
     """Test format_size with kilobytes."""
-    assert format_size(1024) == "1.00 KiB"
-    assert format_size(2048) == "2.00 KiB"
+    assert format_bytes(1024, use_comma_separators=True) == "1.00 KiB"
+    assert format_bytes(2048, use_comma_separators=True) == "2.00 KiB"
 
 
 def test_format_size_megabytes():
     """Test format_size with megabytes."""
-    assert format_size(1024 * 1024) == "1.00 MiB"
-    assert format_size(500 * 1024 * 1024) == "500.00 MiB"
+    assert format_bytes(1024 * 1024, use_comma_separators=True) == "1.00 MiB"
+    assert format_bytes(500 * 1024 * 1024, use_comma_separators=True) == "500.00 MiB"
 
 
 def test_format_size_gigabytes():
     """Test format_size with gigabytes."""
-    assert format_size(1024 * 1024 * 1024) == "1.00 GiB"
-    assert format_size(2 * 1024 * 1024 * 1024) == "2.00 GiB"
+    assert format_bytes(1024 * 1024 * 1024, use_comma_separators=True) == "1.00 GiB"
+    assert format_bytes(2 * 1024 * 1024 * 1024, use_comma_separators=True) == "2.00 GiB"
 
 
 def test_format_size_terabytes():
     """Test format_size with terabytes."""
-    assert format_size(1024 * 1024 * 1024 * 1024) == "1.00 TiB"
-    assert format_size(5 * 1024 * 1024 * 1024 * 1024) == "5.00 TiB"
+    assert format_bytes(1024 * 1024 * 1024 * 1024, use_comma_separators=True) == "1.00 TiB"
+    assert format_bytes(5 * 1024 * 1024 * 1024 * 1024, use_comma_separators=True) == "5.00 TiB"
 
 
 def test_format_size_petabytes():
     """Test format_size with petabytes."""
-    # Note: format_size stops at TiB and shows larger values in TiB
-    result = format_size(1024 * 1024 * 1024 * 1024 * 1024)
-    assert "TiB" in result
+    result = format_bytes(1024 * 1024 * 1024 * 1024 * 1024, use_comma_separators=True)
+    assert "PiB" in result
 
 
 def test_confirm_state_db_reset_with_skip_prompt():
-    """Test _confirm_state_db_reset when skip_prompt is True."""
+    """Test confirm_reset_state_db when skip_prompt is True."""
     db_path = Path("/tmp/test.db")
-    result = _confirm_state_db_reset(db_path, skip_prompt=True)
+    result = confirm_reset_state_db(str(db_path), skip_prompt=True)
     assert result is True
 
 
 def test_confirm_state_db_reset_with_user_confirmation():
-    """Test _confirm_state_db_reset with user confirmation."""
+    """Test confirm_reset_state_db with user confirmation."""
     db_path = Path("/tmp/test.db")
-    with patch("find_compressible.cache.confirm_reset_state_db", return_value=True):
-        result = _confirm_state_db_reset(db_path, skip_prompt=False)
+    with patch("builtins.input", return_value="y"):
+        result = confirm_reset_state_db(str(db_path), skip_prompt=False)
         assert result is True
 
 
 def test_confirm_state_db_reset_with_user_rejection():
-    """Test _confirm_state_db_reset with user rejection."""
+    """Test confirm_reset_state_db with user rejection."""
     db_path = Path("/tmp/test.db")
-    with patch("find_compressible.cache.confirm_reset_state_db", return_value=False):
-        result = _confirm_state_db_reset(db_path, skip_prompt=False)
+    with patch("builtins.input", return_value="n"):
+        result = confirm_reset_state_db(str(db_path), skip_prompt=False)
         assert result is False
 
 
@@ -87,7 +86,7 @@ def test_handle_state_db_reset_cancelled(tmp_path, capsys):
     base_path = tmp_path / "base"
     base_path.mkdir()
 
-    with patch("find_compressible.cache._confirm_state_db_reset", return_value=False):
+    with patch("builtins.input", return_value="n"):
         result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=False)
         assert_equal(result, db_path)
         captured = capsys.readouterr().out
@@ -103,7 +102,7 @@ def test_handle_state_db_reset_confirmed(tmp_path, capsys):
     mock_reseed = MagicMock(return_value=(db_path, 1000, 1024 * 1024 * 1024))
 
     with (
-        patch("find_compressible.cache._confirm_state_db_reset", return_value=True),
+        patch("builtins.input", return_value="y"),
         patch("find_compressible.cache.reseed_state_db_from_local_drive", mock_reseed),
     ):
         result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=False)

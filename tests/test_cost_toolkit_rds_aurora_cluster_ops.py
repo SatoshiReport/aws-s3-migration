@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
@@ -22,7 +22,7 @@ from cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops import (
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.boto3")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.setup_aws_credentials")
 @patch("builtins.print")
-def test_discover_rds_instances_success(mock_print, mock_setup, mock_boto3, mock_regions):
+def test_discover_rds_instances_success(_mock_print, mock_setup, mock_boto3, mock_regions):
     """Test discovering RDS instances."""
     mock_regions.return_value = ["us-east-1"]
     mock_rds = MagicMock()
@@ -66,7 +66,7 @@ def test_discover_rds_instances_success(mock_print, mock_setup, mock_boto3, mock
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.setup_aws_credentials")
 @patch("builtins.print")
 def test_discover_rds_instances_skip_cluster_member(
-    mock_print, mock_setup, mock_boto3, mock_regions
+    _mock_print, _mock_setup, mock_boto3, mock_regions
 ):
     """Test discovering RDS instances skips cluster members."""
     mock_regions.return_value = ["us-east-1"]
@@ -86,14 +86,14 @@ def test_discover_rds_instances_skip_cluster_member(
 
     result = discover_rds_instances()
 
-    assert len(result) == 0
+    assert not result
 
 
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.get_aws_regions")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.boto3")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.setup_aws_credentials")
 @patch("builtins.print")
-def test_discover_rds_instances_no_instances(mock_print, mock_setup, mock_boto3, mock_regions):
+def test_discover_rds_instances_no_instances(_mock_print, _mock_setup, mock_boto3, mock_regions):
     """Test discovering RDS instances when none exist."""
     mock_regions.return_value = ["us-east-1"]
     mock_rds = MagicMock()
@@ -102,14 +102,14 @@ def test_discover_rds_instances_no_instances(mock_print, mock_setup, mock_boto3,
 
     result = discover_rds_instances()
 
-    assert result == []
+    assert not result
 
 
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.get_aws_regions")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.boto3")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.setup_aws_credentials")
 @patch("builtins.print")
-def test_discover_rds_instances_client_error(mock_print, mock_setup, mock_boto3, mock_regions):
+def test_discover_rds_instances_client_error(_mock_print, _mock_setup, mock_boto3, mock_regions):
     """Test discovering RDS instances with client error."""
     mock_regions.return_value = ["us-east-1"]
     mock_rds = MagicMock()
@@ -120,7 +120,7 @@ def test_discover_rds_instances_client_error(mock_print, mock_setup, mock_boto3,
 
     result = discover_rds_instances()
 
-    assert result == []
+    assert not result
 
 
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.get_aws_regions")
@@ -128,7 +128,7 @@ def test_discover_rds_instances_client_error(mock_print, mock_setup, mock_boto3,
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.setup_aws_credentials")
 @patch("builtins.print")
 def test_discover_rds_instances_region_not_available(
-    mock_print, mock_setup, mock_boto3, mock_regions
+    _mock_print, _mock_setup, mock_boto3, mock_regions
 ):
     """Test discovering RDS instances when region not available."""
     mock_regions.return_value = ["us-east-1"]
@@ -140,12 +140,12 @@ def test_discover_rds_instances_region_not_available(
 
     result = discover_rds_instances()
 
-    assert result == []
+    assert not result
 
 
 # Tests for validate_migration_compatibility
 @patch("builtins.print")
-def test_validate_migration_compatibility_mysql(mock_print):
+def test_validate_migration_compatibility_mysql(_mock_print):
     """Test validating MySQL instance compatibility."""
     instance = {
         "identifier": "db-1",
@@ -161,7 +161,7 @@ def test_validate_migration_compatibility_mysql(mock_print):
 
 
 @patch("builtins.print")
-def test_validate_migration_compatibility_postgres(mock_print):
+def test_validate_migration_compatibility_postgres(_mock_print):
     """Test validating PostgreSQL instance compatibility."""
     instance = {
         "identifier": "db-1",
@@ -177,7 +177,7 @@ def test_validate_migration_compatibility_postgres(mock_print):
 
 
 @patch("builtins.print")
-def test_validate_migration_compatibility_mariadb(mock_print):
+def test_validate_migration_compatibility_mariadb(_mock_print):
     """Test validating MariaDB instance compatibility."""
     instance = {
         "identifier": "db-1",
@@ -193,7 +193,7 @@ def test_validate_migration_compatibility_mariadb(mock_print):
 
 
 @patch("builtins.print")
-def test_validate_migration_compatibility_incompatible_engine(mock_print):
+def test_validate_migration_compatibility_incompatible_engine(_mock_print):
     """Test validating incompatible engine."""
     instance = {
         "identifier": "db-1",
@@ -210,7 +210,7 @@ def test_validate_migration_compatibility_incompatible_engine(mock_print):
 
 
 @patch("builtins.print")
-def test_validate_migration_compatibility_wrong_status(mock_print):
+def test_validate_migration_compatibility_wrong_status(_mock_print):
     """Test validating instance with wrong status."""
     instance = {
         "identifier": "db-1",
@@ -226,7 +226,7 @@ def test_validate_migration_compatibility_wrong_status(mock_print):
 
 
 @patch("builtins.print")
-def test_validate_migration_compatibility_storage_too_small(mock_print):
+def test_validate_migration_compatibility_storage_too_small(_mock_print):
     """Test validating instance with storage too small."""
     instance = {
         "identifier": "db-1",
@@ -242,7 +242,7 @@ def test_validate_migration_compatibility_storage_too_small(mock_print):
 
 
 @patch("builtins.print")
-def test_validate_migration_compatibility_multiple_issues(mock_print):
+def test_validate_migration_compatibility_multiple_issues(_mock_print):
     """Test validating instance with multiple issues."""
     instance = {
         "identifier": "db-1",
@@ -259,7 +259,7 @@ def test_validate_migration_compatibility_multiple_issues(mock_print):
 
 # Tests for create_rds_snapshot
 @patch("builtins.print")
-def test_create_rds_snapshot_success(mock_print):
+def test_create_rds_snapshot_success(_mock_print):
     """Test creating RDS snapshot."""
     mock_rds = MagicMock()
     mock_waiter = MagicMock()
@@ -273,7 +273,7 @@ def test_create_rds_snapshot_success(mock_print):
 
 
 @patch("builtins.print")
-def test_create_rds_snapshot_client_error(mock_print):
+def test_create_rds_snapshot_client_error(_mock_print):
     """Test creating RDS snapshot with client error."""
     mock_rds = MagicMock()
     mock_rds.create_db_snapshot.side_effect = ClientError(
@@ -403,7 +403,7 @@ def test_get_cluster_endpoint_info_no_reader():
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops._get_cluster_endpoint_info")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops._build_cluster_params")
 @patch("builtins.print")
-def test_create_aurora_serverless_cluster_success(mock_print, mock_build, mock_get_info):
+def test_create_aurora_serverless_cluster_success(_mock_print, mock_build, mock_get_info):
     """Test creating Aurora Serverless cluster."""
     mock_rds = MagicMock()
     mock_waiter = MagicMock()
@@ -428,7 +428,7 @@ def test_create_aurora_serverless_cluster_success(mock_print, mock_build, mock_g
 
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops._build_cluster_params")
 @patch("builtins.print")
-def test_create_aurora_serverless_cluster_error(mock_print, mock_build):
+def test_create_aurora_serverless_cluster_error(_mock_print, mock_build):
     """Test creating Aurora Serverless cluster with error."""
     mock_rds = MagicMock()
     mock_build.return_value = {"DBClusterIdentifier": "cluster-1"}

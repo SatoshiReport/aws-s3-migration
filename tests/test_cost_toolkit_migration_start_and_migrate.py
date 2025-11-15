@@ -17,16 +17,33 @@ from cost_toolkit.scripts.migration.aws_start_and_migrate import (
     _print_migration_output,
     _start_ec2_instance,
     main,
-    setup_aws_credentials,
     start_instance_and_migrate,
 )
 
 
-def test_setup_credentials_calls_utils():
-    """Test credentials setup delegates to aws_utils."""
-    with patch("cost_toolkit.scripts.migration.aws_start_and_migrate.aws_utils") as mock_utils:
-        setup_aws_credentials()
-    mock_utils.setup_aws_credentials.assert_called_once()
+@patch("cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output")
+@patch("cost_toolkit.scripts.migration.aws_start_and_migrate._monitor_migration_progress")
+@patch("cost_toolkit.scripts.migration.aws_start_and_migrate._execute_ssm_command")
+@patch("cost_toolkit.scripts.migration.aws_start_and_migrate._start_ec2_instance")
+@patch("cost_toolkit.scripts.migration.aws_start_and_migrate.aws_utils.setup_aws_credentials")
+@patch("cost_toolkit.scripts.migration.aws_start_and_migrate.boto3.client")
+def test_setup_credentials_calls_utils(
+    mock_boto_client,
+    mock_setup_creds,
+    _mock_start_instance,
+    mock_execute_ssm,
+    _mock_monitor,
+    _mock_print_output,
+):
+    """start_instance_and_migrate should initialize shared credentials."""
+    mock_ec2 = MagicMock()
+    mock_ssm = MagicMock()
+    mock_execute_ssm.return_value = {"CommandId": "cmd-1"}
+    mock_boto_client.side_effect = [mock_ec2, mock_ssm]
+
+    start_instance_and_migrate()
+
+    mock_setup_creds.assert_called_once()
 
 
 class TestStartEc2Instance:
@@ -347,35 +364,33 @@ class TestStartInstanceAndMigrate:
 
     def test_start_and_migrate_success(self, capsys):
         """Test successful instance start and migration."""
-        with patch("cost_toolkit.scripts.migration.aws_start_and_migrate.setup_aws_credentials"):
-            with patch("boto3.client") as mock_client:
-                mock_ec2 = MagicMock()
-                mock_ssm = MagicMock()
-                mock_ssm.send_command.return_value = {"Command": {"CommandId": "cmd-123"}}
-                mock_ssm.get_command_invocation.return_value = {
-                    "Status": "Success",
-                    "StandardOutputContent": "",
-                    "StandardErrorContent": "",
-                }
-                mock_client.side_effect = [mock_ec2, mock_ssm]
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            mock_ssm = MagicMock()
+            mock_ssm.send_command.return_value = {"Command": {"CommandId": "cmd-123"}}
+            mock_ssm.get_command_invocation.return_value = {
+                "Status": "Success",
+                "StandardOutputContent": "",
+                "StandardErrorContent": "",
+            }
+            mock_client.side_effect = [mock_ec2, mock_ssm]
 
-                with patch("time.sleep"):
-                    start_instance_and_migrate()
+            with patch("time.sleep"):
+                start_instance_and_migrate()
 
         captured = capsys.readouterr()
         assert "AWS Instance Startup and Migration" in captured.out
 
     def test_start_and_migrate_handles_error(self, capsys):
         """Test error handling during start and migrate."""
-        with patch("cost_toolkit.scripts.migration.aws_start_and_migrate.setup_aws_credentials"):
-            with patch("boto3.client") as mock_client:
-                mock_ec2 = MagicMock()
-                mock_ec2.start_instances.side_effect = ClientError(
-                    {"Error": {"Code": "ServiceError"}}, "start_instances"
-                )
-                mock_client.return_value = mock_ec2
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            mock_ec2.start_instances.side_effect = ClientError(
+                {"Error": {"Code": "ServiceError"}}, "start_instances"
+            )
+            mock_client.return_value = mock_ec2
 
-                start_instance_and_migrate()
+            start_instance_and_migrate()
 
         captured = capsys.readouterr()
         assert "Error during execution" in captured.out

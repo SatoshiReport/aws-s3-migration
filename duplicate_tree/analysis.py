@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
+from cost_toolkit.common.format_utils import format_bytes
+
 try:  # Prefer package-relative imports when packaged
     from duplicate_tree_core import (
         DirectoryIndex,
@@ -173,17 +175,6 @@ def render_report_rows(cluster_rows: List[ClusterRow], base_path: Path) -> str:
             )
         buffer.write("\n")
     return buffer.getvalue()
-
-
-def format_bytes(num_bytes: int) -> str:
-    """Format byte count as human-readable string with units."""
-    units = ["bytes", "KiB", "MiB", "GiB", "TiB"]
-    value = float(num_bytes)
-    for unit in units:
-        if value < BYTES_PER_UNIT or unit == units[-1]:
-            return f"{value:0.2f} {unit}"
-        value /= BYTES_PER_UNIT
-    return f"{value:0.2f} PiB"
 
 
 def sort_node_rows(node_rows: Sequence[NodeRow]) -> List[NodeRow]:

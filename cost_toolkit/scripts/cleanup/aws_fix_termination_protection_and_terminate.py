@@ -6,54 +6,16 @@ Disables termination protection on protected instances and then terminates them.
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.aws_common import create_ec2_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_ec2_operations import (
+    disable_termination_protection,
+    terminate_instance,
+)
 
 
 def load_aws_credentials():
     """Load AWS credentials from environment file"""
     return setup_aws_credentials()
-
-
-def disable_termination_protection(
-    region_name, instance_id, aws_access_key_id, aws_secret_access_key
-):
-    """Disable termination protection on an EC2 instance"""
-    try:
-        ec2 = create_ec2_client(region_name, aws_access_key_id, aws_secret_access_key)
-
-        print(f"🔓 Disabling termination protection: {instance_id}")
-        ec2.modify_instance_attribute(
-            InstanceId=instance_id, DisableApiTermination={"Value": False}
-        )
-
-        print(f"   ✅ Termination protection disabled for {instance_id}")
-
-    except ClientError as e:
-        print(f"   ❌ Failed to disable termination protection for {instance_id}: {str(e)}")
-        return False
-
-    return True
-
-
-def terminate_instance(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
-    """Terminate an EC2 instance"""
-    try:
-        ec2 = create_ec2_client(region_name, aws_access_key_id, aws_secret_access_key)
-
-        print(f"🗑️  Terminating instance: {instance_id}")
-        response = ec2.terminate_instances(InstanceIds=[instance_id])
-
-        current_state = response["TerminatingInstances"][0]["CurrentState"]["Name"]
-        previous_state = response["TerminatingInstances"][0]["PreviousState"]["Name"]
-
-        print(f"   State change: {previous_state} → {current_state}")
-
-    except ClientError as e:
-        print(f"   ❌ Failed to terminate {instance_id}: {str(e)}")
-        return False
-
-    return True
 
 
 def display_instance_info(protected_instance):

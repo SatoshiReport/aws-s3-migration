@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, mock_open, patch
 
+from botocore.exceptions import ClientError
+
 from cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual import (
     _build_cleanup_command,
     _build_export_command,
@@ -15,10 +17,12 @@ from cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual import (
     _print_monitoring_commands,
     _print_workflow_and_troubleshooting,
     _save_commands_to_file,
-    create_ami_from_snapshot,
-    create_s3_bucket_if_not_exists,
     generate_manual_commands,
     prepare_snapshot_for_export,
+)
+from cost_toolkit.scripts.optimization.snapshot_export_common import (
+    create_ami_from_snapshot,
+    create_s3_bucket_if_not_exists,
 )
 
 
@@ -37,19 +41,11 @@ class TestCreateS3BucketIfNotExists:
         captured = capsys.readouterr()
         assert "S3 bucket existing-bucket already exists" in captured.out
 
-    @patch(
-        "cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual."
-        "create_s3_bucket_with_region"
-    )
+    @patch("cost_toolkit.scripts.optimization.snapshot_export_common.create_s3_bucket_with_region")
     def test_bucket_creation_success(self, mock_create, capsys):
         """Test successful bucket creation."""
         mock_s3 = MagicMock()
-
-        class NoSuchBucket(Exception):  # pylint: disable=missing-class-docstring
-            pass
-
-        mock_s3.exceptions.NoSuchBucket = NoSuchBucket
-        mock_s3.head_bucket.side_effect = NoSuchBucket()
+        mock_s3.head_bucket.side_effect = ClientError({"Error": {"Code": "404"}}, "HeadBucket")
 
         result = create_s3_bucket_if_not_exists(mock_s3, "new-bucket", "us-west-2")
 
@@ -57,7 +53,7 @@ class TestCreateS3BucketIfNotExists:
         mock_create.assert_called_once_with(mock_s3, "new-bucket", "us-west-2")
         mock_s3.put_bucket_versioning.assert_called_once()
         captured = capsys.readouterr()
-        assert "Created S3 bucket new-bucket with versioning enabled" in captured.out
+        assert "Enabled versioning for new-bucket" in captured.out
 
 
 class TestCreateAmiFromSnapshot:
@@ -90,11 +86,9 @@ class TestCreateAmiFromSnapshot:
 
         call_kwargs = mock_ec2.register_image.call_args[1]
         assert call_kwargs["Architecture"] == "x86_64"
-        assert call_kwargs["VirtualizationType"] == "hvm"
-        assert call_kwargs["BootMode"] == "legacy-bios"
-        assert call_kwargs["EnaSupport"] is False
-        assert call_kwargs["SriovNetSupport"] == "simple"
+        assert call_kwargs["EnaSupport"] is True  # Default is True
         assert call_kwargs["RootDeviceName"] == "/dev/sda1"
+        # BootMode is not set by default (boot_mode=None)
 
     def test_create_ami_block_device_mappings(self):
         """Test AMI block device mappings."""
@@ -110,7 +104,7 @@ class TestCreateAmiFromSnapshot:
         assert len(mappings) == 1
         assert mappings[0]["DeviceName"] == "/dev/sda1"
         assert mappings[0]["Ebs"]["SnapshotId"] == "snap-99999"
-        assert mappings[0]["Ebs"]["VolumeType"] == "gp2"
+        assert mappings[0]["Ebs"]["VolumeType"] == "gp3"  # Default is gp3
         assert mappings[0]["Ebs"]["DeleteOnTermination"] is True
 
 

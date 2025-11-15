@@ -18,12 +18,14 @@ try:  # Shared state DB utilities.
 except ImportError:  # pragma: no cover - direct script execution
     from state_db_admin import reseed_state_db_from_local_drive  # type: ignore
 
+from cost_toolkit.common.cli_utils import confirm_reset_state_db
+from cost_toolkit.common.format_utils import format_bytes
+
 from .args_parser import parse_args
 from .cache import build_scan_params
 from .config import REPO_ROOT
 from .reports import (
     delete_paths,
-    format_size,
     order_candidates,
     print_candidates_report,
     write_reports,
@@ -47,24 +49,14 @@ def maybe_reset_state_db(
     """Handle optional migrate_v2 state DB reseeding."""
     if not reset_requested:
         return db_path
-    reset_confirmed = auto_confirm
-    if not reset_confirmed:
-        resp = (
-            input(
-                f"Reset migrate_v2 state database at {db_path}? "
-                "This deletes cached migration metadata. [y/N] "
-            )
-            .strip()
-            .lower()
-        )
-        reset_confirmed = resp in {"y", "yes"}
-        if not reset_confirmed:
-            print("State database reset cancelled; continuing without reset.")
-            return db_path
+    if not confirm_reset_state_db(str(db_path), skip_prompt=auto_confirm):
+        print("State database reset cancelled; continuing without reset.")
+        return db_path
     new_db_path, file_count, total_bytes = reseed_state_db_from_local_drive(base_path, db_path)
+    size_summary = format_bytes(total_bytes, use_comma_separators=True)
     print(
         f"✓ Recreated migrate_v2 state database at {new_db_path} "
-        f"({file_count:,} files, {format_size(total_bytes)}). Continuing."
+        f"({file_count:,} files, {size_summary}). Continuing."
     )
     return new_db_path
 

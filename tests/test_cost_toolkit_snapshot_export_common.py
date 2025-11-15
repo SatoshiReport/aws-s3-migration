@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.optimization.snapshot_export_common import (
+    _register_ami,
     create_ami_from_snapshot,
     create_s3_bucket_if_not_exists,
     extract_s3_key_from_export_task,
@@ -48,7 +47,7 @@ def test_create_s3_bucket_if_not_exists_already_exists(mock_print):
 
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common.create_s3_bucket_with_region")
 @patch("builtins.print")
-def test_create_s3_bucket_if_not_exists_creates_bucket(mock_print, mock_create):
+def test_create_s3_bucket_if_not_exists_creates_bucket(_mock_print, mock_create):
     """Test bucket creation when it doesn't exist."""
     mock_s3 = MagicMock()
     mock_s3.head_bucket.side_effect = ClientError({"Error": {"Code": "NotFound"}}, "HeadBucket")
@@ -64,7 +63,7 @@ def test_create_s3_bucket_if_not_exists_creates_bucket(mock_print, mock_create):
 
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common.create_s3_bucket_with_region")
 @patch("builtins.print")
-def test_create_s3_bucket_if_not_exists_no_versioning(mock_print, mock_create):
+def test_create_s3_bucket_if_not_exists_no_versioning(_mock_print, mock_create):
     """Test bucket creation without versioning."""
     mock_s3 = MagicMock()
     mock_s3.head_bucket.side_effect = ClientError({"Error": {"Code": "NotFound"}}, "HeadBucket")
@@ -80,7 +79,7 @@ def test_create_s3_bucket_if_not_exists_no_versioning(mock_print, mock_create):
 
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common.create_s3_bucket_with_region")
 @patch("builtins.print")
-def test_create_s3_bucket_if_not_exists_creation_fails(mock_print, mock_create):
+def test_create_s3_bucket_if_not_exists_creation_fails(_mock_print, mock_create):
     """Test bucket creation failure."""
     mock_s3 = MagicMock()
     mock_s3.head_bucket.side_effect = ClientError({"Error": {"Code": "NotFound"}}, "HeadBucket")
@@ -95,7 +94,7 @@ def test_create_s3_bucket_if_not_exists_creation_fails(mock_print, mock_create):
 
 # Tests for setup_s3_bucket_versioning
 @patch("builtins.print")
-def test_setup_s3_bucket_versioning_success(mock_print):
+def test_setup_s3_bucket_versioning_success(_mock_print):
     """Test successful versioning setup."""
     mock_s3 = MagicMock()
 
@@ -108,7 +107,7 @@ def test_setup_s3_bucket_versioning_success(mock_print):
 
 
 @patch("builtins.print")
-def test_setup_s3_bucket_versioning_failure(mock_print):
+def test_setup_s3_bucket_versioning_failure(_mock_print):
     """Test versioning setup failure."""
     mock_s3 = MagicMock()
     mock_s3.put_bucket_versioning.side_effect = ClientError(
@@ -124,7 +123,7 @@ def test_setup_s3_bucket_versioning_failure(mock_print):
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common.wait_for_ami_available")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common._register_ami")
 @patch("builtins.print")
-def test_create_ami_from_snapshot_success(mock_print, mock_register, mock_wait):
+def test_create_ami_from_snapshot_success(_mock_print, mock_register, mock_wait):
     """Test successful AMI creation."""
     mock_ec2 = MagicMock()
     mock_register.return_value = "ami-12345678"
@@ -139,7 +138,7 @@ def test_create_ami_from_snapshot_success(mock_print, mock_register, mock_wait):
 
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common._register_ami")
 @patch("builtins.print")
-def test_create_ami_from_snapshot_failure(mock_print, mock_register):
+def test_create_ami_from_snapshot_failure(_mock_print, mock_register):
     """Test AMI creation failure."""
     mock_ec2 = MagicMock()
     mock_register.side_effect = ClientError({"Error": {"Code": "InvalidSnapshot"}}, "RegisterImage")
@@ -152,7 +151,7 @@ def test_create_ami_from_snapshot_failure(mock_print, mock_register):
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common.wait_for_ami_available")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common._register_ami")
 @patch("builtins.print")
-def test_create_ami_from_snapshot_with_boot_mode(mock_print, mock_register, mock_wait):
+def test_create_ami_from_snapshot_with_boot_mode(_mock_print, mock_register, mock_wait):
     """Test AMI creation with boot mode specified."""
     mock_ec2 = MagicMock()
     mock_register.return_value = "ami-12345678"
@@ -179,13 +178,11 @@ def test_create_ami_from_snapshot_with_boot_mode(mock_print, mock_register, mock
 # Tests for _register_ami
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common.datetime")
 @patch("builtins.print")
-def test_register_ami_success(mock_print, mock_datetime):
+def test_register_ami_success(_mock_print, mock_datetime):
     """Test _register_ami creates AMI with correct parameters."""
     mock_datetime.now.return_value.strftime.return_value = "20250114-120000"
     mock_ec2 = MagicMock()
     mock_ec2.register_image.return_value = {"ImageId": "ami-12345678"}
-
-    from cost_toolkit.scripts.optimization.snapshot_export_common import _register_ami
 
     result = _register_ami(
         mock_ec2,
@@ -208,13 +205,11 @@ def test_register_ami_success(mock_print, mock_datetime):
 
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common.datetime")
 @patch("builtins.print")
-def test_register_ami_with_boot_mode(mock_print, mock_datetime):
+def test_register_ami_with_boot_mode(_mock_print, mock_datetime):
     """Test _register_ami with boot mode specified."""
     mock_datetime.now.return_value.strftime.return_value = "20250114-120000"
     mock_ec2 = MagicMock()
     mock_ec2.register_image.return_value = {"ImageId": "ami-12345678"}
-
-    from cost_toolkit.scripts.optimization.snapshot_export_common import _register_ami
 
     result = _register_ami(
         mock_ec2,
@@ -234,7 +229,7 @@ def test_register_ami_with_boot_mode(mock_print, mock_datetime):
 
 # Tests for wait_for_ami_available
 @patch("builtins.print")
-def test_wait_for_ami_available_success(mock_print):
+def test_wait_for_ami_available_success(_mock_print):
     """Test waiting for AMI to become available."""
     mock_ec2 = MagicMock()
     mock_waiter = MagicMock()
@@ -251,7 +246,7 @@ def test_wait_for_ami_available_success(mock_print):
 
 
 @patch("builtins.print")
-def test_wait_for_ami_available_custom_config(mock_print):
+def test_wait_for_ami_available_custom_config(_mock_print):
     """Test waiting for AMI with custom waiter config."""
     mock_ec2 = MagicMock()
     mock_waiter = MagicMock()
@@ -270,7 +265,7 @@ def test_wait_for_ami_available_custom_config(mock_print):
 
 # Tests for start_ami_export_task
 @patch("builtins.print")
-def test_start_ami_export_task_success(mock_print):
+def test_start_ami_export_task_success(_mock_print):
     """Test starting AMI export task."""
     mock_ec2 = MagicMock()
     mock_ec2.export_image.return_value = {"ExportImageTaskId": "export-12345"}
@@ -291,12 +286,12 @@ def test_start_ami_export_task_success(mock_print):
 
 
 @patch("builtins.print")
-def test_start_ami_export_task_with_snapshot_id(mock_print):
+def test_start_ami_export_task_with_snapshot_id(_mock_print):
     """Test starting AMI export task with snapshot ID."""
     mock_ec2 = MagicMock()
     mock_ec2.export_image.return_value = {"ExportImageTaskId": "export-12345"}
 
-    task_id, s3_key = start_ami_export_task(
+    task_id, _ = start_ami_export_task(
         mock_ec2, "ami-12345678", "test-bucket", snapshot_id="snap-12345678"
     )
 

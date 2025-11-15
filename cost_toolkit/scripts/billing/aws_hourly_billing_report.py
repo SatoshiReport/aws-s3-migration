@@ -10,7 +10,7 @@ from datetime import datetime
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.terminal_utils import clear_screen
-from cost_toolkit.scripts.aws_client_factory import load_credentials_from_env
+from cost_toolkit.scripts import aws_utils
 from cost_toolkit.scripts.aws_cost_operations import (
     get_daily_costs_by_service,
     get_hourly_costs_by_service,
@@ -18,23 +18,9 @@ from cost_toolkit.scripts.aws_cost_operations import (
 )
 
 
-def setup_aws_credentials():
-    """Load AWS credentials from .env file"""
-    try:
-        load_credentials_from_env()
-    except ValueError:
-        print("⚠️  AWS credentials not found in ~/.env file.")
-        print("Please ensure ~/.env contains:")
-        print("  AWS_ACCESS_KEY_ID=your-access-key")
-        print("  AWS_SECRET_ACCESS_KEY=your-secret-key")
-        print("  AWS_DEFAULT_REGION=us-east-1")
-        return False
-    return True
-
-
 def get_hourly_billing_data():
     """Retrieve hourly cost and usage data from AWS Cost Explorer"""
-    setup_aws_credentials()
+    aws_utils.load_aws_credentials()
 
     start_date, end_date = get_today_date_range()
 
@@ -231,7 +217,7 @@ def main():
     print("Real-time cost analysis to identify active services")
     print()
 
-    if not setup_aws_credentials():
+    if not aws_utils.load_aws_credentials():
         return
 
     # Get billing data

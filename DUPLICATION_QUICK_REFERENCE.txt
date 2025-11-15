@@ -1,0 +1,138 @@
+CODEBASE DUPLICATION ANALYSIS - QUICK REFERENCE
+================================================
+
+DUPLICATES FOUND:
+================
+
+1. INSTANCE DETAIL RETRIEVAL (5 files)
+   Files: aws_remove_public_ip.py, aws_instance_termination.py, aws_stopped_instance_cleanup.py, 
+           aws_utils.py, aws_ec2_operations.py
+   Lines saved: 150-200
+   Effort: 2-3 hours
+   Priority: HIGH
+   Action: Consolidate into single get_instance_details() in aws_common.py
+
+2. TAG EXTRACTION (10+ files)
+   Files: aws_common.py, aws_instance_termination.py, aws_ec2_instance_cleanup.py,
+          aws_remove_public_ip.py, ebs_manager/utils.py, and 5+ others
+   Lines saved: 30-50
+   Effort: 1-2 hours
+   Priority: VERY HIGH (inconsistent return values)
+   Action: Create unified extract_tag_value() and get_resource_tags() functions
+
+3. EC2 WAITER PATTERNS (12 files)
+   Files: aws_remove_public_ip.py (4x), aws_remove_public_ip_advanced.py (4x),
+          aws_rds_cleanup.py, fix_default_subnet_group.py (2x), fix_rds_subnet_routing.py,
+          aws_london_ebs_analysis.py, aws_start_and_migrate.py, enable_rds_public_access.py,
+          route53_helpers.py, aws_route53_cleanup.py, cluster_ops.py (2x)
+   Total duplicates: 21+ waiter calls
+   Lines saved: 40-60
+   Effort: 2 hours
+   Priority: HIGH
+   Action: Create waiter_utils.py with helper functions
+
+4. EXCEPTION HANDLING (96 files)
+   Pattern: ClientError and Exception handling with print
+   Total instances: 276 exception handlers
+   Lines saved: 80-120 (through reduced boilerplate)
+   Effort: 3 hours
+   Priority: MEDIUM
+   Action: Create error_utils.py with decorator/context manager
+
+5. PRINTING/FORMATTING (50+ files)
+   Pattern: print("=" * 80), emoji status messages, instance detail printing
+   Functions: 17 custom _print_*_details() implementations
+   Lines saved: 50-80
+   Effort: 2 hours
+   Priority: MEDIUM
+   Action: Enhance terminal_utils.py with standard printing functions
+
+6. VOLUME EXTRACTION (3-5 files)
+   Files: aws_instance_termination.py, aws_stopped_instance_cleanup.py, others
+   Lines saved: 20-30
+   Effort: 1 hour
+   Priority: LOW-MEDIUM
+   Action: Add extract_volumes_from_instance() to aws_common.py
+
+7. VPC CLEANUP PATTERNS (Already partially consolidated)
+   Files: vpc_cleanup_utils.py (good), aws_vpc_immediate_cleanup.py (duplicated)
+   Action: Ensure all scripts use vpc_cleanup_utils instead of custom implementations
+
+WELL CONSOLIDATED (No action needed):
+====================================
+- AWS Client Creation (aws_client_factory.py) - Used by 89 files ✓
+- Credentials Handling (aws_client_factory.py, credential_utils.py) ✓
+- Region Handling (aws_common.py) ✓
+
+IMPLEMENTATION PRIORITY:
+=======================
+
+PHASE 1 (Week 1) - HIGH PRIORITY:
+1. Enhance aws_common.py with:
+   - get_instance_details(ec2_client, instance_id)
+   - extract_tag_value(resource, key, default)
+   - get_resource_tags(resource)
+   - extract_volumes_from_instance(instance)
+   
+2. Create waiter_utils.py with:
+   - wait_instance_stopped(ec2_client, instance_id)
+   - wait_instance_running(ec2_client, instance_id)
+   - wait_rds_instance_deleted(rds_client, instance_id)
+   - wait_rds_instance_available(rds_client, instance_id)
+   - wait_route53_changes(route53_client, change_id)
+   - wait_ami_available(ec2_client, ami_id)
+
+PHASE 2 (Week 2) - MEDIUM PRIORITY:
+1. Enhance terminal_utils.py with:
+   - print_section_header(title)
+   - print_section_separator()
+   - print_instance_info(instance_dict)
+   - print_volume_info(volume_dict)
+   - print_status(status_type, message)
+
+2. Create error_utils.py with:
+   - @aws_error_handler decorator or context manager
+
+PHASE 3 (Week 3) - REFACTORING:
+- Update scripts to use new consolidated functions
+- Start with low-risk scripts (audit, setup)
+- Gradually migrate cleanup scripts
+
+PHASE 4 (Week 4) - VALIDATION:
+- Full test suite pass
+- Code review
+- Documentation update
+
+ESTIMATED IMPACT:
+=================
+Lines Consolidated: 380-590 lines
+Files Affected: 35-40 direct, 50+ minor updates
+Code Quality: Significant improvement in consistency
+Risk Level: Medium (needs careful testing during rollout)
+
+QUICK WIN OPPORTUNITIES:
+========================
+1. Add 4 functions to aws_common.py = 150-200 lines saved (2-3 hours)
+2. Create waiter_utils.py = 21 duplicate calls eliminated (2 hours)
+3. Enhance terminal_utils.py = 50-80 lines saved (2 hours)
+Total: 220-360 lines saved, 6 hours effort, HIGH impact
+
+FILE LOCATIONS FOR FUTURE REFERENCE:
+====================================
+Primary consolidation targets:
+- /Users/mahrens917/aws/cost_toolkit/common/aws_common.py
+- /Users/mahrens917/aws/cost_toolkit/common/vpc_cleanup_utils.py
+- /Users/mahrens917/aws/cost_toolkit/common/terminal_utils.py
+- /Users/mahrens917/aws/cost_toolkit/scripts/aws_client_factory.py
+
+Secondary consolidation locations:
+- /Users/mahrens917/aws/cost_toolkit/scripts/aws_ec2_operations.py
+- /Users/mahrens917/aws/cost_toolkit/common/credential_utils.py
+
+Files with most duplication:
+- aws_remove_public_ip.py (4 waiter duplicates)
+- aws_remove_public_ip_advanced.py (4 waiter duplicates)
+- aws_stopped_instance_cleanup.py (instance detail, tag extraction)
+- aws_instance_termination.py (instance detail, tag extraction, volume extraction)
+
+Full detailed analysis available in: DUPLICATION_ANALYSIS.md

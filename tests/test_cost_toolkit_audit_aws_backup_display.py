@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import get_all_aws_regions
 from cost_toolkit.scripts.audit.aws_backup_audit import (
     _display_backup_jobs,
     _display_backup_plan,
@@ -17,7 +18,6 @@ from cost_toolkit.scripts.audit.aws_backup_audit import (
     _display_single_schedule,
     _display_snapshot_pattern,
     _is_snapshot_related_rule,
-    get_all_aws_regions,
 )
 
 

@@ -14,6 +14,14 @@ from cost_toolkit.scripts.rds.explore_aurora_data import (
 )
 
 
+@pytest.fixture(name="mock_psycopg2")
+def _mock_psycopg2():
+    """Create a mock psycopg2 module."""
+    psycopg2_module = MagicMock()
+    psycopg2_module.Error = Exception
+    return psycopg2_module
+
+
 @pytest.fixture
 def mock_psycopg2_connection():
     """Create a mock psycopg2 connection and cursor."""
@@ -49,46 +57,47 @@ def test_main_function():
     with patch(
         "cost_toolkit.scripts.rds.explore_aurora_data.explore_aurora_database"
     ) as mock_explore:
-        from cost_toolkit.scripts.rds.explore_aurora_data import main as aurora_main
-
-        aurora_main()
+        main()
         mock_explore.assert_called_once()
 
 
-def test_explore_aurora_database_connection_failed(capsys):
+def test_explore_aurora_database_connection_failed(
+    capsys, mock_psycopg2
+):  # pylint: disable=redefined-outer-name
     """Test explore_aurora_database handles connection failure."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
+    mock_psycopg2.connect.side_effect = Exception("Connection refused")
 
-    import psycopg2  # type: ignore[import-not-found]
-
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.side_effect = psycopg2.Error("Connection refused")
-        explore_aurora_database()
+    module = "cost_toolkit.scripts.rds.explore_aurora_data"
+    with patch(f"{module}.PSYCOPG2_AVAILABLE", True):
+        with patch(f"{module}.psycopg2", mock_psycopg2, create=True):
+            explore_aurora_database()
 
     captured = capsys.readouterr()
     assert "Connection failed" in captured.out
 
 
-def test_explore_aurora_database_successful_connection_empty(capsys):
+def test_explore_aurora_database_successful_connection_empty(
+    capsys, mock_psycopg2
+):  # pylint: disable=redefined-outer-name
     """Test explore_aurora_database with successful connection but no tables."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
-
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
+    mock_psycopg2.connect.return_value = mock_conn
 
     # Mock database inspection functions to return no tables
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.return_value = mock_conn
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list_tables:
-            mock_list_tables.return_value = []
+    module = "cost_toolkit.scripts.rds.explore_aurora_data"
+    with patch(f"{module}.PSYCOPG2_AVAILABLE", True):
+        with patch(f"{module}.psycopg2", mock_psycopg2, create=True):
             with patch(
-                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-            ) as mock_analyze:
-                mock_analyze.return_value = 0
-                explore_aurora_database()
+                "cost_toolkit.scripts.rds.explore_aurora_data.list_tables"
+            ) as mock_list_tables:
+                mock_list_tables.return_value = []
+                with patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
+                ) as mock_analyze:
+                    mock_analyze.return_value = 0
+                    explore_aurora_database()
 
     captured = capsys.readouterr()
     assert "Connected successfully to Aurora Serverless v2!" in captured.out
@@ -96,26 +105,30 @@ def test_explore_aurora_database_successful_connection_empty(capsys):
     assert "Aurora Serverless v2 cluster is EMPTY" in captured.out
 
 
-def test_explore_aurora_database_successful_with_data(capsys):
+def test_explore_aurora_database_successful_with_data(capsys, mock_psycopg2):
     """Test explore_aurora_database with successful connection and data."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
-
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
+    mock_psycopg2.connect.return_value = mock_conn
 
     mock_tables = [("public", "users", "postgres"), ("public", "orders", "postgres")]
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.return_value = mock_conn
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list_tables:
-            mock_list_tables.return_value = mock_tables
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
+        ):
             with patch(
-                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-            ) as mock_analyze:
-                mock_analyze.return_value = 1500  # Non-zero rows
-                explore_aurora_database()
+                "cost_toolkit.scripts.rds.explore_aurora_data.list_tables"
+            ) as mock_list_tables:
+                mock_list_tables.return_value = mock_tables
+                with patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
+                ) as mock_analyze:
+                    mock_analyze.return_value = 1500  # Non-zero rows
+                    explore_aurora_database()
 
     captured = capsys.readouterr()
     assert "Connected successfully to Aurora Serverless v2!" in captured.out
@@ -124,110 +137,124 @@ def test_explore_aurora_database_successful_with_data(capsys):
     assert "Aurora Serverless v2 cluster is EMPTY" not in captured.out
 
 
-def test_explore_aurora_database_calls_all_inspection_functions():
+def test_explore_aurora_database_calls_all_inspection_functions(mock_psycopg2):
     """Test explore_aurora_database calls all database inspection functions."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
-
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
+    mock_psycopg2.connect.return_value = mock_conn
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.return_value = mock_conn
-        with (
-            patch(
-                "cost_toolkit.scripts.rds.explore_aurora_data.print_database_version_info"
-            ) as mock_version,
-            patch("cost_toolkit.scripts.rds.explore_aurora_data.list_databases") as mock_dbs,
-            patch("cost_toolkit.scripts.rds.explore_aurora_data.list_schemas") as mock_schemas,
-            patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables,
-            patch("cost_toolkit.scripts.rds.explore_aurora_data.list_views") as mock_views,
-            patch("cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables") as mock_analyze,
-            patch("cost_toolkit.scripts.rds.explore_aurora_data.get_database_size") as mock_size,
-            patch("cost_toolkit.scripts.rds.explore_aurora_data.list_functions") as mock_funcs,
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
         ):
-            mock_tables.return_value = []
-            mock_analyze.return_value = 0
-            explore_aurora_database()
-
-            # Verify all inspection functions were called
-            mock_version.assert_called_once()
-            mock_dbs.assert_called_once()
-            mock_schemas.assert_called_once()
-            mock_tables.assert_called_once()
-            mock_views.assert_called_once()
-            mock_analyze.assert_called_once()
-            mock_size.assert_called_once()
-            mock_funcs.assert_called_once()
-
-
-def test_explore_aurora_database_closes_connection():
-    """Test explore_aurora_database properly closes connection."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
-
-    mock_conn = MagicMock()
-    mock_cursor = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.return_value = mock_conn
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables:
-            mock_tables.return_value = []
-            with patch(
-                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-            ) as mock_analyze:
+            with (
+                patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.print_database_version_info"
+                ) as mock_version,
+                patch("cost_toolkit.scripts.rds.explore_aurora_data.list_databases") as mock_dbs,
+                patch("cost_toolkit.scripts.rds.explore_aurora_data.list_schemas") as mock_schemas,
+                patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables,
+                patch("cost_toolkit.scripts.rds.explore_aurora_data.list_views") as mock_views,
+                patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
+                ) as mock_analyze,
+                patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.get_database_size"
+                ) as mock_size,
+                patch("cost_toolkit.scripts.rds.explore_aurora_data.list_functions") as mock_funcs,
+            ):
+                mock_tables.return_value = []
                 mock_analyze.return_value = 0
                 explore_aurora_database()
+
+                # Verify all inspection functions were called
+                mock_version.assert_called_once()
+                mock_dbs.assert_called_once()
+                mock_schemas.assert_called_once()
+                mock_tables.assert_called_once()
+                mock_views.assert_called_once()
+                mock_analyze.assert_called_once()
+                mock_size.assert_called_once()
+                mock_funcs.assert_called_once()
+
+
+def test_explore_aurora_database_closes_connection(mock_psycopg2):
+    """Test explore_aurora_database properly closes connection."""
+    mock_conn = MagicMock()
+    mock_cursor = MagicMock()
+    mock_conn.cursor.return_value = mock_cursor
+    mock_psycopg2.connect.return_value = mock_conn
+
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
+        ):
+            with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables:
+                mock_tables.return_value = []
+                with patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
+                ) as mock_analyze:
+                    mock_analyze.return_value = 0
+                    explore_aurora_database()
 
     # Verify cursor and connection were closed
     mock_cursor.close.assert_called_once()
     mock_conn.close.assert_called_once()
 
 
-def test_explore_aurora_database_passes_max_sample_columns():
+def test_explore_aurora_database_passes_max_sample_columns(mock_psycopg2):
     """Test explore_aurora_database passes MAX_SAMPLE_COLUMNS to analyze_tables."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
-
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
+    mock_psycopg2.connect.return_value = mock_conn
     mock_tables = [("public", "test_table", "postgres")]
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.return_value = mock_conn
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list:
-            mock_list.return_value = mock_tables
-            with patch(
-                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-            ) as mock_analyze:
-                mock_analyze.return_value = 100
-                explore_aurora_database()
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
+        ):
+            with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list:
+                mock_list.return_value = mock_tables
+                with patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
+                ) as mock_analyze:
+                    mock_analyze.return_value = 100
+                    explore_aurora_database()
 
-                # Verify analyze_tables was called with correct parameters
-                mock_analyze.assert_called_once_with(mock_cursor, mock_tables, MAX_SAMPLE_COLUMNS)
+                    # Verify analyze_tables was called with correct parameters
+                    mock_analyze.assert_called_once_with(
+                        mock_cursor, mock_tables, MAX_SAMPLE_COLUMNS
+                    )
 
 
-def test_explore_aurora_database_empty_cluster_shows_next_steps(capsys):
+def test_explore_aurora_database_empty_cluster_shows_next_steps(capsys, mock_psycopg2):
     """Test explore_aurora_database shows next steps when cluster is empty."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
-
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
+    mock_psycopg2.connect.return_value = mock_conn
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.return_value = mock_conn
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables:
-            mock_tables.return_value = []
-            with patch(
-                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-            ) as mock_analyze:
-                mock_analyze.return_value = 0
-                explore_aurora_database()
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
+        ):
+            with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables:
+                mock_tables.return_value = []
+                with patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
+                ) as mock_analyze:
+                    mock_analyze.return_value = 0
+                    explore_aurora_database()
 
     captured = capsys.readouterr()
     assert "NEXT STEPS:" in captured.out
@@ -237,20 +264,23 @@ def test_explore_aurora_database_empty_cluster_shows_next_steps(capsys):
     assert "you can delete the expensive RDS instance" in captured.out
 
 
-def test_explore_aurora_database_connection_timeout_parameter():
+def test_explore_aurora_database_connection_timeout_parameter(mock_psycopg2):
     """Test explore_aurora_database uses correct connection timeout."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
+    mock_psycopg2.connect.side_effect = Exception("Connection failed")
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.side_effect = Exception("Connection failed")
-        explore_aurora_database()
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
+        ):
+            explore_aurora_database()
 
-        # Verify connect was called with timeout parameter
-        mock_connect.assert_called_once()
-        call_kwargs = mock_connect.call_args[1]
-        assert "connect_timeout" in call_kwargs
-        assert call_kwargs["connect_timeout"] == 30
+            # Verify connect was called with timeout parameter
+            mock_psycopg2.connect.assert_called_once()
+            call_kwargs = mock_psycopg2.connect.call_args[1]
+            assert "connect_timeout" in call_kwargs
+            assert call_kwargs["connect_timeout"] == 30
 
 
 def test_main_calls_explore_aurora_database():
@@ -262,85 +292,94 @@ def test_main_calls_explore_aurora_database():
         mock_explore.assert_called_once()
 
 
-def test_explore_aurora_database_with_tables_but_no_rows(capsys):
+def test_explore_aurora_database_with_tables_but_no_rows(capsys, mock_psycopg2):
     """Test explore_aurora_database with tables that have no rows."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
-
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
+    mock_psycopg2.connect.return_value = mock_conn
     mock_tables = [("public", "empty_table", "postgres")]
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.return_value = mock_conn
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list:
-            mock_list.return_value = mock_tables
-            with patch(
-                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-            ) as mock_analyze:
-                mock_analyze.return_value = 0  # Tables exist but have 0 rows
-                explore_aurora_database()
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
+        ):
+            with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list:
+                mock_list.return_value = mock_tables
+                with patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
+                ) as mock_analyze:
+                    mock_analyze.return_value = 0  # Tables exist but have 0 rows
+                    explore_aurora_database()
 
     captured = capsys.readouterr()
     # Should still show empty cluster message even if tables exist
     assert "Aurora Serverless v2 cluster is EMPTY" in captured.out
 
 
-def test_explore_aurora_database_prints_connecting_message(capsys):
+def test_explore_aurora_database_prints_connecting_message(capsys, mock_psycopg2):
     """Test explore_aurora_database prints connecting message."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
+    mock_psycopg2.connect.side_effect = Exception("Connection failed")
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.side_effect = Exception("Connection failed")
-        explore_aurora_database()
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
+        ):
+            explore_aurora_database()
 
     captured = capsys.readouterr()
     assert "Connecting to Aurora Serverless v2 cluster..." in captured.out
 
 
-def test_explore_aurora_database_prints_database_info_header(capsys):
+def test_explore_aurora_database_prints_database_info_header(capsys, mock_psycopg2):
     """Test explore_aurora_database prints database info header."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
-
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
+    mock_psycopg2.connect.return_value = mock_conn
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.return_value = mock_conn
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables:
-            mock_tables.return_value = []
-            with patch(
-                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-            ) as mock_analyze:
-                mock_analyze.return_value = 0
-                explore_aurora_database()
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
+        ):
+            with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables:
+                mock_tables.return_value = []
+                with patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
+                ) as mock_analyze:
+                    mock_analyze.return_value = 0
+                    explore_aurora_database()
 
     captured = capsys.readouterr()
     assert "AURORA SERVERLESS V2 DATABASE INFORMATION:" in captured.out
 
 
-def test_explore_aurora_database_no_user_tables_message(capsys):
+def test_explore_aurora_database_no_user_tables_message(capsys, mock_psycopg2):
     """Test explore_aurora_database shows message when no user tables found."""
-    if not PSYCOPG2_AVAILABLE:
-        pytest.skip("psycopg2 not available")
-
     mock_conn = MagicMock()
     mock_cursor = MagicMock()
     mock_conn.cursor.return_value = mock_cursor
+    mock_psycopg2.connect.return_value = mock_conn
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.psycopg2.connect") as mock_connect:
-        mock_connect.return_value = mock_conn
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list:
-            mock_list.return_value = []
-            with patch(
-                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-            ) as mock_analyze:
-                mock_analyze.return_value = 0
-                explore_aurora_database()
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
+        with patch(
+            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
+            mock_psycopg2,
+            create=True,
+        ):
+            with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list:
+                mock_list.return_value = []
+                with patch(
+                    "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
+                ) as mock_analyze:
+                    mock_analyze.return_value = 0
+                    explore_aurora_database()
 
     captured = capsys.readouterr()
     assert "No user tables found - Aurora cluster appears to be empty" in captured.out

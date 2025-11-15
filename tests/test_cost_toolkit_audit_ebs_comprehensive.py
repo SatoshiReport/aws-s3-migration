@@ -51,7 +51,7 @@ class TestGetAllRegions:
             )
             mock_client.return_value = mock_ec2
             with patch(
-                "cost_toolkit.scripts.audit.aws_ebs_audit.get_default_regions",
+                "cost_toolkit.scripts.aws_ec2_operations.get_default_regions",
                 return_value=["us-east-1"],
             ):
                 regions = get_all_regions()

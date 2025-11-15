@@ -5,11 +5,14 @@ import time
 from pathlib import Path
 
 try:  # Prefer package-relative imports for tooling
+    from cost_toolkit.common.format_utils import format_bytes
+
     from .migration_state_v2 import MigrationStateV2
-    from .migration_utils import ProgressTracker, format_duration, format_size
+    from .migration_utils import ProgressTracker, format_duration
 except ImportError:  # pragma: no cover - allow running as standalone script
+    from cost_toolkit.common.format_utils import format_bytes
     from migration_state_v2 import MigrationStateV2
-    from migration_utils import ProgressTracker, format_duration, format_size
+    from migration_utils import ProgressTracker, format_duration
 
 
 def check_sync_process_errors(process):
@@ -147,8 +150,8 @@ def _display_progress(start_time, files_done, bytes_done):
     if elapsed > 0 and bytes_done > 0:
         throughput = bytes_done / elapsed
         progress = (
-            f"Progress: {files_done:,} files, {format_size(bytes_done)} "
-            f"({format_size(throughput)}/s)  "
+            f"Progress: {files_done:,} files, {format_bytes(bytes_done, binary_units=False)} "
+            f"({format_bytes(throughput, binary_units=False)}/s)  "
         )
         print(f"\r  {progress}", end="", flush=True)
 
@@ -158,8 +161,8 @@ def _print_sync_summary(start_time, files_done, bytes_done):
     elapsed = time.time() - start_time
     throughput = bytes_done / elapsed if elapsed > 0 else 0
     print(f"\n✓ Completed in {format_duration(elapsed)}")
-    print(f"  Downloaded: {files_done:,} files, {format_size(bytes_done)}")
-    print(f"  Throughput: {format_size(throughput)}/s")
+    print(f"  Downloaded: {files_done:,} files, {format_bytes(bytes_done, binary_units=False)}")
+    print(f"  Throughput: {format_bytes(throughput, binary_units=False)}/s")
     print()
 
 

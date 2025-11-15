@@ -12,16 +12,31 @@ from cost_toolkit.scripts.migration.aws_london_ebs_analysis import (
     _print_recommendations,
     _print_volume_details,
     _start_stopped_instance,
-    setup_aws_credentials,
+    analyze_london_ebs,
 )
 
 
+@patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis._print_recommendations")
+@patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis._analyze_snapshots")
+@patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis._check_unattached_volume")
+@patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis._start_stopped_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis.aws_utils.setup_aws_credentials")
-def test_setup_credentials(mock_setup):
-    """Test setting up AWS credentials."""
-    setup_aws_credentials()
+@patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis.boto3.client")
+def test_analyze_london_ebs_calls_setup(
+    mock_boto_client,
+    mock_setup_creds,
+    _mock_start_instance,
+    _mock_check_unattached,
+    _mock_analyze_snapshots,
+    _mock_print_recommendations,
+):
+    """analyze_london_ebs should initialize credentials before running."""
+    mock_ec2 = MagicMock()
+    mock_boto_client.return_value = mock_ec2
 
-    mock_setup.assert_called_once()
+    analyze_london_ebs()
+
+    mock_setup_creds.assert_called_once()
 
 
 class TestPrintVolumeDetails:

@@ -35,28 +35,22 @@ class TestDisableTerminationProtection:
 
     def test_disable_protection_success(self, capsys):
         """Test successful disabling of termination protection."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-            "create_ec2_client"
-        ) as mock_create:
+        with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create:
             mock_ec2 = MagicMock()
             mock_ec2.modify_instance_attribute.return_value = {}
             mock_create.return_value = mock_ec2
             result = disable_termination_protection("us-east-1", "i-123", "key", "secret")
             assert result is True
             captured = capsys.readouterr()
-            assert "Disabling termination protection: i-123" in captured.out
-            assert "Termination protection disabled for i-123" in captured.out
+            assert "Disabling termination protection" in captured.out
+            assert "Termination protection disabled" in captured.out
             mock_ec2.modify_instance_attribute.assert_called_once_with(
                 InstanceId="i-123", DisableApiTermination={"Value": False}
             )
 
     def test_disable_protection_client_error(self, capsys):
         """Test handling of ClientError when disabling protection."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-            "create_ec2_client"
-        ) as mock_create:
+        with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create:
             mock_ec2 = MagicMock()
             error = ClientError(
                 {"Error": {"Code": "InvalidInstanceID"}}, "modify_instance_attribute"
@@ -66,19 +60,18 @@ class TestDisableTerminationProtection:
             result = disable_termination_protection("us-east-1", "i-123", "key", "secret")
             assert result is False
             captured = capsys.readouterr()
-            assert "Failed to disable termination protection for i-123" in captured.out
+            assert "Failed to disable termination protection" in captured.out
 
     def test_disable_protection_uses_credentials(self):
         """Test that credentials are passed correctly."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-            "create_ec2_client"
-        ) as mock_create:
+        with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create:
             mock_ec2 = MagicMock()
             mock_ec2.modify_instance_attribute.return_value = {}
             mock_create.return_value = mock_ec2
             disable_termination_protection("eu-west-2", "i-456", "my_key", "my_secret")
-            mock_create.assert_called_once_with("eu-west-2", "my_key", "my_secret")
+            mock_create.assert_called_once_with(
+                region="eu-west-2", aws_access_key_id="my_key", aws_secret_access_key="my_secret"
+            )
 
 
 class TestTerminateInstance:
@@ -86,10 +79,7 @@ class TestTerminateInstance:
 
     def test_terminate_instance_success(self, capsys):
         """Test successful instance termination."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-            "create_ec2_client"
-        ) as mock_create:
+        with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create:
             mock_ec2 = MagicMock()
             mock_ec2.terminate_instances.return_value = {
                 "TerminatingInstances": [
@@ -109,10 +99,7 @@ class TestTerminateInstance:
 
     def test_terminate_instance_client_error(self, capsys):
         """Test handling of ClientError during termination."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-            "create_ec2_client"
-        ) as mock_create:
+        with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create:
             mock_ec2 = MagicMock()
             error = ClientError({"Error": {"Code": "InvalidInstanceID"}}, "terminate_instances")
             mock_ec2.terminate_instances.side_effect = error
@@ -124,10 +111,7 @@ class TestTerminateInstance:
 
     def test_terminate_instance_uses_credentials(self):
         """Test that credentials are passed correctly."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-            "create_ec2_client"
-        ) as mock_create:
+        with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create:
             mock_ec2 = MagicMock()
             mock_ec2.terminate_instances.return_value = {
                 "TerminatingInstances": [
@@ -139,7 +123,9 @@ class TestTerminateInstance:
             }
             mock_create.return_value = mock_ec2
             terminate_instance("ap-south-1", "i-789", "my_key", "my_secret")
-            mock_create.assert_called_once_with("ap-south-1", "my_key", "my_secret")
+            mock_create.assert_called_once_with(
+                region="ap-south-1", aws_access_key_id="my_key", aws_secret_access_key="my_secret"
+            )
 
 
 def test_display_instance_info(capsys):
@@ -249,8 +235,7 @@ class TestMainUserCancelsAndSuccess:
             ) as mock_load:
                 mock_load.return_value = ("key", "secret")
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-                    "create_ec2_client"
+                    "cost_toolkit.scripts.aws_ec2_operations.create_ec2_client"
                 ) as mock_create:
                     mock_ec2 = MagicMock()
                     mock_ec2.modify_instance_attribute.return_value = {}
@@ -280,8 +265,7 @@ class TestMainFailures:
             ) as mock_load:
                 mock_load.return_value = ("key", "secret")
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-                    "create_ec2_client"
+                    "cost_toolkit.scripts.aws_ec2_operations.create_ec2_client"
                 ) as mock_create:
                     mock_ec2 = MagicMock()
                     error = ClientError(
@@ -303,8 +287,7 @@ class TestMainFailures:
             ) as mock_load:
                 mock_load.return_value = ("key", "secret")
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-                    "create_ec2_client"
+                    "cost_toolkit.scripts.aws_ec2_operations.create_ec2_client"
                 ) as mock_create:
                     mock_ec2 = MagicMock()
                     mock_ec2.modify_instance_attribute.return_value = {}

@@ -4,19 +4,10 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
+
 # Constants
 GP3_DEFAULT_THROUGHPUT_MBS = 125
-
-
-def get_all_regions():
-    """Get list of all AWS regions"""
-    ec2 = boto3.client("ec2", region_name="us-east-1")
-    try:
-        response = ec2.describe_regions()
-        return [region["RegionName"] for region in response["Regions"]]
-    except ClientError as e:
-        print(f"Error getting regions: {e}")
-        return ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "eu-west-2"]
 
 
 def _build_instance_info(instance, region_name, hourly_cost, monthly_cost):

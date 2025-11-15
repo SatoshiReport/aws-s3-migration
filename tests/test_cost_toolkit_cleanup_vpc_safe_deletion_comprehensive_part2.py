@@ -58,11 +58,11 @@ class TestDeleteVpcAndDependencies:
 
             assert result is False
             captured = capsys.readouterr()
-            assert "Error deleting VPC vpc-123" in captured.out
+            assert "Error during VPC deletion process" in captured.out
 
     def test_delete_vpc_with_client_error(self, capsys):
         """Test deletion with client error."""
-        with patch("boto3.client") as mock_boto3:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.boto3.client") as mock_boto3:
             mock_boto3.side_effect = ClientError(
                 {"Error": {"Code": "ServiceError"}}, "create_client"
             )

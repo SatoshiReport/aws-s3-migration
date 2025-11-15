@@ -37,15 +37,6 @@ def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
     return candidate
 
 
-def format_size(bytes_size: int) -> str:
-    """Format bytes to human readable size"""
-    for unit in ["B", "KB", "MB", "GB", "TB"]:
-        if bytes_size < BYTES_PER_KB:
-            return f"{bytes_size:.2f} {unit}"
-        bytes_size /= BYTES_PER_KB
-    return f"{bytes_size:.2f} PB"
-
-
 def format_duration(seconds: float) -> str:
     """Format seconds to human readable duration"""
     if seconds < SECONDS_PER_MINUTE:
