@@ -14,12 +14,12 @@ except ImportError:  # pragma: no cover
 
 try:
     from cost_toolkit.common.cli_utils import (
-        add_reset_state_db_args,
+        create_migration_cli_parser,
         handle_state_db_reset,
     )
 except ImportError:  # pragma: no cover
     from cost_toolkit.common.cli_utils import (  # type: ignore[import]
-        add_reset_state_db_args,
+        create_migration_cli_parser,
         handle_state_db_reset,
     )
 
@@ -56,24 +56,8 @@ except ImportError:  # pragma: no cover
     from state_db_admin import reseed_state_db_from_local_drive  # type: ignore[import]
 
 
-def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
-    """Parse CLI arguments controlling database path, base path, and tolerance."""
-    parser = argparse.ArgumentParser(
-        description=(
-            "Detect exact duplicate directory trees on the external drive "
-            "using migrate_v2's SQLite metadata."
-        )
-    )
-    parser.add_argument(
-        "--db-path",
-        default=config_module.STATE_DB_PATH,
-        help="Path to migration state SQLite DB (default: %(default)s).",
-    )
-    parser.add_argument(
-        "--base-path",
-        default=config_module.LOCAL_BASE_PATH,
-        help="Root of the external drive (default: %(default)s).",
-    )
+def _add_module_specific_args(parser: argparse.ArgumentParser) -> None:
+    """Add duplicate_tree-specific arguments to the parser."""
     parser.add_argument(
         "--refresh-cache",
         action="store_true",
@@ -99,7 +83,19 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
             "in each cluster (requires confirmation)."
         ),
     )
-    add_reset_state_db_args(parser)
+
+
+def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
+    """Parse CLI arguments controlling database path, base path, and tolerance."""
+    parser = create_migration_cli_parser(
+        description=(
+            "Detect exact duplicate directory trees on the external drive "
+            "using migrate_v2's SQLite metadata."
+        ),
+        db_path_default=config_module.STATE_DB_PATH,
+        base_path_default=config_module.LOCAL_BASE_PATH,
+        add_custom_args=_add_module_specific_args,
+    )
     return parser.parse_args(argv)
 
 

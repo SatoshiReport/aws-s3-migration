@@ -17,7 +17,10 @@ except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
     raise SystemExit(f"Unable to import config module: {exc}") from exc
 
 try:
-    from cost_toolkit.common.cli_utils import add_reset_state_db_args, handle_state_db_reset
+    from cost_toolkit.common.cli_utils import (
+        create_migration_cli_parser,
+        handle_state_db_reset,
+    )
     from cost_toolkit.common.format_utils import parse_size
 except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
     raise SystemExit(f"Unable to import cost_toolkit modules: {exc}") from exc
@@ -47,25 +50,8 @@ def _parse_size_argparse(value: str) -> int:
     return parse_size(value, for_argparse=True)
 
 
-def parse_args() -> argparse.Namespace:
-    """Parse CLI arguments for compression workflow."""
-    parser = argparse.ArgumentParser(
-        description=(
-            "Scan the SQLite migration database for large, locally downloaded files that are "
-            "likely to compress well with xz -9. Images, videos, and already compressed files "
-            "are automatically skipped."
-        )
-    )
-    parser.add_argument(
-        "--db-path",
-        default=STATE_DB_PATH,
-        help=f"Path to migration SQLite database (default: {STATE_DB_PATH})",
-    )
-    parser.add_argument(
-        "--base-path",
-        default=LOCAL_BASE_PATH,
-        help=f"Base path of the external drive (default: {LOCAL_BASE_PATH})",
-    )
+def _add_module_specific_args(parser: argparse.ArgumentParser) -> None:
+    """Add find_compressible-specific arguments to the parser."""
     parser.add_argument(
         "--min-size",
         type=_parse_size_argparse,
@@ -90,7 +76,20 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Compress each reported file in-place using `xz -9e`. Disabled by default.",
     )
-    add_reset_state_db_args(parser)
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for compression workflow."""
+    parser = create_migration_cli_parser(
+        description=(
+            "Scan the SQLite migration database for large, locally downloaded files that are "
+            "likely to compress well with xz -9. Images, videos, and already compressed files "
+            "are automatically skipped."
+        ),
+        db_path_default=STATE_DB_PATH,
+        base_path_default=LOCAL_BASE_PATH,
+        add_custom_args=_add_module_specific_args,
+    )
     return parser.parse_args()
 
 

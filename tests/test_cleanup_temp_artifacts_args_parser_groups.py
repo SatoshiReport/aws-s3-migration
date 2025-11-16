@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from unittest.mock import patch
 
 from cleanup_temp_artifacts import args_parser  # pylint: disable=no-name-in-module
 from tests.assertions import assert_equal
@@ -13,45 +12,9 @@ _add_action_arguments = args_parser._add_action_arguments  # pylint: disable=pro
 _add_cache_arguments = args_parser._add_cache_arguments  # pylint: disable=protected-access
 _add_filter_arguments = args_parser._add_filter_arguments  # pylint: disable=protected-access
 _add_output_arguments = args_parser._add_output_arguments  # pylint: disable=protected-access
-_add_parser_arguments = args_parser._add_parser_arguments  # pylint: disable=protected-access
-_add_path_arguments = args_parser._add_path_arguments  # pylint: disable=protected-access
-
-
-def test_add_path_arguments_with_default():
-    """Test _add_path_arguments adds correct arguments with default path."""
-    parser = argparse.ArgumentParser()
-
-    with patch("cleanup_temp_artifacts.args_parser.DEFAULT_BASE_PATH", Path("/test/path")):
-        _add_path_arguments(parser)
-
-    args = parser.parse_args([])
-
-    assert_equal(args.base_path, "/test/path")
-    assert args.db_path is not None
-
-
-def test_add_path_arguments_without_default():
-    """Test _add_path_arguments adds correct arguments without default path."""
-    parser = argparse.ArgumentParser()
-
-    with patch("cleanup_temp_artifacts.args_parser.DEFAULT_BASE_PATH", None):
-        _add_path_arguments(parser)
-
-    args = parser.parse_args([])
-
-    assert args.base_path is None
-    assert args.db_path is not None
-
-
-def test_add_path_arguments_with_custom_paths():
-    """Test _add_path_arguments with custom path overrides."""
-    parser = argparse.ArgumentParser()
-    _add_path_arguments(parser)
-
-    args = parser.parse_args(["--base-path", "/custom/base", "--db-path", "/custom/db.sqlite"])
-
-    assert_equal(args.base_path, "/custom/base")
-    assert_equal(args.db_path, "/custom/db.sqlite")
+_add_module_specific_args = (
+    args_parser._add_module_specific_args
+)  # pylint: disable=protected-access
 
 
 def test_add_filter_arguments_defaults():
@@ -181,16 +144,17 @@ def test_add_cache_arguments_with_values():
     assert args.no_cache is True
 
 
-def test_add_parser_arguments():
-    """Test _add_parser_arguments adds all argument groups."""
+def test_add_module_specific_args():
+    """Test _add_module_specific_args adds all argument groups."""
     parser = argparse.ArgumentParser()
     categories = {"test-cat": "Test Category"}
 
-    _add_parser_arguments(parser, categories)
+    _add_module_specific_args(parser, categories)
 
     args = parser.parse_args([])
 
-    assert hasattr(args, "base_path")
+    # Note: --base-path and --db-path are now added by create_migration_cli_parser
+    # so they are not tested here. This function only adds module-specific args.
     assert hasattr(args, "categories")
     assert hasattr(args, "delete")
     assert hasattr(args, "report_json")

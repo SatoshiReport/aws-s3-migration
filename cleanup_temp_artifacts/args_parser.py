@@ -11,31 +11,14 @@ import sys
 from pathlib import Path
 
 try:
-    from cost_toolkit.common.cli_utils import add_reset_state_db_args
+    from cost_toolkit.common.cli_utils import create_migration_cli_parser
 except ImportError:  # pragma: no cover
-    from cost_toolkit.common.cli_utils import add_reset_state_db_args  # type: ignore[import]
+    from cost_toolkit.common.cli_utils import create_migration_cli_parser  # type: ignore[import]
 
 from .cache import _default_cache_dir
 from .categories import build_categories
 from .config import DEFAULT_BASE_PATH, DEFAULT_DB_PATH
 from .reports import parse_size
-
-
-def _add_path_arguments(parser: argparse.ArgumentParser) -> None:
-    """Add path-related arguments."""
-    base_help = "Local base path containing migrated bucket folders."
-    if DEFAULT_BASE_PATH:
-        base_help += f" Default: {DEFAULT_BASE_PATH}."
-    parser.add_argument(
-        "--base-path",
-        default=str(DEFAULT_BASE_PATH) if DEFAULT_BASE_PATH else None,
-        help=base_help,
-    )
-    parser.add_argument(
-        "--db-path",
-        default=str(DEFAULT_DB_PATH),
-        help=f"Path to migration SQLite database (default: {DEFAULT_DB_PATH}).",
-    )
 
 
 def _add_filter_arguments(parser: argparse.ArgumentParser, categories: dict[str, str]) -> None:
@@ -70,7 +53,6 @@ def _add_filter_arguments(parser: argparse.ArgumentParser, categories: dict[str,
 
 def _add_action_arguments(parser: argparse.ArgumentParser) -> None:
     """Add action and confirmation arguments."""
-    add_reset_state_db_args(parser)
     parser.add_argument(
         "--delete",
         action="store_true",
@@ -118,9 +100,8 @@ def _add_cache_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_parser_arguments(parser: argparse.ArgumentParser, categories: dict[str, str]) -> None:
-    """Add all command-line arguments to the parser."""
-    _add_path_arguments(parser)
+def _add_module_specific_args(parser: argparse.ArgumentParser, categories: dict[str, str]) -> None:
+    """Add all cleanup_temp_artifacts-specific arguments to the parser."""
     _add_filter_arguments(parser, categories)
     _add_action_arguments(parser)
     _add_output_arguments(parser)
@@ -150,12 +131,17 @@ def _validate_and_transform_args(
 def parse_args(argv: list[str]) -> argparse.Namespace:
     """Parse and process command-line arguments for cleanup_temp_artifacts."""
     categories = build_categories()
-    parser = argparse.ArgumentParser(
+
+    # Use shared parser factory with cleanup_temp_artifacts-specific args
+    parser = create_migration_cli_parser(
         description=(
             "Scan backup trees for disposable cache/temp artifacts and optionally delete them."
-        )
+        ),
+        db_path_default=str(DEFAULT_DB_PATH),
+        base_path_default=str(DEFAULT_BASE_PATH) if DEFAULT_BASE_PATH else "",
+        add_custom_args=lambda p: _add_module_specific_args(p, categories),
     )
-    _add_parser_arguments(parser, categories)
+
     args = parser.parse_args(argv)
     _validate_and_transform_args(args, parser, categories)
     return args

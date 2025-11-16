@@ -76,7 +76,13 @@ def test_handle_state_db_reset_no_reset():
     """Test handle_state_db_reset when should_reset is False."""
     db_path = Path("/tmp/test.db")
     base_path = Path("/tmp/base")
-    result = handle_state_db_reset(base_path, db_path, should_reset=False, skip_prompt=False)
+
+    def mock_reseed(bp, dp):
+        return dp, 100, 1000
+
+    result = handle_state_db_reset(
+        base_path, db_path, should_reset=False, skip_prompt=False, reseed_function=mock_reseed
+    )
     assert_equal(result, db_path)
 
 
@@ -86,8 +92,12 @@ def test_handle_state_db_reset_cancelled(tmp_path, capsys):
     base_path = tmp_path / "base"
     base_path.mkdir()
 
+    mock_reseed = MagicMock(return_value=(db_path, 1000, 1024 * 1024 * 1024))
+
     with patch("builtins.input", return_value="n"):
-        result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=False)
+        result = handle_state_db_reset(
+            base_path, db_path, should_reset=True, skip_prompt=False, reseed_function=mock_reseed
+        )
         assert_equal(result, db_path)
         captured = capsys.readouterr().out
         assert "cancelled" in captured
@@ -101,11 +111,10 @@ def test_handle_state_db_reset_confirmed(tmp_path, capsys):
 
     mock_reseed = MagicMock(return_value=(db_path, 1000, 1024 * 1024 * 1024))
 
-    with (
-        patch("builtins.input", return_value="y"),
-        patch("find_compressible.cache.reseed_state_db_from_local_drive", mock_reseed),
-    ):
-        result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=False)
+    with patch("builtins.input", return_value="y"):
+        result = handle_state_db_reset(
+            base_path, db_path, should_reset=True, skip_prompt=False, reseed_function=mock_reseed
+        )
         assert_equal(result, db_path)
         captured = capsys.readouterr().out
         assert "Recreated" in captured
@@ -120,8 +129,9 @@ def test_handle_state_db_reset_with_skip_prompt(tmp_path, capsys):
 
     mock_reseed = MagicMock(return_value=(db_path, 500, 512 * 1024 * 1024))
 
-    with patch("find_compressible.cache.reseed_state_db_from_local_drive", mock_reseed):
-        result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=True)
-        assert_equal(result, db_path)
-        captured = capsys.readouterr().out
-        assert "Recreated" in captured
+    result = handle_state_db_reset(
+        base_path, db_path, should_reset=True, skip_prompt=True, reseed_function=mock_reseed
+    )
+    assert_equal(result, db_path)
+    captured = capsys.readouterr().out
+    assert "Recreated" in captured

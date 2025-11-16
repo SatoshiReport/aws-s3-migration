@@ -88,7 +88,13 @@ def test_handle_state_db_reset_no_reset():
     """Test handle_state_db_reset when should_reset is False."""
     db_path = Path("/tmp/test.db")
     base_path = Path("/tmp/base")
-    result = handle_state_db_reset(base_path, db_path, should_reset=False, skip_prompt=False)
+
+    def mock_reseed(bp, dp):
+        return dp, 100, 1000
+
+    result = handle_state_db_reset(
+        base_path, db_path, should_reset=False, skip_prompt=False, reseed_function=mock_reseed
+    )
     assert_equal(result, db_path)
 
 
@@ -98,8 +104,13 @@ def test_handle_state_db_reset_cancelled(tmp_path, capsys):
     base_path = tmp_path / "base"
     base_path.mkdir()
 
+    def mock_reseed(bp, dp):
+        return dp, 100, 1000
+
     with patch("builtins.input", return_value="n"):
-        result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=False)
+        result = handle_state_db_reset(
+            base_path, db_path, should_reset=True, skip_prompt=False, reseed_function=mock_reseed
+        )
         assert_equal(result, db_path)
         captured = capsys.readouterr().out
         assert "cancelled" in captured

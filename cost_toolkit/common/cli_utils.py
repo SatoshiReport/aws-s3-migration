@@ -4,6 +4,69 @@ Shared CLI utilities for common command-line patterns.
 This module provides common CLI patterns used across multiple scripts.
 """
 
+import argparse
+from typing import Callable, Optional
+
+
+def create_migration_cli_parser(
+    description: str,
+    db_path_default: str,
+    base_path_default: str,
+    add_custom_args: Optional[Callable[[argparse.ArgumentParser], None]] = None,
+) -> argparse.ArgumentParser:
+    """
+    Create a standard ArgumentParser for migration-related CLI tools.
+
+    This is the canonical factory for CLIs that operate on the migrate_v2 state database.
+    It handles common arguments (--db-path, --base-path, --reset-state-db, --yes) and
+    allows customization via a callback for module-specific arguments.
+
+    Args:
+        description: CLI description for the ArgumentParser
+        db_path_default: Default value for --db-path (typically from config.STATE_DB_PATH)
+        base_path_default: Default value for --base-path (typically from config.LOCAL_BASE_PATH)
+        add_custom_args: Optional callback function that receives the parser and adds
+                        module-specific arguments. Called after standard args are added
+                        but before add_reset_state_db_args.
+
+    Returns:
+        Configured ArgumentParser with standard migration CLI arguments
+
+    Example:
+        def add_module_args(parser):
+            parser.add_argument("--compress", action="store_true")
+
+        parser = create_migration_cli_parser(
+            description="Compress large files",
+            db_path_default=STATE_DB_PATH,
+            base_path_default=LOCAL_BASE_PATH,
+            add_custom_args=add_module_args
+        )
+        args = parser.parse_args()
+    """
+    parser = argparse.ArgumentParser(description=description)
+
+    # Add standard migration CLI arguments
+    parser.add_argument(
+        "--db-path",
+        default=db_path_default,
+        help=f"Path to migration state SQLite DB (default: {db_path_default}).",
+    )
+    parser.add_argument(
+        "--base-path",
+        default=base_path_default,
+        help=f"Root of the external drive (default: {base_path_default}).",
+    )
+
+    # Allow module-specific arguments to be added
+    if add_custom_args is not None:
+        add_custom_args(parser)
+
+    # Add state DB reset arguments (common to all migration CLIs)
+    add_reset_state_db_args(parser)
+
+    return parser
+
 
 def confirm_action(message, skip_prompt=False, exact_match=None):
     """
