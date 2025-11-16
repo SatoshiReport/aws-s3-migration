@@ -12,11 +12,16 @@ from cost_toolkit.common.aws_common import (
     get_all_aws_regions,
 )
 from cost_toolkit.common.aws_common import get_instance_name as _get_instance_name_with_client
+from cost_toolkit.common.aws_common import (
+    get_resource_tags,
+)
+from cost_toolkit.scripts.aws_ec2_operations import find_resource_region
 
 
 def find_volume_region(volume_id: str) -> Optional[str]:
     """
     Find which region contains the specified volume.
+    Delegates to canonical implementation in aws_ec2_operations.
 
     Args:
         volume_id: The EBS volume ID to locate
@@ -24,20 +29,7 @@ def find_volume_region(volume_id: str) -> Optional[str]:
     Returns:
         Region name if found, None otherwise
     """
-    regions = get_all_aws_regions()
-
-    for region in regions:
-        try:
-            ec2_client = boto3.client("ec2", region_name=region)
-            response = ec2_client.describe_volumes(VolumeIds=[volume_id])
-            if response["Volumes"]:
-                return region
-        except ClientError as e:
-            if "InvalidVolume.NotFound" in str(e):
-                continue
-            raise
-
-    return None
+    return find_resource_region("volume", volume_id)
 
 
 def get_instance_name(instance_id: str, region: str) -> str:
@@ -60,6 +52,7 @@ def get_instance_name(instance_id: str, region: str) -> str:
 def get_volume_tags(volume: Dict) -> Dict[str, str]:
     """
     Extract tags from a volume description.
+    Delegates to canonical implementation in aws_common.
 
     Args:
         volume: Volume description from AWS API
@@ -67,10 +60,7 @@ def get_volume_tags(volume: Dict) -> Dict[str, str]:
     Returns:
         Dictionary of tag key-value pairs
     """
-    tags = {}
-    for tag in volume.get("Tags", []):
-        tags[tag["Key"]] = tag["Value"]
-    return tags
+    return get_resource_tags(volume)
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point

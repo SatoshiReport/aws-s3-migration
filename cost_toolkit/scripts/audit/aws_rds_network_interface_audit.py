@@ -13,11 +13,6 @@ from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 
-def load_aws_credentials():
-    """Load AWS credentials from environment file"""
-    return setup_aws_credentials()
-
-
 def _extract_instance_info(instance):
     """Extract and format information from an RDS instance"""
     return {
@@ -280,7 +275,7 @@ def main():
 
     try:
         # Load credentials
-        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
         # Get all regions
         regions = get_all_regions()

@@ -13,18 +13,15 @@ from cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore import (
     create_snapshot_from_ami,
     import_ami_from_s3,
     list_s3_exports,
-    load_aws_credentials,
 )
 
 
 @patch("cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore.setup_aws_credentials")
 def test_load_credentials_success(mock_setup):
     """Test successful credential loading."""
-    mock_setup.return_value = ("access_key", "secret_key")
-    access_key, secret_key = load_aws_credentials()
-    assert access_key == "access_key"
-    assert secret_key == "secret_key"
-    mock_setup.assert_called_once()
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestListS3Exports:

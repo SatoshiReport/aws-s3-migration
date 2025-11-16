@@ -9,31 +9,26 @@ from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.optimization.aws_export_recovery import (
     EXPORT_STABILITY_MINUTES,
-    AWSCredentialsError,
     _check_s3_file_exists,
     _is_file_stable,
     _process_stuck_export,
     check_active_exports,
-    load_aws_credentials,
 )
 
 
 def test_credentials_error_message():
     """Test credentials error has correct message."""
-    error = AWSCredentialsError()
-    assert "AWS credentials not found in ~/.env file" in str(error)
+    # AWSCredentialsError has been removed - ValueError is used instead
+    # This test is no longer relevant
+    pass
 
 
 @patch("cost_toolkit.scripts.optimization.aws_export_recovery.setup_aws_credentials")
 def test_load_credentials(mock_setup):
     """Test loading AWS credentials."""
-    mock_setup.return_value = ("test_key", "test_secret")
-
-    key, secret = load_aws_credentials()
-
-    assert key == "test_key"
-    assert secret == "test_secret"
-    mock_setup.assert_called_once()
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestCheckS3FileExists:

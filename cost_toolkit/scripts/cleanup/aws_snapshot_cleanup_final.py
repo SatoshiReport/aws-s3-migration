@@ -11,25 +11,20 @@ import time
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cli_utils import confirm_action
+from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    return setup_aws_credentials()
+from cost_toolkit.scripts.aws_ec2_operations import (
+    delete_snapshot as delete_snapshot_canonical,
+)
 
 
 def delete_snapshot(ec2_client, snapshot_id, region):
-    """Delete a specific snapshot"""
-    try:
-        print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
-        ec2_client.delete_snapshot(SnapshotId=snapshot_id)
-        print(f"   ✅ Successfully deleted {snapshot_id}")
-    except ClientError as e:
-        print(f"   ❌ Error deleting {snapshot_id}: {e}")
-        return False
-
-    return True
+    """
+    Delete a specific snapshot.
+    Delegates to canonical implementation in aws_ec2_operations.
+    """
+    return delete_snapshot_canonical(snapshot_id, region)
 
 
 def get_snapshots_to_delete():
@@ -89,7 +84,9 @@ def print_deletion_warning(snapshots_to_delete):
     print(f"🎯 Target: {len(snapshots_to_delete)} freed snapshots for deletion")
     print()
 
-    total_potential_savings = sum(snap["size_gb"] * 0.05 for snap in snapshots_to_delete)
+    total_potential_savings = sum(
+        calculate_snapshot_cost(snap["size_gb"]) for snap in snapshots_to_delete
+    )
 
     print("⚠️  FINAL WARNING: This will permanently delete these snapshots!")
     print("   - All snapshot data will be lost")
@@ -100,9 +97,10 @@ def print_deletion_warning(snapshots_to_delete):
 
 
 def confirm_snapshot_deletion():
-    """Prompt user for snapshot deletion confirmation"""
-    confirmation = input("Type 'DELETE FREED SNAPSHOTS' to confirm deletion: ")
-    return confirmation == "DELETE FREED SNAPSHOTS"
+    """Prompt user for snapshot deletion confirmation. Delegates to canonical implementation."""
+    return confirm_action(
+        "Type 'DELETE FREED SNAPSHOTS' to confirm deletion: ", exact_match="DELETE FREED SNAPSHOTS"
+    )
 
 
 def process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secret_access_key):
@@ -116,7 +114,7 @@ def process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secre
         region = snap_info["region"]
         size_gb = snap_info["size_gb"]
         description = snap_info["description"]
-        monthly_cost = size_gb * 0.05
+        monthly_cost = calculate_snapshot_cost(size_gb)
 
         print(f"🔍 Processing {snapshot_id}...")
         print(f"   Region: {region}")
@@ -168,7 +166,7 @@ def print_cleanup_summary(successful_deletions, failed_deletions, total_savings)
 
 def delete_freed_snapshots():
     """Delete snapshots that were freed after AMI deregistration"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
     snapshots_to_delete = get_snapshots_to_delete()
 
     print_deletion_warning(snapshots_to_delete)

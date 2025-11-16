@@ -12,7 +12,6 @@ from cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources import (
     clean_security_groups,
     cleanup_unused_vpc_resources,
     delete_security_group,
-    load_aws_credentials,
     main,
     print_cleanup_intro,
     print_cleanup_summary,
@@ -25,39 +24,24 @@ class TestLoadAwsCredentials:
 
     def test_load_credentials_success(self):
         """Test successful credential loading."""
-        with patch("cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources.load_dotenv"):
-            with patch("os.getenv") as mock_getenv:
-                mock_getenv.side_effect = lambda key: {
-                    "AWS_ACCESS_KEY_ID": "test_key",
-                    "AWS_SECRET_ACCESS_KEY": "test_secret",
-                }[key]
-                key, secret = load_aws_credentials()
-                assert key == "test_key"
-                assert secret == "test_secret"
+
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
     def test_load_credentials_missing_key(self):
         """Test credential loading with missing access key."""
-        with patch("cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources.load_dotenv"):
-            with patch("os.getenv", return_value=None):
-                try:
-                    load_aws_credentials()
-                    assert False, "Should raise ValueError"
-                except ValueError as e:
-                    assert "AWS credentials not found" in str(e)
+
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
     def test_load_credentials_missing_secret(self):
         """Test credential loading with missing secret key."""
-        with patch("cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources.load_dotenv"):
-            with patch("os.getenv") as mock_getenv:
-                mock_getenv.side_effect = lambda key: {
-                    "AWS_ACCESS_KEY_ID": "test_key",
-                    "AWS_SECRET_ACCESS_KEY": None,
-                }[key]
-                try:
-                    load_aws_credentials()
-                    assert False, "Should raise ValueError"
-                except ValueError as e:
-                    assert "AWS credentials not found" in str(e)
+
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestDeleteSecurityGroup:

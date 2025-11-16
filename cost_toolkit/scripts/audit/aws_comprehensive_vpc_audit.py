@@ -19,31 +19,17 @@ import sys
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
 def get_resource_name(tags):
-    """Extract Name tag from resource tags"""
-    if not tags:
-        return "Unnamed"
-    for tag in tags:
-        if tag["Key"] == "Name":
-            return tag["Value"]
-    return "Unnamed"
+    """Extract Name tag from resource tags. Delegates to canonical implementation."""
+    from cost_toolkit.common.aws_common import extract_tag_value
+
+    # extract_tag_value expects a resource dict with 'Tags' key
+    resource_dict = {"Tags": tags} if tags else {}
+    return extract_tag_value(resource_dict, "Name")
 
 
 def _get_active_instances(ec2_client):
@@ -367,7 +353,7 @@ def _print_detailed_results(regions_with_resources):
 
 def audit_comprehensive_vpc():
     """Audit VPC resources across key AWS regions"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
     print("AWS Comprehensive VPC Audit")
     print("=" * 80)

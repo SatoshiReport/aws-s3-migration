@@ -15,11 +15,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    return setup_aws_credentials()
-
-
 def list_s3_exports(s3_client, bucket_name):
     """List available snapshot exports in S3 bucket"""
     try:
@@ -317,7 +312,7 @@ def _print_restore_summary(restore_results, selected_exports, region):
 
 def restore_snapshots_from_s3():
     """Main function to restore EBS snapshots from S3"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
     print("AWS S3 to EBS Snapshot Restore Script")
     print("=" * 80)

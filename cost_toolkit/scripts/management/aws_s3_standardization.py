@@ -22,14 +22,10 @@ BUCKET_TO_DELETE = "mail.satoshi.report"
 
 
 def get_bucket_region(bucket_name):
-    """Get the region where a bucket is located"""
-    try:
-        region = get_bucket_location(bucket_name)
-    except ClientError as e:
-        print(f"Error getting region for bucket {bucket_name}: {e}")
-        return "us-east-1"
+    """Get the region where a bucket is located. Delegates to canonical implementation."""
+    from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
 
-    return region
+    return canonical_get_bucket_region(bucket_name)
 
 
 def _delete_versioned_objects(s3_client, bucket_name):

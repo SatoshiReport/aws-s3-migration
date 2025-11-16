@@ -11,21 +11,8 @@ import sys
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
 def get_trust_policy():
@@ -136,7 +123,7 @@ def print_alternative_setup_instructions():
 
 def create_vmimport_role():
     """Create the vmimport service role required for AMI exports"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
     # Create IAM client
     iam_client = boto3.client(

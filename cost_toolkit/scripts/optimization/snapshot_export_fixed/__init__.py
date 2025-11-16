@@ -1,9 +1,9 @@
 """AWS EBS Snapshot to S3 Export Package - Fixed Version"""
 
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.scripts.optimization.snapshot_export_common import (
     create_ami_from_snapshot,
     create_s3_bucket_if_not_exists,
-    load_aws_credentials,
     setup_s3_bucket_versioning,
 )
 
@@ -27,7 +27,7 @@ __all__ = [
     "create_s3_bucket_if_not_exists",
     "create_s3_bucket_new",
     "export_ami_to_s3_with_recovery",
-    "load_aws_credentials",
+    "setup_aws_credentials",
     "setup_s3_bucket_versioning",
     "check_s3_file_completion",
     "verify_s3_export_final",

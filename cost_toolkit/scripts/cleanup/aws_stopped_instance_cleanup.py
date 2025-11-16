@@ -6,12 +6,20 @@ Terminates stopped EC2 instances and cleans up associated resources.
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import (
+    extract_tag_value,
+    extract_volumes_from_instance,
+    get_resource_tags,
+)
 from cost_toolkit.scripts.aws_client_factory import load_credentials_from_env
 from cost_toolkit.scripts.aws_ec2_operations import describe_instance, terminate_instance
 
 
 def get_instance_details(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
-    """Get detailed information about an EC2 instance"""
+    """
+    Get detailed information about an EC2 instance.
+    Delegates to canonical implementations in aws_common for tag and volume extraction.
+    """
     try:
         instance = describe_instance(
             region=region_name,
@@ -20,25 +28,23 @@ def get_instance_details(region_name, instance_id, aws_access_key_id, aws_secret
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        # Get tags for better identification
-        tags = {tag["Key"]: tag["Value"] for tag in instance.get("Tags", [])}
-        name = tags.get("Name", "No Name")
+        # Use canonical tag and volume extraction functions
+        tags = get_resource_tags(instance)
+        volumes_raw = extract_volumes_from_instance(instance)
 
-        # Get volume information
-        volumes = []
-        for bdm in instance.get("BlockDeviceMappings", []):
-            if "Ebs" in bdm:
-                volumes.append(
-                    {
-                        "volume_id": bdm["Ebs"]["VolumeId"],
-                        "device_name": bdm["DeviceName"],
-                        "delete_on_termination": bdm["Ebs"]["DeleteOnTermination"],
-                    }
-                )
+        # Convert volumes to the format expected by this script (device vs device_name)
+        volumes = [
+            {
+                "volume_id": vol["volume_id"],
+                "device_name": vol["device"],
+                "delete_on_termination": vol["delete_on_termination"],
+            }
+            for vol in volumes_raw
+        ]
 
         instance_info = {
             "instance_id": instance_id,
-            "name": name,
+            "name": extract_tag_value(instance, "Name", default="No Name"),
             "instance_type": instance["InstanceType"],
             "state": instance["State"]["Name"],
             "vpc_id": instance.get("VpcId", "N/A"),

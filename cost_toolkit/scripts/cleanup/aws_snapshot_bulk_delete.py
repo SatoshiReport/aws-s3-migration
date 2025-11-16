@@ -8,12 +8,17 @@ Deletes multiple EBS snapshots across regions.
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cli_utils import confirm_action
+from cost_toolkit.common.cost_utils import calculate_snapshot_cost
+from cost_toolkit.scripts.aws_ec2_operations import find_resource_region
+
 from ..aws_utils import setup_aws_credentials
 
 
 def find_snapshot_region(snapshot_id):
     """
     Find which region contains the specified snapshot.
+    Delegates to canonical implementation in aws_ec2_operations.
 
     Args:
         snapshot_id: The EBS snapshot ID to locate
@@ -21,23 +26,9 @@ def find_snapshot_region(snapshot_id):
     Returns:
         Region name if found, None otherwise
     """
-    # Common regions to check
-    regions = ["eu-west-2", "us-east-1", "us-east-2", "us-west-1", "us-west-2"]
-
-    for region in regions:
-        try:
-            ec2_client = boto3.client("ec2", region_name=region)
-            response = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
-            if response["Snapshots"]:
-                return region
-        except ec2_client.exceptions.ClientError as e:
-            if "InvalidSnapshot.NotFound" in str(e):
-                continue
-            # For other errors, print but continue
-            print(f"⚠️  Error checking {region} for {snapshot_id}: {str(e)}")
-            continue
-
-    return None
+    # Search common regions first for performance
+    common_regions = ["eu-west-2", "us-east-1", "us-east-2", "us-west-1", "us-west-2"]
+    return find_resource_region("snapshot", snapshot_id, regions=common_regions)
 
 
 def get_snapshot_details(snapshot_id, region):
@@ -97,7 +88,7 @@ def delete_snapshot_safely(snapshot_id, region):
         print(f"   Description: {snapshot_info['description'][:80]}...")
 
         # Calculate cost savings
-        monthly_savings = snapshot_info["size_gb"] * 0.05  # $0.05 per GB/month
+        monthly_savings = calculate_snapshot_cost(snapshot_info["size_gb"])
 
         # Delete the snapshot
         ec2_client.delete_snapshot(SnapshotId=snapshot_id)
@@ -148,9 +139,10 @@ def print_bulk_deletion_warning(snapshots_to_delete):
 
 
 def confirm_bulk_deletion():
-    """Prompt user for bulk deletion confirmation"""
-    confirmation = input("Type 'DELETE ALL SNAPSHOTS' to confirm bulk deletion: ")
-    return confirmation == "DELETE ALL SNAPSHOTS"
+    """Prompt user for bulk deletion confirmation. Delegates to canonical implementation."""
+    return confirm_action(
+        "Type 'DELETE ALL SNAPSHOTS' to confirm bulk deletion: ", exact_match="DELETE ALL SNAPSHOTS"
+    )
 
 
 def process_bulk_deletions(snapshots_to_delete):
@@ -172,7 +164,7 @@ def process_bulk_deletions(snapshots_to_delete):
 
         snapshot_info = get_snapshot_details(snapshot_id, region)
         if snapshot_info:
-            monthly_savings = snapshot_info["size_gb"] * 0.05
+            monthly_savings = calculate_snapshot_cost(snapshot_info["size_gb"])
             total_savings += monthly_savings
 
         if delete_snapshot_safely(snapshot_id, region):

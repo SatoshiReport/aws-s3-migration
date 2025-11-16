@@ -8,20 +8,15 @@ from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis import (
     cleanup_failed_export_amis,
-    load_aws_credentials,
     main,
 )
 
 
 def test_load_credentials_calls_setup():
     """Test that load_aws_credentials calls setup_aws_credentials."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis.setup_aws_credentials"
-    ) as mock_setup:
-        mock_setup.return_value = ("key_id", "secret_key")
-        result = load_aws_credentials()
-        assert result == ("key_id", "secret_key")
-        mock_setup.assert_called_once()
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestCleanupFailedExportAMIsSuccess:

@@ -10,21 +10,10 @@ from datetime import datetime
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
+from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 EXPORT_STABILITY_MINUTES = 10
-
-
-class AWSCredentialsError(Exception):
-    """Raised when AWS credentials are not found or invalid"""
-
-    def __init__(self):
-        super().__init__("AWS credentials not found in ~/.env file")
-
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    return setup_aws_credentials()
 
 
 def _check_s3_file_exists(s3_client, bucket_name, s3_key):
@@ -147,7 +136,7 @@ def main():
     print("=" * 50)
     print("Checking for stuck exports that may have actually completed...")
 
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
     # Check common regions where exports might be running
     regions_to_check = ["us-east-2", "eu-west-2", "us-east-1", "us-west-2"]
@@ -179,7 +168,7 @@ def main():
         print(f"\n💾 Total recovered data: {total_size_gb:.2f} GB")
 
         # Calculate cost savings
-        ebs_monthly_cost = total_size_gb * 0.05
+        ebs_monthly_cost = calculate_snapshot_cost(total_size_gb)
         s3_monthly_cost = total_size_gb * 0.023
         monthly_savings = ebs_monthly_cost - s3_monthly_cost
 

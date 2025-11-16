@@ -6,12 +6,11 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import extract_tag_value, extract_volumes_from_instance
 from cost_toolkit.scripts.cleanup.aws_instance_termination import (
     _check_and_print_volumes,
     _delete_manual_volumes,
     _disable_termination_protection,
-    _extract_instance_name,
-    _extract_volumes,
     _perform_termination,
 )
 
@@ -104,19 +103,19 @@ class TestExtractHelpers:
         instance = {
             "Tags": [{"Key": "Name", "Value": "MyInstance"}, {"Key": "Env", "Value": "prod"}]
         }
-        name = _extract_instance_name(instance)
+        name = extract_tag_value(instance, "Name", "Unnamed")
         assert name == "MyInstance"
 
     def test_extract_instance_name_without_name_tag(self):
         """Test extracting instance name when Name tag doesn't exist."""
         instance = {"Tags": [{"Key": "Env", "Value": "prod"}]}
-        name = _extract_instance_name(instance)
+        name = extract_tag_value(instance, "Name", "Unnamed")
         assert name == "Unnamed"
 
     def test_extract_instance_name_no_tags(self):
         """Test extracting instance name when no tags exist."""
         instance = {}
-        name = _extract_instance_name(instance)
+        name = extract_tag_value(instance, "Name", "Unnamed")
         assert name == "Unnamed"
 
     def test_extract_volumes_with_multiple_volumes(self):
@@ -133,7 +132,7 @@ class TestExtractHelpers:
                 },
             ]
         }
-        volumes = _extract_volumes(instance)
+        volumes = extract_volumes_from_instance(instance)
         assert len(volumes) == 2
         assert volumes[0]["volume_id"] == "vol-123"
         assert volumes[0]["delete_on_termination"] is True
@@ -143,13 +142,13 @@ class TestExtractHelpers:
     def test_extract_volumes_no_ebs(self):
         """Test extracting volumes when no EBS volumes exist."""
         instance = {"BlockDeviceMappings": [{"DeviceName": "/dev/sda1"}]}
-        volumes = _extract_volumes(instance)
+        volumes = extract_volumes_from_instance(instance)
         assert len(volumes) == 0
 
     def test_extract_volumes_empty_mappings(self):
         """Test extracting volumes when BlockDeviceMappings is empty."""
         instance = {}
-        volumes = _extract_volumes(instance)
+        volumes = extract_volumes_from_instance(instance)
         assert len(volumes) == 0
 
 

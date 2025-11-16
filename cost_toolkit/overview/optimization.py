@@ -9,15 +9,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import get_default_regions
-
-
-def _calculate_volume_cost(size_gb, volume_type):
-    """Calculate monthly cost for a volume based on type and size."""
-    if volume_type == "gp3":
-        return size_gb * 0.08
-    if volume_type == "gp2":
-        return size_gb * 0.10
-    return size_gb * 0.10
+from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost, calculate_snapshot_cost
 
 
 def _scan_region_for_unattached_volumes(region):
@@ -34,7 +26,7 @@ def _scan_region_for_unattached_volumes(region):
                 count += 1
                 size_gb = volume["Size"]
                 volume_type = volume["VolumeType"]
-                total_cost += _calculate_volume_cost(size_gb, volume_type)
+                total_cost += calculate_ebs_volume_cost(size_gb, volume_type)
     except ClientError as exc:
         print(f"⚠️  Failed to inspect EBS volumes in {region}: {exc}")
         return 0, 0.0
@@ -117,7 +109,7 @@ def _check_old_snapshots():
                     if snapshot["StartTime"].replace(tzinfo=None) < cutoff_date:
                         old_snapshots += 1
                         size_gb = snapshot.get("VolumeSize", 0)
-                        snapshot_cost += size_gb * 0.05
+                        snapshot_cost += calculate_snapshot_cost(size_gb)
             except ClientError as exc:
                 print(f"⚠️  Failed to inspect snapshots in {region}: {exc}")
 

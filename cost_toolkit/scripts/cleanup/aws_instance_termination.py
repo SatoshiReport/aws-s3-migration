@@ -9,64 +9,29 @@ import time
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import extract_tag_value, get_instance_details
+from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
+
 from ..aws_utils import setup_aws_credentials
 
 
-def _extract_instance_name(instance):
-    """Extract instance name from tags."""
-    for tag in instance.get("Tags", []):
-        if tag["Key"] == "Name":
-            return tag["Value"]
-    return "Unnamed"
-
-
-def _extract_volumes(instance):
-    """Extract volume information from instance."""
-    volumes = []
-    for bdm in instance.get("BlockDeviceMappings", []):
-        if "Ebs" in bdm:
-            volumes.append(
-                {
-                    "volume_id": bdm["Ebs"]["VolumeId"],
-                    "device": bdm["DeviceName"],
-                    "delete_on_termination": bdm["Ebs"]["DeleteOnTermination"],
-                }
-            )
-    return volumes
-
-
-def get_instance_details(instance_id, region):
+def _get_instance_with_region(instance_id, region):
     """
-    Get detailed information about an EC2 instance.
+    Get detailed information about an EC2 instance with region info.
+    Delegates to canonical implementation in aws_common.
 
     Args:
         instance_id: The EC2 instance ID
         region: AWS region where the instance is located
 
     Returns:
-        Dictionary containing instance information
+        Dictionary containing instance information with region added
     """
-    try:
-        ec2_client = boto3.client("ec2", region_name=region)
-        response = ec2_client.describe_instances(InstanceIds=[instance_id])
-
-        for reservation in response["Reservations"]:
-            for instance in reservation["Instances"]:
-                return {
-                    "instance_id": instance_id,
-                    "name": _extract_instance_name(instance),
-                    "state": instance["State"]["Name"],
-                    "instance_type": instance["InstanceType"],
-                    "launch_time": instance["LaunchTime"],
-                    "availability_zone": instance["Placement"]["AvailabilityZone"],
-                    "volumes": _extract_volumes(instance),
-                    "region": region,
-                }
-
-    except ClientError as e:
-        print(f"❌ Error getting instance details for {instance_id}: {str(e)}")
-        return None
-    return None
+    ec2_client = boto3.client("ec2", region_name=region)
+    details = get_instance_details(ec2_client, instance_id)
+    if details:
+        details["region"] = region
+    return details
 
 
 def get_volume_details(volume_id, region):
@@ -86,16 +51,9 @@ def get_volume_details(volume_id, region):
         response = ec2_client.describe_volumes(VolumeIds=[volume_id])
         volume = response["Volumes"][0]
 
-        # Get volume name from tags
-        volume_name = "Unnamed"
-        for tag in volume.get("Tags", []):
-            if tag["Key"] == "Name":
-                volume_name = tag["Value"]
-                break
-
         return {
             "volume_id": volume_id,
-            "name": volume_name,
+            "name": extract_tag_value(volume, "Name"),
             "size": volume["Size"],
             "volume_type": volume["VolumeType"],
             "state": volume["State"],
@@ -176,7 +134,7 @@ def _delete_manual_volumes(ec2_client, volumes_to_delete, region):
     for volume_id in volumes_to_delete:
         volume_details = get_volume_details(volume_id, region)
         if volume_details:
-            monthly_cost = volume_details["size"] * 0.08
+            monthly_cost = calculate_ebs_volume_cost(volume_details["size"], "gp3")
             print(f"   {volume_id} ({volume_details['name']}) - {volume_details['size']} GB")
             print(f"     Monthly cost: ${monthly_cost:.2f}")
 
@@ -203,7 +161,7 @@ def terminate_instance_safely(instance_id, region):
     try:
         ec2_client = boto3.client("ec2", region_name=region)
 
-        instance_info = get_instance_details(instance_id, region)
+        instance_info = _get_instance_with_region(instance_id, region)
         if not instance_info:
             return False
 
@@ -222,7 +180,7 @@ def terminate_instance_safely(instance_id, region):
         print("⏳ Waiting for termination to begin...")
         time.sleep(10)
 
-        updated_info = get_instance_details(instance_id, region)
+        updated_info = _get_instance_with_region(instance_id, region)
         if updated_info:
             print(f"📊 Current status: {updated_info['state']}")
 

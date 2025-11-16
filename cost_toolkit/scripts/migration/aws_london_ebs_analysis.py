@@ -5,6 +5,7 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import get_resource_tags
 from cost_toolkit.scripts import aws_utils
 
 
@@ -17,7 +18,7 @@ def _print_volume_details(ec2, vol):
         attachments = volume.get("Attachments", [])
         device = attachments[0]["Device"] if attachments else "Unknown"
         create_time = volume["CreateTime"]
-        tags = {tag["Key"]: tag["Value"] for tag in volume.get("Tags", [])}
+        tags = get_resource_tags(volume)
         name_tag = tags.get("Name", "No name")
 
         print(f"  Volume: {vol['id']}")
@@ -40,7 +41,7 @@ def _check_unattached_volume(ec2, unattached_volume):
         volume = vol_response["Volumes"][0]
 
         create_time = volume["CreateTime"]
-        tags = {tag["Key"]: tag["Value"] for tag in volume.get("Tags", [])}
+        tags = get_resource_tags(volume)
         name_tag = tags.get("Name", "No name")
 
         print(f"  Volume: {unattached_volume['id']}")

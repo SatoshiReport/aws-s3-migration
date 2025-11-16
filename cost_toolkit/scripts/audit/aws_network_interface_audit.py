@@ -7,13 +7,9 @@ Identifies unused network interfaces across all regions for cleanup.
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import get_resource_tags
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
-
-
-def load_aws_credentials():
-    """Load AWS credentials from environment file"""
-    return setup_aws_credentials()
 
 
 def _build_interface_info(eni):
@@ -23,7 +19,7 @@ def _build_interface_info(eni):
     interface_type = eni.get("InterfaceType", "interface")
     attachment = eni.get("Attachment", {})
 
-    tags = {tag["Key"]: tag["Value"] for tag in eni.get("Tags", [])}
+    tags = get_resource_tags(eni)
     name = tags.get("Name", "No Name")
 
     return {
@@ -148,7 +144,7 @@ def main():
     print("=" * 60)
 
     try:
-        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
         regions = get_all_regions()
         print(f"🌍 Scanning {len(regions)} AWS regions for network interfaces...")

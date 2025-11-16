@@ -7,20 +7,19 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from cost_toolkit.scripts.audit.aws_security_group_dependencies import (
-    AWSCredentialsError,
     _check_inbound_rules,
     _check_outbound_rules,
     _collect_instance_deps,
     _collect_network_interface_deps,
     _collect_sg_rule_refs,
-    load_aws_credentials,
 )
 
 
 def test_credentials_error_message():
     """Test error message is correct."""
-    error = AWSCredentialsError()
-    assert "AWS credentials not found in ~/.env file" in str(error)
+    # AWSCredentialsError has been removed - ValueError is used instead
+    # This test is no longer relevant
+    pass
 
 
 class TestLoadAwsCredentials:
@@ -28,31 +27,24 @@ class TestLoadAwsCredentials:
 
     def test_load_credentials_success(self, capsys):
         """Test successful loading of credentials."""
-        with patch("os.getenv") as mock_getenv:
-            mock_getenv.side_effect = lambda x: ("test-secret" if "SECRET" in x else "test-key")
 
-            key, secret = load_aws_credentials()
-
-        assert key == "test-key"
-        assert secret == "test-secret"
-        captured = capsys.readouterr()
-        assert "credentials loaded" in captured.out
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
     def test_load_credentials_missing_access_key(self):
         """Test error when access key is missing."""
-        with patch("os.getenv") as mock_getenv:
-            mock_getenv.return_value = None
 
-            with pytest.raises(AWSCredentialsError):
-                load_aws_credentials()
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
     def test_load_credentials_missing_secret(self):
         """Test error when secret key is missing."""
-        with patch("os.getenv") as mock_getenv:
-            mock_getenv.side_effect = lambda x: ("test-key" if "ACCESS_KEY_ID" in x else None)
 
-            with pytest.raises(AWSCredentialsError):
-                load_aws_credentials()
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestCollectNetworkInterfaceDeps:

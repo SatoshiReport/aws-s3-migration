@@ -10,12 +10,8 @@ import sys
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    return setup_aws_credentials()
 
 
 def deregister_ami(ec2_client, ami_id, region):
@@ -106,9 +102,11 @@ def print_deregistration_warning(amis_to_deregister):
 
 
 def confirm_deregistration():
-    """Prompt user for deregistration confirmation"""
-    confirmation = input("Type 'DEREGISTER ALL AMIS' to confirm bulk deregistration: ")
-    return confirmation == "DEREGISTER ALL AMIS"
+    """Prompt user for deregistration confirmation. Delegates to canonical implementation."""
+    return confirm_action(
+        "Type 'DEREGISTER ALL AMIS' to confirm bulk deregistration: ",
+        exact_match="DEREGISTER ALL AMIS",
+    )
 
 
 def process_ami_deregistrations(amis_to_deregister, aws_access_key_id, aws_secret_access_key):
@@ -172,7 +170,7 @@ def print_deregistration_summary(successful_deregistrations, failed_deregistrati
 
 def bulk_deregister_unused_amis():
     """Deregister all unused AMIs that are preventing snapshot deletion"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
     amis_to_deregister = get_amis_to_deregister()
 
     print_deregistration_warning(amis_to_deregister)

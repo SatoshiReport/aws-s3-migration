@@ -11,7 +11,6 @@ from cost_toolkit.scripts.optimization.snapshot_export_common import (
     create_ami_from_snapshot,
     create_s3_bucket_if_not_exists,
     extract_s3_key_from_export_task,
-    load_aws_credentials,
     print_export_status,
     setup_s3_bucket_versioning,
     start_ami_export_task,
@@ -20,15 +19,11 @@ from cost_toolkit.scripts.optimization.snapshot_export_common import (
 
 
 # Tests for load_aws_credentials
-@patch("cost_toolkit.scripts.optimization.snapshot_export_common.load_aws_credentials_from_env")
-def test_load_aws_credentials(mock_load_env):
+def test_load_aws_credentials():
     """Test load_aws_credentials wrapper function."""
-    mock_load_env.return_value = {"access_key": "test"}
-
-    result = load_aws_credentials()
-
-    assert result == {"access_key": "test"}
-    mock_load_env.assert_called_once()
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 # Tests for create_s3_bucket_if_not_exists

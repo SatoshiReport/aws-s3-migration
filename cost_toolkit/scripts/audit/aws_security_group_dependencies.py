@@ -15,30 +15,10 @@ import sys
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 
+from cost_toolkit.common.aws_common import extract_tag_value
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_GROUPS
-
-
-class AWSCredentialsError(Exception):
-    """Raised when AWS credentials are not found in the environment file."""
-
-    def __init__(self):
-        super().__init__("AWS credentials not found in ~/.env file")
-
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise AWSCredentialsError
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
 
 
 def _collect_network_interface_deps(ec2_client, group_id):
@@ -75,10 +55,7 @@ def _collect_instance_deps(ec2_client, group_id):
                     "state": instance["State"]["Name"],
                     "instance_type": instance["InstanceType"],
                     "vpc_id": instance.get("VpcId"),
-                    "name": next(
-                        (tag["Value"] for tag in instance.get("Tags", []) if tag["Key"] == "Name"),
-                        "Unnamed",
-                    ),
+                    "name": extract_tag_value(instance, "Name"),
                 }
             )
     return instances
@@ -252,7 +229,7 @@ def _print_dependency_details(dependencies):
 
 def audit_security_group_dependencies():
     """Audit dependencies for security groups that couldn't be deleted"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
     # Security groups that failed to delete - loaded from shared constants
     failed_security_groups = ALL_CIRCULAR_SECURITY_GROUPS

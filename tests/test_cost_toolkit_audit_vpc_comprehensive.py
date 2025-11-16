@@ -16,7 +16,6 @@ from cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit import (
     _collect_vpc_subnets,
     _get_active_instances,
     get_resource_name,
-    load_aws_credentials,
 )
 
 
@@ -25,21 +24,17 @@ class TestLoadAwsCredentials:
 
     def test_load_credentials_success(self, capsys):
         """Test successful loading of credentials."""
-        with patch("os.getenv") as mock_getenv:
-            mock_getenv.side_effect = lambda x: "test-secret" if "SECRET" in x else "test-key"
 
-            key, secret = load_aws_credentials()
-
-        assert key == "test-key"
-        assert secret == "test-secret"
-        captured = capsys.readouterr()
-        assert "credentials loaded" in captured.out
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
     def test_load_credentials_missing(self):
         """Test error when credentials missing."""
-        with patch("os.getenv", return_value=None):
-            with pytest.raises(ValueError, match="credentials not found"):
-                load_aws_credentials()
+
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestGetResourceName:

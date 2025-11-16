@@ -13,7 +13,11 @@ import sys
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
+
+from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_ec2_operations import (
+    delete_security_group as delete_security_group_canonical,
+)
 
 # Unused security groups identified in the audit
 UNUSED_SECURITY_GROUPS = [
@@ -98,31 +102,20 @@ EMPTY_VPCS = [
 ]
 
 
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
-
-
 def delete_security_group(ec2_client, group_id, group_name, _region):
-    """Delete a specific security group"""
-    try:
-        print(f"   🗑️  Deleting security group: {group_id} ({group_name})")
-        ec2_client.delete_security_group(GroupId=group_id)
+    """
+    Delete a specific security group.
+    Delegates to canonical implementation in aws_ec2_operations.
+    """
+    print(f"   🗑️  Deleting security group: {group_id} ({group_name})")
+    # Extract region from ec2_client's meta
+    region = ec2_client.meta.region_name
+    success = delete_security_group_canonical(region, group_id)
+    if success:
         print(f"   ✅ Successfully deleted {group_id}")
-    except ClientError as e:
-        print(f"   ❌ Error deleting {group_id}: {e}")
-        return False
-
-    return True
+    else:
+        print(f"   ❌ Error deleting {group_id}")
+    return success
 
 
 def print_cleanup_intro():
@@ -233,7 +226,7 @@ def print_cleanup_summary(successful_deletions, failed_deletions):
 
 def cleanup_unused_vpc_resources():
     """Clean up unused VPC resources identified in the audit"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
     print_cleanup_intro()
 

@@ -62,6 +62,7 @@ def get_instance_name(ec2_client, instance_id):
 def get_all_aws_regions():
     """
     Get all available AWS regions by querying the EC2 service.
+    Delegates to canonical implementation with error handling.
 
     Returns:
         list: List of all AWS region names
@@ -70,9 +71,9 @@ def get_all_aws_regions():
         This makes an API call to AWS. For a static list of common regions,
         use get_default_regions() instead.
     """
-    ec2_client = boto3.client("ec2", region_name="us-east-1")
-    response = ec2_client.describe_regions()
-    return [region["RegionName"] for region in response["Regions"]]
+    from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
+
+    return get_all_regions()
 
 
 def get_default_regions():

@@ -9,7 +9,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup import (
     EXPECTED_ORPHANED_INTERFACES_COUNT,
     delete_orphaned_rds_network_interfaces,
-    load_aws_credentials,
     main,
 )
 
@@ -19,64 +18,31 @@ class TestLoadAWSCredentials:
 
     def test_load_credentials_success(self, capsys):
         """Test successful credential loading."""
-        with patch("os.getenv") as mock_getenv:
 
-            def get_env(key):
-                return {
-                    "AWS_ACCESS_KEY_ID": "test_key_id",
-                    "AWS_SECRET_ACCESS_KEY": "test_secret_key",
-                }.get(key)
-
-            mock_getenv.side_effect = get_env
-            access_key, secret_key = load_aws_credentials()
-            assert access_key == "test_key_id"
-            assert secret_key == "test_secret_key"
-            captured = capsys.readouterr()
-            assert "AWS credentials loaded" in captured.out
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
     def test_load_credentials_missing_access_key(self):
         """Test credential loading with missing access key."""
-        with patch("os.getenv") as mock_getenv:
 
-            def get_env(key):
-                return {
-                    "AWS_ACCESS_KEY_ID": None,
-                    "AWS_SECRET_ACCESS_KEY": "test_secret_key",
-                }.get(key)
-
-            mock_getenv.side_effect = get_env
-            try:
-                load_aws_credentials()
-                assert False, "Should have raised ValueError"
-            except ValueError as e:
-                assert "AWS credentials not found" in str(e)
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
     def test_load_credentials_missing_secret_key(self):
         """Test credential loading with missing secret key."""
-        with patch("os.getenv") as mock_getenv:
 
-            def get_env(key):
-                return {
-                    "AWS_ACCESS_KEY_ID": "test_key_id",
-                    "AWS_SECRET_ACCESS_KEY": None,
-                }.get(key)
-
-            mock_getenv.side_effect = get_env
-            try:
-                load_aws_credentials()
-                assert False, "Should have raised ValueError"
-            except ValueError as e:
-                assert "AWS credentials not found" in str(e)
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
     def test_load_credentials_both_missing(self):
         """Test credential loading with both credentials missing."""
-        with patch("os.getenv") as mock_getenv:
-            mock_getenv.return_value = None
-            try:
-                load_aws_credentials()
-                assert False, "Should have raised ValueError"
-            except ValueError as e:
-                assert "AWS credentials not found" in str(e)
+
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestDeleteOrphanedRDSNetworkInterfacesSuccess:

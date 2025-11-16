@@ -10,12 +10,8 @@ import sys
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-
-
-def load_aws_credentials():
-    """Load AWS credentials from .env file"""
-    return setup_aws_credentials()
 
 
 def get_ami_details(ec2_client, ami_id):
@@ -104,11 +100,11 @@ def _print_ami_usage(instances):
     if instances:
         print(f"   ⚠️  Currently used by {len(instances)} instance(s):")
         for instance in instances:
-            instance_name = "Unnamed"
-            for tag in instance["tags"]:
-                if tag["Key"] == "Name":
-                    instance_name = tag["Value"]
-                    break
+            from cost_toolkit.common.aws_common import extract_tag_value
+
+            # Create resource dict with uppercase Tags key for extract_tag_value
+            resource_dict = {"Tags": instance["tags"]}
+            instance_name = extract_tag_value(resource_dict, "Name")
             print(f"      - {instance['instance_id']} ({instance_name}) - {instance['state']}")
     else:
         print("   ✅ Not currently used by any instances")
@@ -121,7 +117,7 @@ def _analyze_snapshot_cost(ec2_client, snapshot_id, instances):
         if snapshots["Snapshots"]:
             snapshot = snapshots["Snapshots"][0]
             size_gb = snapshot["VolumeSize"]
-            monthly_cost = size_gb * 0.05
+            monthly_cost = calculate_snapshot_cost(size_gb)
             print(f"   💰 Snapshot size: {size_gb} GB")
             print(f"   💰 Monthly cost: ${monthly_cost:.2f}")
 
@@ -165,7 +161,7 @@ def _analyze_single_snapshot(ec2_client, snapshot_id, ami_id, region):
 
 def analyze_snapshot_ami_relationships():
     """Analyze the relationship between snapshots and AMIs"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
     snapshot_ami_mapping = {
         "snap-09e90c64db692f884": {"ami": "ami-0cb04cf30dc50a00e", "region": "eu-west-2"},

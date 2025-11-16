@@ -40,6 +40,85 @@ def get_all_regions(
         return get_default_regions()
 
 
+def find_resource_region(
+    resource_type: str,
+    resource_id: str,
+    regions: Optional[list[str]] = None,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Find which AWS region contains a specified resource.
+
+    Args:
+        resource_type: Type of resource ('volume', 'snapshot', 'ami', 'instance')
+        resource_id: The resource ID to locate
+        regions: Optional list of regions to search. If None, searches all regions.
+        aws_access_key_id: Optional AWS access key
+        aws_secret_access_key: Optional AWS secret key
+
+    Returns:
+        Region name if found, None otherwise
+
+    Example:
+        >>> region = find_resource_region('volume', 'vol-1234567890abcdef0')
+        >>> region = find_resource_region('snapshot', 'snap-abc123', regions=['us-east-1', 'us-west-2'])
+    """
+    if regions is None:
+        regions = get_all_regions(aws_access_key_id, aws_secret_access_key)
+
+    # Map resource types to their describe methods and response keys
+    resource_config = {
+        "volume": ("describe_volumes", "VolumeIds", "Volumes", "InvalidVolume.NotFound"),
+        "snapshot": (
+            "describe_snapshots",
+            "SnapshotIds",
+            "Snapshots",
+            "InvalidSnapshot.NotFound",
+        ),
+        "ami": ("describe_images", "ImageIds", "Images", "InvalidAMIID.NotFound"),
+        "instance": (
+            "describe_instances",
+            "InstanceIds",
+            "Reservations",
+            "InvalidInstanceID.NotFound",
+        ),
+    }
+
+    if resource_type not in resource_config:
+        raise ValueError(
+            f"Unsupported resource type: {resource_type}. "
+            f"Supported types: {', '.join(resource_config.keys())}"
+        )
+
+    method_name, id_param, response_key, not_found_error = resource_config[resource_type]
+
+    for region in regions:
+        try:
+            ec2_client = create_ec2_client(
+                region=region,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+            )
+
+            # Call the appropriate describe method
+            describe_method = getattr(ec2_client, method_name)
+            response = describe_method(**{id_param: [resource_id]})
+
+            # Check if resource exists in response
+            if response[response_key]:
+                return region
+
+        except ClientError as e:
+            if not_found_error in str(e):
+                continue
+            # For other errors, log but continue searching
+            print(f"⚠️  Error checking {region} for {resource_id}: {str(e)}")
+            continue
+
+    return None
+
+
 def get_common_regions() -> list[str]:
     """
     Get list of commonly used AWS regions for cost optimization.
@@ -55,7 +134,15 @@ def get_common_regions() -> list[str]:
 
 # Re-export get_instance_name from aws_common for backward compatibility
 # (this module is widely imported)
-__all__ = ["get_all_regions", "get_common_regions", "get_instance_name", "describe_instance"]
+__all__ = [
+    "get_all_regions",
+    "get_common_regions",
+    "get_instance_name",
+    "describe_instance",
+    "find_resource_region",
+    "delete_snapshot",
+    "terminate_instance",
+]
 
 
 def describe_instance(
@@ -87,6 +174,56 @@ def describe_instance(
 
     response = ec2_client.describe_instances(InstanceIds=[instance_id])
     return response["Reservations"][0]["Instances"][0]
+
+
+def delete_snapshot(
+    snapshot_id: str,
+    region: str,
+    verbose: bool = False,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+) -> bool:
+    """
+    Delete an EBS snapshot.
+
+    Args:
+        snapshot_id: The snapshot ID to delete
+        region: AWS region where the snapshot is located
+        verbose: If True, print snapshot details before deleting
+        aws_access_key_id: Optional AWS access key
+        aws_secret_access_key: Optional AWS secret key
+
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    try:
+        ec2_client = create_ec2_client(
+            region=region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+
+        if verbose:
+            # Get snapshot info first
+            response = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
+            snapshot = response["Snapshots"][0]
+            size_gb = snapshot.get("VolumeSize", 0)
+            description = snapshot.get("Description", "No description")
+            start_time = snapshot["StartTime"]
+
+            print(f"🔍 Snapshot to delete: {snapshot_id}")
+            print(f"   Size: {size_gb} GB")
+            print(f"   Created: {start_time}")
+            print(f"   Description: {description}")
+
+        print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
+        ec2_client.delete_snapshot(SnapshotId=snapshot_id)
+        print(f"   ✅ Successfully deleted {snapshot_id}")
+        return True
+
+    except ClientError as e:
+        print(f"   ❌ Error deleting {snapshot_id}: {e}")
+        return False
 
 
 def terminate_instance(

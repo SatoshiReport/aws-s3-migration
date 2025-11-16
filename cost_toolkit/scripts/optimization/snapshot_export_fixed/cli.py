@@ -6,10 +6,10 @@ from datetime import datetime
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.scripts.optimization.snapshot_export_common import (
     create_ami_from_snapshot,
     create_s3_bucket_if_not_exists,
-    load_aws_credentials,
     setup_s3_bucket_versioning,
 )
 from cost_toolkit.scripts.snapshot_export_common import (
@@ -167,7 +167,7 @@ def _print_final_summary_fixed(successful_exports, export_results, snapshots_to_
 
 def export_snapshots_to_s3_fixed():
     """Main function to export EBS snapshots to S3 with fail-fast error handling"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
     snapshots_to_export = get_snapshots_to_export(aws_access_key_id, aws_secret_access_key)
 
     total_size_gb = sum(snap["size_gb"] for snap in snapshots_to_export)

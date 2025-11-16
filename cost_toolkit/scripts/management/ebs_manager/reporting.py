@@ -5,6 +5,8 @@ Handles report formatting and output for volume information and snapshots.
 
 from typing import Dict, List
 
+from cost_toolkit.common.cost_utils import calculate_snapshot_cost
+
 
 def print_volume_detailed_report(volume_info: Dict) -> None:
     """
@@ -61,7 +63,7 @@ def print_snapshot_summary(snapshots: List[Dict]) -> None:
     print("SNAPSHOT SUMMARY:")
     print("=" * 50)
     total_size = sum(snap["volume_size"] for snap in snapshots)
-    estimated_monthly_cost = total_size * 0.05
+    estimated_monthly_cost = calculate_snapshot_cost(total_size)
 
     print(f"Created {len(snapshots)} snapshots")
     print(f"Total size: {total_size} GB")

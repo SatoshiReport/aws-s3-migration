@@ -4,10 +4,8 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
-
-# Constants
-GP3_DEFAULT_THROUGHPUT_MBS = 125
 
 
 def _build_instance_info(instance, region_name, hourly_cost, monthly_cost):
@@ -257,33 +255,11 @@ def analyze_ebs_volumes_in_region(region_name):
 
 
 def calculate_ebs_monthly_cost(volume_type, size_gb, iops, throughput):
-    """Calculate monthly EBS cost based on volume type and specifications"""
-    # EBS pricing per GB per month (approximate)
-    pricing = {
-        "gp2": 0.10,  # General Purpose SSD
-        "gp3": 0.08,  # General Purpose SSD (newer)
-        "io1": 0.125,  # Provisioned IOPS SSD
-        "io2": 0.125,  # Provisioned IOPS SSD (newer)
-        "st1": 0.045,  # Throughput Optimized HDD
-        "sc1": 0.025,  # Cold HDD
-        "standard": 0.05,  # Magnetic
-    }
-
-    base_cost = pricing.get(volume_type, 0.10) * size_gb
-
-    # Add IOPS costs for io1/io2
-    if volume_type in ["io1", "io2"] and iops > size_gb * 3:
-        extra_iops = iops - (size_gb * 3)
-        iops_cost = extra_iops * 0.065  # $0.065 per IOPS per month
-        base_cost += iops_cost
-
-    # Add throughput costs for gp3
-    if volume_type == "gp3" and throughput > GP3_DEFAULT_THROUGHPUT_MBS:
-        extra_throughput = throughput - GP3_DEFAULT_THROUGHPUT_MBS
-        throughput_cost = extra_throughput * 0.04  # $0.04 per MB/s per month
-        base_cost += throughput_cost
-
-    return base_cost
+    """
+    Calculate monthly EBS cost based on volume type and specifications.
+    Delegates to canonical implementation in cost_utils.
+    """
+    return calculate_ebs_volume_cost(size_gb, volume_type, iops, throughput)
 
 
 def _print_instance_summary(running_instances, stopped_instances, total_compute_cost):

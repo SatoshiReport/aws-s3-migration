@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.overview.optimization import (
-    _calculate_volume_cost,
     _check_old_snapshots,
     _check_unattached_ebs_volumes,
     _check_unused_elastic_ips,
@@ -18,21 +18,21 @@ from cost_toolkit.overview.optimization import (
 
 
 def test_calculate_volume_cost_gp3():
-    """Test _calculate_volume_cost for gp3 volumes."""
-    cost = _calculate_volume_cost(100, "gp3")
+    """Test calculate_ebs_volume_cost for gp3 volumes."""
+    cost = calculate_ebs_volume_cost(100, "gp3")
     assert cost == 8.0  # 100 * 0.08
 
 
 def test_calculate_volume_cost_gp2():
-    """Test _calculate_volume_cost for gp2 volumes."""
-    cost = _calculate_volume_cost(100, "gp2")
+    """Test calculate_ebs_volume_cost for gp2 volumes."""
+    cost = calculate_ebs_volume_cost(100, "gp2")
     assert cost == 10.0  # 100 * 0.10
 
 
 def test_calculate_volume_cost_unknown_type():
-    """Test _calculate_volume_cost for unknown volume types."""
-    cost = _calculate_volume_cost(100, "io1")
-    assert cost == 10.0  # Falls back to 0.10
+    """Test calculate_ebs_volume_cost for unknown volume types."""
+    cost = calculate_ebs_volume_cost(100, "io1")
+    assert cost == 12.5  # 100 * 0.125 for io1
 
 
 def test_scan_region_for_unattached_volumes_with_volumes():

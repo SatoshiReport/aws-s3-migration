@@ -19,6 +19,7 @@ This approach gives you control over the problematic AWS export service.
 from datetime import datetime
 
 from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
+from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.scripts.aws_utils import load_aws_credentials_from_env
 from cost_toolkit.scripts.optimization.snapshot_export_common import (
     create_ami_from_snapshot,
@@ -56,7 +57,7 @@ def prepare_snapshot_for_export(snapshot_info, aws_access_key_id, aws_secret_acc
     )
 
     # Calculate potential savings
-    ebs_monthly_cost = size_gb * 0.05
+    ebs_monthly_cost = calculate_snapshot_cost(size_gb)
     s3_monthly_cost = size_gb * 0.023
     monthly_savings = ebs_monthly_cost - s3_monthly_cost
 

@@ -11,7 +11,6 @@ from cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk import (
     confirm_deregistration,
     deregister_ami,
     get_amis_to_deregister,
-    load_aws_credentials,
     main,
     print_deregistration_summary,
     print_deregistration_warning,
@@ -21,15 +20,9 @@ from cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk import (
 
 def test_load_aws_credentials_calls_setup_credentials():
     """Test that function calls setup utility."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.setup_aws_credentials"
-    ) as mock_setup:
-        mock_setup.return_value = ("key", "secret")
-
-        result = load_aws_credentials()
-
-        mock_setup.assert_called_once()
-        assert result == ("key", "secret")
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestDeregisterAmi:

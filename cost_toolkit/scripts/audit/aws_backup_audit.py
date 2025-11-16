@@ -14,6 +14,7 @@ from cost_toolkit.common.backup_utils import (
     check_dlm_lifecycle_policies,
     check_eventbridge_scheduled_rules,
 )
+from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 # Constants
@@ -236,7 +237,7 @@ def _display_snapshot_pattern(pattern, snapshots_list):
 
     print(f"  🤖 {pattern}: {len(snapshots_list)} snapshots")
     total_size = sum(s["size"] for s in snapshots_list)
-    monthly_cost = total_size * 0.05
+    monthly_cost = calculate_snapshot_cost(total_size)
     print(f"    Total size: {total_size} GB")
     print(f"    Monthly cost: ${monthly_cost:.2f}")
 

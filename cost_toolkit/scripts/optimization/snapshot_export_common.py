@@ -4,18 +4,9 @@ from datetime import datetime
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
-from cost_toolkit.scripts.aws_utils import load_aws_credentials_from_env
-
-
-def load_aws_credentials():
-    """
-    Load AWS credentials from .env file.
-
-    This is a backward compatibility wrapper around aws_utils.load_aws_credentials_from_env().
-    New code should use aws_utils.load_aws_credentials_from_env() directly.
-    """
-    return load_aws_credentials_from_env()
+from cost_toolkit.common.waiter_utils import wait_ami_available
 
 
 def create_s3_bucket_if_not_exists(s3_client, bucket_name, region, enable_versioning=True):
@@ -146,7 +137,7 @@ def _register_ami(
 
 
 def wait_for_ami_available(ec2_client, ami_id, waiter_delay=30, waiter_max_attempts=40):
-    """Wait for AMI to become available
+    """Wait for AMI to become available. Delegates to waiter_utils.wait_ami_available.
 
     Args:
         ec2_client: Boto3 EC2 client
@@ -158,11 +149,7 @@ def wait_for_ami_available(ec2_client, ami_id, waiter_delay=30, waiter_max_attem
         AMI ID when available
     """
     print(f"   ⏳ Waiting for AMI {ami_id} to become available...")
-    waiter = ec2_client.get_waiter("image_available")
-    waiter.wait(
-        ImageIds=[ami_id],
-        WaiterConfig={"Delay": waiter_delay, "MaxAttempts": waiter_max_attempts},
-    )
+    wait_ami_available(ec2_client, ami_id, delay=waiter_delay, max_attempts=waiter_max_attempts)
     print(f"   ✅ AMI {ami_id} is now available")
     return ami_id
 

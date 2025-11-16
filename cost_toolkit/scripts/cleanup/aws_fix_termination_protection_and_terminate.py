@@ -13,11 +13,6 @@ from cost_toolkit.scripts.aws_ec2_operations import (
 )
 
 
-def load_aws_credentials():
-    """Load AWS credentials from environment file"""
-    return setup_aws_credentials()
-
-
 def display_instance_info(protected_instance):
     """Display target instance information"""
     print(f"🎯 Target: {protected_instance['name']} ({protected_instance['instance_id']})")
@@ -84,7 +79,7 @@ def main():
 
     try:
         # Load credentials
-        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
         # Target instance with termination protection
         protected_instance = {

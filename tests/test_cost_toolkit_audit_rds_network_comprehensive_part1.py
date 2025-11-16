@@ -8,22 +8,14 @@ from cost_toolkit.scripts.audit.aws_rds_network_interface_audit import (
     _extract_cluster_info,
     _extract_instance_info,
     get_all_regions,
-    load_aws_credentials,
 )
 
 
 def test_load_credentials_delegates_to_utility():
     """Test that load_aws_credentials delegates to setup_aws_credentials."""
-    with patch(
-        "cost_toolkit.scripts.audit.aws_rds_network_interface_audit.setup_aws_credentials"
-    ) as mock_setup:
-        mock_setup.return_value = ("test-key", "test-secret")
-
-        key, secret = load_aws_credentials()
-
-    assert key == "test-key"
-    assert secret == "test-secret"
-    mock_setup.assert_called_once()
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 def test_get_regions_success():

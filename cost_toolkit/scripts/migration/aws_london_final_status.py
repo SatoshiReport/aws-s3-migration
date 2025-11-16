@@ -5,6 +5,7 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.scripts import aws_utils
 
 
@@ -47,7 +48,7 @@ def _build_volume_info(volume):
         "size": size,
         "state": volume["State"],
         "created": volume["CreateTime"],
-        "cost": size * 0.08,
+        "cost": calculate_ebs_volume_cost(size, "gp3"),
     }
 
 

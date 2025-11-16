@@ -8,24 +8,11 @@ import os
 
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
+
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 # Constants
 EXPECTED_ORPHANED_INTERFACES_COUNT = 2
-
-
-def load_aws_credentials():
-    """Load AWS credentials from environment file"""
-    load_dotenv(os.path.expanduser("~/.env"))
-
-    aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
-    aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError("AWS credentials not found in ~/.env file")  # noqa: TRY003
-
-    print("✅ AWS credentials loaded from ~/.env")
-    return aws_access_key_id, aws_secret_access_key
 
 
 def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_key):
@@ -117,7 +104,7 @@ def main():
 
     try:
         # Load credentials
-        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
         print("⚠️  IMPORTANT: This will delete orphaned RDS network interfaces")
         print("   • These interfaces are from deleted RDS instances")

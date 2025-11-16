@@ -10,7 +10,6 @@ from cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate i
     disable_termination_protection,
     display_instance_info,
     display_warning_and_confirm,
-    load_aws_credentials,
     main,
     print_operation_summary,
     print_success_summary,
@@ -20,14 +19,9 @@ from cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate i
 
 def test_load_credentials_calls_setup():
     """Test that load_aws_credentials calls setup_aws_credentials."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-        "setup_aws_credentials"
-    ) as mock_setup:
-        mock_setup.return_value = ("key_id", "secret_key")
-        result = load_aws_credentials()
-        assert result == ("key_id", "secret_key")
-        mock_setup.assert_called_once()
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestDisableTerminationProtection:

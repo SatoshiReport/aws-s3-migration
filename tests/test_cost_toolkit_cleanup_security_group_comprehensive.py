@@ -17,20 +17,15 @@ from cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup import (
     cleanup_circular_security_groups,
     delete_security_group,
     get_security_group_rules_referencing_group,
-    load_aws_credentials,
     remove_security_group_rule,
 )
 
 
 def test_load_aws_credentials_calls_setup_credentials():
     """Test that function calls setup utility."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.setup_aws_credentials"
-    ) as mock_setup:
-        mock_setup.return_value = ("key", "secret")
-        result = load_aws_credentials()
-        mock_setup.assert_called_once()
-        assert result == ("key", "secret")
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestRemoveSecurityGroupRule:

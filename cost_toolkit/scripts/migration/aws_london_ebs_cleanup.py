@@ -5,6 +5,7 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.scripts import aws_utils
 
 
@@ -116,7 +117,7 @@ def _show_remaining_volumes(ec2):
                         name = tag["Value"]
                         break
 
-            monthly_cost = size * 0.08
+            monthly_cost = calculate_ebs_volume_cost(size, "gp3")
             remaining_cost += monthly_cost
 
             print(f"   • {vol_id} ({name}) - {size} GB - {state} - ${monthly_cost:.2f}/month")

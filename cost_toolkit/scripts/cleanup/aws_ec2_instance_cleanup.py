@@ -3,30 +3,35 @@
 
 from datetime import datetime, timedelta, timezone
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.common.aws_common import extract_tag_value, get_instance_details
+from cost_toolkit.scripts.aws_client_factory import create_ec2_client
+from cost_toolkit.scripts.aws_ec2_operations import (
+    terminate_instance as terminate_instance_canonical,
+)
 
 
 def terminate_instance(instance_id, region_name):
-    """Terminate an EC2 instance"""
+    """
+    Terminate an EC2 instance.
+    Delegates to canonical implementation in aws_ec2_operations.
+    """
     print(f"\n🗑️  Terminating instance {instance_id} in {region_name}")
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_ec2_client(region=region_name)
 
-        # Get instance details first
-        response = ec2.describe_instances(InstanceIds=[instance_id])
-        instance = response["Reservations"][0]["Instances"][0]
+        # Get instance details first using canonical function
+        details = get_instance_details(ec2, instance_id)
+        if not details:
+            print("  ❌ Could not retrieve instance details")
+            return False
 
-        instance_type = instance["InstanceType"]
-        state = instance["State"]["Name"]
-        name_tag = "Unknown"
-
-        for tag in instance.get("Tags", []):
-            if tag["Key"] == "Name":
-                name_tag = tag["Value"]
-                break
+        instance_type = details["instance_type"]
+        state = details["state"]
+        name_tag = details["name"]
 
         print(f"  Instance: {instance_id}")
         print(f"  Name: {name_tag}")
@@ -70,11 +75,10 @@ def rename_instance(instance_id, new_name, region_name):
 
 
 def _get_instance_name_tag(instance):
-    """Extract instance name from tags."""
-    for tag in instance.get("Tags", []):
-        if tag["Key"] == "Name":
-            return tag["Value"]
-    return "Unknown"
+    """Extract instance name from tags. Delegates to canonical implementation."""
+    from cost_toolkit.common.aws_common import extract_tag_value
+
+    return extract_tag_value(instance, "Name", "Unknown")
 
 
 def _get_last_activity_from_metrics(cloudwatch, instance_id):

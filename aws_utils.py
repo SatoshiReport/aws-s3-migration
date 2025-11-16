@@ -39,13 +39,15 @@ def get_aws_identity():
 
 def list_s3_buckets():
     """
-    List all S3 buckets in the account.
+    List all S3 buckets in the account. Delegates to canonical implementation.
 
     Returns:
         list: List of bucket names
     """
-    s3, _, _ = get_boto3_clients()
-    return [b["Name"] for b in s3.list_buckets()["Buckets"]]
+    from cost_toolkit.scripts.aws_s3_operations import list_buckets
+
+    buckets = list_buckets()
+    return [b["Name"] for b in buckets]
 
 
 def generate_restrictive_bucket_policy(user_arn, bucket_name):

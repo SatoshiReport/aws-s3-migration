@@ -8,12 +8,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.scripts.setup.aws_vmimport_role_setup import (
     create_new_role_with_policy,
     create_vmimport_role,
     get_trust_policy,
     get_vmimport_policy,
-    load_aws_credentials,
     main,
     print_alternative_setup_instructions,
 )
@@ -34,7 +34,7 @@ def test_load_aws_credentials_success(tmp_path, monkeypatch):
         "cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser"
     ) as mock_expand:
         mock_expand.return_value = str(env_file)
-        key_id, secret_key = load_aws_credentials()
+        key_id, secret_key = setup_aws_credentials()
 
     assert key_id == "TESTKEY123"
     assert secret_key == "TESTSECRET456"
@@ -54,7 +54,7 @@ def test_load_aws_credentials_missing_key_id(tmp_path, monkeypatch):
     ) as mock_expand:
         mock_expand.return_value = str(env_file)
         with pytest.raises(ValueError, match="AWS credentials not found"):
-            load_aws_credentials()
+            setup_aws_credentials()
 
 
 def test_load_aws_credentials_missing_secret_key(tmp_path, monkeypatch):
@@ -71,7 +71,7 @@ def test_load_aws_credentials_missing_secret_key(tmp_path, monkeypatch):
     ) as mock_expand:
         mock_expand.return_value = str(env_file)
         with pytest.raises(ValueError, match="AWS credentials not found"):
-            load_aws_credentials()
+            setup_aws_credentials()
 
 
 def test_get_trust_policy():
@@ -180,7 +180,7 @@ def test_create_vmimport_role_already_exists(capsys):
     }
 
     with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.load_aws_credentials"
+        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.setup_aws_credentials"
     ) as mock_load:
         mock_load.return_value = ("TESTKEY", "TESTSECRET")
         with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.boto3.client") as mock_boto:
@@ -204,7 +204,7 @@ def test_create_vmimport_role_creates_new_role():
     }
 
     with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.load_aws_credentials"
+        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.setup_aws_credentials"
     ) as mock_load:
         mock_load.return_value = ("TESTKEY", "TESTSECRET")
         with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.boto3.client") as mock_boto:
@@ -231,7 +231,7 @@ def test_create_vmimport_role_client_error(capsys):
     )
 
     with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.load_aws_credentials"
+        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.setup_aws_credentials"
     ) as mock_load:
         mock_load.return_value = ("TESTKEY", "TESTSECRET")
         with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.boto3.client") as mock_boto:
@@ -270,7 +270,7 @@ def test_main_client_error_exit():
 
 
 def test_load_aws_credentials_prints_success_message(tmp_path, monkeypatch, capsys):
-    """Test load_aws_credentials prints success message."""
+    """Test setup_aws_credentials prints success message."""
     env_file = tmp_path / ".env"
     env_file.write_text(
         "AWS_ACCESS_KEY_ID=TESTKEY\nAWS_SECRET_ACCESS_KEY=TESTSECRET\n", encoding="utf-8"
@@ -284,7 +284,7 @@ def test_load_aws_credentials_prints_success_message(tmp_path, monkeypatch, caps
         "cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser"
     ) as mock_expand:
         mock_expand.return_value = str(env_file)
-        load_aws_credentials()
+        setup_aws_credentials()
 
     captured = capsys.readouterr()
-    assert "AWS credentials loaded from ~/.env" in captured.out
+    assert "AWS credentials loaded" in captured.out

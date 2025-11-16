@@ -2,6 +2,8 @@
 
 import time
 
+from cost_toolkit.common.cost_utils import calculate_snapshot_cost
+
 from . import constants
 from .constants import S3FileValidationException
 
@@ -167,8 +169,11 @@ def verify_s3_export_final(s3_client, bucket_name, s3_key, expected_size_gb):
 
 
 def calculate_cost_savings(snapshot_size_gb):
-    """Calculate cost savings from EBS to S3 Standard"""
-    ebs_monthly_cost = snapshot_size_gb * constants.EBS_SNAPSHOT_COST_PER_GB_MONTHLY
+    """
+    Calculate cost savings from EBS to S3 Standard.
+    Delegates EBS snapshot cost calculation to canonical implementation.
+    """
+    ebs_monthly_cost = calculate_snapshot_cost(snapshot_size_gb)
     s3_standard_cost = snapshot_size_gb * constants.S3_STANDARD_COST_PER_GB_MONTHLY
     monthly_savings = ebs_monthly_cost - s3_standard_cost
     annual_savings = monthly_savings * 12

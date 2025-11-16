@@ -8,6 +8,8 @@ Checks if EBS volumes from terminated instances were properly deleted
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import get_resource_tags
+
 
 def _build_attachment_info(attachments):
     """Build attachment information string from volume attachments."""
@@ -30,7 +32,7 @@ def _build_volume_detail(volume):
     size_gb = volume["Size"]
     monthly_cost = size_gb * 0.08
     attachment_info = _build_attachment_info(volume.get("Attachments", []))
-    tags = {tag["Key"]: tag["Value"] for tag in volume.get("Tags", [])}
+    tags = get_resource_tags(volume)
     name = tags.get("Name", "Unnamed")
 
     return {

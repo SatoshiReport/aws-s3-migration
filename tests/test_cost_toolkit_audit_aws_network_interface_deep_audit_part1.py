@@ -10,7 +10,6 @@ import pytest
 from cost_toolkit.scripts.audit.aws_network_interface_deep_audit import (
     _check_instance_attachment,
     _print_basic_eni_info,
-    load_aws_credentials,
 )
 
 
@@ -19,71 +18,33 @@ class TestLoadAwsCredentials:
 
     def test_load_credentials_success(self, capsys):
         """Test successful credential loading from environment."""
-        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.load_dotenv"):
-            with patch.dict(
-                os.environ,
-                {
-                    "AWS_ACCESS_KEY_ID": "test-access-key",
-                    "AWS_SECRET_ACCESS_KEY": "test-secret-key",
-                },
-            ):
-                access_key, secret_key = load_aws_credentials()
-
-        assert access_key == "test-access-key"
-        assert secret_key == "test-secret-key"
-
-        captured = capsys.readouterr()
-        assert "AWS credentials loaded from ~/.env" in captured.out
+        # This test is no longer relevant - load_aws_credentials wrapper has been removed
+        # Module now uses setup_aws_credentials directly
+        pass
 
     def test_load_credentials_missing_access_key(self):
         """Test credential loading with missing access key."""
-        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.load_dotenv"):
-            with patch.dict(
-                os.environ,
-                {
-                    "AWS_SECRET_ACCESS_KEY": "test-secret-key",
-                },
-                clear=True,
-            ):
-                with pytest.raises(ValueError, match="AWS credentials not found"):
-                    load_aws_credentials()
+        # This test is no longer relevant - load_aws_credentials wrapper has been removed
+        # Module now uses setup_aws_credentials directly
+        pass
 
     def test_load_credentials_missing_secret_key(self):
         """Test credential loading with missing secret key."""
-        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.load_dotenv"):
-            with patch.dict(
-                os.environ,
-                {
-                    "AWS_ACCESS_KEY_ID": "test-access-key",
-                },
-                clear=True,
-            ):
-                with pytest.raises(ValueError, match="AWS credentials not found"):
-                    load_aws_credentials()
+        # This test is no longer relevant - load_aws_credentials wrapper has been removed
+        # Module now uses setup_aws_credentials directly
+        pass
 
     def test_load_credentials_both_missing(self):
         """Test credential loading with both credentials missing."""
-        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.load_dotenv"):
-            with patch.dict(os.environ, {}, clear=True):
-                with pytest.raises(ValueError, match="AWS credentials not found"):
-                    load_aws_credentials()
+        # This test is no longer relevant - load_aws_credentials wrapper has been removed
+        # Module now uses setup_aws_credentials directly
+        pass
 
     def test_load_dotenv_called(self):
         """Test that load_dotenv is called with correct path."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_deep_audit.load_dotenv"
-        ) as mock_load:
-            with patch.dict(
-                os.environ,
-                {
-                    "AWS_ACCESS_KEY_ID": "test-key",
-                    "AWS_SECRET_ACCESS_KEY": "test-secret",
-                },
-            ):
-                with patch.dict(os.environ, {"HOME": "/home/user"}):
-                    load_aws_credentials()
-
-        mock_load.assert_called_once_with("/home/user/.env")
+        # This test is no longer relevant - load_aws_credentials wrapper has been removed
+        # Module now uses setup_aws_credentials directly
+        pass
 
 
 class TestPrintBasicEniInfo:

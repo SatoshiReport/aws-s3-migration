@@ -8,7 +8,6 @@ from cost_toolkit.scripts.audit.aws_network_interface_audit import (
     _build_interface_info,
     _categorize_interface,
     get_all_regions,
-    load_aws_credentials,
 )
 
 
@@ -17,24 +16,15 @@ class TestLoadAwsCredentials:
 
     def test_load_credentials_success(self):
         """Test successful credential loading."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_audit.setup_aws_credentials",
-            return_value=("test-key-id", "test-secret-key"),
-        ):
-            key_id, secret_key = load_aws_credentials()
-
-        assert key_id == "test-key-id"
-        assert secret_key == "test-secret-key"
+        # This test is no longer relevant - load_aws_credentials wrapper has been removed
+        # Module now uses setup_aws_credentials directly
+        pass
 
     def test_load_credentials_calls_setup(self):
         """Test that load_aws_credentials calls setup_aws_credentials."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_audit.setup_aws_credentials"
-        ) as mock_setup:
-            mock_setup.return_value = ("key", "secret")
-            load_aws_credentials()
-
-        mock_setup.assert_called_once()
+        # This test is no longer relevant - load_aws_credentials wrapper has been removed
+        # Module now uses setup_aws_credentials directly
+        pass
 
 
 class TestGetAllRegions:

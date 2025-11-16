@@ -13,7 +13,7 @@ from cost_toolkit.scripts.audit.aws_network_interface_deep_audit import (
 )
 
 
-class TestInvestigateNetworkInterfaceTerminatedAndStopped:
+class TestInvestigateNetworkInterfaceTerminatedAndStopped:  # gitleaks:allow
     """Tests for investigate_network_interface with terminated/stopped instances."""
 
     def test_investigate_interface_with_terminated_instance(self, capsys):

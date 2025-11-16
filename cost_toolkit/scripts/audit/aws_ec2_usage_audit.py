@@ -92,11 +92,10 @@ def _get_network_metrics(cloudwatch, instance_id, start_time, end_time):
 
 
 def _get_instance_name(instance):
-    """Extract instance name from tags"""
-    for tag in instance.get("Tags", []):
-        if tag["Key"] == "Name":
-            return tag["Value"]
-    return "Unnamed"
+    """Extract instance name from tags. Delegates to canonical implementation."""
+    from cost_toolkit.common.aws_common import extract_tag_value
+
+    return extract_tag_value(instance, "Name")
 
 
 def _estimate_monthly_cost(instance_type, state):

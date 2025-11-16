@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.scripts.audit.aws_ebs_audit import (
     _audit_region,
-    _calculate_volume_cost,
     _get_attachment_info,
     _print_old_snapshots,
     _print_recommendations,
@@ -62,10 +62,10 @@ class TestGetAllRegions:
 
 def test_calculate_volume_cost_calculate_volume_costs():
     """Test cost calculations for different volume types."""
-    assert _calculate_volume_cost(100, "gp3") == 8.0
-    assert _calculate_volume_cost(50, "gp2") == 5.0
-    assert _calculate_volume_cost(80, "io1") == 10.0
-    assert _calculate_volume_cost(100, "unknown-type") == 10.0
+    assert calculate_ebs_volume_cost(100, "gp3") == 8.0
+    assert calculate_ebs_volume_cost(50, "gp2") == 5.0
+    assert calculate_ebs_volume_cost(80, "io1") == 10.0
+    assert calculate_ebs_volume_cost(100, "unknown-type") == 10.0
 
 
 def test_get_attachment_info_get_attachment_info():

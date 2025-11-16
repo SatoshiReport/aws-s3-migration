@@ -9,6 +9,9 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cost_utils import calculate_snapshot_cost
+from cost_toolkit.scripts.aws_s3_operations import get_bucket_location, list_buckets
+
 from ..aws_utils import setup_aws_credentials
 
 
@@ -42,6 +45,7 @@ def tag_volume_with_name(volume_id, name, region):
 def delete_snapshot(snapshot_id, region):
     """
     Delete an EBS snapshot.
+    Delegates to canonical implementation in aws_ec2_operations.
 
     Args:
         snapshot_id: The snapshot ID to delete
@@ -50,28 +54,11 @@ def delete_snapshot(snapshot_id, region):
     Returns:
         True if successful, False otherwise
     """
-    try:
-        ec2_client = boto3.client("ec2", region_name=region)
+    from cost_toolkit.scripts.aws_ec2_operations import (
+        delete_snapshot as delete_snapshot_canonical,
+    )
 
-        # Get snapshot info first
-        response = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
-        snapshot = response["Snapshots"][0]
-
-        size_gb = snapshot.get("VolumeSize", 0)
-        description = snapshot.get("Description", "No description")
-        start_time = snapshot["StartTime"]
-
-        print(f"🔍 Snapshot to delete: {snapshot_id}")
-        print(f"   Size: {size_gb} GB")
-        print(f"   Created: {start_time}")
-        print(f"   Description: {description}")
-
-        # Delete the snapshot
-        ec2_client.delete_snapshot(SnapshotId=snapshot_id)
-
-        monthly_cost_saved = size_gb * 0.05  # $0.05 per GB/month
-        print(f"✅ Successfully deleted snapshot {snapshot_id}")
-        print(f"💰 Monthly cost savings: ${monthly_cost_saved:.2f}")
+    return delete_snapshot_canonical(snapshot_id, region, verbose=True)
 
     except ClientError as e:
         print(f"❌ Error deleting snapshot {snapshot_id}: {str(e)}")
@@ -81,17 +68,10 @@ def delete_snapshot(snapshot_id, region):
 
 
 def get_bucket_region(s3_client, bucket_name):
-    """Get the region for an S3 bucket"""
-    try:
-        location_response = s3_client.get_bucket_location(Bucket=bucket_name)
-        region = location_response.get("LocationConstraint", "us-east-1")
-        if region is None:
-            region = "us-east-1"
-        print(f"    Region: {region}")
-    except ClientError as e:
-        print(f"    Region: Unable to determine ({str(e)})")
-        return "Unknown"
-    return region
+    """Get the region for an S3 bucket. Delegates to canonical implementation in s3_utils."""
+    from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
+
+    return canonical_get_bucket_region(bucket_name, verbose=True)
 
 
 def get_bucket_size_metrics(bucket_name, region):
@@ -157,7 +137,7 @@ def process_bucket_info(s3_client, bucket):
 
 def list_s3_buckets():
     """
-    List all S3 buckets in the account.
+    List all S3 buckets in the account. Delegates to canonical implementation.
 
     Returns:
         List of bucket information dictionaries
@@ -165,8 +145,7 @@ def list_s3_buckets():
     try:
         s3_client = boto3.client("s3")
 
-        response = s3_client.list_buckets()
-        buckets = response.get("Buckets", [])
+        buckets = list_buckets()
 
         print(f"🪣 Found {len(buckets)} S3 bucket(s):")
         print()

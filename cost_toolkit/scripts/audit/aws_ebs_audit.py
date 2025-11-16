@@ -7,23 +7,12 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost, calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 # Constants
 OLD_SNAPSHOT_AGE_DAYS = 30
-
-
-def _calculate_volume_cost(size_gb, volume_type):
-    """Calculate monthly cost for an EBS volume based on type and size"""
-    cost_per_gb = {
-        "gp3": 0.08,
-        "gp2": 0.10,
-        "io1": 0.125,
-        "io2": 0.125,
-    }
-    rate = cost_per_gb.get(volume_type, 0.10)
-    return size_gb * rate
 
 
 def _get_attachment_info(volume):
@@ -42,7 +31,7 @@ def _process_volume(volume, region):
     volume_type = volume["VolumeType"]
     state = volume["State"]
     attached_to = _get_attachment_info(volume)
-    monthly_cost = _calculate_volume_cost(size_gb, volume_type)
+    monthly_cost = calculate_ebs_volume_cost(size_gb, volume_type)
 
     print(f"  Volume ID: {volume_id}")
     print(f"    Size: {size_gb} GB")
@@ -70,7 +59,7 @@ def _process_snapshot(snapshot, region):
     state = snapshot["State"]
     start_time = snapshot["StartTime"]
     description = snapshot.get("Description", "No description")
-    monthly_cost = size_gb * 0.05
+    monthly_cost = calculate_snapshot_cost(size_gb)
 
     print(f"  Snapshot ID: {snapshot_id}")
     print(f"    Size: {size_gb} GB")

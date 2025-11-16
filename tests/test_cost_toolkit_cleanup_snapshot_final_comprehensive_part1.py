@@ -10,7 +10,6 @@ from cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final import (
     confirm_snapshot_deletion,
     delete_snapshot,
     get_snapshots_to_delete,
-    load_aws_credentials,
     print_deletion_warning,
     process_snapshot_deletions,
 )
@@ -18,15 +17,9 @@ from cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final import (
 
 def test_load_aws_credentials_calls_setup_credentials():
     """Test that function calls setup utility."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.setup_aws_credentials"
-    ) as mock_setup:
-        mock_setup.return_value = ("key", "secret")
-
-        result = load_aws_credentials()
-
-        mock_setup.assert_called_once()
-        assert result == ("key", "secret")
+    # This test is no longer relevant - load_aws_credentials wrapper has been removed
+    # Module now uses setup_aws_credentials directly
+    pass
 
 
 class TestDeleteSnapshot:

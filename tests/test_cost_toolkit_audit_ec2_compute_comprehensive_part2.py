@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.cost_utils import GP3_DEFAULT_THROUGHPUT_MBS
 from cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit import (
-    GP3_DEFAULT_THROUGHPUT_MBS,
     _process_single_volume,
     analyze_ebs_volumes_in_region,
     calculate_ebs_monthly_cost,
