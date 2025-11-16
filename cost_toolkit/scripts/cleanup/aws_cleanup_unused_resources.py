@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Clean up unused AWS resources."""
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _collect_used_sgs_from_instances(ec2):
@@ -35,7 +36,7 @@ def _collect_used_sgs_from_rds(region_name):
     """Collect security group IDs from RDS instances."""
     used_sgs = set()
     try:
-        rds = boto3.client("rds", region_name=region_name)
+        rds = create_client("rds", region=region_name)
         db_response = rds.describe_db_instances()
         for db in db_response.get("DBInstances", []):
             for sg in db.get("VpcSecurityGroups", []):
@@ -50,7 +51,7 @@ def _collect_used_sgs_from_elb(region_name):
     """Collect security group IDs from load balancers."""
     used_sgs = set()
     try:
-        elbv2 = boto3.client("elbv2", region_name=region_name)
+        elbv2 = create_client("elbv2", region=region_name)
         lb_response = elbv2.describe_load_balancers()
         for lb in lb_response.get("LoadBalancers", []):
             for sg_id in lb.get("SecurityGroups", []):
@@ -87,7 +88,7 @@ def analyze_security_groups_usage(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         sg_response = ec2.describe_security_groups()
         all_sgs = sg_response.get("SecurityGroups", [])
@@ -158,7 +159,7 @@ def _collect_used_subnets_from_rds(region_name):
     """Collect subnet IDs from RDS subnet groups."""
     used_subnets = set()
     try:
-        rds = boto3.client("rds", region_name=region_name)
+        rds = create_client("rds", region=region_name)
         subnet_groups_response = rds.describe_db_subnet_groups()
         for sg in subnet_groups_response.get("DBSubnetGroups", []):
             for subnet in sg.get("Subnets", []):
@@ -173,7 +174,7 @@ def _collect_used_subnets_from_elb(region_name):
     """Collect subnet IDs from load balancers."""
     used_subnets = set()
     try:
-        elbv2 = boto3.client("elbv2", region_name=region_name)
+        elbv2 = create_client("elbv2", region=region_name)
         lb_response = elbv2.describe_load_balancers()
         for lb in lb_response.get("LoadBalancers", []):
             for az in lb.get("AvailabilityZones", []):
@@ -205,7 +206,7 @@ def analyze_subnet_usage(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         subnet_response = ec2.describe_subnets()
         all_subnets = subnet_response.get("Subnets", [])
@@ -248,7 +249,7 @@ def delete_unused_security_groups(unused_sgs, region_name):
         return True
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         deleted_count = 0
         failed_count = 0
@@ -286,7 +287,7 @@ def delete_unused_subnets(unused_subnets, region_name):
         return True
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         deleted_count = 0
         failed_count = 0

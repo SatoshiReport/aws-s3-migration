@@ -11,19 +11,22 @@ from cost_toolkit.scripts.aws_client_factory import (
 )
 
 
-def setup_aws_credentials():
+def setup_aws_credentials(env_path=None):
     """
     Load AWS credentials from .env file.
 
     Loads environment variables from ~/.env and extracts AWS credentials.
 
+    Args:
+        env_path: Optional path to .env file. If not provided, uses ~/.env
+
     Returns:
         tuple: (aws_access_key_id, aws_secret_access_key)
 
     Raises:
-        ValueError: If AWS credentials are not found in ~/.env file
+        ValueError: If AWS credentials are not found in .env file
     """
-    return load_credentials_from_env()
+    return load_credentials_from_env(env_path)
 
 
 def check_aws_credentials():

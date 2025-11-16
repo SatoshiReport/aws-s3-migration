@@ -11,12 +11,9 @@ import boto3
 
 from cost_toolkit.common.aws_common import get_default_regions
 
-# Import credential loading functions from aws_client_factory to avoid duplication
-from cost_toolkit.scripts.aws_client_factory import (
-    _resolve_env_path,
-)
-from cost_toolkit.scripts.aws_client_factory import (
-    load_credentials_from_env as load_aws_credentials_from_env,
+# Import canonical credential setup function
+from cost_toolkit.common.credential_utils import (
+    setup_aws_credentials as setup_aws_credentials_canonical,
 )
 
 
@@ -31,14 +28,8 @@ def load_aws_credentials(env_path: Optional[str] = None) -> bool:
         bool: True if credentials loaded successfully, False otherwise
     """
     try:
-        load_aws_credentials_from_env(env_path)
+        setup_aws_credentials_canonical(env_path)
     except ValueError:
-        resolved_path = _resolve_env_path(env_path)
-        print("⚠️  AWS credentials not found in environment variables.")
-        print(f"Please ensure {resolved_path} contains:")
-        print("  AWS_ACCESS_KEY_ID=your-access-key")
-        print("  AWS_SECRET_ACCESS_KEY=your-secret-key")
-        print("  AWS_DEFAULT_REGION=us-east-1")
         return False
 
     return True
@@ -48,8 +39,19 @@ def setup_aws_credentials(env_path: Optional[str] = None):
     """
     Load AWS credentials and exit if not found.
     This is for scripts that require credentials to function.
+
+    DEPRECATED: Prefer using setup_aws_credentials from credential_utils
+    and handling ValueError exceptions instead of process exit.
     """
     if not load_aws_credentials(env_path=env_path):
+        from cost_toolkit.scripts.aws_client_factory import _resolve_env_path
+
+        resolved_path = _resolve_env_path(env_path)
+        print("⚠️  AWS credentials not found in environment variables.")
+        print(f"Please ensure {resolved_path} contains:")
+        print("  AWS_ACCESS_KEY_ID=your-access-key")
+        print("  AWS_SECRET_ACCESS_KEY=your-secret-key")
+        print("  AWS_DEFAULT_REGION=us-east-1")
         sys.exit(1)
 
 
