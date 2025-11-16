@@ -3,6 +3,7 @@
 
 from datetime import datetime, timedelta, timezone
 
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import extract_tag_value, get_instance_details
