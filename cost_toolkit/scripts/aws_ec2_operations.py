@@ -16,16 +16,7 @@ def get_all_regions(
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
 ) -> list[str]:
-    """
-    Get list of all available AWS regions from EC2 API.
-
-    Args:
-        aws_access_key_id: Optional AWS access key
-        aws_secret_access_key: Optional AWS secret key
-
-    Returns:
-        list: List of AWS region names
-    """
+    """Get list of all available AWS regions from EC2 API."""
     try:
         ec2_client = create_ec2_client(
             region="us-east-1",
@@ -47,85 +38,14 @@ def find_resource_region(
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
 ) -> Optional[str]:
-    """
-    Find which AWS region contains a specified resource.
+    """Delegates to canonical implementation in aws_common."""
+    from cost_toolkit.common.aws_common import find_resource_region as canonical
 
-    Args:
-        resource_type: Type of resource ('volume', 'snapshot', 'ami', 'instance')
-        resource_id: The resource ID to locate
-        regions: Optional list of regions to search. If None, searches all regions.
-        aws_access_key_id: Optional AWS access key
-        aws_secret_access_key: Optional AWS secret key
-
-    Returns:
-        Region name if found, None otherwise
-
-    Example:
-        >>> region = find_resource_region('volume', 'vol-1234567890abcdef0')
-        >>> region = find_resource_region('snapshot', 'snap-abc123', regions=['us-east-1', 'us-west-2'])
-    """
-    if regions is None:
-        regions = get_all_regions(aws_access_key_id, aws_secret_access_key)
-
-    # Map resource types to their describe methods and response keys
-    resource_config = {
-        "volume": ("describe_volumes", "VolumeIds", "Volumes", "InvalidVolume.NotFound"),
-        "snapshot": (
-            "describe_snapshots",
-            "SnapshotIds",
-            "Snapshots",
-            "InvalidSnapshot.NotFound",
-        ),
-        "ami": ("describe_images", "ImageIds", "Images", "InvalidAMIID.NotFound"),
-        "instance": (
-            "describe_instances",
-            "InstanceIds",
-            "Reservations",
-            "InvalidInstanceID.NotFound",
-        ),
-    }
-
-    if resource_type not in resource_config:
-        raise ValueError(
-            f"Unsupported resource type: {resource_type}. "
-            f"Supported types: {', '.join(resource_config.keys())}"
-        )
-
-    method_name, id_param, response_key, not_found_error = resource_config[resource_type]
-
-    for region in regions:
-        try:
-            ec2_client = create_ec2_client(
-                region=region,
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
-            )
-
-            # Call the appropriate describe method
-            describe_method = getattr(ec2_client, method_name)
-            response = describe_method(**{id_param: [resource_id]})
-
-            # Check if resource exists in response
-            if response[response_key]:
-                return region
-
-        except ClientError as e:
-            if not_found_error in str(e):
-                continue
-            # For other errors, log but continue searching
-            print(f"⚠️  Error checking {region} for {resource_id}: {str(e)}")
-            continue
-
-    return None
+    return canonical(resource_type, resource_id, regions, aws_access_key_id, aws_secret_access_key)
 
 
 def get_common_regions() -> list[str]:
-    """
-    Get list of commonly used AWS regions for cost optimization.
-
-    Returns:
-        list: List of AWS region names
-    """
+    """Get list of commonly used AWS regions for cost optimization."""
     # Extended version with eu-west-3 and ap-northeast-1
     regions = get_default_regions()
     regions.extend(["eu-west-3", "ap-northeast-1"])
@@ -151,21 +71,7 @@ def describe_instance(
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
 ) -> dict:
-    """
-    Get detailed information about a single EC2 instance.
-
-    Args:
-        region: AWS region name
-        instance_id: EC2 instance ID
-        aws_access_key_id: Optional AWS access key
-        aws_secret_access_key: Optional AWS secret key
-
-    Returns:
-        dict: Instance data from describe_instances API
-
-    Raises:
-        ClientError: If instance not found or API call fails
-    """
+    """Get detailed information about a single EC2 instance."""
     ec2_client = create_ec2_client(
         region=region,
         aws_access_key_id=aws_access_key_id,
@@ -183,19 +89,7 @@ def delete_snapshot(
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
 ) -> bool:
-    """
-    Delete an EBS snapshot.
-
-    Args:
-        snapshot_id: The snapshot ID to delete
-        region: AWS region where the snapshot is located
-        verbose: If True, print snapshot details before deleting
-        aws_access_key_id: Optional AWS access key
-        aws_secret_access_key: Optional AWS secret key
-
-    Returns:
-        bool: True if successful, False otherwise
-    """
+    """Delete an EBS snapshot."""
     try:
         ec2_client = create_ec2_client(
             region=region,
@@ -219,11 +113,11 @@ def delete_snapshot(
         print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
         ec2_client.delete_snapshot(SnapshotId=snapshot_id)
         print(f"   ✅ Successfully deleted {snapshot_id}")
-        return True
-
     except ClientError as e:
         print(f"   ❌ Error deleting {snapshot_id}: {e}")
         return False
+    else:
+        return True
 
 
 def terminate_instance(

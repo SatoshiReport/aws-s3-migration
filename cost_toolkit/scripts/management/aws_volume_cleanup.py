@@ -54,17 +54,9 @@ def delete_snapshot(snapshot_id, region):
     Returns:
         True if successful, False otherwise
     """
-    from cost_toolkit.scripts.aws_ec2_operations import (
-        delete_snapshot as delete_snapshot_canonical,
-    )
+    from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
 
     return delete_snapshot_canonical(snapshot_id, region, verbose=True)
-
-    except ClientError as e:
-        print(f"❌ Error deleting snapshot {snapshot_id}: {str(e)}")
-        return False
-
-    return True
 
 
 def get_bucket_region(s3_client, bucket_name):

@@ -14,9 +14,7 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_ec2_operations import (
-    delete_snapshot as delete_snapshot_canonical,
-)
+from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
 
 
 def delete_snapshot(ec2_client, snapshot_id, region):

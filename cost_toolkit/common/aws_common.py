@@ -5,6 +5,8 @@ This module provides common AWS client initialization patterns
 to eliminate duplicate client creation code across scripts.
 """
 
+from typing import Optional
+
 import boto3
 from botocore.exceptions import ClientError
 
@@ -192,4 +194,82 @@ def get_instance_details(ec2_client, instance_id):
     except ClientError as e:
         print(f"Error getting instance details for {instance_id}: {e}")
         return None
+    return None
+
+
+def find_resource_region(
+    resource_type: str,
+    resource_id: str,
+    regions: Optional[list[str]] = None,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Find which AWS region contains a specified resource.
+
+    Args:
+        resource_type: Type of resource ('volume', 'snapshot', 'ami', 'instance')
+        resource_id: The resource ID to locate
+        regions: Optional list of regions to search. If None, searches all regions.
+        aws_access_key_id: Optional AWS access key
+        aws_secret_access_key: Optional AWS secret key
+
+    Returns:
+        Region name if found, None otherwise
+    """
+    from cost_toolkit.scripts.aws_client_factory import create_ec2_client
+    from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
+
+    if regions is None:
+        regions = get_all_regions(aws_access_key_id, aws_secret_access_key)
+
+    # Map resource types to their describe methods and response keys
+    resource_config = {
+        "volume": ("describe_volumes", "VolumeIds", "Volumes", "InvalidVolume.NotFound"),
+        "snapshot": (
+            "describe_snapshots",
+            "SnapshotIds",
+            "Snapshots",
+            "InvalidSnapshot.NotFound",
+        ),
+        "ami": ("describe_images", "ImageIds", "Images", "InvalidAMIID.NotFound"),
+        "instance": (
+            "describe_instances",
+            "InstanceIds",
+            "Reservations",
+            "InvalidInstanceID.NotFound",
+        ),
+    }
+
+    if resource_type not in resource_config:
+        raise ValueError(
+            f"Unsupported resource type: {resource_type}. "
+            f"Supported types: {', '.join(resource_config.keys())}"
+        )
+
+    method_name, id_param, response_key, not_found_error = resource_config[resource_type]
+
+    for region in regions:
+        try:
+            ec2_client = create_ec2_client(
+                region=region,
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
+            )
+
+            # Call the appropriate describe method
+            describe_method = getattr(ec2_client, method_name)
+            response = describe_method(**{id_param: [resource_id]})
+
+            # Check if resource exists in response
+            if response[response_key]:
+                return region
+
+        except ClientError as e:
+            if not_found_error in str(e):
+                continue
+            # For other errors, log but continue searching
+            print(f"⚠️  Error checking {region} for {resource_id}: {str(e)}")
+            continue
+
     return None

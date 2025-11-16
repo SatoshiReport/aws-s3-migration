@@ -18,8 +18,9 @@ except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
 
 try:
     from cost_toolkit.common.cli_utils import add_reset_state_db_args
+    from cost_toolkit.common.format_utils import parse_size
 except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
-    raise SystemExit(f"Unable to import cost_toolkit.common.cli_utils: {exc}") from exc
+    raise SystemExit(f"Unable to import cost_toolkit modules: {exc}") from exc
 
 from find_compressible.analysis import find_candidates
 from find_compressible.cache import handle_state_db_reset
@@ -38,29 +39,9 @@ BYTES_PER_UNIT = 1024
 DEFAULT_MIN_SIZE = 512 * 1024 * 1024  # 512 MiB
 
 
-def parse_size(value: str) -> int:
-    """Parse human-friendly sizes like 512M or 2G into bytes."""
-    raw = value.strip().lower()
-    if not raw:
-        raise argparse.ArgumentTypeError("Size cannot be empty")
-    multipliers = {
-        "k": BYTES_PER_UNIT,
-        "m": BYTES_PER_UNIT**2,
-        "g": BYTES_PER_UNIT**3,
-        "t": BYTES_PER_UNIT**4,
-    }
-    suffix = raw[-1]
-    if suffix in multipliers:
-        number = raw[:-1]
-        try:
-            base = float(number)
-        except ValueError as exc:
-            raise argparse.ArgumentTypeError(f"Invalid size value: {value}") from exc
-        return int(base * multipliers[suffix])
-    try:
-        return int(raw)
-    except ValueError as exc:  # pragma: no cover - arg parsing
-        raise argparse.ArgumentTypeError(f"Invalid size value: {value}") from exc
+def _parse_size_argparse(value: str) -> int:
+    """Argparse wrapper for canonical parse_size in format_utils."""
+    return parse_size(value, for_argparse=True)
 
 
 def parse_args() -> argparse.Namespace:
@@ -84,7 +65,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--min-size",
-        type=parse_size,
+        type=_parse_size_argparse,
         default=DEFAULT_MIN_SIZE,
         help="Minimum file size to consider (accepts suffixes like 512M, 2G). Default: 512M",
     )

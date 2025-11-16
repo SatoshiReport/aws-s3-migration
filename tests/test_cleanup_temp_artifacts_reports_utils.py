@@ -12,39 +12,20 @@ import pytest
 
 # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts import categories, core_scanner, reports
+from cost_toolkit.common.format_utils import (
+    BYTES_PER_GIB,
+    BYTES_PER_KIB,
+    BYTES_PER_MIB,
+    BYTES_PER_TIB,
+)
 from tests.assertions import assert_equal
 
 Category = categories.Category
 Candidate = core_scanner.Candidate
-BYTES_PER_GIB = reports.BYTES_PER_GIB
-BYTES_PER_KIB = reports.BYTES_PER_KIB
-BYTES_PER_MIB = reports.BYTES_PER_MIB
-BYTES_PER_TIB = reports.BYTES_PER_TIB
 order_candidates = reports.order_candidates
 parse_size = reports.parse_size
 print_candidates_report = reports.print_candidates_report
 write_reports = reports.write_reports
-
-
-def make_candidate(
-    path: str | Path,
-    category_name: str = "test-category",
-    size_bytes: int | None = 1024,
-    mtime: float = 1234567890.0,
-) -> Candidate:
-    """Helper to create a Candidate for testing."""
-    category = Category(
-        name=category_name,
-        description="Test category",
-        matcher=lambda p, is_dir: True,
-        prune=True,
-    )
-    return Candidate(
-        path=Path(path),
-        category=category,
-        size_bytes=size_bytes,
-        mtime=mtime,
-    )
 
 
 class TestParseSize:
@@ -111,7 +92,7 @@ class TestParseSize:
 class TestOrderCandidates:
     """Test order_candidates function for sorting."""
 
-    def test_order_by_size_descending(self):
+    def test_order_by_size_descending(self, make_candidate):
         """Test ordering candidates by size (largest first)."""
         candidates = [
             make_candidate("/tmp/small", "cat1", 100),
@@ -125,7 +106,7 @@ class TestOrderCandidates:
         assert_equal(result[1].size_bytes, 500)
         assert_equal(result[2].size_bytes, 100)
 
-    def test_order_by_size_with_none(self):
+    def test_order_by_size_with_none(self, make_candidate):
         """Test ordering by size handles None values."""
         candidates = [
             make_candidate("/tmp/a", "cat1", 100),
@@ -139,7 +120,7 @@ class TestOrderCandidates:
         assert_equal(result[1].size_bytes, 100)
         assert_equal(result[2].size_bytes, None)
 
-    def test_order_by_path(self):
+    def test_order_by_path(self, make_candidate):
         """Test ordering candidates by path alphabetically."""
         candidates = [
             make_candidate("/tmp/zebra", "cat1", 100),
@@ -153,7 +134,7 @@ class TestOrderCandidates:
         assert_equal(str(result[1].path), "/tmp/beta")
         assert_equal(str(result[2].path), "/tmp/zebra")
 
-    def test_order_default_is_path(self):
+    def test_order_default_is_path(self, make_candidate):
         """Test ordering defaults to path when order is not 'size'."""
         candidates = [
             make_candidate("/tmp/z", "cat1", 100),
@@ -169,7 +150,7 @@ class TestOrderCandidates:
 class TestWriteReports:
     """Test write_reports function for JSON and CSV output."""
 
-    def test_write_json_report(self):
+    def test_write_json_report(self, make_candidate):
         """Test writing JSON report file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             json_path = Path(tmpdir) / "report.json"
@@ -190,7 +171,7 @@ class TestWriteReports:
             assert_equal(data[0]["size_human"], "1.0KB")
             assert "mtime" in data[0]
 
-    def test_write_csv_report(self):
+    def test_write_csv_report(self, make_candidate):
         """Test writing CSV report file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             csv_path = Path(tmpdir) / "report.csv"
@@ -212,7 +193,7 @@ class TestWriteReports:
             assert_equal(rows[0]["size_bytes"], "1024")
             assert_equal(rows[0]["size_human"], "1.0KB")
 
-    def test_write_both_reports(self):
+    def test_write_both_reports(self, make_candidate):
         """Test writing both JSON and CSV reports."""
         with tempfile.TemporaryDirectory() as tmpdir:
             json_path = Path(tmpdir) / "report.json"
@@ -224,12 +205,12 @@ class TestWriteReports:
             assert json_path.exists()
             assert csv_path.exists()
 
-    def test_write_no_reports(self):
+    def test_write_no_reports(self, make_candidate):
         """Test write_reports with no output paths."""
         candidates = [make_candidate("/tmp/test", "cat1", 1024)]
         write_reports(candidates, json_path=None, csv_path=None)
 
-    def test_write_creates_parent_directories(self):
+    def test_write_creates_parent_directories(self, make_candidate):
         """Test write_reports creates parent directories if needed."""
         with tempfile.TemporaryDirectory() as tmpdir:
             json_path = Path(tmpdir) / "subdir1" / "subdir2" / "report.json"
@@ -251,7 +232,7 @@ class TestWriteReports:
             data = json.loads(json_path.read_text())
             assert_equal(data, [])
 
-    def test_write_none_size_candidate(self):
+    def test_write_none_size_candidate(self, make_candidate):
         """Test write_reports handles None size correctly."""
         with tempfile.TemporaryDirectory() as tmpdir:
             json_path = Path(tmpdir) / "report.json"
@@ -267,7 +248,7 @@ class TestWriteReports:
 class TestPrintCandidatesReportExtended:
     """Extended tests for print_candidates_report function."""
 
-    def test_print_report_includes_summary(self):
+    def test_print_report_includes_summary(self, make_candidate):
         """Test report includes per-category summary."""
         candidates = [
             make_candidate("/tmp/a", "cat1", 1024),
@@ -284,7 +265,7 @@ class TestPrintCandidatesReportExtended:
         summary_found = any("Per-category totals" in str(call) for call in calls)
         assert summary_found
 
-    def test_print_report_formats_sizes(self):
+    def test_print_report_formats_sizes(self, make_candidate):
         """Test report formats sizes correctly."""
         candidates = [make_candidate("/tmp/test", "cat1", 1024)]
         base_path = Path("/tmp")
@@ -297,7 +278,7 @@ class TestPrintCandidatesReportExtended:
         size_found = any("1.0KB" in str(call) for call in calls)
         assert size_found
 
-    def test_print_report_shows_mtime(self):
+    def test_print_report_shows_mtime(self, make_candidate):
         """Test report shows modification time."""
         candidates = [make_candidate("/tmp/test", "cat1", 1024, 1234567890.0)]
         base_path = Path("/tmp")

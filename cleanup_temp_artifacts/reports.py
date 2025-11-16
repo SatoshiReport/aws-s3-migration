@@ -13,34 +13,10 @@ import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cost_toolkit.common.format_utils import format_bytes
+from cost_toolkit.common.format_utils import format_bytes, parse_size
 
 if TYPE_CHECKING:
     from cleanup_temp_artifacts.scanner import Candidate
-
-BYTES_PER_KIB = 1024
-BYTES_PER_MIB = BYTES_PER_KIB**2
-BYTES_PER_GIB = BYTES_PER_KIB**3
-BYTES_PER_TIB = BYTES_PER_KIB**4
-
-
-def parse_size(text: str) -> int:
-    """Parse human-readable size strings (e.g. 10G, 512M) into bytes."""
-    text = text.strip().upper()
-    multiplier = 1
-    if text.endswith("K"):
-        multiplier = BYTES_PER_KIB
-        text = text[:-1]
-    elif text.endswith("M"):
-        multiplier = BYTES_PER_MIB
-        text = text[:-1]
-    elif text.endswith("G"):
-        multiplier = BYTES_PER_GIB
-        text = text[:-1]
-    elif text.endswith("T"):
-        multiplier = BYTES_PER_TIB
-        text = text[:-1]
-    return int(float(text) * multiplier)
 
 
 def _format_size_no_space(num_bytes: int | None) -> str:

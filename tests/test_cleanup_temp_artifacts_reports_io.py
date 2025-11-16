@@ -7,40 +7,19 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-from cleanup_temp_artifacts.categories import Category  # pylint: disable=no-name-in-module
-from cleanup_temp_artifacts.core_scanner import Candidate  # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts.reports import (  # pylint: disable=no-name-in-module
-    BYTES_PER_GIB,
-    BYTES_PER_KIB,
-    BYTES_PER_MIB,
-    BYTES_PER_TIB,
     delete_paths,
     print_candidates_report,
     summarise,
 )
-from cost_toolkit.common.format_utils import format_bytes
+from cost_toolkit.common.format_utils import (
+    BYTES_PER_GIB,
+    BYTES_PER_KIB,
+    BYTES_PER_MIB,
+    BYTES_PER_TIB,
+    format_bytes,
+)
 from tests.assertions import assert_equal
-
-
-def make_candidate(
-    path: str | Path,
-    category_name: str = "test-category",
-    size_bytes: int | None = 1024,
-    mtime: float = 1234567890.0,
-) -> Candidate:
-    """Helper to create a Candidate for testing."""
-    category = Category(
-        name=category_name,
-        description="Test category",
-        matcher=lambda p, is_dir: True,
-        prune=True,
-    )
-    return Candidate(
-        path=Path(path),
-        category=category,
-        size_bytes=size_bytes,
-        mtime=mtime,
-    )
 
 
 class TestFormatSizeBasic:
@@ -166,7 +145,7 @@ class TestSummarise:
         result = summarise([])
         assert_equal(result, [])
 
-    def test_summarise_single_category(self):
+    def test_summarise_single_category(self, make_candidate):
         """Test summarise with single category."""
         candidates = [
             make_candidate("/tmp/a", "cat1", 100),
@@ -178,7 +157,7 @@ class TestSummarise:
         assert_equal(len(result), 1)
         assert_equal(result[0], ("cat1", 3, expected))
 
-    def test_summarise_multiple_categories(self):
+    def test_summarise_multiple_categories(self, make_candidate):
         """Test summarise with multiple categories."""
         candidates = [
             make_candidate("/tmp/a", "cat1", 100),
@@ -196,7 +175,7 @@ class TestSummarise:
         assert_equal(result_dict["cat2"], (1, 200))
         assert_equal(result_dict["cat3"], (1, 400))
 
-    def test_summarise_none_sizes(self):
+    def test_summarise_none_sizes(self, make_candidate):
         """Test summarise handles None sizes correctly."""
         candidates = [
             make_candidate("/tmp/a", "cat1", None),
@@ -207,7 +186,7 @@ class TestSummarise:
         expected = 100
         assert_equal(result[0], ("cat1", 3, expected))
 
-    def test_summarise_sorted_output(self):
+    def test_summarise_sorted_output(self, make_candidate):
         """Test summarise output is sorted by category name."""
         candidates = [
             make_candidate("/tmp/a", "zebra", 100),
@@ -222,7 +201,7 @@ class TestSummarise:
 class TestPrintCandidatesReport:
     """Test print_candidates_report function for console output."""
 
-    def test_print_report_basic(self):
+    def test_print_report_basic(self, make_candidate):
         """Test printing basic report."""
         candidates = [
             make_candidate("/tmp/test1", "cat1", 1024),
@@ -241,7 +220,7 @@ class TestPrintCandidatesReport:
         header_found = any("Identified 2 candidate(s)" in str(call) for call in calls)
         assert header_found
 
-    def test_print_report_with_subset(self):
+    def test_print_report_with_subset(self, make_candidate):
         """Test printing report with subset of acted_upon candidates."""
         all_candidates = [
             make_candidate("/tmp/test1", "cat1", 1024),
@@ -273,7 +252,7 @@ class TestPrintCandidatesReport:
 class TestDeletePathsBasic:
     """Test basic delete_paths functionality."""
 
-    def test_delete_single_file(self):
+    def test_delete_single_file(self, make_candidate):
         """Test deleting a single file."""
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir).resolve()
@@ -286,7 +265,7 @@ class TestDeletePathsBasic:
             assert_equal(errors, [])
             assert not test_file.exists()
 
-    def test_delete_directory(self):
+    def test_delete_directory(self, make_candidate):
         """Test deleting a directory tree."""
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir).resolve()
@@ -301,7 +280,7 @@ class TestDeletePathsBasic:
             assert_equal(errors, [])
             assert not test_dir.exists()
 
-    def test_delete_multiple_paths(self):
+    def test_delete_multiple_paths(self, make_candidate):
         """Test deleting multiple files and directories."""
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir).resolve()
@@ -330,7 +309,7 @@ class TestDeletePathsBasic:
 class TestDeletePathsErrors:
     """Test delete_paths error handling."""
 
-    def test_delete_path_escapes_root(self):
+    def test_delete_path_escapes_root(self, make_candidate):
         """Test deletion fails when path escapes root."""
         with tempfile.TemporaryDirectory() as tmpdir:
             root = (Path(tmpdir) / "subdir").resolve()
@@ -346,7 +325,7 @@ class TestDeletePathsErrors:
             assert "escapes root" in str(errors[0][1])
             assert outside_file.exists()
 
-    def test_delete_nonexistent_path(self):
+    def test_delete_nonexistent_path(self, make_candidate):
         """Test deletion handles nonexistent paths."""
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir).resolve()
@@ -358,7 +337,7 @@ class TestDeletePathsErrors:
             assert_equal(len(errors), 1)
             assert isinstance(errors[0][1], (OSError, FileNotFoundError))
 
-    def test_delete_permission_error(self):
+    def test_delete_permission_error(self, make_candidate):
         """Test deletion handles permission errors."""
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir).resolve()
@@ -374,7 +353,7 @@ class TestDeletePathsErrors:
             assert_equal(len(errors), 1)
             assert isinstance(errors[0][1], PermissionError)
 
-    def test_delete_directory_with_shutil_error(self):
+    def test_delete_directory_with_shutil_error(self, make_candidate):
         """Test deletion handles shutil errors."""
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir).resolve()

@@ -423,3 +423,33 @@ def create_mock_process():
         return mock_process
 
     return _create_process
+
+
+@pytest.fixture
+def make_candidate():
+    """Factory for creating cleanup_temp_artifacts Candidate instances for testing."""
+    from pathlib import Path  # pylint: disable=import-outside-toplevel
+
+    from cleanup_temp_artifacts.categories import (
+        Category,  # pylint: disable=import-outside-toplevel,no-name-in-module
+    )
+    from cleanup_temp_artifacts.core_scanner import (
+        Candidate,  # pylint: disable=import-outside-toplevel,no-name-in-module
+    )
+
+    def _make_candidate(
+        path: str | Path,
+        category_name: str = "test-category",
+        size_bytes: int | None = 1024,
+        mtime: float = 1234567890.0,
+    ) -> Candidate:
+        """Create a Candidate for testing."""
+        category = Category(
+            name=category_name,
+            description="Test category",
+            matcher=lambda p, is_dir: True,
+            prune=True,
+        )
+        return Candidate(path=Path(path), category=category, size_bytes=size_bytes, mtime=mtime)
+
+    return _make_candidate

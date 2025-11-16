@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.waiter_utils import wait_ami_available
 from cost_toolkit.scripts.optimization.snapshot_export_common import (
     _register_ami,
     create_ami_from_snapshot,
@@ -14,7 +15,6 @@ from cost_toolkit.scripts.optimization.snapshot_export_common import (
     print_export_status,
     setup_s3_bucket_versioning,
     start_ami_export_task,
-    wait_for_ami_available,
 )
 
 
@@ -115,20 +115,19 @@ def test_setup_s3_bucket_versioning_failure(_mock_print):
 
 
 # Tests for create_ami_from_snapshot
-@patch("cost_toolkit.scripts.optimization.snapshot_export_common.wait_for_ami_available")
+@patch("cost_toolkit.scripts.optimization.snapshot_export_common.wait_ami_available")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common._register_ami")
 @patch("builtins.print")
 def test_create_ami_from_snapshot_success(_mock_print, mock_register, mock_wait):
     """Test successful AMI creation."""
     mock_ec2 = MagicMock()
     mock_register.return_value = "ami-12345678"
-    mock_wait.return_value = "ami-12345678"
 
     result = create_ami_from_snapshot(mock_ec2, "snap-12345678", "Test snapshot")
 
     assert result == "ami-12345678"
     mock_register.assert_called_once()
-    mock_wait.assert_called_once_with(mock_ec2, "ami-12345678")
+    mock_wait.assert_called_once_with(mock_ec2, "ami-12345678", delay=30, max_attempts=40)
 
 
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common._register_ami")
@@ -143,14 +142,13 @@ def test_create_ami_from_snapshot_failure(_mock_print, mock_register):
     assert result is None
 
 
-@patch("cost_toolkit.scripts.optimization.snapshot_export_common.wait_for_ami_available")
+@patch("cost_toolkit.scripts.optimization.snapshot_export_common.wait_ami_available")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common._register_ami")
 @patch("builtins.print")
 def test_create_ami_from_snapshot_with_boot_mode(_mock_print, mock_register, mock_wait):
     """Test AMI creation with boot mode specified."""
     mock_ec2 = MagicMock()
     mock_register.return_value = "ami-12345678"
-    mock_wait.return_value = "ami-12345678"
 
     result = create_ami_from_snapshot(
         mock_ec2,
@@ -222,36 +220,32 @@ def test_register_ami_with_boot_mode(_mock_print, mock_datetime):
     assert call_kwargs["Name"] == "export-snap-12345678-20250114-120000-v2"
 
 
-# Tests for wait_for_ami_available
+# Tests for wait_ami_available
 @patch("builtins.print")
-def test_wait_for_ami_available_success(_mock_print):
+def test_wait_ami_available_success(_mock_print):
     """Test waiting for AMI to become available."""
     mock_ec2 = MagicMock()
     mock_waiter = MagicMock()
     mock_ec2.get_waiter.return_value = mock_waiter
 
-    result = wait_for_ami_available(mock_ec2, "ami-12345678")
+    wait_ami_available(mock_ec2, "ami-12345678")
 
-    assert result == "ami-12345678"
     mock_ec2.get_waiter.assert_called_once_with("image_available")
     mock_waiter.wait.assert_called_once_with(
         ImageIds=["ami-12345678"],
-        WaiterConfig={"Delay": 30, "MaxAttempts": 40},
+        WaiterConfig={"Delay": 15, "MaxAttempts": 40},
     )
 
 
 @patch("builtins.print")
-def test_wait_for_ami_available_custom_config(_mock_print):
+def test_wait_ami_available_custom_config(_mock_print):
     """Test waiting for AMI with custom waiter config."""
     mock_ec2 = MagicMock()
     mock_waiter = MagicMock()
     mock_ec2.get_waiter.return_value = mock_waiter
 
-    result = wait_for_ami_available(
-        mock_ec2, "ami-12345678", waiter_delay=60, waiter_max_attempts=20
-    )
+    wait_ami_available(mock_ec2, "ami-12345678", delay=60, max_attempts=20)
 
-    assert result == "ami-12345678"
     mock_waiter.wait.assert_called_once_with(
         ImageIds=["ami-12345678"],
         WaiterConfig={"Delay": 60, "MaxAttempts": 20},

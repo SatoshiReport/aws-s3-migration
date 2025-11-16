@@ -90,11 +90,14 @@ def create_ami_from_snapshot(
             ena_support=ena_support,
             attempt_suffix=attempt_suffix,
         )
-        return wait_for_ami_available(ec2_client, ami_id)
-
+        print(f"   ⏳ Waiting for AMI {ami_id} to become available...")
+        wait_ami_available(ec2_client, ami_id, delay=30, max_attempts=40)
+        print(f"   ✅ AMI {ami_id} is now available")
     except ClientError as e:
         print(f"   ❌ Error creating AMI from snapshot {snapshot_id}: {e}")
         return None
+    else:
+        return ami_id
 
 
 def _register_ami(
@@ -133,24 +136,6 @@ def _register_ami(
     ami_id = response["ImageId"]
     print(f"   ✅ Created AMI: {ami_id}")
 
-    return ami_id
-
-
-def wait_for_ami_available(ec2_client, ami_id, waiter_delay=30, waiter_max_attempts=40):
-    """Wait for AMI to become available. Delegates to waiter_utils.wait_ami_available.
-
-    Args:
-        ec2_client: Boto3 EC2 client
-        ami_id: AMI ID to wait for
-        waiter_delay: Delay in seconds between waiter checks
-        waiter_max_attempts: Maximum waiter attempts
-
-    Returns:
-        AMI ID when available
-    """
-    print(f"   ⏳ Waiting for AMI {ami_id} to become available...")
-    wait_ami_available(ec2_client, ami_id, delay=waiter_delay, max_attempts=waiter_max_attempts)
-    print(f"   ✅ AMI {ami_id} is now available")
     return ami_id
 
 
