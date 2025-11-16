@@ -6,10 +6,10 @@ Identifies which RDS instances are using which network interfaces and determines
 opportunities.
 """
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 
@@ -63,9 +63,9 @@ def _extract_cluster_info(cluster):
 def audit_rds_instances_in_region(region_name, aws_access_key_id, aws_secret_access_key):
     """Audit RDS instances in a specific region"""
     try:
-        rds = boto3.client(
+        rds = create_client(
             "rds",
-            region_name=region_name,
+            region=region_name,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
@@ -109,9 +109,9 @@ def audit_rds_instances_in_region(region_name, aws_access_key_id, aws_secret_acc
 def get_network_interfaces_in_region(region_name, aws_access_key_id, aws_secret_access_key):
     """Get RDS network interfaces in a specific region"""
     try:
-        ec2 = boto3.client(
+        ec2 = create_client(
             "ec2",
-            region_name=region_name,
+            region=region_name,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )

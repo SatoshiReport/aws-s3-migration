@@ -7,11 +7,11 @@ This script will deregister 7 unused AMIs, preserving only the one currently in 
 
 import sys
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def deregister_ami(ec2_client, ami_id, region):
@@ -127,9 +127,9 @@ def process_ami_deregistrations(amis_to_deregister, aws_access_key_id, aws_secre
         print(f"   Associated snapshot: {snapshot}")
         print(f"   Potential monthly savings: ${savings:.2f}")
 
-        ec2_client = boto3.client(
+        ec2_client = create_client(
             "ec2",
-            region_name=region,
+            region=region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )

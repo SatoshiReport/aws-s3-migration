@@ -5,10 +5,10 @@ Checks if EBS volumes from terminated instances were properly deleted
 """
 
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import get_resource_tags
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _build_attachment_info(attachments):
@@ -51,7 +51,7 @@ def _build_volume_detail(volume):
 def get_ebs_volumes_by_region(region_name):
     """Get all EBS volumes in a specific region with detailed information"""
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
         response = ec2.describe_volumes()
         volumes = response["Volumes"]
         return [_build_volume_detail(volume) for volume in volumes]

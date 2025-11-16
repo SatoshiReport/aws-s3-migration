@@ -13,12 +13,12 @@ This helps understand what's preventing cleanup and provides targeted solutions.
 import os
 import sys
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import extract_tag_value
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_GROUPS
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _collect_network_interface_deps(ec2_client, group_id):
@@ -113,9 +113,9 @@ def _collect_sg_rule_refs(ec2_client, group_id):
 def _collect_rds_deps(group_id, region, aws_access_key_id, aws_secret_access_key):
     """Collect RDS instances using the security group."""
     try:
-        rds_client = boto3.client(
+        rds_client = create_client(
             "rds",
-            region_name=region,
+            region=region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
@@ -248,9 +248,9 @@ def audit_security_group_dependencies():
         print("-" * 50)
 
         # Create EC2 client for the specific region
-        ec2_client = boto3.client(
+        ec2_client = create_client(
             "ec2",
-            region_name=region,
+            region=region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )

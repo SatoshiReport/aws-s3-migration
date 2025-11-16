@@ -5,7 +5,6 @@ Contains helper functions for region discovery and tag management.
 
 from typing import Dict, Optional
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import (
@@ -15,6 +14,7 @@ from cost_toolkit.common.aws_common import get_instance_name as _get_instance_na
 from cost_toolkit.common.aws_common import (
     get_resource_tags,
 )
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import find_resource_region
 
 
@@ -43,7 +43,7 @@ def get_instance_name(instance_id: str, region: str) -> str:
     Returns:
         Instance name from Name tag, or 'No Name' if not found
     """
-    ec2_client = boto3.client("ec2", region_name=region)
+    ec2_client = create_client("ec2", region=region)
     result = _get_instance_name_with_client(ec2_client, instance_id)
     # Convert "Unknown" to "No Name" for compatibility
     return "No Name" if result == "Unknown" else result

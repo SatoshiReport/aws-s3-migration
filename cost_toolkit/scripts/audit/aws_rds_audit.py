@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Audit RDS database instances."""
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _process_rds_instance(instance):
@@ -91,7 +92,7 @@ def _print_billing_analysis():
 def _audit_region_databases(region):
     """Audit databases in a single region."""
     try:
-        rds = boto3.client("rds", region_name=region)
+        rds = create_client("rds", region=region)
 
         instances = rds.describe_db_instances()
         clusters = rds.describe_db_clusters()
@@ -128,7 +129,7 @@ def _audit_region_databases(region):
 def audit_rds_databases():
     """Audit RDS databases across all regions to understand what's running"""
 
-    ec2 = boto3.client("ec2", region_name="us-east-1")
+    ec2 = create_client("ec2", region="us-east-1")
     regions = [region["RegionName"] for region in ec2.describe_regions()["Regions"]]
 
     print("AWS RDS Database Audit")

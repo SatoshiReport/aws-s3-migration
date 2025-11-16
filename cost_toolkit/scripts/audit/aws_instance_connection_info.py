@@ -2,9 +2,9 @@
 """Get EC2 instance connection information."""
 
 
-import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_utils import get_instance_info
 
 
@@ -105,7 +105,7 @@ def _print_connection_options(instance_id, region_name, public_ip, public_dns):
 def _check_ssm_availability(instance_id, region_name):
     """Check if SSM is available for the instance."""
     try:
-        ssm = boto3.client("ssm", region_name=region_name)
+        ssm = create_client("ssm", region=region_name)
         ssm_response = ssm.describe_instance_information(
             Filters=[{"Key": "InstanceIds", "Values": [instance_id]}]
         )
@@ -132,7 +132,7 @@ def get_instance_connection_info(instance_id, region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
         instance = get_instance_info(instance_id, region_name)
 
         _print_instance_basic_info(instance)

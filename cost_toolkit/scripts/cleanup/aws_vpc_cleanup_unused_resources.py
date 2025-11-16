@@ -11,10 +11,10 @@ This cleanup improves security hygiene and reduces clutter.
 import os
 import sys
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import (
     delete_security_group as delete_security_group_canonical,
 )
@@ -154,9 +154,9 @@ def clean_security_groups(aws_access_key_id, aws_secret_access_key):
         print(f"   Name: {group_name}")
         print(f"   VPC: {vpc_id}")
 
-        ec2_client = boto3.client(
+        ec2_client = create_client(
             "ec2",
-            region_name=region,
+            region=region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )

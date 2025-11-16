@@ -20,7 +20,7 @@ from datetime import datetime
 
 from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
-from cost_toolkit.scripts.aws_utils import load_aws_credentials_from_env
+from cost_toolkit.scripts.aws_client_factory import load_credentials_from_env
 from cost_toolkit.scripts.optimization.snapshot_export_common import (
     create_ami_from_snapshot,
     create_s3_bucket_if_not_exists,
@@ -244,7 +244,7 @@ def main():
     print("📋 Provide monitoring and cleanup commands")
     print()
 
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_env()
+    aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
     snapshots = _get_target_snapshots()
 
     total_size_gb = sum(snap["size_gb"] for snap in snapshots)

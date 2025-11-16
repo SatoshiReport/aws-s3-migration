@@ -4,11 +4,11 @@
 from collections import defaultdict
 from datetime import datetime, timezone
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost, calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 # Constants
@@ -82,7 +82,7 @@ def _process_snapshot(snapshot, region):
 
 def _audit_region(region):
     """Audit EBS resources in a single region"""
-    ec2 = boto3.client("ec2", region_name=region)
+    ec2 = create_client("ec2", region=region)
     volumes_response = ec2.describe_volumes()
     volumes = volumes_response.get("Volumes", [])
     snapshots_response = ec2.describe_snapshots(OwnerIds=["self"])

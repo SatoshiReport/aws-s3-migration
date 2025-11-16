@@ -3,8 +3,9 @@
 
 import time
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def delete_health_check(health_check_id):
@@ -13,7 +14,7 @@ def delete_health_check(health_check_id):
     print("=" * 80)
 
     try:
-        route53 = boto3.client("route53")
+        route53 = create_client("route53")
 
         # Get health check details first
         try:
@@ -51,7 +52,7 @@ def delete_hosted_zone(zone_name, zone_id):
     print("=" * 80)
 
     try:
-        route53 = boto3.client("route53")
+        route53 = create_client("route53")
 
         print(f"  Zone ID: {zone_id}")
         print(f"  Zone Name: {zone_name}")

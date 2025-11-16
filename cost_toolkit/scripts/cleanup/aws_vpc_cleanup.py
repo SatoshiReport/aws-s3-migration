@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Clean up unused VPC resources."""
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def release_elastic_ips_in_region(region_name):
@@ -11,7 +12,7 @@ def release_elastic_ips_in_region(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         # Get all Elastic IP addresses
         response = ec2.describe_addresses()

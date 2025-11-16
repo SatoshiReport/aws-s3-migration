@@ -5,11 +5,11 @@ Deletes multiple EBS snapshots across regions.
 """
 
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import find_resource_region
 
 from ..aws_utils import setup_aws_credentials
@@ -43,7 +43,7 @@ def get_snapshot_details(snapshot_id, region):
         Dictionary containing snapshot information
     """
     try:
-        ec2_client = boto3.client("ec2", region_name=region)
+        ec2_client = create_client("ec2", region=region)
         response = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
 
         if response["Snapshots"]:
@@ -74,7 +74,7 @@ def delete_snapshot_safely(snapshot_id, region):
         True if successful, False otherwise
     """
     try:
-        ec2_client = boto3.client("ec2", region_name=region)
+        ec2_client = create_client("ec2", region=region)
 
         # Get snapshot details first
         snapshot_info = get_snapshot_details(snapshot_id, region)

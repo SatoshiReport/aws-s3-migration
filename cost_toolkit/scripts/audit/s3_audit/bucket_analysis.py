@@ -6,9 +6,9 @@ Handles bucket metadata collection and object analysis.
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
-import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
 
 
@@ -111,7 +111,7 @@ def _process_object(obj, bucket_analysis, ninety_days_ago, large_object_threshol
 def analyze_bucket_objects(bucket_name, region):
     """Analyze all objects in a bucket for storage classes, sizes, and counts"""
     try:
-        s3_client = boto3.client("s3", region_name=region)
+        s3_client = create_client("s3", region=region)
 
         bucket_analysis = {
             "bucket_name": bucket_name,

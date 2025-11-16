@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Final VPC cleanup operations."""
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def release_remaining_elastic_ip():
@@ -11,7 +12,7 @@ def release_remaining_elastic_ip():
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name="eu-west-2")
+        ec2 = create_client("ec2", region="eu-west-2")
 
         # Get the remaining Elastic IP
         response = ec2.describe_addresses()

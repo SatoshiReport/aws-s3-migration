@@ -7,8 +7,9 @@ Disables Global Accelerator and stops Lightsail instances to reduce costs.
 import sys
 from pathlib import Path
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
@@ -57,7 +58,7 @@ def disable_global_accelerators():
 
     try:
         # Global Accelerator is only available in us-west-2
-        ga_client = boto3.client("globalaccelerator", region_name="us-west-2")
+        ga_client = create_client("globalaccelerator", region="us-west-2")
 
         # List all accelerators
         response = ga_client.list_accelerators()
@@ -157,7 +158,7 @@ def _stop_database(lightsail_client, database):
 def _process_region(region):
     """Process Lightsail resources in a single region."""
     print(f"\n📍 Checking region: {region}")
-    lightsail_client = boto3.client("lightsail", region_name=region)
+    lightsail_client = create_client("lightsail", region=region)
 
     instances = lightsail_client.get_instances().get("instances", [])
     databases = lightsail_client.get_relational_databases().get("relationalDatabases", [])

@@ -8,19 +8,18 @@ import argparse
 import time
 from datetime import datetime
 
-import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_utils import load_aws_credentials_from_env
+from cost_toolkit.scripts.aws_client_factory import create_client, load_credentials_from_env
 
 
 def check_export_status(region, ami_id=None):
     """Check status of export tasks in a region"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_env()
+    aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
 
-    ec2_client = boto3.client(
+    ec2_client = create_client(
         "ec2",
-        region_name=region,
+        region=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
@@ -69,11 +68,11 @@ def check_export_status(region, ami_id=None):
 
 def check_s3_files(region, bucket_name=None):
     """Check S3 files in export buckets"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_env()
+    aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
 
-    s3_client = boto3.client(
+    s3_client = create_client(
         "s3",
-        region_name=region,
+        region=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
@@ -195,10 +194,10 @@ def check_specific_ami(region, ami_id):
     check_export_status(region, ami_id)
 
     # Check S3 files for this AMI
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_env()
-    s3_client = boto3.client(
+    aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
+    s3_client = create_client(
         "s3",
-        region_name=region,
+        region=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )

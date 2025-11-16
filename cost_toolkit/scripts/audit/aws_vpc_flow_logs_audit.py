@@ -2,8 +2,9 @@
 """Audit VPC Flow Logs configuration."""
 
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _check_log_group_size(logs_client, log_group_name):
@@ -29,8 +30,8 @@ def audit_flow_logs_in_region(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
-        logs_client = boto3.client("logs", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
+        logs_client = create_client("logs", region=region_name)
 
         # Get VPC Flow Logs
         response = ec2.describe_flow_logs()
@@ -119,7 +120,7 @@ def audit_additional_vpc_costs_in_region(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
         _check_vpc_peering_connections(ec2)
         _check_vpc_endpoints(ec2)
         _check_vpc_resource_counts(ec2)

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Immediately clean up unused VPC and networking resources."""
 
-import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_utils import get_instance_info
 
 
@@ -13,7 +13,7 @@ def release_public_ip_from_instance(instance_id, region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
         instance = get_instance_info(instance_id, region_name)
 
         current_public_ip = instance.get("PublicIpAddress")
@@ -69,7 +69,7 @@ def remove_detached_internet_gateway(igw_id, region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         # First verify it's detached
         response = ec2.describe_internet_gateways(InternetGatewayIds=[igw_id])
@@ -148,7 +148,7 @@ def _check_vpc_network_resources(ec2, vpc_id, analysis):
 def _check_vpc_load_balancers(region_name, vpc_id, analysis):
     """Check for load balancers in a VPC"""
     try:
-        elbv2 = boto3.client("elbv2", region_name=region_name)
+        elbv2 = create_client("elbv2", region=region_name)
         lb_response = elbv2.describe_load_balancers()
         vpc_lbs = [lb for lb in lb_response.get("LoadBalancers", []) if lb.get("VpcId") == vpc_id]
         if vpc_lbs:
@@ -161,7 +161,7 @@ def _check_vpc_load_balancers(region_name, vpc_id, analysis):
 def _check_vpc_rds_instances(region_name, vpc_id, analysis):
     """Check for RDS instances in a VPC"""
     try:
-        rds = boto3.client("rds", region_name=region_name)
+        rds = create_client("rds", region=region_name)
         db_response = rds.describe_db_instances()
         vpc_dbs = [
             db
@@ -191,7 +191,7 @@ def analyze_vpc_dependencies(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         # Get all VPCs
         vpcs_response = ec2.describe_vpcs()

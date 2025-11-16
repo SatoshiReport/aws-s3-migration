@@ -9,10 +9,10 @@ import os
 import time
 from datetime import datetime
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import get_default_regions
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 from ..aws_utils import setup_aws_credentials
 
@@ -71,7 +71,7 @@ def _process_region(region):
     """Process Lightsail resources in a single region."""
     try:
         print(f"\n🔍 Checking region: {region}")
-        lightsail_client = boto3.client("lightsail", region_name=region)
+        lightsail_client = create_client("lightsail", region=region)
 
         instances_response = lightsail_client.get_instances()
         instances = instances_response.get("instances", [])

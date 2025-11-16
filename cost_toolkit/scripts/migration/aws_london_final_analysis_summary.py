@@ -2,10 +2,10 @@
 """Generate final migration analysis summary."""
 
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts import aws_utils
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 # Instance ID to stop
 INSTANCE_ID = "i-05ad29f28fc8a8fdc"
@@ -115,7 +115,7 @@ def final_analysis_summary():
     print("AWS London EBS Final Analysis Summary")
     print("=" * 80)
 
-    ec2 = boto3.client("ec2", region_name="eu-west-2")
+    ec2 = create_client("ec2", region="eu-west-2")
 
     _stop_instance(ec2)
 

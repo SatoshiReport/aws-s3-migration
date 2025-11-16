@@ -6,8 +6,9 @@ Handles volume deletion and information retrieval operations.
 from datetime import datetime, timezone
 from typing import Dict
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 from .utils import find_volume_region, get_instance_name, get_volume_tags
 
@@ -126,8 +127,8 @@ def get_volume_detailed_info(volume_id: str) -> Dict:
     region = find_volume_region(volume_id)
     if not region:
         raise VolumeNotFoundError(volume_id)
-    ec2_client = boto3.client("ec2", region_name=region)
-    cloudwatch_client = boto3.client("cloudwatch", region_name=region)
+    ec2_client = create_client("ec2", region=region)
+    cloudwatch_client = create_client("cloudwatch", region=region)
 
     # Get volume details
     response = ec2_client.describe_volumes(VolumeIds=[volume_id])
@@ -157,7 +158,7 @@ def delete_ebs_volume(volume_id: str, force: bool = False) -> bool:
         print(f"Volume {volume_id} not found in any region")
         return False
 
-    ec2_client = boto3.client("ec2", region_name=region)
+    ec2_client = create_client("ec2", region=region)
 
     # Get volume information before deletion
     try:

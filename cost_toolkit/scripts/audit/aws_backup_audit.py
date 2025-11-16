@@ -6,7 +6,6 @@ Checks for AWS Backup plans, scheduled snapshots, and automated AMI creation.
 
 from datetime import datetime, timezone
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.backup_utils import check_aws_backup_plans as get_backup_plans
@@ -15,6 +14,7 @@ from cost_toolkit.common.backup_utils import (
     check_eventbridge_scheduled_rules,
 )
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 # Constants
@@ -83,7 +83,7 @@ def _display_single_job(job):
 def check_aws_backup_plans(region):
     """Check for AWS Backup plans in a specific region."""
     try:
-        backup_client = boto3.client("backup", region_name=region)
+        backup_client = create_client("backup", region=region)
         backup_plans = get_backup_plans(region)
 
         if backup_plans:
@@ -135,7 +135,7 @@ def check_data_lifecycle_manager(region):
 
     if policies:
         try:
-            dlm_client = boto3.client("dlm", region_name=region)
+            dlm_client = create_client("dlm", region=region)
             print(f"📅 Data Lifecycle Manager Policies in {region}:")
             for policy in policies:
                 policy_id = policy["PolicyId"]
@@ -195,7 +195,7 @@ def check_scheduled_events(region):
     rules = check_eventbridge_scheduled_rules(region)
 
     if rules:
-        events_client = boto3.client("events", region_name=region)
+        events_client = create_client("events", region=region)
         snapshot_rules = [rule for rule in rules if _is_snapshot_related_rule(rule)]
 
         if snapshot_rules:
@@ -251,7 +251,7 @@ def _display_snapshot_pattern(pattern, snapshots_list):
 def analyze_recent_snapshots(region):
     """Analyze recent snapshots to identify automated creation patterns."""
     try:
-        ec2_client = boto3.client("ec2", region_name=region)
+        ec2_client = create_client("ec2", region=region)
 
         snapshots_response = ec2_client.describe_snapshots(OwnerIds=["self"], MaxResults=50)
         snapshots = snapshots_response.get("Snapshots", [])

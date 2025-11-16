@@ -4,8 +4,9 @@
 
 from datetime import datetime, timedelta, timezone
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 # Constants
 CPU_USAGE_VERY_LOW_THRESHOLD = 5
@@ -166,8 +167,8 @@ def get_instance_details_in_region(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
-        cloudwatch = boto3.client("cloudwatch", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
+        cloudwatch = create_client("cloudwatch", region=region_name)
 
         instances = [
             instance

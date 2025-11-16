@@ -6,10 +6,10 @@ Deletes all EFS file systems and mount targets to eliminate any potential costs.
 
 import time
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts import aws_utils
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _delete_mount_targets(efs_client, file_system_id):
@@ -66,7 +66,7 @@ def _process_region(region):
     """Process EFS resources in a single region."""
     print(f"\n=== Checking EFS resources in {region} ===")
 
-    efs_client = boto3.client("efs", region_name=region)
+    efs_client = create_client("efs", region=region)
     response = efs_client.describe_file_systems()
     file_systems = response["FileSystems"]
 

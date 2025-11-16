@@ -5,7 +5,6 @@ Safely disables all automated backup services while preserving existing data.
 """
 
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.backup_utils import check_aws_backup_plans as get_backup_plans
@@ -13,6 +12,7 @@ from cost_toolkit.common.backup_utils import (
     check_dlm_lifecycle_policies,
     check_eventbridge_scheduled_rules,
 )
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 from ..aws_utils import setup_aws_credentials
 
@@ -64,7 +64,7 @@ def _delete_single_backup_plan(backup_client, plan):
 def disable_aws_backup_plans(region):
     """Disable AWS Backup plans in a specific region."""
     try:
-        backup_client = boto3.client("backup", region_name=region)
+        backup_client = create_client("backup", region=region)
         backup_plans = get_backup_plans(region)
 
         if backup_plans:
@@ -84,7 +84,7 @@ def disable_aws_backup_plans(region):
 def disable_dlm_policies(region):
     """Disable Data Lifecycle Manager policies in a specific region."""
     try:
-        dlm_client = boto3.client("dlm", region_name=region)
+        dlm_client = create_client("dlm", region=region)
         policies = check_dlm_lifecycle_policies(region)
 
         if policies:
@@ -126,7 +126,7 @@ def disable_dlm_policies(region):
 def disable_eventbridge_backup_rules(region):
     """Disable EventBridge rules that trigger automated backups."""
     try:
-        events_client = boto3.client("events", region_name=region)
+        events_client = create_client("events", region=region)
         rules = check_eventbridge_scheduled_rules(region)
 
         backup_rules = []
@@ -177,7 +177,7 @@ def disable_eventbridge_backup_rules(region):
 def check_backup_vault_policies(region):
     """Check and optionally clean up backup vault policies."""
     try:
-        backup_client = boto3.client("backup", region_name=region)
+        backup_client = create_client("backup", region=region)
 
         # List backup vaults
         vaults_response = backup_client.list_backup_vaults()

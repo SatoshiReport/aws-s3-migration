@@ -3,9 +3,10 @@ Extended service status checking functions for AWS billing optimization.
 Contains additional AWS service check functions.
 """
 
-import boto3
 import botocore.exceptions
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 from .service_checks import (
     PENDING_DELETION_TARGET,
@@ -23,7 +24,7 @@ def check_lambda_status():
 
         for region in regions:
             try:
-                lambda_client = boto3.client("lambda", region_name=region)
+                lambda_client = create_client("lambda", region=region)
                 response = lambda_client.list_functions()
                 total_functions += len(response["Functions"])
 
@@ -47,7 +48,7 @@ def check_efs_status():
 
         for region in regions:
             try:
-                efs_client = boto3.client("efs", region_name=region)
+                efs_client = create_client("efs", region=region)
                 response = efs_client.describe_file_systems()
                 total_filesystems += len(response["FileSystems"])
 
@@ -66,7 +67,7 @@ def check_efs_status():
 def check_route53_status():
     """Check if specific Route 53 hosted zones have been deleted"""
     try:
-        route53_client = boto3.client("route53")
+        route53_client = create_client("route53")
 
         # Zones that should be deleted
         target_zones = ["88.176.35.in-addr.arpa", "apicentral.ai"]
@@ -139,7 +140,7 @@ def check_kms_status():
 
         for region in regions_to_check:
             try:
-                kms_client = boto3.client("kms", region_name=region)
+                kms_client = create_client("kms", region=region)
 
                 for key_id in target_keys:
                     if _check_kms_key_status(kms_client, key_id):
@@ -163,7 +164,7 @@ def check_vpc_status():
 
         for region in regions_to_check:
             try:
-                ec2 = boto3.client("ec2", region_name=region)
+                ec2 = create_client("ec2", region=region)
                 response = ec2.describe_addresses()
                 addresses = response.get("Addresses", [])
                 total_elastic_ips += len(addresses)

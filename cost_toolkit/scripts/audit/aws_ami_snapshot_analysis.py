@@ -7,11 +7,11 @@ about what each AMI is used for and whether it can be safely deregistered.
 
 import sys
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def get_ami_details(ec2_client, ami_id):
@@ -181,9 +181,9 @@ def analyze_snapshot_ami_relationships():
     total_potential_savings = 0
 
     for snapshot_id, info in snapshot_ami_mapping.items():
-        ec2_client = boto3.client(
+        ec2_client = create_client(
             "ec2",
-            region_name=info["region"],
+            region=info["region"],
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )

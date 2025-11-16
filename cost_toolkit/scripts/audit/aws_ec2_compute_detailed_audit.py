@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Detailed EC2 compute resource audit."""
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 
@@ -78,7 +78,7 @@ def analyze_ec2_instances_in_region(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
         response = ec2.describe_instances()
 
         instances_found = []
@@ -233,7 +233,7 @@ def analyze_ebs_volumes_in_region(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
         volumes = ec2.describe_volumes().get("Volumes", [])
 
         if not volumes:

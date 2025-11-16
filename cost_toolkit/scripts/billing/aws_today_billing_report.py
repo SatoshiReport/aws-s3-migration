@@ -7,11 +7,11 @@ Gets detailed billing information for today to identify currently active cost-ge
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import check_aws_credentials
 from cost_toolkit.common.terminal_utils import clear_screen
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_cost_operations import get_today_date_range
 
 # Constants for cost analysis thresholds and calculations
@@ -33,7 +33,7 @@ def get_today_billing_data():
     check_aws_credentials()
 
     # Create Cost Explorer client
-    ce_client = boto3.client("ce", region_name="us-east-1")
+    ce_client = create_client("ce", region="us-east-1")
 
     today_start, today_end = get_today_date_range()
     recent_start, recent_end = get_recent_days_range()

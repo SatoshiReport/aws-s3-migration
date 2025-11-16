@@ -2,8 +2,9 @@
 """Audit KMS encryption keys."""
 
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _print_key_info(key_info):
@@ -69,7 +70,7 @@ def _process_kms_key(kms, key_id):
 def _audit_region_kms_keys(region):
     """Audit KMS keys in a single region; returns (region_keys, region_cost)"""
     try:
-        kms = boto3.client("kms", region_name=region)
+        kms = create_client("kms", region=region)
         keys = kms.list_keys()
 
         if not keys["Keys"]:
@@ -133,7 +134,7 @@ def _check_vpn_gateways(ec2, region):
 def _check_vpn_resources(region):
     """Check VPN resources in a specific region"""
     try:
-        ec2 = boto3.client("ec2", region_name=region)
+        ec2 = create_client("ec2", region=region)
         _check_vpn_connections(ec2, region)
         _check_customer_gateways(ec2, region)
         _check_vpn_gateways(ec2, region)
@@ -144,7 +145,7 @@ def _check_vpn_resources(region):
 def audit_kms_keys():
     """Audit KMS keys across all regions to identify where they're being used"""
     # Get all AWS regions
-    ec2 = boto3.client("ec2", region_name="us-east-1")
+    ec2 = create_client("ec2", region="us-east-1")
     regions = [region["RegionName"] for region in ec2.describe_regions()["Regions"]]
 
     print("AWS KMS Key Usage Audit")

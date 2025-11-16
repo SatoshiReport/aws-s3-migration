@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Audit VPC configuration and resources."""
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _process_elastic_ip_address(addr, region_name):
@@ -55,7 +56,7 @@ def audit_elastic_ips_in_region(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         response = ec2.describe_addresses()
         addresses = response.get("Addresses", [])
@@ -93,7 +94,7 @@ def audit_nat_gateways_in_region(region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         response = ec2.describe_nat_gateways()
         nat_gateways = response.get("NatGateways", [])

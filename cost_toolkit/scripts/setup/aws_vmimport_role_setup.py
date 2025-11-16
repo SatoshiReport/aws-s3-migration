@@ -9,10 +9,10 @@ import json
 import os
 import sys
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def get_trust_policy():
@@ -126,7 +126,7 @@ def create_vmimport_role():
     aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
     # Create IAM client
-    iam_client = boto3.client(
+    iam_client = create_client(
         "iam", aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key
     )
 

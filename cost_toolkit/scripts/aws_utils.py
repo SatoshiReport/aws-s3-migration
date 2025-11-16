@@ -7,14 +7,13 @@ Shared utilities for AWS credential management and common functions.
 import sys
 from typing import Optional
 
-import boto3
-
 from cost_toolkit.common.aws_common import get_default_regions
 
 # Import canonical credential setup function
 from cost_toolkit.common.credential_utils import (
     setup_aws_credentials as setup_aws_credentials_canonical,
 )
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def load_aws_credentials(env_path: Optional[str] = None) -> bool:
@@ -79,7 +78,7 @@ def get_instance_info(instance_id: str, region_name: str) -> dict:
     Raises:
         ClientError: If instance not found or API call fails
     """
-    ec2 = boto3.client("ec2", region_name=region_name)
+    ec2 = create_client("ec2", region=region_name)
     response = ec2.describe_instances(InstanceIds=[instance_id])
     instance = response["Reservations"][0]["Instances"][0]
     return instance

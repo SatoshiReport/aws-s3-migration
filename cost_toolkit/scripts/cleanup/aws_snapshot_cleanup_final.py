@@ -8,12 +8,12 @@ This script targets the 7 specific snapshots that should now be deletable.
 import sys
 import time
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
 
 
@@ -120,9 +120,9 @@ def process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secre
         print(f"   Description: {description}")
         print(f"   Monthly cost: ${monthly_cost:.2f}")
 
-        ec2_client = boto3.client(
+        ec2_client = create_client(
             "ec2",
-            region_name=region,
+            region=region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )

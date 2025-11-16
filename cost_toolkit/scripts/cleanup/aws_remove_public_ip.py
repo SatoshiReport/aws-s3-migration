@@ -3,9 +3,9 @@
 
 import time
 
-import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_utils import get_instance_info
 
 
@@ -122,7 +122,7 @@ def remove_public_ip_from_instance(instance_id, region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         _instance, current_state, current_public_ip, network_interface_id = get_instance_details(
             ec2, instance_id, region_name

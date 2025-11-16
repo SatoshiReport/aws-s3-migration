@@ -6,10 +6,10 @@ Handles volume tagging, snapshot deletion, and S3 bucket listing.
 
 from datetime import datetime, timezone
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_s3_operations import get_bucket_location, list_buckets
 
 from ..aws_utils import setup_aws_credentials
@@ -28,7 +28,7 @@ def tag_volume_with_name(volume_id, name, region):
         True if successful, False otherwise
     """
     try:
-        ec2_client = boto3.client("ec2", region_name=region)
+        ec2_client = create_client("ec2", region=region)
 
         # Add the Name tag
         ec2_client.create_tags(Resources=[volume_id], Tags=[{"Key": "Name", "Value": name}])
@@ -69,8 +69,8 @@ def get_bucket_region(s3_client, bucket_name):
 def get_bucket_size_metrics(bucket_name, region):
     """Get bucket size metrics from CloudWatch"""
     try:
-        cloudwatch = boto3.client(
-            "cloudwatch", region_name=region if region != "Unknown" else "us-east-1"
+        cloudwatch = create_client(
+            "cloudwatch", region=region if region != "Unknown" else "us-east-1"
         )
 
         end_time = datetime.now(timezone.utc)
@@ -135,7 +135,7 @@ def list_s3_buckets():
         List of bucket information dictionaries
     """
     try:
-        s3_client = boto3.client("s3")
+        s3_client = create_client("s3")
 
         buckets = list_buckets()
 

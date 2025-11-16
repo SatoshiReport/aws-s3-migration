@@ -3,10 +3,10 @@
 
 import time
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.vpc_cleanup_utils import delete_vpc_and_dependencies as _delete_vpc_utils
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def delete_vpc_and_dependencies(vpc_id, region_name):
@@ -22,7 +22,7 @@ def delete_vpc_and_dependencies(vpc_id, region_name):
     """
     print(f"\n🗑️  Deleting VPC {vpc_id} in {region_name}")
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
         return _delete_vpc_utils(ec2, vpc_id)
     except ClientError as e:
         print(f"❌ Error during VPC deletion process: {e}")

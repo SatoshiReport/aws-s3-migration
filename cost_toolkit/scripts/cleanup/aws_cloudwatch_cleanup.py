@@ -5,10 +5,10 @@ Removes canary runs and reduces CloudWatch monitoring to eliminate API requests 
 """
 
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts import aws_utils
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _stop_canary_if_running(synthetics_client, canary_name, canary_state):
@@ -45,7 +45,7 @@ def _delete_single_canary(synthetics_client, canary):
 def _process_canaries_in_region(region):
     """Process canaries in a single region."""
     print(f"\n📍 Checking region: {region}")
-    synthetics_client = boto3.client("synthetics", region_name=region)
+    synthetics_client = create_client("synthetics", region=region)
 
     response = synthetics_client.describe_canaries()
     canaries = response.get("Canaries", [])
@@ -104,7 +104,7 @@ def _collect_alarm_names_to_disable(alarms):
 def _disable_alarms_in_region(region):
     """Disable alarms in a single region."""
     print(f"\n📍 Checking region: {region}")
-    cloudwatch_client = boto3.client("cloudwatch", region_name=region)
+    cloudwatch_client = create_client("cloudwatch", region=region)
 
     response = cloudwatch_client.describe_alarms()
     alarms = response.get("MetricAlarms", [])
@@ -179,7 +179,7 @@ def _update_log_group_retention(logs_client, log_group):
 def _reduce_retention_in_region(region):
     """Reduce log retention in a single region."""
     print(f"\n📍 Checking region: {region}")
-    logs_client = boto3.client("logs", region_name=region)
+    logs_client = create_client("logs", region=region)
 
     response = logs_client.describe_log_groups()
     log_groups = response.get("logGroups", [])

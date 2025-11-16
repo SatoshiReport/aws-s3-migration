@@ -2,8 +2,9 @@
 """Fix RDS subnet routing configuration."""
 
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 from ..aws_utils import setup_aws_credentials
 from .constants import create_public_subnet_group
@@ -13,7 +14,7 @@ def fix_rds_subnet_routing():
     """Move RDS instance to public subnets only"""
 
     setup_aws_credentials()
-    rds = boto3.client("rds", region_name="us-east-1")
+    rds = create_client("rds", region="us-east-1")
 
     print("🔧 Fixing RDS subnet routing for internet access...")
 

@@ -6,10 +6,10 @@ Deletes RDS network interfaces that are no longer attached to any RDS instances.
 
 import os
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 # Constants
 EXPECTED_ORPHANED_INTERFACES_COUNT = 2
@@ -45,9 +45,9 @@ def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_
         interface_id = interface["interface_id"]
 
         try:
-            ec2 = boto3.client(
+            ec2 = create_client(
                 "ec2",
-                region_name=region,
+                region=region,
                 aws_access_key_id=aws_access_key_id,
                 aws_secret_access_key=aws_secret_access_key,
             )

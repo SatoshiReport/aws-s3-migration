@@ -6,11 +6,11 @@ Safely terminates specified instances and handles associated EBS volumes.
 
 import time
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import extract_tag_value, get_instance_details
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 from ..aws_utils import setup_aws_credentials
 
@@ -27,7 +27,7 @@ def _get_instance_with_region(instance_id, region):
     Returns:
         Dictionary containing instance information with region added
     """
-    ec2_client = boto3.client("ec2", region_name=region)
+    ec2_client = create_client("ec2", region=region)
     details = get_instance_details(ec2_client, instance_id)
     if details:
         details["region"] = region
@@ -46,7 +46,7 @@ def get_volume_details(volume_id, region):
         Dictionary containing volume information
     """
     try:
-        ec2_client = boto3.client("ec2", region_name=region)
+        ec2_client = create_client("ec2", region=region)
 
         response = ec2_client.describe_volumes(VolumeIds=[volume_id])
         volume = response["Volumes"][0]
@@ -159,7 +159,7 @@ def terminate_instance_safely(instance_id, region):
         True if successful, False otherwise
     """
     try:
-        ec2_client = boto3.client("ec2", region_name=region)
+        ec2_client = create_client("ec2", region=region)
 
         instance_info = _get_instance_with_region(instance_id, region)
         if not instance_info:

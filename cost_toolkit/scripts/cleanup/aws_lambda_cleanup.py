@@ -6,10 +6,10 @@ Deletes all Lambda functions across regions to eliminate costs.
 
 import time
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts import aws_utils
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def delete_lambda_functions():
@@ -25,7 +25,7 @@ def delete_lambda_functions():
         print(f"\n=== Checking Lambda functions in {region} ===")
 
         try:
-            lambda_client = boto3.client("lambda", region_name=region)
+            lambda_client = create_client("lambda", region=region)
 
             # List all functions in this region
             response = lambda_client.list_functions()

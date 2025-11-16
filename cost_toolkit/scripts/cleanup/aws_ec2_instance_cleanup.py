@@ -3,11 +3,10 @@
 
 from datetime import datetime, timedelta, timezone
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import extract_tag_value, get_instance_details
-from cost_toolkit.scripts.aws_client_factory import create_ec2_client
+from cost_toolkit.scripts.aws_client_factory import create_client, create_ec2_client
 from cost_toolkit.scripts.aws_ec2_operations import (
     terminate_instance as terminate_instance_canonical,
 )
@@ -61,7 +60,7 @@ def rename_instance(instance_id, new_name, region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
 
         # Update the Name tag
         ec2.create_tags(Resources=[instance_id], Tags=[{"Key": "Name", "Value": new_name}])
@@ -132,8 +131,8 @@ def get_instance_detailed_info(instance_id, region_name):
     print("=" * 80)
 
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
-        cloudwatch = boto3.client("cloudwatch", region_name=region_name)
+        ec2 = create_client("ec2", region=region_name)
+        cloudwatch = create_client("cloudwatch", region=region_name)
 
         # Get instance details
         response = ec2.describe_instances(InstanceIds=[instance_id])

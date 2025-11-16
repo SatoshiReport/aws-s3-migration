@@ -3,9 +3,10 @@ Service status checking functions for AWS billing optimization.
 Contains functions to check the status of various AWS services.
 """
 
-import boto3
 import botocore.exceptions
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 PENDING_DELETION_TARGET = 4
 
@@ -13,7 +14,7 @@ PENDING_DELETION_TARGET = 4
 def check_global_accelerator_status():
     """Check if Global Accelerator is disabled"""
     try:
-        ga_client = boto3.client("globalaccelerator", region_name="us-west-2")
+        ga_client = create_client("globalaccelerator", region="us-west-2")
         response = ga_client.list_accelerators()
 
         disabled_count = 0
@@ -96,7 +97,7 @@ def check_lightsail_status():
 
         for region in regions:
             try:
-                lightsail_client = boto3.client("lightsail", region_name=region)
+                lightsail_client = create_client("lightsail", region=region)
 
                 inst_stopped, inst_total = _check_lightsail_instances_in_region(lightsail_client)
                 stopped_instances += inst_stopped
@@ -187,8 +188,8 @@ def check_cloudwatch_status():
 
         for region in regions:
             try:
-                cw_client = boto3.client("cloudwatch", region_name=region)
-                synthetics_client = boto3.client("synthetics", region_name=region)
+                cw_client = create_client("cloudwatch", region=region)
+                synthetics_client = create_client("synthetics", region=region)
 
                 canary_stopped, canary_total = _check_cloudwatch_canaries_in_region(
                     synthetics_client

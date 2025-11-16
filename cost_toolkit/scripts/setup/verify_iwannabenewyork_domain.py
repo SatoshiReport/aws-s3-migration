@@ -10,7 +10,6 @@ import sys
 import requests
 
 try:
-    import boto3
 
     BOTO3_AVAILABLE = True
 except ImportError:
@@ -18,6 +17,7 @@ except ImportError:
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.setup.exceptions import CertificateInfoError
 
 # HTTP status codes
@@ -233,7 +233,7 @@ def check_route53_configuration(domain):
         return True
 
     try:
-        route53 = boto3.client("route53")
+        route53 = create_client("route53")
 
         target_zone = _find_hosted_zone_for_domain(route53, domain)
 

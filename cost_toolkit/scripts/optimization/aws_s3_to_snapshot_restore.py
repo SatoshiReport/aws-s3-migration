@@ -9,10 +9,10 @@ import sys
 import time
 from datetime import datetime
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def list_s3_exports(s3_client, bucket_name):
@@ -228,16 +228,16 @@ def _validate_user_inputs(region, bucket_name):
 
 def _create_aws_clients(aws_access_key_id, aws_secret_access_key, region):
     """Create EC2 and S3 clients for the specified region."""
-    ec2_client = boto3.client(
+    ec2_client = create_client(
         "ec2",
-        region_name=region,
+        region=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
 
-    s3_client = boto3.client(
+    s3_client = create_client(
         "s3",
-        region_name=region,
+        region=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )

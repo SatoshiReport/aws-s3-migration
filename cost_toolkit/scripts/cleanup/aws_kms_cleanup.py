@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Clean up unused KMS encryption keys."""
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def get_keys_to_remove():
@@ -69,7 +70,7 @@ def process_single_key(key_info):
     print(f"\nProcessing {description} in {region}...")
 
     try:
-        kms = boto3.client("kms", region_name=region)
+        kms = create_client("kms", region=region)
 
         # Check current key state
         key_details = kms.describe_key(KeyId=key_id)

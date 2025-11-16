@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Clean up RDS database instances."""
 
-import boto3
 from botocore.exceptions import ClientError
+
+from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _delete_aurora_instance(rds_client, instance_id):
@@ -59,7 +60,7 @@ def _cleanup_aurora_cluster():
     print("-" * 40)
 
     try:
-        rds_eu = boto3.client("rds", region_name="eu-west-2")
+        rds_eu = create_client("rds", region="eu-west-2")
         cluster_id = "database-1"
         instance_id = "database-1-instance-1"
 
@@ -103,7 +104,7 @@ def _cleanup_mariadb_instance():
     print("-" * 40)
 
     try:
-        rds_us = boto3.client("rds", region_name="us-east-1")
+        rds_us = create_client("rds", region="us-east-1")
         instance_id = "database-1"
         _stop_mariadb_instance(rds_us, instance_id)
     except ClientError as e:
