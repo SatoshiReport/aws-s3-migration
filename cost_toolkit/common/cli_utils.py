@@ -91,3 +91,47 @@ def confirm_reset_state_db(db_path, skip_prompt=False):
         .lower()
     )
     return resp in {"y", "yes"}
+
+
+def handle_state_db_reset(
+    base_path,
+    db_path,
+    should_reset,
+    skip_prompt,
+    reseed_function,
+):
+    """
+    Handle state database reset workflow with confirmation.
+
+    This is the canonical implementation used by all scripts that need to reset
+    the migrate_v2 state database.
+
+    Args:
+        base_path: Path to the base directory to scan
+        db_path: Path to the database file
+        should_reset: Whether reset was requested
+        skip_prompt: If True, skip confirmation prompts
+        reseed_function: Function to call for reseeding (takes base_path, db_path)
+                        Should return (db_path, file_count, total_bytes)
+
+    Returns:
+        Path: The database path (unchanged if reset not performed)
+    """
+    from pathlib import Path
+
+    from cost_toolkit.common.format_utils import format_bytes
+
+    if not should_reset:
+        return db_path
+
+    if not confirm_reset_state_db(str(db_path), skip_prompt):
+        print("State database reset cancelled; continuing without reset.")
+        return db_path
+
+    new_db_path, file_count, total_bytes = reseed_function(base_path, db_path)
+    size_summary = format_bytes(total_bytes, use_comma_separators=True)
+    print(
+        f"✓ Recreated migrate_v2 state database at {new_db_path} "
+        f"({file_count:,} files, {size_summary}). Continuing."
+    )
+    return new_db_path

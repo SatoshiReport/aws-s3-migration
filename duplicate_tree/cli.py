@@ -13,11 +13,14 @@ except ImportError:  # pragma: no cover
     import config as config_module  # type: ignore[import]
 
 try:
-    from cost_toolkit.common.cli_utils import add_reset_state_db_args, confirm_reset_state_db
+    from cost_toolkit.common.cli_utils import (
+        add_reset_state_db_args,
+        handle_state_db_reset,
+    )
 except ImportError:  # pragma: no cover
     from cost_toolkit.common.cli_utils import (  # type: ignore[import]
         add_reset_state_db_args,
-        confirm_reset_state_db,
+        handle_state_db_reset,
     )
 
 try:  # Prefer package-relative imports when packaged
@@ -100,30 +103,15 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def handle_state_db_reset(
-    base_path: Path, db_path: Path, should_reset: bool, skip_prompt: bool
-) -> Path:
-    """Reset state DB if requested and confirmed."""
-    if not should_reset:
-        return db_path
-    if not confirm_reset_state_db(str(db_path), skip_prompt):
-        print("State database reset cancelled; continuing without reset.")
-        return db_path
-    db_path, file_count, total_bytes = reseed_state_db_from_local_drive(base_path, db_path)
-    print(
-        f"✓ Recreated migrate_v2 state database at {db_path} "
-        f"({file_count:,} files, {format_bytes(total_bytes)}). Continuing."
-    )
-    return db_path
-
-
 def main(argv: Optional[Sequence[str]] = None) -> int:
     """Run the duplicate tree report workflow."""
     args = parse_args(argv)
     base_path = Path(args.base_path).expanduser()
     db_path = Path(args.db_path).expanduser()
 
-    db_path = handle_state_db_reset(base_path, db_path, args.reset_state_db, args.yes)
+    db_path = handle_state_db_reset(
+        base_path, db_path, args.reset_state_db, args.yes, reseed_state_db_from_local_drive
+    )
 
     if not db_path.exists():
         print(f"State DB not found at {db_path}. Run migrate_v2 first.", file=sys.stderr)

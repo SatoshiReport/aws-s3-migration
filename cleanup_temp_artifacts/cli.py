@@ -18,8 +18,7 @@ try:  # Shared state DB utilities.
 except ImportError:  # pragma: no cover - direct script execution
     from state_db_admin import reseed_state_db_from_local_drive  # type: ignore
 
-from cost_toolkit.common.cli_utils import confirm_reset_state_db
-from cost_toolkit.common.format_utils import format_bytes
+from cost_toolkit.common.cli_utils import handle_state_db_reset
 
 from .args_parser import parse_args
 from .cache import build_scan_params
@@ -39,28 +38,6 @@ from .scanner import (
 )
 
 
-def maybe_reset_state_db(
-    base_path: Path,
-    db_path: Path,
-    *,
-    reset_requested: bool,
-    auto_confirm: bool,
-) -> Path:
-    """Handle optional migrate_v2 state DB reseeding."""
-    if not reset_requested:
-        return db_path
-    if not confirm_reset_state_db(str(db_path), skip_prompt=auto_confirm):
-        print("State database reset cancelled; continuing without reset.")
-        return db_path
-    new_db_path, file_count, total_bytes = reseed_state_db_from_local_drive(base_path, db_path)
-    size_summary = format_bytes(total_bytes, use_comma_separators=True)
-    print(
-        f"✓ Recreated migrate_v2 state database at {new_db_path} "
-        f"({file_count:,} files, {size_summary}). Continuing."
-    )
-    return new_db_path
-
-
 def _setup_paths(args: argparse.Namespace) -> tuple[Path, Path, os.stat_result] | int:
     """Set up base and database paths. Returns (base_path, db_path, db_stat) or error code."""
     base_path = Path(args.base_path).expanduser()
@@ -75,11 +52,8 @@ def _setup_paths(args: argparse.Namespace) -> tuple[Path, Path, os.stat_result] 
     else:
         db_path = db_path.resolve()
 
-    db_path = maybe_reset_state_db(
-        base_path,
-        db_path,
-        reset_requested=args.reset_state_db,
-        auto_confirm=args.yes,
+    db_path = handle_state_db_reset(
+        base_path, db_path, args.reset_state_db, args.yes, reseed_state_db_from_local_drive
     )
 
     if not db_path.exists():

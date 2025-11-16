@@ -13,29 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 try:
-    from cost_toolkit.common.cli_utils import confirm_reset_state_db
-    from cost_toolkit.common.format_utils import format_bytes
+    from cost_toolkit.common.cli_utils import handle_state_db_reset
     from state_db_admin import reseed_state_db_from_local_drive
 except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
     raise SystemExit(f"Unable to import state_db_admin module: {exc}") from exc
-
-
-BYTES_PER_UNIT = 1024
-
-
-def handle_state_db_reset(
-    base_path: Path, db_path: Path, should_reset: bool, skip_prompt: bool
-) -> Path:
-    """Reset state DB if requested and confirmed."""
-    if not should_reset:
-        return db_path
-    if not confirm_reset_state_db(str(db_path), skip_prompt):
-        print("State database reset cancelled; continuing without reset.")
-        return db_path
-    db_path, file_count, total_bytes = reseed_state_db_from_local_drive(base_path, db_path)
-    size_summary = format_bytes(total_bytes, use_comma_separators=True)
-    print(
-        f"✓ Recreated migrate_v2 state database at {db_path} "
-        f"({file_count:,} files, {size_summary}). Continuing."
-    )
-    return db_path

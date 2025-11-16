@@ -42,7 +42,6 @@ except ImportError:  # pragma: no cover
 MIN_REPORT_FILES = 2
 MIN_REPORT_BYTES = 512 * 1024 * 1024  # 0.5 GiB
 MIN_DUPLICATE_NODES = 2
-BYTES_PER_UNIT = 1024
 
 ClusterRow = Dict[str, Any]
 NodeRow = Dict[str, Any]

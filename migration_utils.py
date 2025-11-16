@@ -4,8 +4,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
-# Constants for size and time conversions
-BYTES_PER_KB = 1024.0
+# Constants for time conversions
 SECONDS_PER_MINUTE = 60
 SECONDS_PER_HOUR = 3600
 SECONDS_PER_DAY = 86400

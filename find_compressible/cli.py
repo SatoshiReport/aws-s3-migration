@@ -17,13 +17,17 @@ except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
     raise SystemExit(f"Unable to import config module: {exc}") from exc
 
 try:
-    from cost_toolkit.common.cli_utils import add_reset_state_db_args
+    from cost_toolkit.common.cli_utils import add_reset_state_db_args, handle_state_db_reset
     from cost_toolkit.common.format_utils import parse_size
 except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
     raise SystemExit(f"Unable to import cost_toolkit modules: {exc}") from exc
 
+try:
+    from state_db_admin import reseed_state_db_from_local_drive
+except ImportError as exc:  # pragma: no cover - failure is fatal for this CLI
+    raise SystemExit(f"Unable to import state_db_admin module: {exc}") from exc
+
 from find_compressible.analysis import find_candidates
-from find_compressible.cache import handle_state_db_reset
 from find_compressible.reporting import (
     print_compression_summary,
     print_scan_summary,
@@ -35,7 +39,6 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-BYTES_PER_UNIT = 1024
 DEFAULT_MIN_SIZE = 512 * 1024 * 1024  # 512 MiB
 
 
@@ -101,7 +104,9 @@ def main() -> None:
     buckets = sorted(set(args.buckets)) if args.buckets else []
     db_path = Path(args.db_path).expanduser()
 
-    db_path = handle_state_db_reset(base_path, db_path, args.reset_state_db, args.yes)
+    db_path = handle_state_db_reset(
+        base_path, db_path, args.reset_state_db, args.yes, reseed_state_db_from_local_drive
+    )
 
     if not db_path.exists():
         raise SystemExit(f"State DB not found at {db_path}. Run migrate_v2 first.")

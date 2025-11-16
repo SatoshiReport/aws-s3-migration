@@ -3,8 +3,7 @@ Constants for S3 audit.
 Storage class pricing and threshold definitions.
 """
 
-# Constants for byte conversion and age thresholds
-BYTES_PER_KB = 1024.0  # Bytes to kilobytes conversion factor
+# Constants for age thresholds
 DAYS_THRESHOLD_IA = 30  # Days threshold for Standard-IA storage class transition
 DAYS_THRESHOLD_GLACIER = 90  # Days threshold for Glacier archival transition
 DAYS_THRESHOLD_VERY_OLD = 365  # Days threshold for very old objects (1 year)

@@ -9,76 +9,85 @@ from cleanup_temp_artifacts.cli import (  # pylint: disable=no-name-in-module
     _handle_deletion,
     _setup_paths,
     main,
-    maybe_reset_state_db,
 )
+from cost_toolkit.common.cli_utils import handle_state_db_reset
 
 
 def test_maybe_reset_state_db_no_reset():
-    """Test maybe_reset_state_db when reset is not requested."""
+    """Test handle_state_db_reset when reset is not requested."""
     db_path = Path("/tmp/test.db")
-    result = maybe_reset_state_db(
+    mock_reseed = MagicMock()
+    result = handle_state_db_reset(
         Path("/tmp/base"),
         db_path,
-        reset_requested=False,
-        auto_confirm=False,
+        False,  # should_reset
+        False,  # skip_prompt
+        mock_reseed,
     )
     assert result == db_path
+    mock_reseed.assert_not_called()
 
 
 def test_maybe_reset_state_db_with_auto_confirm(tmp_path):
-    """Test maybe_reset_state_db with auto_confirm=True."""
+    """Test handle_state_db_reset with skip_prompt=True."""
     base_path = tmp_path / "base"
     base_path.mkdir()
     db_path = tmp_path / "test.db"
 
-    with patch("cleanup_temp_artifacts.cli.reseed_state_db_from_local_drive") as mock_reseed:
-        mock_reseed.return_value = (db_path, 100, 1000000)
+    mock_reseed = MagicMock()
+    mock_reseed.return_value = (db_path, 100, 1000000)
 
-        result = maybe_reset_state_db(
-            base_path,
-            db_path,
-            reset_requested=True,
-            auto_confirm=True,
-        )
+    result = handle_state_db_reset(
+        base_path,
+        db_path,
+        True,  # should_reset
+        True,  # skip_prompt
+        mock_reseed,
+    )
 
-        assert result == db_path
-        mock_reseed.assert_called_once()
+    assert result == db_path
+    mock_reseed.assert_called_once_with(base_path, db_path)
 
 
 def test_maybe_reset_state_db_user_confirms(tmp_path):
-    """Test maybe_reset_state_db when user confirms."""
+    """Test handle_state_db_reset when user confirms."""
     base_path = tmp_path / "base"
     base_path.mkdir()
     db_path = tmp_path / "test.db"
 
-    with patch("cleanup_temp_artifacts.cli.reseed_state_db_from_local_drive") as mock_reseed:
-        with patch("builtins.input", return_value="y"):
-            mock_reseed.return_value = (db_path, 100, 1000000)
+    mock_reseed = MagicMock()
+    mock_reseed.return_value = (db_path, 100, 1000000)
 
-            result = maybe_reset_state_db(
-                base_path,
-                db_path,
-                reset_requested=True,
-                auto_confirm=False,
-            )
-
-            assert result == db_path
-            mock_reseed.assert_called_once()
-
-
-def test_maybe_reset_state_db_user_declines(tmp_path, capsys):
-    """Test maybe_reset_state_db when user declines."""
-    db_path = tmp_path / "test.db"
-
-    with patch("builtins.input", return_value="n"):
-        result = maybe_reset_state_db(
-            tmp_path / "base",
+    with patch("builtins.input", return_value="y"):
+        result = handle_state_db_reset(
+            base_path,
             db_path,
-            reset_requested=True,
-            auto_confirm=False,
+            True,  # should_reset
+            False,  # skip_prompt
+            mock_reseed,
         )
 
         assert result == db_path
+        mock_reseed.assert_called_once_with(base_path, db_path)
+
+
+def test_maybe_reset_state_db_user_declines(tmp_path, capsys):
+    """Test handle_state_db_reset when user declines."""
+    db_path = tmp_path / "test.db"
+
+    mock_reseed = MagicMock()
+
+    with patch("builtins.input", return_value="n"):
+        result = handle_state_db_reset(
+            tmp_path / "base",
+            db_path,
+            True,  # should_reset
+            False,  # skip_prompt
+            mock_reseed,
+        )
+
+        assert result == db_path
+        mock_reseed.assert_not_called()
         captured = capsys.readouterr()
         assert "cancelled" in captured.out
 
