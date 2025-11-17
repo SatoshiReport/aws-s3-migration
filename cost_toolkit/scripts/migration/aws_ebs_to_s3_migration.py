@@ -3,8 +3,8 @@
 
 
 import os
-import boto3
 
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.s3_utils import create_s3_bucket_with_region

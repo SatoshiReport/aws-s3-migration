@@ -11,7 +11,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.aws_client_factory import create_ec2_client
 from cost_toolkit.common.aws_common import find_resource_region as find_resource_region_canonical
 from cost_toolkit.common.aws_common import (
-    get_all_aws_regions,
     get_default_regions,
     get_instance_name,
 )

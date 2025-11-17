@@ -4,18 +4,19 @@ AWS Utilities Module
 Shared utilities for AWS credential management and common functions.
 """
 
-import boto3
 import sys
 from typing import Optional
 
-from botocore.exceptions import ClientError
+import boto3
 
+from cost_toolkit.common import credential_utils
 from cost_toolkit.common.aws_client_factory import (
     _resolve_env_path,
+)
+from cost_toolkit.common.aws_client_factory import (
     load_credentials_from_env as load_aws_credentials_from_env,
 )
 from cost_toolkit.common.aws_common import get_default_regions
-from cost_toolkit.common import credential_utils
 
 
 def load_aws_credentials(env_path: Optional[str] = None) -> bool:

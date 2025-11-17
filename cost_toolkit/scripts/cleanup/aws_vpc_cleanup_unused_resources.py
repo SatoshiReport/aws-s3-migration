@@ -14,14 +14,12 @@ from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_ec2_operations import (
-    delete_security_group as delete_security_group_canonical,
-)
 
 
 def load_aws_credentials():
     """Load AWS credentials for VPC cleanup workflows."""
     return setup_aws_credentials()
+
 
 # Unused security groups identified in the audit
 UNUSED_SECURITY_GROUPS = [
@@ -114,10 +112,11 @@ def delete_security_group(ec2_client, group_id, group_name, _region):
     try:
         ec2_client.delete_security_group(GroupId=group_id)
         print(f"   ✅ Successfully deleted {group_id}")
-        return True
     except ClientError as e:
         print(f"   ❌ Error deleting {group_id}: {e}")
         return False
+    else:
+        return True
 
 
 def print_cleanup_intro():

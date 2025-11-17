@@ -3,8 +3,8 @@
 
 
 import base64
-import boto3
 
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts import aws_utils

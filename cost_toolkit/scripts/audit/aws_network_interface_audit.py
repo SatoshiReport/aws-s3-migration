@@ -7,9 +7,9 @@ Identifies unused network interfaces across all regions for cleanup.
 import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts import aws_ec2_operations
 from cost_toolkit.common.aws_common import get_resource_tags
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts import aws_ec2_operations
 
 
 def load_aws_credentials():
@@ -21,7 +21,7 @@ def get_all_regions():
     """Get list of all AWS regions for EC2."""
     try:
         ec2 = aws_ec2_operations.create_ec2_client(region="us-east-1")
-    except Exception:  # pragma: no cover - fallback when credentials missing
+    except (ClientError, ValueError):  # pragma: no cover - fallback when credentials missing
         ec2 = None
 
     # Fall back to a direct boto3 client if factory setup fails

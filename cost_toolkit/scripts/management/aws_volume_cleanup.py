@@ -4,13 +4,11 @@ AWS Volume Cleanup and Management Script
 Handles volume tagging, snapshot deletion, and S3 bucket listing.
 """
 
-import boto3
 from datetime import datetime, timezone
 
+import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
-from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
 from cost_toolkit.scripts.aws_s3_operations import list_buckets
 
 from ..aws_utils import setup_aws_credentials
@@ -73,10 +71,11 @@ def delete_snapshot(snapshot_id, region):
         print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
         ec2_client.delete_snapshot(SnapshotId=snapshot_id)
         print(f"   ✅ Successfully deleted snapshot {snapshot_id}")
-        return True
     except ClientError as e:
         print(f"   ❌ Error deleting snapshot {snapshot_id}: {e}")
         return False
+    else:
+        return True
 
 
 def get_bucket_region(s3_client, bucket_name):
@@ -86,10 +85,11 @@ def get_bucket_region(s3_client, bucket_name):
         location = response.get("LocationConstraint")
         region = "us-east-1" if not location else location
         print(f"    Region: {region}")
-        return region
     except ClientError:
         print("    Region: Unable to determine")
         return "Unknown"
+    else:
+        return region
 
 
 def get_bucket_size_metrics(bucket_name, region):

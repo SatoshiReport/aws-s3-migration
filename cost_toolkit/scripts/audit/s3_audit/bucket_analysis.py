@@ -3,10 +3,10 @@ Bucket analysis functions for S3 audit.
 Handles bucket metadata collection and object analysis.
 """
 
-import boto3
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region

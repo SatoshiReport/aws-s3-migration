@@ -233,6 +233,7 @@ def check_route53_configuration(domain):
         return True
 
     try:
+        assert boto3 is not None
         route53 = boto3.client("route53")
 
         target_zone = _find_hosted_zone_for_domain(route53, domain)

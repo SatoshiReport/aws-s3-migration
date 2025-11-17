@@ -3,9 +3,9 @@ Main entry point for S3 audit CLI.
 Orchestrates bucket analysis and report generation.
 """
 
-import boto3
 from collections import defaultdict
 
+import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials

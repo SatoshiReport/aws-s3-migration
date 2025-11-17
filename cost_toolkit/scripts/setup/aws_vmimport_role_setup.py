@@ -5,7 +5,6 @@ Creates the required 'vmimport' IAM service role needed for AMI export operation
 This role is required by AWS to export AMIs to S3.
 """
 
-import os
 import json
 import sys
 

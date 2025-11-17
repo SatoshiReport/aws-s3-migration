@@ -188,9 +188,7 @@ class TestMain:
 
     def test_main_success(self, capsys):
         """Test successful main execution."""
-        with patch(
-            "cost_toolkit.common.credential_utils.setup_aws_credentials"
-        ) as mock_load:
+        with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_load:
             mock_load.return_value = ("key", "secret")
             with patch("boto3.client") as mock_client:
                 mock_ec2 = MagicMock()
@@ -203,9 +201,7 @@ class TestMain:
 
     def test_main_client_error(self, capsys):
         """Test main with ClientError during execution."""
-        with patch(
-            "cost_toolkit.common.credential_utils.setup_aws_credentials"
-        ) as mock_load:
+        with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_load:
             error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
             mock_load.side_effect = error
             try:
@@ -221,9 +217,7 @@ class TestMain:
         with patch(
             "cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis.cleanup_failed_export_amis"
         ) as mock_cleanup:
-            with patch(
-                "cost_toolkit.common.credential_utils.setup_aws_credentials"
-            ) as mock_load:
+            with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key", "secret")
                 try:
                     main()
@@ -233,9 +227,7 @@ class TestMain:
 
     def test_main_with_partial_success(self, capsys):
         """Test main with partial cleanup success."""
-        with patch(
-            "cost_toolkit.common.credential_utils.setup_aws_credentials"
-        ) as mock_load:
+        with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_load:
             mock_load.return_value = ("key", "secret")
             with patch("boto3.client") as mock_client:
                 mock_ec2 = MagicMock()

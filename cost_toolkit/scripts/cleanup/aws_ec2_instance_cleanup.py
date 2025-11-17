@@ -23,7 +23,9 @@ def terminate_instance(instance_id, region_name):
         # Get instance details first using canonical function
         details = get_instance_details(ec2, instance_id)
         if not details:
-            print(f"  ❌ Error terminating instance {instance_id}: Could not retrieve instance details")
+            print(
+                f"  ❌ Error terminating instance {instance_id}: Could not retrieve instance details"
+            )
             return False
 
         instance_type = details["instance_type"]

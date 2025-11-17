@@ -3,9 +3,10 @@ AWS EBS Volume Snapshot Operations Module
 Handles snapshot creation and related operations.
 """
 
-import boto3
 from datetime import datetime, timezone
 from typing import Dict, Optional
+
+import boto3
 
 from .utils import find_volume_region, get_volume_tags
 

@@ -229,9 +229,7 @@ class TestPrintCleanupRecommendations:
 
 def test_main_function_main_execution(capsys):
     """Test main function execution."""
-    with patch(
-        "cost_toolkit.common.credential_utils.setup_aws_credentials"
-    ) as mock_creds:
+    with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_creds:
         with patch(
             "cost_toolkit.scripts.audit.aws_rds_network_interface_audit.get_all_regions"
         ) as mock_regions:
@@ -262,9 +260,7 @@ def test_main_function_main_execution(capsys):
 
 def test_main_client_error_main_error(capsys):
     """Test main function with client error."""
-    with patch(
-        "cost_toolkit.common.credential_utils.setup_aws_credentials"
-    ) as mock_creds:
+    with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_creds:
         with patch(
             "cost_toolkit.scripts.audit.aws_rds_network_interface_audit.get_all_regions"
         ) as mock_regions:
