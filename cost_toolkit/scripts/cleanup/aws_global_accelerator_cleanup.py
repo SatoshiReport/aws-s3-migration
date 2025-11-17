@@ -6,21 +6,23 @@ Disables and deletes all Global Accelerator resources to eliminate charges.
 
 import time
 
+import boto3
 from botocore.exceptions import ClientError
-
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 from ..aws_utils import setup_aws_credentials
 
 MAX_ACCELERATOR_WAIT_SECONDS = 600
 
 
+def _get_ga_client():
+    """Create a Global Accelerator client in us-west-2."""
+    return boto3.client("globalaccelerator", region_name="us-west-2")
+
+
 def list_accelerators():
     """List all Global Accelerators"""
     try:
-        client = create_client(
-            "globalaccelerator", region="us-west-2"
-        )  # Global Accelerator is only in us-west-2
+        client = _get_ga_client()  # Global Accelerator is only in us-west-2
         response = client.list_accelerators()
         return response.get("Accelerators", [])
     except ClientError as e:
@@ -31,7 +33,7 @@ def list_accelerators():
 def disable_accelerator(accelerator_arn):
     """Disable a Global Accelerator"""
     try:
-        client = create_client("globalaccelerator", region="us-west-2")
+        client = _get_ga_client()
 
         # Check current status
         response = client.describe_accelerator(AcceleratorArn=accelerator_arn)
@@ -78,7 +80,7 @@ def disable_accelerator(accelerator_arn):
 def delete_listeners(accelerator_arn):
     """Delete all listeners for an accelerator"""
     try:
-        client = create_client("globalaccelerator", region="us-west-2")
+        client = _get_ga_client()
 
         # List listeners
         response = client.list_listeners(AcceleratorArn=accelerator_arn)
@@ -114,7 +116,7 @@ def delete_listeners(accelerator_arn):
 def delete_accelerator(accelerator_arn):
     """Delete a Global Accelerator"""
     try:
-        client = create_client("globalaccelerator", region="us-west-2")
+        client = _get_ga_client()
 
         print("  🗑️  Deleting accelerator...")
         client.delete_accelerator(AcceleratorArn=accelerator_arn)

@@ -135,7 +135,7 @@ class TestAuditComprehensiveVpc:
     def test_audit_with_resources(self, capsys):
         """Test comprehensive VPC audit with resources."""
         with patch(
-            "cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit.load_aws_credentials"
+            "cost_toolkit.common.credential_utils.setup_aws_credentials"
         ) as mock_creds:
             with patch(
                 "cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit."
@@ -182,7 +182,7 @@ class TestAuditComprehensiveVpc:
     def test_audit_no_resources(self, capsys):
         """Test comprehensive VPC audit with no resources."""
         with patch(
-            "cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit.load_aws_credentials"
+            "cost_toolkit.common.credential_utils.setup_aws_credentials"
         ) as mock_creds:
             with patch(
                 "cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit."

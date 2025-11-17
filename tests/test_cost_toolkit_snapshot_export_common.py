@@ -19,15 +19,6 @@ from cost_toolkit.scripts.optimization.snapshot_export_common import (
 
 
 # Tests for load_aws_credentials
-def test_load_aws_credentials():
-    """Test load_aws_credentials wrapper function."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
-# Tests for create_s3_bucket_if_not_exists
-@patch("builtins.print")
 def test_create_s3_bucket_if_not_exists_already_exists(mock_print):
     """Test bucket already exists."""
     mock_s3 = MagicMock()
@@ -145,7 +136,7 @@ def test_create_ami_from_snapshot_failure(_mock_print, mock_register):
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common.wait_ami_available")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common._register_ami")
 @patch("builtins.print")
-def test_create_ami_from_snapshot_with_boot_mode(_mock_print, mock_register, mock_wait):
+def test_create_ami_from_snapshot_with_boot_mode(_mock_print, mock_register, _mock_wait):
     """Test AMI creation with boot mode specified."""
     mock_ec2 = MagicMock()
     mock_register.return_value = "ami-12345678"

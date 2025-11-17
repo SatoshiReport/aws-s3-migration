@@ -223,7 +223,7 @@ class TestAuditSecurityGroupDependencies:
         """Test successful audit."""
         with (
             patch(
-                "cost_toolkit.scripts.audit.aws_security_group_dependencies.load_aws_credentials"
+                "cost_toolkit.common.credential_utils.setup_aws_credentials"
             ) as mock_creds,
             patch("boto3.client") as mock_boto_client,
             patch(
@@ -252,7 +252,7 @@ class TestAuditSecurityGroupDependencies:
         """Test audit with found dependencies."""
         with (
             patch(
-                "cost_toolkit.scripts.audit.aws_security_group_dependencies.load_aws_credentials"
+                "cost_toolkit.common.credential_utils.setup_aws_credentials"
             ) as mock_creds,
             patch("boto3.client") as mock_boto_client,
             patch(

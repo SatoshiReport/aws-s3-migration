@@ -14,19 +14,17 @@ Audits all VPC resources across regions to identify unused components that can b
 Identifies orphaned resources that may be left over from terminated instances.
 """
 
-import os
 import sys
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import extract_tag_value
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def get_resource_name(tags):
     """Extract Name tag from resource tags. Delegates to canonical implementation."""
-    from cost_toolkit.common.aws_common import extract_tag_value
-
     # extract_tag_value expects a resource dict with 'Tags' key
     resource_dict = {"Tags": tags} if tags else {}
     return extract_tag_value(resource_dict, "Name")

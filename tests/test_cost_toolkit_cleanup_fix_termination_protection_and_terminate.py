@@ -17,13 +17,6 @@ from cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate i
 )
 
 
-def test_load_credentials_calls_setup():
-    """Test that load_aws_credentials calls setup_aws_credentials."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestDisableTerminationProtection:
     """Test disabling termination protection."""
 

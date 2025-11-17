@@ -4,9 +4,13 @@ from datetime import datetime
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
 from cost_toolkit.common.waiter_utils import wait_ami_available
+
+
+def wait_for_ami_available(ec2_client, ami_id, delay=30, max_attempts=40):
+    """Wrapper used for test overrides while delegating to the canonical waiter."""
+    return wait_ami_available(ec2_client, ami_id, delay=delay, max_attempts=max_attempts)
 
 
 def create_s3_bucket_if_not_exists(s3_client, bucket_name, region, enable_versioning=True):
@@ -91,13 +95,12 @@ def create_ami_from_snapshot(
             attempt_suffix=attempt_suffix,
         )
         print(f"   ⏳ Waiting for AMI {ami_id} to become available...")
-        wait_ami_available(ec2_client, ami_id, delay=30, max_attempts=40)
+        wait_for_ami_available(ec2_client, ami_id, delay=30, max_attempts=40)
         print(f"   ✅ AMI {ami_id} is now available")
     except ClientError as e:
         print(f"   ❌ Error creating AMI from snapshot {snapshot_id}: {e}")
         return None
-    else:
-        return ami_id
+    return ami_id
 
 
 def _register_ami(

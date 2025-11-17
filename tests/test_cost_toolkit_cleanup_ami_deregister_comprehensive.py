@@ -18,13 +18,6 @@ from cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk import (
 )
 
 
-def test_load_aws_credentials_calls_setup_credentials():
-    """Test that function calls setup utility."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestDeregisterAmi:
     """Tests for deregister_ami function."""
 
@@ -244,7 +237,7 @@ class TestBulkDeregisterUnusedAmis:
     def test_bulk_deregister_cancelled(self, capsys):
         """Test when user cancels operation."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.load_aws_credentials",
+            "cost_toolkit.common.credential_utils.setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch("builtins.input", return_value="NO"):
@@ -256,7 +249,7 @@ class TestBulkDeregisterUnusedAmis:
     def test_bulk_deregister_success(self, capsys):
         """Test successful bulk deregistration."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.load_aws_credentials",
+            "cost_toolkit.common.credential_utils.setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch("builtins.input", return_value="DEREGISTER ALL AMIS"):

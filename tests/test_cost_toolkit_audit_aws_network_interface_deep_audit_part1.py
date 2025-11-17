@@ -2,49 +2,12 @@
 
 from __future__ import annotations
 
-import os
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from cost_toolkit.scripts.audit.aws_network_interface_deep_audit import (
     _check_instance_attachment,
     _print_basic_eni_info,
 )
-
-
-class TestLoadAwsCredentials:
-    """Tests for load_aws_credentials function."""
-
-    def test_load_credentials_success(self, capsys):
-        """Test successful credential loading from environment."""
-        # This test is no longer relevant - load_aws_credentials wrapper has been removed
-        # Module now uses setup_aws_credentials directly
-        pass
-
-    def test_load_credentials_missing_access_key(self):
-        """Test credential loading with missing access key."""
-        # This test is no longer relevant - load_aws_credentials wrapper has been removed
-        # Module now uses setup_aws_credentials directly
-        pass
-
-    def test_load_credentials_missing_secret_key(self):
-        """Test credential loading with missing secret key."""
-        # This test is no longer relevant - load_aws_credentials wrapper has been removed
-        # Module now uses setup_aws_credentials directly
-        pass
-
-    def test_load_credentials_both_missing(self):
-        """Test credential loading with both credentials missing."""
-        # This test is no longer relevant - load_aws_credentials wrapper has been removed
-        # Module now uses setup_aws_credentials directly
-        pass
-
-    def test_load_dotenv_called(self):
-        """Test that load_dotenv is called with correct path."""
-        # This test is no longer relevant - load_aws_credentials wrapper has been removed
-        # Module now uses setup_aws_credentials directly
-        pass
 
 
 class TestPrintBasicEniInfo:

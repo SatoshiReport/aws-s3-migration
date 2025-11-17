@@ -5,11 +5,8 @@ from datetime import datetime, timedelta, timezone
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client, create_ec2_client
 from cost_toolkit.common.aws_common import extract_tag_value, get_instance_details
-from cost_toolkit.scripts.aws_client_factory import create_client, create_ec2_client
-from cost_toolkit.scripts.aws_ec2_operations import (
-    terminate_instance as terminate_instance_canonical,
-)
 
 
 def terminate_instance(instance_id, region_name):
@@ -26,7 +23,7 @@ def terminate_instance(instance_id, region_name):
         # Get instance details first using canonical function
         details = get_instance_details(ec2, instance_id)
         if not details:
-            print("  ❌ Could not retrieve instance details")
+            print(f"  ❌ Error terminating instance {instance_id}: Could not retrieve instance details")
             return False
 
         instance_type = details["instance_type"]
@@ -76,8 +73,6 @@ def rename_instance(instance_id, new_name, region_name):
 
 def _get_instance_name_tag(instance):
     """Extract instance name from tags. Delegates to canonical implementation."""
-    from cost_toolkit.common.aws_common import extract_tag_value
-
     return extract_tag_value(instance, "Name", "Unknown")
 
 

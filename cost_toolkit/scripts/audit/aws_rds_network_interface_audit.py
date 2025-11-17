@@ -8,8 +8,8 @@ opportunities.
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 

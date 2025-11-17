@@ -4,12 +4,15 @@ AWS Network Interface Deep Audit Script
 Investigates network interfaces that appear to be orphaned or attached to non-existent instances.
 """
 
-import os
-
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
+
+
+def load_aws_credentials():
+    """Load AWS credentials for the deep audit."""
+    return setup_aws_credentials()
 
 
 def _print_basic_eni_info(eni):
@@ -93,9 +96,9 @@ def investigate_network_interface(
 ):
     """Deep investigation of a specific network interface"""
     try:
-        ec2 = create_client(
+        ec2 = boto3.client(
             "ec2",
-            region=region_name,
+            region_name=region_name,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
@@ -125,7 +128,7 @@ def main():
 
     try:
         # Load credentials
-        aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
         # Suspicious network interfaces from previous audit
         suspicious_interfaces = [

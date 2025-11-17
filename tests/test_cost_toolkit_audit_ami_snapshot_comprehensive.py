@@ -18,13 +18,6 @@ from cost_toolkit.scripts.audit.aws_ami_snapshot_analysis import (
 )
 
 
-def test_load_aws_credentials_calls_setup_credentials():
-    """Test that function calls setup utility."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestGetAmiDetails:
     """Tests for get_ami_details function."""
 
@@ -346,7 +339,7 @@ class TestAnalyzeSnapshotAmiRelationships:
     def test_analyze_relationships_success(self, capsys):
         """Test successful analysis of relationships."""
         with patch(
-            "cost_toolkit.scripts.audit.aws_ami_snapshot_analysis.load_aws_credentials",
+            "cost_toolkit.common.credential_utils.setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch("boto3.client") as mock_client:
@@ -369,7 +362,7 @@ class TestAnalyzeSnapshotAmiRelationships:
     def test_analyze_relationships_with_zero_savings(self, capsys):
         """Test analysis with no potential savings."""
         with patch(
-            "cost_toolkit.scripts.audit.aws_ami_snapshot_analysis.load_aws_credentials",
+            "cost_toolkit.common.credential_utils.setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch("boto3.client"):

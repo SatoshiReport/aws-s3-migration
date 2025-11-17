@@ -53,9 +53,8 @@ class TestCheckExportStatusBasic:
 
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-    def test_check_export_status_specific_ami(self, mock_boto_client, mock_load_creds):
+    def test_check_export_status_specific_ami(self, mock_boto_client, _mock_load_creds):
         """Test checking specific AMI export status."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
         mock_ec2.describe_export_image_tasks.return_value = {

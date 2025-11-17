@@ -4,11 +4,11 @@
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.route53_utils import parse_hosted_zone
-from cost_toolkit.scripts.aws_client_factory import (
+from cost_toolkit.common.aws_client_factory import (
     create_route53_client,
     create_route53resolver_client,
 )
+from cost_toolkit.common.route53_utils import parse_hosted_zone
 from cost_toolkit.scripts.aws_route53_operations import (
     list_hosted_zones,
     list_resource_record_sets,

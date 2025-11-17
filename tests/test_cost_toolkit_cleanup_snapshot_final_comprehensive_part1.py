@@ -15,13 +15,6 @@ from cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final import (
 )
 
 
-def test_load_aws_credentials_calls_setup_credentials():
-    """Test that function calls setup utility."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestDeleteSnapshot:
     """Tests for delete_snapshot function."""
 

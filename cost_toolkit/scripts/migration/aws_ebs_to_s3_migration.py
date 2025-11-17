@@ -3,12 +3,12 @@
 
 
 import os
+import boto3
 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
 from cost_toolkit.scripts import aws_utils
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 # Volume IDs for migration
 REMAINING_VOLUMES = [
@@ -185,8 +185,8 @@ def create_s3_bucket_and_migrate():
     aws_utils.setup_aws_credentials()
     _print_setup_header()
 
-    s3 = create_client("s3", region="eu-west-2")
-    ec2 = create_client("ec2", region="eu-west-2")
+    s3 = boto3.client("s3", region_name="eu-west-2")
+    ec2 = boto3.client("ec2", region_name="eu-west-2")
 
     bucket_name = "aws-user-files-backup-london"
 

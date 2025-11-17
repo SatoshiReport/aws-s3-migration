@@ -8,8 +8,8 @@ import time
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.scripts import aws_utils
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _delete_mount_targets(efs_client, file_system_id):

@@ -10,19 +10,34 @@ import time
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
 
 
-def delete_snapshot(ec2_client, snapshot_id, region):
+def load_aws_credentials():
+    """Load AWS credentials for snapshot cleanup."""
+    return setup_aws_credentials()
+
+
+def delete_snapshot(_ec2_client, snapshot_id, region):
     """
     Delete a specific snapshot.
-    Delegates to canonical implementation in aws_ec2_operations.
     """
-    return delete_snapshot_canonical(snapshot_id, region)
+    print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
+    try:
+        _ec2_client.delete_snapshot(SnapshotId=snapshot_id)
+        print(f"   ✅ Successfully deleted {snapshot_id}")
+        return True
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code == "InvalidSnapshot.NotFound":
+            print(f"   ℹ️  Snapshot {snapshot_id} not found")
+        else:
+            print(f"   ❌ Error deleting {snapshot_id}: {e}")
+        return False
 
 
 def get_snapshots_to_delete():
@@ -164,7 +179,7 @@ def print_cleanup_summary(successful_deletions, failed_deletions, total_savings)
 
 def delete_freed_snapshots():
     """Delete snapshots that were freed after AMI deregistration"""
-    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
     snapshots_to_delete = get_snapshots_to_delete()
 
     print_deletion_warning(snapshots_to_delete)

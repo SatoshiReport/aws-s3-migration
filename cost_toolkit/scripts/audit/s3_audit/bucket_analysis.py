@@ -3,20 +3,26 @@ Bucket analysis functions for S3 audit.
 Handles bucket metadata collection and object analysis.
 """
 
+import boto3
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_client
+from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
 from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
 
 
 def get_bucket_region(bucket_name):
-    """Get the region where a bucket is located. Delegates to canonical implementation."""
-    from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
+    """
+    Get the region where a bucket is located.
 
-    return canonical_get_bucket_region(bucket_name)
+    Exposes get_bucket_location as a module attribute so test patches apply and delegates to
+    the canonical helper for consistent error handling.
+    """
+    return canonical_get_bucket_region(
+        bucket_name, verbose=True, location_getter=get_bucket_location
+    )
 
 
 def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
@@ -111,7 +117,7 @@ def _process_object(obj, bucket_analysis, ninety_days_ago, large_object_threshol
 def analyze_bucket_objects(bucket_name, region):
     """Analyze all objects in a bucket for storage classes, sizes, and counts"""
     try:
-        s3_client = create_client("s3", region=region)
+        s3_client = boto3.client("s3", region_name=region)
 
         bucket_analysis = {
             "bucket_name": bucket_name,

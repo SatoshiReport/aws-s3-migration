@@ -10,6 +10,26 @@ from typing import Optional
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_ec2_client
+
+# Map resource types to their describe methods and response keys
+_RESOURCE_CONFIG = {
+    "volume": ("describe_volumes", "VolumeIds", "Volumes", "InvalidVolume.NotFound"),
+    "snapshot": (
+        "describe_snapshots",
+        "SnapshotIds",
+        "Snapshots",
+        "InvalidSnapshot.NotFound",
+    ),
+    "ami": ("describe_images", "ImageIds", "Images", "InvalidAMIID.NotFound"),
+    "instance": (
+        "describe_instances",
+        "InstanceIds",
+        "Reservations",
+        "InvalidInstanceID.NotFound",
+    ),
+}
+
 
 def create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key):
     """
@@ -61,10 +81,16 @@ def get_instance_name(ec2_client, instance_id):
     return "Unknown"
 
 
-def get_all_aws_regions():
+def get_all_aws_regions(
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+) -> list[str]:
     """
     Get all available AWS regions by querying the EC2 service.
-    Delegates to canonical implementation with error handling.
+
+    Args:
+        aws_access_key_id: Optional AWS access key
+        aws_secret_access_key: Optional AWS secret key
 
     Returns:
         list: List of all AWS region names
@@ -73,9 +99,18 @@ def get_all_aws_regions():
         This makes an API call to AWS. For a static list of common regions,
         use get_default_regions() instead.
     """
-    from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
+    try:
+        ec2_client = create_ec2_client(
+            region="us-east-1",
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
 
-    return get_all_regions()
+        response = ec2_client.describe_regions()
+        return [region["RegionName"] for region in response["Regions"]]
+    except ClientError as e:
+        print(f"Error getting regions: {e}")
+        return get_default_regions()
 
 
 def get_default_regions():
@@ -185,8 +220,10 @@ def get_instance_details(ec2_client, instance_id):
                     "name": extract_tag_value(instance, "Name"),
                     "state": instance["State"]["Name"],
                     "instance_type": instance["InstanceType"],
-                    "launch_time": instance["LaunchTime"],
-                    "availability_zone": instance["Placement"]["AvailabilityZone"],
+                    "launch_time": instance.get("LaunchTime"),
+                    "availability_zone": instance.get("Placement", {}).get(
+                        "AvailabilityZone", "unknown"
+                    ),
                     "volumes": extract_volumes_from_instance(instance),
                     "tags": get_resource_tags(instance),
                 }
@@ -195,6 +232,45 @@ def get_instance_details(ec2_client, instance_id):
         print(f"Error getting instance details for {instance_id}: {e}")
         return None
     return None
+
+
+def _check_resource_in_region(
+    region: str,
+    resource_id: str,
+    config_tuple: tuple,
+    aws_access_key_id: Optional[str],
+    aws_secret_access_key: Optional[str],
+) -> bool:
+    """
+    Check if a resource exists in a specific region.
+
+    Args:
+        region: AWS region to check
+        resource_id: The resource ID to locate
+        config_tuple: Configuration tuple (method_name, id_param, response_key, not_found_error)
+        aws_access_key_id: Optional AWS access key
+        aws_secret_access_key: Optional AWS secret key
+
+    Returns:
+        True if resource exists in region, False otherwise
+    """
+    method_name, id_param, response_key, not_found_error = config_tuple
+
+    try:
+        ec2_client = create_ec2_client(
+            region=region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+
+        response = getattr(ec2_client, method_name)(**{id_param: [resource_id]})
+        return bool(response[response_key])
+
+    except ClientError as e:
+        if not_found_error in str(e):
+            return False
+        print(f"⚠️  Error checking {region} for {resource_id}: {str(e)}")
+        return False
 
 
 def find_resource_region(
@@ -217,59 +293,22 @@ def find_resource_region(
     Returns:
         Region name if found, None otherwise
     """
-    from cost_toolkit.scripts.aws_client_factory import create_ec2_client
-    from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
-
-    if regions is None:
-        regions = get_all_regions(aws_access_key_id, aws_secret_access_key)
-
-    # Map resource types to their describe methods and response keys
-    resource_config = {
-        "volume": ("describe_volumes", "VolumeIds", "Volumes", "InvalidVolume.NotFound"),
-        "snapshot": (
-            "describe_snapshots",
-            "SnapshotIds",
-            "Snapshots",
-            "InvalidSnapshot.NotFound",
-        ),
-        "ami": ("describe_images", "ImageIds", "Images", "InvalidAMIID.NotFound"),
-        "instance": (
-            "describe_instances",
-            "InstanceIds",
-            "Reservations",
-            "InvalidInstanceID.NotFound",
-        ),
-    }
-
-    if resource_type not in resource_config:
+    if resource_type not in _RESOURCE_CONFIG:
         raise ValueError(
             f"Unsupported resource type: {resource_type}. "
-            f"Supported types: {', '.join(resource_config.keys())}"
+            f"Supported types: {', '.join(_RESOURCE_CONFIG.keys())}"
         )
 
-    method_name, id_param, response_key, not_found_error = resource_config[resource_type]
+    search_regions = regions or get_all_aws_regions(aws_access_key_id, aws_secret_access_key)
 
-    for region in regions:
-        try:
-            ec2_client = create_ec2_client(
-                region=region,
-                aws_access_key_id=aws_access_key_id,
-                aws_secret_access_key=aws_secret_access_key,
-            )
-
-            # Call the appropriate describe method
-            describe_method = getattr(ec2_client, method_name)
-            response = describe_method(**{id_param: [resource_id]})
-
-            # Check if resource exists in response
-            if response[response_key]:
-                return region
-
-        except ClientError as e:
-            if not_found_error in str(e):
-                continue
-            # For other errors, log but continue searching
-            print(f"⚠️  Error checking {region} for {resource_id}: {str(e)}")
-            continue
+    for region in search_regions:
+        if _check_resource_in_region(
+            region,
+            resource_id,
+            _RESOURCE_CONFIG[resource_type],
+            aws_access_key_id,
+            aws_secret_access_key,
+        ):
+            return region
 
     return None

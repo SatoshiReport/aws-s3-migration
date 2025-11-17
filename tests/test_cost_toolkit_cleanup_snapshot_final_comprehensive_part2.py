@@ -198,7 +198,7 @@ class TestIntegrationScenarios:
     def test_full_deletion_workflow(self, capsys):
         """Test complete deletion workflow."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.load_aws_credentials"
+            "cost_toolkit.common.credential_utils.setup_aws_credentials"
         ) as mock_creds:
             with patch("builtins.input", return_value="DELETE FREED SNAPSHOTS"):
                 with patch("boto3.client") as mock_boto3:

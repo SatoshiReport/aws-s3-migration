@@ -28,7 +28,6 @@ try:  # Prefer package-relative imports when packaged
         MIN_REPORT_BYTES,
         MIN_REPORT_FILES,
         build_directory_index_from_db,
-        format_bytes,
         recompute_clusters_for_deletion,
     )
     from duplicate_tree.deletion import delete_duplicate_directories
@@ -41,7 +40,6 @@ except ImportError:  # pragma: no cover - execution as standalone script
         MIN_REPORT_BYTES,
         MIN_REPORT_FILES,
         build_directory_index_from_db,
-        format_bytes,
         recompute_clusters_for_deletion,
     )
     from deletion import delete_duplicate_directories  # type: ignore[import]

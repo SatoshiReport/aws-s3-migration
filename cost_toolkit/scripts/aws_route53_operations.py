@@ -8,7 +8,7 @@ from typing import Optional
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_route53_client
+from cost_toolkit.common.aws_client_factory import create_route53_client
 
 
 def list_hosted_zones(

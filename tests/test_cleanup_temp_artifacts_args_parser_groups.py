@@ -8,13 +8,11 @@ from pathlib import Path
 from cleanup_temp_artifacts import args_parser  # pylint: disable=no-name-in-module
 from tests.assertions import assert_equal
 
-_add_action_arguments = args_parser._add_action_arguments  # pylint: disable=protected-access
-_add_cache_arguments = args_parser._add_cache_arguments  # pylint: disable=protected-access
-_add_filter_arguments = args_parser._add_filter_arguments  # pylint: disable=protected-access
-_add_output_arguments = args_parser._add_output_arguments  # pylint: disable=protected-access
-_add_module_specific_args = (
-    args_parser._add_module_specific_args
-)  # pylint: disable=protected-access
+_add_action_arguments = args_parser.add_action_arguments
+_add_cache_arguments = args_parser.add_cache_arguments
+_add_filter_arguments = args_parser.add_filter_arguments
+_add_output_arguments = args_parser.add_output_arguments
+_add_module_specific_args = args_parser.add_module_specific_args
 
 
 def test_add_filter_arguments_defaults():

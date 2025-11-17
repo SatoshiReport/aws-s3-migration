@@ -10,15 +10,14 @@ Investigates why security groups cannot be deleted by finding their dependencies
 This helps understand what's preventing cleanup and provides targeted solutions.
 """
 
-import os
 import sys
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.aws_common import extract_tag_value
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_GROUPS
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _collect_network_interface_deps(ec2_client, group_id):

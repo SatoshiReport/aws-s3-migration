@@ -9,7 +9,7 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
 
 
-def get_bucket_region(bucket_name, verbose=False):
+def get_bucket_region(bucket_name, verbose=False, location_getter=None):
     """
     Get the region where an S3 bucket is located.
 
@@ -23,8 +23,10 @@ def get_bucket_region(bucket_name, verbose=False):
     Returns:
         str: AWS region name, defaults to "us-east-1" on error
     """
+    resolver = location_getter or get_bucket_location
+
     try:
-        region = get_bucket_location(bucket_name)
+        region = resolver(bucket_name)
     except ClientError as e:
         error_msg = f"Unable to determine region for {bucket_name}: {str(e)}"
         if verbose:

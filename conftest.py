@@ -24,6 +24,14 @@ def fixture_temp_db(tmp_path):
     db_path.unlink(missing_ok=True)
 
 
+@pytest.fixture(name="mock_print")
+def fixture_mock_print(monkeypatch):
+    """Patch builtins.print and return the mock for assertions."""
+    patched = mock.Mock()
+    monkeypatch.setattr("builtins.print", patched)
+    return patched
+
+
 @pytest.fixture
 def db_conn(temp_db):
     """Return a DatabaseConnection bound to the temporary path."""

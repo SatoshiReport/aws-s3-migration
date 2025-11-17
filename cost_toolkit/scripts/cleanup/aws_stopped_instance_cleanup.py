@@ -6,12 +6,12 @@ Terminates stopped EC2 instances and cleans up associated resources.
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import load_credentials_from_env
 from cost_toolkit.common.aws_common import (
     extract_tag_value,
     extract_volumes_from_instance,
     get_resource_tags,
 )
-from cost_toolkit.scripts.aws_client_factory import load_credentials_from_env
 from cost_toolkit.scripts.aws_ec2_operations import describe_instance, terminate_instance
 
 

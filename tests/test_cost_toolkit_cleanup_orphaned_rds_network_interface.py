@@ -13,38 +13,6 @@ from cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup imp
 )
 
 
-class TestLoadAWSCredentials:
-    """Test AWS credential loading."""
-
-    def test_load_credentials_success(self, capsys):
-        """Test successful credential loading."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-    def test_load_credentials_missing_access_key(self):
-        """Test credential loading with missing access key."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-    def test_load_credentials_missing_secret_key(self):
-        """Test credential loading with missing secret key."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-    def test_load_credentials_both_missing(self):
-        """Test credential loading with both credentials missing."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestDeleteOrphanedRDSNetworkInterfacesSuccess:
     """Test successful deletion scenarios for orphaned RDS network interfaces."""
 

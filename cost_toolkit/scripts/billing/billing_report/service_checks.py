@@ -6,7 +6,7 @@ Contains functions to check the status of various AWS services.
 import botocore.exceptions
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_client
+from cost_toolkit.common.aws_client_factory import create_client
 
 PENDING_DELETION_TARGET = 4
 

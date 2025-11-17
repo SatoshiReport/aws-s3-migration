@@ -19,31 +19,6 @@ from cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources import (
 )
 
 
-class TestLoadAwsCredentials:
-    """Tests for load_aws_credentials function."""
-
-    def test_load_credentials_success(self):
-        """Test successful credential loading."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-    def test_load_credentials_missing_key(self):
-        """Test credential loading with missing access key."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-    def test_load_credentials_missing_secret(self):
-        """Test credential loading with missing secret key."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestDeleteSecurityGroup:
     """Tests for delete_security_group function."""
 
@@ -215,7 +190,7 @@ class TestCleanupUnusedVpcResources:
         """Test cleanup when user cancels."""
         monkeypatch.setattr("builtins.input", lambda _: "NO")
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources.load_aws_credentials",
+            "cost_toolkit.common.credential_utils.setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             cleanup_unused_vpc_resources()
@@ -239,7 +214,7 @@ class TestCleanupUnusedVpcResources:
         """Test that cleanup prints introduction."""
         monkeypatch.setattr("builtins.input", lambda _: "NO")
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources.load_aws_credentials",
+            "cost_toolkit.common.credential_utils.setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(

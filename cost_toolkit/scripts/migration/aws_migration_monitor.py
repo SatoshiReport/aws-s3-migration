@@ -4,10 +4,10 @@
 
 from datetime import datetime
 
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts import aws_utils
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _check_bucket_contents(s3, bucket_name):
@@ -109,7 +109,7 @@ def monitor_migration():
     print(f"🕐 Started monitoring at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
 
-    s3 = create_client("s3", region="eu-west-2")
+    s3 = boto3.client("s3", region_name="eu-west-2")
     bucket_name = "aws-user-files-backup-london"
 
     try:

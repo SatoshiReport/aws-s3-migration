@@ -89,7 +89,7 @@ def test_handle_state_db_reset_no_reset():
     db_path = Path("/tmp/test.db")
     base_path = Path("/tmp/base")
 
-    def mock_reseed(bp, dp):
+    def mock_reseed(_bp, dp):
         return dp, 100, 1000
 
     result = handle_state_db_reset(
@@ -104,7 +104,7 @@ def test_handle_state_db_reset_cancelled(tmp_path, capsys):
     base_path = tmp_path / "base"
     base_path.mkdir()
 
-    def mock_reseed(bp, dp):
+    def mock_reseed(_bp, dp):
         return dp, 100, 1000
 
     with patch("builtins.input", return_value="n"):

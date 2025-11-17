@@ -17,17 +17,10 @@ from cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore import (
 
 
 @patch("cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore.setup_aws_credentials")
-def test_load_credentials_success(mock_setup):
-    """Test successful credential loading."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestListS3Exports:
     """Test S3 export listing functionality."""
 
-    def test_list_exports_with_vmdk_files(self):
+    def test_list_exports_with_vmdk_files(self, mock_setup):
         """Test listing exports with VMDK files."""
         mock_s3 = MagicMock()
         mock_s3.list_objects_v2.return_value = {
@@ -56,7 +49,7 @@ class TestListS3Exports:
             Bucket="test-bucket", Prefix="ebs-snapshots/"
         )
 
-    def test_list_exports_no_contents(self):
+    def test_list_exports_no_contents(self, mock_setup):
         """Test listing when bucket has no files."""
         mock_s3 = MagicMock()
         mock_s3.list_objects_v2.return_value = {}
@@ -65,7 +58,7 @@ class TestListS3Exports:
 
         assert not exports
 
-    def test_list_exports_client_error(self, capsys):
+    def test_list_exports_client_error(self, mock_setup, capsys):
         """Test handling S3 client errors."""
         mock_s3 = MagicMock()
         mock_s3.list_objects_v2.side_effect = ClientError(

@@ -4,10 +4,10 @@
 
 import time
 
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts import aws_utils
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 # Constants
 MAX_SSM_MONITOR_SECONDS = 7200
@@ -323,8 +323,8 @@ def start_instance_and_migrate():
     print("💻 No SSH required - all remote execution")
     print()
 
-    ec2 = create_client("ec2", region="eu-west-2")
-    ssm = create_client("ssm", region="eu-west-2")
+    ec2 = boto3.client("ec2", region_name="eu-west-2")
+    ssm = boto3.client("ssm", region_name="eu-west-2")
 
     instance_id = "i-05ad29f28fc8a8fdc"
     bucket_name = "aws-user-files-backup-london"

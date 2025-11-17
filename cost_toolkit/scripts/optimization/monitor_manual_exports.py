@@ -8,21 +8,20 @@ import argparse
 import time
 from datetime import datetime
 
+import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_client, load_credentials_from_env
+from cost_toolkit.common.aws_client_factory import load_credentials_from_env
+
+
+def load_aws_credentials_from_env():
+    """Expose credential loader for legacy callers/tests."""
+    return load_credentials_from_env()
 
 
 def check_export_status(region, ami_id=None):
     """Check status of export tasks in a region"""
-    aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
-
-    ec2_client = create_client(
-        "ec2",
-        region=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
+    ec2_client = boto3.client("ec2", region_name=region)
 
     try:
         response = ec2_client.describe_export_image_tasks()
@@ -68,14 +67,7 @@ def check_export_status(region, ami_id=None):
 
 def check_s3_files(region, bucket_name=None):
     """Check S3 files in export buckets"""
-    aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
-
-    s3_client = create_client(
-        "s3",
-        region=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
+    s3_client = boto3.client("s3", region_name=region)
 
     if not bucket_name:
         bucket_name = f"ebs-snapshot-archive-{region}-{datetime.now().strftime('%Y%m%d')}"
@@ -194,13 +186,7 @@ def check_specific_ami(region, ami_id):
     check_export_status(region, ami_id)
 
     # Check S3 files for this AMI
-    aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
-    s3_client = create_client(
-        "s3",
-        region=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
+    s3_client = boto3.client("s3", region_name=region)
 
     bucket_name = f"ebs-snapshot-archive-{region}-{datetime.now().strftime('%Y%m%d')}"
 

@@ -6,7 +6,8 @@ from datetime import datetime, timedelta, timezone
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_client
+from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import extract_tag_value
 
 # Constants
 CPU_USAGE_VERY_LOW_THRESHOLD = 5
@@ -94,8 +95,6 @@ def _get_network_metrics(cloudwatch, instance_id, start_time, end_time):
 
 def _get_instance_name(instance):
     """Extract instance name from tags. Delegates to canonical implementation."""
-    from cost_toolkit.common.aws_common import extract_tag_value
-
     return extract_tag_value(instance, "Name")
 
 

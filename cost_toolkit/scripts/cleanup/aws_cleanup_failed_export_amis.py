@@ -9,13 +9,13 @@ import sys
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
+from cost_toolkit.common import credential_utils
+from cost_toolkit.common.aws_client_factory import create_client
 
 
 def cleanup_failed_export_amis():
     """Clean up AMIs created during failed export attempts"""
-    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = credential_utils.setup_aws_credentials()
 
     # AMIs created during the failed export attempt
     failed_amis = [

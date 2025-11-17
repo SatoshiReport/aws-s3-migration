@@ -7,8 +7,8 @@ Checks if EBS volumes from terminated instances were properly deleted
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.aws_common import get_resource_tags
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _build_attachment_info(attachments):

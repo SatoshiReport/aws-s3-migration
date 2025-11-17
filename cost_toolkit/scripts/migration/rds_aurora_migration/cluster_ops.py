@@ -2,9 +2,8 @@
 
 import time
 
+import boto3
 from botocore.exceptions import ClientError
-
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 from ...aws_utils import get_aws_regions, setup_aws_credentials
 
@@ -21,7 +20,7 @@ def discover_rds_instances():
 
     for region in regions:
         try:
-            rds_client = create_client("rds", region=region)
+            rds_client = boto3.client("rds", region_name=region)
             response = rds_client.describe_db_instances()
 
             for instance in response["DBInstances"]:

@@ -10,12 +10,17 @@ import sys
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_GROUPS
-from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import (
     delete_security_group as delete_security_group_canonical,
 )
+
+
+def load_aws_credentials():
+    """Load AWS credentials for the cleanup workflow."""
+    return setup_aws_credentials()
 
 
 def remove_security_group_rule(ec2_client, group_id, rule_type, rule_data):
@@ -88,17 +93,15 @@ def get_security_group_rules_referencing_group(ec2_client, target_group_id):
 def delete_security_group(ec2_client, group_id, group_name):
     """
     Delete a security group.
-    Delegates to canonical implementation in aws_ec2_operations.
     """
     print(f"   🗑️  Deleting security group: {group_id} ({group_name})")
-    # Extract region from ec2_client's meta
-    region = ec2_client.meta.region_name
-    success = delete_security_group_canonical(region, group_id)
-    if success:
+    try:
+        ec2_client.delete_security_group(GroupId=group_id)
         print(f"   ✅ Successfully deleted {group_id}")
-    else:
-        print(f"   ❌ Error deleting {group_id}")
-    return success
+        return True
+    except ClientError as e:
+        print(f"   ❌ Error deleting {group_id}: {e}")
+        return False
 
 
 def _get_circular_security_groups():
@@ -196,7 +199,7 @@ def _print_final_summary(total_rules_removed, total_groups_deleted, total_groups
 
 def cleanup_circular_security_groups():
     """Clean up security groups with circular dependencies"""
-    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
     circular_security_groups = _get_circular_security_groups()
 
     print("AWS Security Group Circular Dependencies Cleanup")

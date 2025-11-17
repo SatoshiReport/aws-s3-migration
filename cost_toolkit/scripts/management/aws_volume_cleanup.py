@@ -4,13 +4,14 @@ AWS Volume Cleanup and Management Script
 Handles volume tagging, snapshot deletion, and S3 bucket listing.
 """
 
+import boto3
 from datetime import datetime, timezone
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.cost_utils import calculate_snapshot_cost
-from cost_toolkit.scripts.aws_client_factory import create_client
-from cost_toolkit.scripts.aws_s3_operations import get_bucket_location, list_buckets
+from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
+from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
+from cost_toolkit.scripts.aws_s3_operations import list_buckets
 
 from ..aws_utils import setup_aws_credentials
 
@@ -28,7 +29,7 @@ def tag_volume_with_name(volume_id, name, region):
         True if successful, False otherwise
     """
     try:
-        ec2_client = create_client("ec2", region=region)
+        ec2_client = boto3.client("ec2", region_name=region)
 
         # Add the Name tag
         ec2_client.create_tags(Resources=[volume_id], Tags=[{"Key": "Name", "Value": name}])
@@ -45,7 +46,6 @@ def tag_volume_with_name(volume_id, name, region):
 def delete_snapshot(snapshot_id, region):
     """
     Delete an EBS snapshot.
-    Delegates to canonical implementation in aws_ec2_operations.
 
     Args:
         snapshot_id: The snapshot ID to delete
@@ -54,23 +54,49 @@ def delete_snapshot(snapshot_id, region):
     Returns:
         True if successful, False otherwise
     """
-    from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
+    try:
+        ec2_client = boto3.client("ec2", region_name=region)
+        response = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
+        snapshot = response["Snapshots"][0]
 
-    return delete_snapshot_canonical(snapshot_id, region, verbose=True)
+        size_gb = snapshot.get("VolumeSize", 0)
+        description = snapshot.get("Description", "No description")
+        start_time = snapshot.get("StartTime")
+        monthly_cost = size_gb * 0.05
+
+        print(f"🔍 Snapshot to delete: {snapshot_id}")
+        print(f"   Size: {size_gb} GB")
+        print(f"   Created: {start_time}")
+        print(f"   Description: {description}")
+        print(f"   Est. monthly cost: ${monthly_cost:.2f}")
+
+        print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
+        ec2_client.delete_snapshot(SnapshotId=snapshot_id)
+        print(f"   ✅ Successfully deleted snapshot {snapshot_id}")
+        return True
+    except ClientError as e:
+        print(f"   ❌ Error deleting snapshot {snapshot_id}: {e}")
+        return False
 
 
 def get_bucket_region(s3_client, bucket_name):
-    """Get the region for an S3 bucket. Delegates to canonical implementation in s3_utils."""
-    from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
-
-    return canonical_get_bucket_region(bucket_name, verbose=True)
+    """Get the region for an S3 bucket."""
+    try:
+        response = s3_client.get_bucket_location(Bucket=bucket_name)
+        location = response.get("LocationConstraint")
+        region = "us-east-1" if not location else location
+        print(f"    Region: {region}")
+        return region
+    except ClientError:
+        print("    Region: Unable to determine")
+        return "Unknown"
 
 
 def get_bucket_size_metrics(bucket_name, region):
     """Get bucket size metrics from CloudWatch"""
     try:
-        cloudwatch = create_client(
-            "cloudwatch", region=region if region != "Unknown" else "us-east-1"
+        cloudwatch = boto3.client(
+            "cloudwatch", region_name=region if region != "Unknown" else "us-east-1"
         )
 
         end_time = datetime.now(timezone.utc)
@@ -135,7 +161,7 @@ def list_s3_buckets():
         List of bucket information dictionaries
     """
     try:
-        s3_client = create_client("s3")
+        s3_client = boto3.client("s3")
 
         buckets = list_buckets()
 

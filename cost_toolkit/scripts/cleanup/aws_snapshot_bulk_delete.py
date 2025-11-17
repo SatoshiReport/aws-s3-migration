@@ -7,9 +7,9 @@ Deletes multiple EBS snapshots across regions.
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
-from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import find_resource_region
 
 from ..aws_utils import setup_aws_credentials

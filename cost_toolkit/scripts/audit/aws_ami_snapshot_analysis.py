@@ -9,9 +9,10 @@ import sys
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import extract_tag_value
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def get_ami_details(ec2_client, ami_id):
@@ -100,8 +101,6 @@ def _print_ami_usage(instances):
     if instances:
         print(f"   ⚠️  Currently used by {len(instances)} instance(s):")
         for instance in instances:
-            from cost_toolkit.common.aws_common import extract_tag_value
-
             # Create resource dict with uppercase Tags key for extract_tag_value
             resource_dict = {"Tags": instance["tags"]}
             instance_name = extract_tag_value(resource_dict, "Name")

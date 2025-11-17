@@ -4,15 +4,27 @@
 from collections import defaultdict
 from datetime import datetime, timezone
 
+import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost, calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
-from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
+from cost_toolkit.scripts import aws_ec2_operations
 
 # Constants
 OLD_SNAPSHOT_AGE_DAYS = 30
+
+
+def get_all_regions():
+    """Get all AWS regions for EBS audit."""
+    try:
+        ec2 = boto3.client("ec2", region_name="us-east-1")
+        response = ec2.describe_regions()
+        return [region["RegionName"] for region in response.get("Regions", [])]
+    except ClientError as e:
+        print(f"Error getting regions: {e}")
+        return aws_ec2_operations.get_default_regions()
 
 
 def _get_attachment_info(volume):

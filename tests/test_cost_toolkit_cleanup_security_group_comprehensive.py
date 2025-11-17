@@ -21,13 +21,6 @@ from cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup import (
 )
 
 
-def test_load_aws_credentials_calls_setup_credentials():
-    """Test that function calls setup utility."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestRemoveSecurityGroupRule:
     """Tests for remove_security_group_rule function."""
 

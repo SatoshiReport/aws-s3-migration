@@ -117,12 +117,12 @@ def test_determine_default_base_path_no_existing_paths(monkeypatch, tmp_path):
             # Mock all Path.exists() to return False
             original_exists = Path.exists
 
-            def mock_exists(self):
+            def _mock_exists(self):  # pylint: disable=unused-variable
                 if str(self).startswith(str(tmp_path)):
                     return False
                 return original_exists(self)
 
-            with patch.object(Path, "exists", mock_exists):
+            with patch.object(Path, "exists", _mock_exists):
                 result = determine_default_base_path()
                 # Should return first candidate even if it doesn't exist
                 assert result == nonexistent

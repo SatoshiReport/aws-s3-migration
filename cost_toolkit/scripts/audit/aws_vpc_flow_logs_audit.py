@@ -4,7 +4,7 @@
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_client
+from cost_toolkit.common.aws_client_factory import create_client
 
 
 def _check_log_group_size(logs_client, log_group_name):

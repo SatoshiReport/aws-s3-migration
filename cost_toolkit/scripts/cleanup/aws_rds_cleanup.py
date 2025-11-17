@@ -3,7 +3,7 @@
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_client
+from cost_toolkit.common.aws_client_factory import create_client
 
 
 def _delete_aurora_instance(rds_client, instance_id):

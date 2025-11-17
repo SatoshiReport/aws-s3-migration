@@ -7,9 +7,8 @@ from collections import defaultdict
 from datetime import datetime
 from typing import Any, Dict
 
+import boto3
 from botocore.exceptions import ClientError
-
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def get_date_range():
@@ -21,7 +20,7 @@ def get_date_range():
 
 def get_combined_billing_data():
     """Retrieve both cost and usage data from AWS Cost Explorer"""
-    ce_client = create_client("ce", region="us-east-1")
+    ce_client = boto3.client("ce", region_name="us-east-1")
 
     start_date, end_date = get_date_range()
 

@@ -8,24 +8,31 @@ from typing import Optional
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.aws_common import get_default_regions, get_instance_name
-from cost_toolkit.scripts.aws_client_factory import create_ec2_client
+from cost_toolkit.common.aws_client_factory import create_ec2_client
+from cost_toolkit.common.aws_common import find_resource_region as find_resource_region_canonical
+from cost_toolkit.common.aws_common import (
+    get_all_aws_regions,
+    get_default_regions,
+    get_instance_name,
+)
 
 
 def get_all_regions(
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
 ) -> list[str]:
-    """Get list of all available AWS regions from EC2 API."""
+    """
+    Get list of all available AWS regions from EC2 API.
+
+    """
     try:
         ec2_client = create_ec2_client(
             region="us-east-1",
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
-
         response = ec2_client.describe_regions()
-        return [region["RegionName"] for region in response["Regions"]]
+        return [region["RegionName"] for region in response.get("Regions", [])]
     except ClientError as e:
         print(f"Error getting regions: {e}")
         return get_default_regions()
@@ -39,9 +46,9 @@ def find_resource_region(
     aws_secret_access_key: Optional[str] = None,
 ) -> Optional[str]:
     """Delegates to canonical implementation in aws_common."""
-    from cost_toolkit.common.aws_common import find_resource_region as canonical
-
-    return canonical(resource_type, resource_id, regions, aws_access_key_id, aws_secret_access_key)
+    return find_resource_region_canonical(
+        resource_type, resource_id, regions, aws_access_key_id, aws_secret_access_key
+    )
 
 
 def get_common_regions() -> list[str]:
@@ -116,8 +123,7 @@ def delete_snapshot(
     except ClientError as e:
         print(f"   ❌ Error deleting {snapshot_id}: {e}")
         return False
-    else:
-        return True
+    return True
 
 
 def terminate_instance(

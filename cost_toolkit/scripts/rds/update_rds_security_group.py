@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Update RDS instance security group settings."""
 
+import boto3
 import requests
 from botocore.exceptions import ClientError
-
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 from ..aws_utils import setup_aws_credentials
 
@@ -13,7 +12,7 @@ def update_security_group():
     """Update RDS security group to allow connection from current IP"""
 
     setup_aws_credentials()
-    ec2 = create_client("ec2", region="us-east-1")
+    ec2 = boto3.client("ec2", region_name="us-east-1")
 
     # Get current public IP
     try:

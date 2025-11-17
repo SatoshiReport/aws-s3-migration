@@ -8,10 +8,11 @@ Implements specific S3 bucket configurations:
 4. Move all objects to Standard storage class
 """
 
+import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
-from cost_toolkit.scripts.aws_client_factory import create_s3_client
-from cost_toolkit.scripts.aws_s3_operations import get_bucket_location, list_buckets
+from cost_toolkit.common.aws_client_factory import create_s3_client
+from cost_toolkit.scripts.aws_s3_operations import list_buckets
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 # Bucket to exclude from standardization - DO NOT TOUCH
@@ -22,10 +23,20 @@ BUCKET_TO_DELETE = "mail.satoshi.report"
 
 
 def get_bucket_region(bucket_name):
-    """Get the region where a bucket is located. Delegates to canonical implementation."""
-    from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
+    """Get the region where a bucket is located."""
+    try:
+        return get_bucket_location(bucket_name)
+    except ClientError as e:
+        print(f"Error getting region for {bucket_name}: {e}")
+        return "us-east-1"
 
-    return canonical_get_bucket_region(bucket_name)
+
+def get_bucket_location(bucket_name):
+    """Retrieve bucket location using boto3."""
+    s3 = boto3.client("s3")
+    response = s3.get_bucket_location(Bucket=bucket_name)
+    location = response.get("LocationConstraint")
+    return "us-east-1" if not location else location
 
 
 def _delete_versioned_objects(s3_client, bucket_name):

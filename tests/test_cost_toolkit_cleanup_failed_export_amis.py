@@ -12,13 +12,6 @@ from cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis import (
 )
 
 
-def test_load_credentials_calls_setup():
-    """Test that load_aws_credentials calls setup_aws_credentials."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestCleanupFailedExportAMIsSuccess:
     """Test successful cleanup scenarios for failed export AMIs."""
 
@@ -196,7 +189,7 @@ class TestMain:
     def test_main_success(self, capsys):
         """Test successful main execution."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis.load_aws_credentials"
+            "cost_toolkit.common.credential_utils.setup_aws_credentials"
         ) as mock_load:
             mock_load.return_value = ("key", "secret")
             with patch("boto3.client") as mock_client:
@@ -211,7 +204,7 @@ class TestMain:
     def test_main_client_error(self, capsys):
         """Test main with ClientError during execution."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis.load_aws_credentials"
+            "cost_toolkit.common.credential_utils.setup_aws_credentials"
         ) as mock_load:
             error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
             mock_load.side_effect = error
@@ -229,7 +222,7 @@ class TestMain:
             "cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis.cleanup_failed_export_amis"
         ) as mock_cleanup:
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis.load_aws_credentials"
+                "cost_toolkit.common.credential_utils.setup_aws_credentials"
             ) as mock_load:
                 mock_load.return_value = ("key", "secret")
                 try:
@@ -241,7 +234,7 @@ class TestMain:
     def test_main_with_partial_success(self, capsys):
         """Test main with partial cleanup success."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis.load_aws_credentials"
+            "cost_toolkit.common.credential_utils.setup_aws_credentials"
         ) as mock_load:
             mock_load.return_value = ("key", "secret")
             with patch("boto3.client") as mock_client:

@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit import (
     _collect_unused_network_interfaces,
@@ -17,24 +15,6 @@ from cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit import (
     _get_active_instances,
     get_resource_name,
 )
-
-
-class TestLoadAwsCredentials:
-    """Tests for load_aws_credentials function."""
-
-    def test_load_credentials_success(self, capsys):
-        """Test successful loading of credentials."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-    def test_load_credentials_missing(self):
-        """Test error when credentials missing."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
 
 
 class TestGetResourceName:

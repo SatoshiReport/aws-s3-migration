@@ -8,17 +8,17 @@ import subprocess
 import sys
 
 import requests
-
-try:
-
-    BOTO3_AVAILABLE = True
-except ImportError:
-    BOTO3_AVAILABLE = False
-
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.setup.exceptions import CertificateInfoError
+
+try:
+    import boto3  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency for tests
+    boto3 = None  # type: ignore[assignment]
+    BOTO3_AVAILABLE = False
+else:
+    BOTO3_AVAILABLE = True
 
 # HTTP status codes
 HTTP_STATUS_MOVED_PERMANENTLY = 301
@@ -233,7 +233,7 @@ def check_route53_configuration(domain):
         return True
 
     try:
-        route53 = create_client("route53")
+        route53 = boto3.client("route53")
 
         target_zone = _find_hosted_zone_for_domain(route53, domain)
 

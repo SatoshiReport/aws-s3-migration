@@ -5,9 +5,9 @@ import subprocess
 import sys
 import time
 
+import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.setup.exceptions import (
     AWSAPIError,
     DNSRecordCreationError,
@@ -30,7 +30,7 @@ def get_current_hosted_zone_nameservers(domain_name):
     print(f"🔍 Getting nameservers for {domain_name}")
 
     try:
-        route53 = create_client("route53")
+        route53 = boto3.client("route53")
 
         target_zone = _find_hosted_zone(route53, domain_name)
         zone_id = target_zone["Id"].split("/")[-1]
@@ -52,7 +52,7 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
     print(f"\n🔧 Updating nameservers at registrar for {domain_name}")
 
     try:
-        route53domains = create_client("route53domains", region="us-east-1")
+        route53domains = boto3.client("route53domains", region_name="us-east-1")
 
         # Check if domain is registered through Route53
         try:
@@ -98,7 +98,7 @@ def verify_canva_dns_setup(domain_name, zone_id):
     print(f"\n🔍 Verifying Canva DNS setup for {domain_name}")
 
     try:
-        route53 = create_client("route53")
+        route53 = boto3.client("route53")
 
         records_response = route53.list_resource_record_sets(HostedZoneId=f"/hostedzone/{zone_id}")
         records = records_response.get("ResourceRecordSets", [])
@@ -115,7 +115,7 @@ def create_missing_dns_records(domain_name, zone_id, canva_ip):
     print("\n🔧 Checking and creating missing DNS records")
 
     try:
-        route53 = create_client("route53")
+        route53 = boto3.client("route53")
 
         # Get current records
         records_response = route53.list_resource_record_sets(HostedZoneId=f"/hostedzone/{zone_id}")

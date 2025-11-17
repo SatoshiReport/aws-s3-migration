@@ -95,13 +95,13 @@ class TestSetupAwsCredentials:
 
     def test_setup_aws_credentials_success(self):
         """Test setup_aws_credentials with successful credential loading."""
-        with patch("cost_toolkit.scripts.aws_utils.load_aws_credentials", return_value=True):
+        with patch("cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=True):
             setup_aws_credentials()  # Should not raise
 
     def test_setup_aws_credentials_failure(self):
         """Test setup_aws_credentials exits when credentials not found."""
         with (
-            patch("cost_toolkit.scripts.aws_utils.load_aws_credentials", return_value=False),
+            patch("cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=False),
             pytest.raises(SystemExit) as exc_info,
         ):
             setup_aws_credentials()
@@ -111,7 +111,7 @@ class TestSetupAwsCredentials:
     def test_setup_aws_credentials_with_env_path(self):
         """Test setup_aws_credentials with custom env path."""
         with patch(
-            "cost_toolkit.scripts.aws_utils.load_aws_credentials", return_value=True
+            "cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=True
         ) as mock_load:
             setup_aws_credentials(env_path="/custom/.env")
             mock_load.assert_called_once_with(env_path="/custom/.env")
@@ -119,7 +119,7 @@ class TestSetupAwsCredentials:
     def test_setup_aws_credentials_with_none_env_path(self):
         """Test setup_aws_credentials with None env path."""
         with patch(
-            "cost_toolkit.scripts.aws_utils.load_aws_credentials", return_value=True
+            "cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=True
         ) as mock_load:
             setup_aws_credentials(env_path=None)
             mock_load.assert_called_once_with(env_path=None)
@@ -127,7 +127,7 @@ class TestSetupAwsCredentials:
     def test_setup_aws_credentials_failure_exits_with_code_1(self):
         """Test setup_aws_credentials exits with specific code."""
         with (
-            patch("cost_toolkit.scripts.aws_utils.load_aws_credentials", return_value=False),
+            patch("cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=False),
             pytest.raises(SystemExit) as exc_info,
         ):
             setup_aws_credentials()

@@ -3,11 +3,11 @@ Main entry point for S3 audit CLI.
 Orchestrates bucket analysis and report generation.
 """
 
+import boto3
 from collections import defaultdict
 
 from botocore.exceptions import ClientError, NoCredentialsError
 
-from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 from .bucket_analysis import analyze_bucket_objects, get_bucket_region
@@ -111,7 +111,7 @@ def audit_s3_comprehensive():
     print()
 
     try:
-        buckets = create_client("s3").list_buckets().get("Buckets", [])
+        buckets = boto3.client("s3").list_buckets().get("Buckets", [])
 
         if not buckets:
             print("✅ No S3 buckets found in your account")

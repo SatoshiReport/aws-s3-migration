@@ -6,7 +6,7 @@ Contains additional AWS service check functions.
 import botocore.exceptions
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_client
+from cost_toolkit.common.aws_client_factory import create_client
 
 from .service_checks import (
     PENDING_DELETION_TARGET,

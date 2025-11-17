@@ -166,7 +166,7 @@ def test_print_final_summary_fixed_no_results(_mock_print):
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.export_single_snapshot_to_s3")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.calculate_cost_savings")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.get_snapshots_to_export")
-@patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.load_aws_credentials")
+@patch("cost_toolkit.common.credential_utils.setup_aws_credentials")
 @patch("builtins.input", return_value="EXPORT TO S3")
 @patch("builtins.print")
 def test_export_snapshots_to_s3_fixed_success(
@@ -231,7 +231,7 @@ def test_export_snapshots_to_s3_fixed_success(
 
 
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.get_snapshots_to_export")
-@patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.load_aws_credentials")
+@patch("cost_toolkit.common.credential_utils.setup_aws_credentials")
 @patch("builtins.input", return_value="NO")
 @patch("builtins.print")
 def test_export_snapshots_to_s3_fixed_cancelled(

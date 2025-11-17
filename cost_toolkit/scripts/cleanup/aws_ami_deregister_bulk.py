@@ -9,9 +9,9 @@ import sys
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def deregister_ami(ec2_client, ami_id, region):

@@ -2,9 +2,8 @@
 """Verify Route53 domain ownership."""
 
 
+import boto3
 from botocore.exceptions import ClientError
-
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _get_domain_annual_cost(domain_name):
@@ -67,7 +66,7 @@ def check_route53_registered_domains():
     print("=" * 80)
 
     try:
-        route53domains = create_client("route53domains", region="us-east-1")
+        route53domains = boto3.client("route53domains", region_name="us-east-1")
         domains = route53domains.list_domains().get("Domains", [])
 
         if not domains:
@@ -98,7 +97,7 @@ def check_current_hosted_zones():
     print("=" * 80)
 
     try:
-        route53 = create_client("route53")
+        route53 = boto3.client("route53")
 
         # Get all hosted zones
         response = route53.list_hosted_zones()

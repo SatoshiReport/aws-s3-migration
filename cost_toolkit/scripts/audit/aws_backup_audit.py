@@ -8,13 +8,13 @@ from datetime import datetime, timezone
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.backup_utils import check_aws_backup_plans as get_backup_plans
 from cost_toolkit.common.backup_utils import (
     check_dlm_lifecycle_policies,
     check_eventbridge_scheduled_rules,
 )
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
-from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 # Constants

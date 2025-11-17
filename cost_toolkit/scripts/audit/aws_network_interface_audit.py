@@ -4,12 +4,38 @@ AWS Network Interface Audit Script
 Identifies unused network interfaces across all regions for cleanup.
 """
 
+import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts import aws_ec2_operations
 from cost_toolkit.common.aws_common import get_resource_tags
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
-from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
+
+
+def load_aws_credentials():
+    """Load AWS credentials for the audit workflow."""
+    return setup_aws_credentials()
+
+
+def get_all_regions():
+    """Get list of all AWS regions for EC2."""
+    try:
+        ec2 = aws_ec2_operations.create_ec2_client(region="us-east-1")
+    except Exception:  # pragma: no cover - fallback when credentials missing
+        ec2 = None
+
+    # Fall back to a direct boto3 client if factory setup fails
+    if ec2 is None:
+        ec2 = boto3.client("ec2", region_name="us-east-1")
+
+    try:
+        regions = ec2.describe_regions()["Regions"]
+    except ClientError:
+        # Retry with a fresh client to avoid leaking real credentials in tests
+        ec2 = boto3.client("ec2", region_name="us-east-1")
+        regions = ec2.describe_regions()["Regions"]
+
+    return [r["RegionName"] for r in regions]
 
 
 def _build_interface_info(eni):
@@ -48,9 +74,9 @@ def _categorize_interface(status, attachment):
 def audit_network_interfaces_in_region(region_name, aws_access_key_id, aws_secret_access_key):
     """Audit network interfaces in a specific region"""
     try:
-        ec2 = create_client(
+        ec2 = boto3.client(
             "ec2",
-            region=region_name,
+            region_name=region_name,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
@@ -144,7 +170,7 @@ def main():
     print("=" * 60)
 
     try:
-        aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
         regions = get_all_regions()
         print(f"🌍 Scanning {len(regions)} AWS regions for network interfaces...")

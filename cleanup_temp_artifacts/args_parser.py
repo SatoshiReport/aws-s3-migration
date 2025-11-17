@@ -21,7 +21,7 @@ from .config import DEFAULT_BASE_PATH, DEFAULT_DB_PATH
 from .reports import parse_size
 
 
-def _add_filter_arguments(parser: argparse.ArgumentParser, categories: dict[str, str]) -> None:
+def add_filter_arguments(parser: argparse.ArgumentParser, categories: dict[str, str]) -> None:
     """Add filtering and sorting arguments."""
     parser.add_argument(
         "--categories",
@@ -51,7 +51,7 @@ def _add_filter_arguments(parser: argparse.ArgumentParser, categories: dict[str,
     )
 
 
-def _add_action_arguments(parser: argparse.ArgumentParser) -> None:
+def add_action_arguments(parser: argparse.ArgumentParser) -> None:
     """Add action and confirmation arguments."""
     parser.add_argument(
         "--delete",
@@ -60,7 +60,7 @@ def _add_action_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_output_arguments(parser: argparse.ArgumentParser) -> None:
+def add_output_arguments(parser: argparse.ArgumentParser) -> None:
     """Add output and reporting arguments."""
     parser.add_argument(
         "--report-json", type=Path, help="Optional path to write the full candidate list as JSON."
@@ -72,7 +72,7 @@ def _add_output_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging.")
 
 
-def _add_cache_arguments(parser: argparse.ArgumentParser) -> None:
+def add_cache_arguments(parser: argparse.ArgumentParser) -> None:
     """Add caching-related arguments."""
     parser.add_argument(
         "--cache-dir",
@@ -100,12 +100,12 @@ def _add_cache_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def _add_module_specific_args(parser: argparse.ArgumentParser, categories: dict[str, str]) -> None:
+def add_module_specific_args(parser: argparse.ArgumentParser, categories: dict[str, str]) -> None:
     """Add all cleanup_temp_artifacts-specific arguments to the parser."""
-    _add_filter_arguments(parser, categories)
-    _add_action_arguments(parser)
-    _add_output_arguments(parser)
-    _add_cache_arguments(parser)
+    add_filter_arguments(parser, categories)
+    add_action_arguments(parser)
+    add_output_arguments(parser)
+    add_cache_arguments(parser)
 
 
 def _validate_and_transform_args(
@@ -139,7 +139,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         ),
         db_path_default=str(DEFAULT_DB_PATH),
         base_path_default=str(DEFAULT_BASE_PATH) if DEFAULT_BASE_PATH else "",
-        add_custom_args=lambda p: _add_module_specific_args(p, categories),
+        add_custom_args=lambda p: add_module_specific_args(p, categories),
     )
 
     args = parser.parse_args(argv)

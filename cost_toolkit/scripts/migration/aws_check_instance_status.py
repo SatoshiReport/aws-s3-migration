@@ -3,11 +3,11 @@
 
 
 import base64
+import boto3
 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts import aws_utils
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _print_instance_info(instance, instance_id):
@@ -107,7 +107,7 @@ def check_instance_status():
     print("AWS Instance Status Check")
     print("=" * 80)
 
-    ec2 = create_client("ec2", region="eu-west-2")
+    ec2 = boto3.client("ec2", region_name="eu-west-2")
     instance_id = "i-05ad29f28fc8a8fdc"
 
     try:

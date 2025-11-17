@@ -2,11 +2,11 @@
 """Check final migration status for London region."""
 
 
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.scripts import aws_utils
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _stop_instance(ec2, instance_id):
@@ -112,7 +112,7 @@ def show_final_london_status():
     print("AWS London Final Status After EBS Cleanup")
     print("=" * 80)
 
-    ec2 = create_client("ec2", region="eu-west-2")
+    ec2 = boto3.client("ec2", region_name="eu-west-2")
 
     _stop_instance(ec2, "i-05ad29f28fc8a8fdc")
     _list_remaining_volumes(ec2)

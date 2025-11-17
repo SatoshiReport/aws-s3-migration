@@ -8,16 +8,20 @@ Cleans up unused VPC resources identified in the comprehensive audit:
 This cleanup improves security hygiene and reduces clutter.
 """
 
-import os
 import sys
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_ec2_operations import (
     delete_security_group as delete_security_group_canonical,
 )
+
+
+def load_aws_credentials():
+    """Load AWS credentials for VPC cleanup workflows."""
+    return setup_aws_credentials()
 
 # Unused security groups identified in the audit
 UNUSED_SECURITY_GROUPS = [
@@ -105,17 +109,15 @@ EMPTY_VPCS = [
 def delete_security_group(ec2_client, group_id, group_name, _region):
     """
     Delete a specific security group.
-    Delegates to canonical implementation in aws_ec2_operations.
     """
     print(f"   🗑️  Deleting security group: {group_id} ({group_name})")
-    # Extract region from ec2_client's meta
-    region = ec2_client.meta.region_name
-    success = delete_security_group_canonical(region, group_id)
-    if success:
+    try:
+        ec2_client.delete_security_group(GroupId=group_id)
         print(f"   ✅ Successfully deleted {group_id}")
-    else:
-        print(f"   ❌ Error deleting {group_id}")
-    return success
+        return True
+    except ClientError as e:
+        print(f"   ❌ Error deleting {group_id}: {e}")
+        return False
 
 
 def print_cleanup_intro():
@@ -226,7 +228,7 @@ def print_cleanup_summary(successful_deletions, failed_deletions):
 
 def cleanup_unused_vpc_resources():
     """Clean up unused VPC resources identified in the audit"""
-    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
 
     print_cleanup_intro()
 

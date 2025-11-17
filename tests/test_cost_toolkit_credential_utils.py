@@ -12,7 +12,7 @@ from tests.assertions import assert_equal
 
 
 @patch("os.getenv")
-@patch("cost_toolkit.scripts.aws_client_factory.load_dotenv")
+@patch("cost_toolkit.common.aws_client_factory.load_dotenv")
 @patch("builtins.print")
 def test_setup_aws_credentials_success(mock_print, mock_load_dotenv, mock_getenv):
     """Test setup_aws_credentials with valid credentials."""
@@ -31,7 +31,7 @@ def test_setup_aws_credentials_success(mock_print, mock_load_dotenv, mock_getenv
 
 
 @patch("os.getenv")
-@patch("cost_toolkit.scripts.aws_client_factory.load_dotenv")
+@patch("cost_toolkit.common.aws_client_factory.load_dotenv")
 def test_setup_aws_credentials_missing(mock_load_dotenv, mock_getenv):
     """Test setup_aws_credentials with missing credentials."""
     mock_getenv.return_value = None
@@ -46,7 +46,7 @@ def test_setup_aws_credentials_missing(mock_load_dotenv, mock_getenv):
 
 
 @patch("os.getenv")
-@patch("cost_toolkit.scripts.aws_client_factory.load_dotenv")
+@patch("cost_toolkit.common.aws_client_factory.load_dotenv")
 def test_check_aws_credentials_success(mock_load_dotenv, mock_getenv):
     """Test check_aws_credentials with valid credentials."""
 
@@ -62,7 +62,7 @@ def test_check_aws_credentials_success(mock_load_dotenv, mock_getenv):
 
 
 @patch("os.getenv")
-@patch("cost_toolkit.scripts.aws_client_factory.load_dotenv")
+@patch("cost_toolkit.common.aws_client_factory.load_dotenv")
 @patch("builtins.print")
 def test_check_aws_credentials_missing(mock_print, mock_load_dotenv, mock_getenv):
     """Test check_aws_credentials with missing credentials."""

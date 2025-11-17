@@ -13,7 +13,7 @@ import sys
 
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.aws_client_factory import create_ec2_client, load_credentials_from_env
+from cost_toolkit.common.aws_client_factory import create_ec2_client, load_credentials_from_env
 from cost_toolkit.scripts.aws_ec2_operations import (
     describe_addresses,
     get_all_regions,

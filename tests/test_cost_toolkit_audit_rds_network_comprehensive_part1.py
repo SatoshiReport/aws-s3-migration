@@ -11,13 +11,6 @@ from cost_toolkit.scripts.audit.aws_rds_network_interface_audit import (
 )
 
 
-def test_load_credentials_delegates_to_utility():
-    """Test that load_aws_credentials delegates to setup_aws_credentials."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 def test_get_regions_success():
     """Test successful retrieval of regions."""
     with patch("boto3.client") as mock_client:

@@ -3,10 +3,9 @@ AWS EBS Volume Snapshot Operations Module
 Handles snapshot creation and related operations.
 """
 
+import boto3
 from datetime import datetime, timezone
 from typing import Dict, Optional
-
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 from .utils import find_volume_region, get_volume_tags
 
@@ -75,7 +74,7 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
     region = find_volume_region(volume_id)
     if not region:
         raise VolumeNotFoundError(volume_id)
-    ec2_client = create_client("ec2", region=region)
+    ec2_client = boto3.client("ec2", region_name=region)
 
     # Get volume information for the description
     try:

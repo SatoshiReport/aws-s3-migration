@@ -7,6 +7,8 @@ This module provides common CLI patterns used across multiple scripts.
 import argparse
 from typing import Callable, Optional
 
+from cost_toolkit.common.format_utils import format_bytes
+
 
 def create_migration_cli_parser(
     description: str,
@@ -180,10 +182,6 @@ def handle_state_db_reset(
     Returns:
         Path: The database path (unchanged if reset not performed)
     """
-    from pathlib import Path
-
-    from cost_toolkit.common.format_utils import format_bytes
-
     if not should_reset:
         return db_path
 

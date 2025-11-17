@@ -7,7 +7,7 @@ Common Cost Explorer API operations extracted to reduce code duplication.
 from datetime import datetime, timedelta
 from typing import Optional
 
-from cost_toolkit.scripts.aws_client_factory import create_cost_explorer_client
+from cost_toolkit.common.aws_client_factory import create_cost_explorer_client
 
 
 def get_today_date_range() -> tuple[str, str]:

@@ -5,7 +5,7 @@ This module provides common credential loading patterns
 to eliminate duplicate credential setup code across scripts.
 """
 
-from cost_toolkit.scripts.aws_client_factory import (
+from cost_toolkit.common.aws_client_factory import (
     _resolve_env_path,
     load_credentials_from_env,
 )

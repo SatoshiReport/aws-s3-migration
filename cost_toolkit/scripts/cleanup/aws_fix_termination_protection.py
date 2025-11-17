@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Fix EC2 instance termination protection settings."""
 
+import boto3
 from botocore.exceptions import ClientError
-
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def disable_termination_protection_and_terminate(instance_id, region_name):
@@ -12,7 +11,7 @@ def disable_termination_protection_and_terminate(instance_id, region_name):
     print("=" * 80)
 
     try:
-        ec2 = create_client("ec2", region=region_name)
+        ec2 = boto3.client("ec2", region_name=region_name)
 
         # First, disable termination protection
         print("  Disabling termination protection...")

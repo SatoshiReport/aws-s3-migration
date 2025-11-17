@@ -2,11 +2,11 @@
 """Clean up EBS volumes in London region."""
 
 
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.scripts import aws_utils
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _print_volumes_to_delete(volumes_to_delete):
@@ -135,7 +135,7 @@ def cleanup_london_ebs_volumes():
     print("AWS London EBS Volume Cleanup")
     print("=" * 80)
 
-    ec2 = create_client("ec2", region="eu-west-2")
+    ec2 = boto3.client("ec2", region_name="eu-west-2")
 
     # Volumes to delete
     volumes_to_delete = [

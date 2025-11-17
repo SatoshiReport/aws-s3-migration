@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from cost_toolkit.common.aws_client_factory import (
+    create_ec2_client,
+    create_s3_client,
+)
 from cost_toolkit.common.aws_common import (
     create_ec2_and_s3_clients,
     get_default_regions,
     get_instance_name,
-)
-from cost_toolkit.scripts.aws_client_factory import (
-    create_ec2_client,
-    create_s3_client,
 )
 from cost_toolkit.scripts.aws_ec2_operations import terminate_instance
 from tests.assertions import assert_equal

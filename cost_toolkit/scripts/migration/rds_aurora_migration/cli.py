@@ -2,7 +2,7 @@
 
 import argparse
 
-from cost_toolkit.scripts.aws_client_factory import create_client
+import boto3
 
 from ...aws_utils import setup_aws_credentials
 from .cluster_ops import (
@@ -125,7 +125,7 @@ def migrate_rds_to_aurora_serverless(instance_identifier=None, region=None):
         return
 
     try:
-        rds_client = create_client("rds", region=selected_instance["region"])
+        rds_client = boto3.client("rds", region_name=selected_instance["region"])
 
         snapshot_id = create_rds_snapshot(
             rds_client, selected_instance["identifier"], selected_instance["region"]

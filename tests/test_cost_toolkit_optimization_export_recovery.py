@@ -16,21 +16,6 @@ from cost_toolkit.scripts.optimization.aws_export_recovery import (
 )
 
 
-def test_credentials_error_message():
-    """Test credentials error has correct message."""
-    # AWSCredentialsError has been removed - ValueError is used instead
-    # This test is no longer relevant
-    pass
-
-
-@patch("cost_toolkit.scripts.optimization.aws_export_recovery.setup_aws_credentials")
-def test_load_credentials(mock_setup):
-    """Test loading AWS credentials."""
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-
 class TestCheckS3FileExists:
     """Test S3 file existence checking."""
 

@@ -12,7 +12,7 @@ from cost_toolkit.scripts.optimization.aws_export_recovery import main
 class TestMain:
     """Test main function."""
 
-    @patch("cost_toolkit.scripts.optimization.aws_export_recovery.load_aws_credentials")
+    @patch("cost_toolkit.common.credential_utils.setup_aws_credentials")
     @patch("cost_toolkit.scripts.optimization.aws_export_recovery.check_active_exports")
     def test_main_no_recoveries(self, mock_check, mock_load_creds, capsys):
         """Test main with no recovered exports."""
@@ -25,7 +25,7 @@ class TestMain:
         assert "RECOVERY SUMMARY" in captured.out
         assert "No completed exports found" in captured.out
 
-    @patch("cost_toolkit.scripts.optimization.aws_export_recovery.load_aws_credentials")
+    @patch("cost_toolkit.common.credential_utils.setup_aws_credentials")
     @patch("cost_toolkit.scripts.optimization.aws_export_recovery.check_active_exports")
     def test_main_with_recoveries(self, mock_check, mock_load_creds, capsys):
         """Test main with recovered exports."""
@@ -68,7 +68,7 @@ class TestMain:
 class TestMainSavingsCalculation:
     """Test main function savings calculation and error handling."""
 
-    @patch("cost_toolkit.scripts.optimization.aws_export_recovery.load_aws_credentials")
+    @patch("cost_toolkit.common.credential_utils.setup_aws_credentials")
     @patch("cost_toolkit.scripts.optimization.aws_export_recovery.check_active_exports")
     def test_main_calculates_savings(self, mock_check, mock_load_creds, capsys):
         """Test that main calculates savings correctly."""
@@ -97,7 +97,7 @@ class TestMainSavingsCalculation:
         assert f"${monthly_savings:.2f}" in captured.out
         assert f"${annual_savings:.2f}" in captured.out
 
-    @patch("cost_toolkit.scripts.optimization.aws_export_recovery.load_aws_credentials")
+    @patch("cost_toolkit.common.credential_utils.setup_aws_credentials")
     @patch("cost_toolkit.scripts.optimization.aws_export_recovery.check_active_exports")
     def test_main_with_client_error(self, mock_check, mock_load_creds, capsys):
         """Test main handles client errors gracefully."""

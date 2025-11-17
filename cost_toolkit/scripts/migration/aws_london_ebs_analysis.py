@@ -2,11 +2,11 @@
 """Analyze EBS volumes in London region."""
 
 
+import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import get_resource_tags
 from cost_toolkit.scripts import aws_utils
-from cost_toolkit.scripts.aws_client_factory import create_client
 
 
 def _print_volume_details(ec2, vol):
@@ -150,7 +150,7 @@ def analyze_london_ebs():
     print("AWS London EBS Analysis")
     print("=" * 80)
 
-    ec2 = create_client("ec2", region="eu-west-2")
+    ec2 = boto3.client("ec2", region_name="eu-west-2")
 
     # Instance and volume details from audit
     instance_id = "i-05ad29f28fc8a8fdc"

@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from cost_toolkit.scripts.audit.aws_security_group_dependencies import (
     _check_inbound_rules,
@@ -13,38 +11,6 @@ from cost_toolkit.scripts.audit.aws_security_group_dependencies import (
     _collect_network_interface_deps,
     _collect_sg_rule_refs,
 )
-
-
-def test_credentials_error_message():
-    """Test error message is correct."""
-    # AWSCredentialsError has been removed - ValueError is used instead
-    # This test is no longer relevant
-    pass
-
-
-class TestLoadAwsCredentials:
-    """Tests for load_aws_credentials function."""
-
-    def test_load_credentials_success(self, capsys):
-        """Test successful loading of credentials."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-    def test_load_credentials_missing_access_key(self):
-        """Test error when access key is missing."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
-
-    def test_load_credentials_missing_secret(self):
-        """Test error when secret key is missing."""
-
-    # This test is no longer relevant - load_aws_credentials wrapper has been removed
-    # Module now uses setup_aws_credentials directly
-    pass
 
 
 class TestCollectNetworkInterfaceDeps:
