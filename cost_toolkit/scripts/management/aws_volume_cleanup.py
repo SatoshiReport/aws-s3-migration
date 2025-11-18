@@ -74,8 +74,7 @@ def delete_snapshot(snapshot_id, region):
     except ClientError as e:
         print(f"   ❌ Error deleting snapshot {snapshot_id}: {e}")
         return False
-    else:
-        return True
+    return True
 
 
 def get_bucket_region(s3_client, bucket_name):
@@ -88,8 +87,7 @@ def get_bucket_region(s3_client, bucket_name):
     except ClientError:
         print("    Region: Unable to determine")
         return "Unknown"
-    else:
-        return region
+    return region
 
 
 def get_bucket_size_metrics(bucket_name, region):

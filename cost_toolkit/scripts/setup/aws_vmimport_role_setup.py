@@ -6,6 +6,7 @@ This role is required by AWS to export AMIs to S3.
 """
 
 import json
+import os
 import sys
 
 import boto3
@@ -122,7 +123,8 @@ def print_alternative_setup_instructions():
 
 def create_vmimport_role():
     """Create the vmimport service role required for AMI exports"""
-    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
+    env_path = os.path.expanduser("~/.env")
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials(env_path)
 
     # Create IAM client
     iam_client = boto3.client(

@@ -115,8 +115,7 @@ def delete_security_group(ec2_client, group_id, group_name, _region):
     except ClientError as e:
         print(f"   ❌ Error deleting {group_id}: {e}")
         return False
-    else:
-        return True
+    return True
 
 
 def print_cleanup_intro():

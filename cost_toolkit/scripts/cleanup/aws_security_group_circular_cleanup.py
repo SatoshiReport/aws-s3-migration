@@ -98,8 +98,7 @@ def delete_security_group(ec2_client, group_id, group_name):
     except ClientError as e:
         print(f"   ❌ Error deleting {group_id}: {e}")
         return False
-    else:
-        return True
+    return True
 
 
 def _get_circular_security_groups():

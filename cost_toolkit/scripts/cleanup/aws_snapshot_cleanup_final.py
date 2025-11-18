@@ -36,8 +36,7 @@ def delete_snapshot(_ec2_client, snapshot_id, region):
         else:
             print(f"   ❌ Error deleting {snapshot_id}: {e}")
         return False
-    else:
-        return True
+    return True
 
 
 def get_snapshots_to_delete():
