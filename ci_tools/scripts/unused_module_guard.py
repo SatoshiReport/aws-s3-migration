@@ -10,6 +10,7 @@ import importlib.util
 import json
 import os
 import sys
+from fnmatch import fnmatch
 from pathlib import Path
 from typing import Callable, Protocol, Sequence, cast
 
@@ -98,6 +99,21 @@ def _load_config() -> tuple[list[str], list[str], list[str]]:
     return excludes, allow_list, duplicate_excludes
 
 
+def _matches_duplicate_exclude(file_path: object, patterns: Sequence[str]) -> bool:
+    """Return True when the given path should be filtered from duplicate results."""
+    file_str = str(file_path)
+    basename = Path(file_str).name
+    for pattern in patterns:
+        normalized = str(pattern)
+        if not normalized:
+            continue
+        if normalized in file_str or normalized in basename:
+            return True
+        if fnmatch(file_str, normalized) or fnmatch(basename, normalized):
+            return True
+    return False
+
+
 def _apply_config_overrides(
     guard: GuardModule,
     extra_excludes: Sequence[str],
@@ -124,8 +140,9 @@ def _apply_config_overrides(
 
         guard.find_unused_modules = find_unused_with_config  # type: ignore[assignment]
 
-    combined_duplicate_excludes = list(extra_excludes)
-    combined_duplicate_excludes.extend(duplicate_excludes)
+    combined_duplicate_excludes = list(
+        dict.fromkeys([p for p in [*extra_excludes, *duplicate_excludes] if p])
+    )
     if combined_duplicate_excludes:
         original_find_duplicates = getattr(guard, "find_suspicious_duplicates", None)
 
@@ -133,12 +150,11 @@ def _apply_config_overrides(
 
             def find_duplicates_with_config(root):
                 results = original_find_duplicates(root)
-                filtered = []
-                for file_path, reason in results:
-                    if any(pattern in str(file_path) for pattern in combined_duplicate_excludes):
-                        continue
-                    filtered.append((file_path, reason))
-                return filtered
+                return [
+                    (file_path, reason)
+                    for file_path, reason in results
+                    if not _matches_duplicate_exclude(file_path, combined_duplicate_excludes)
+                ]
 
             # type: ignore[assignment]
             guard.find_suspicious_duplicates = find_duplicates_with_config
