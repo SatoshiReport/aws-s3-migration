@@ -1,4 +1,4 @@
-.PHONY: format lint type test check
+.PHONY: format lint type check
 
 CI_SHARED_ROOT ?= $(HOME)/ci_shared
 export PYTHONPATH := $(CI_SHARED_ROOT)$(if $(PYTHONPATH),:$(PYTHONPATH))
@@ -45,8 +45,5 @@ lint:
 
 type:
 	pyright $(PYRIGHT_TARGETS)
-
-test:
-	pytest $(PYTEST_TARGET)
 
 check: shared-checks ## Run shared CI pipeline.
