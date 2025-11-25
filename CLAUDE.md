@@ -142,6 +142,30 @@ When CI checks fail, you MUST fix the underlying code issues. This is non-negoti
 
 If you're unsure how to fix a CI failure, ask the user for direction before proceeding.
 
+## Shared CI Infrastructure - CRITICAL
+
+CI pipeline configuration is centralized in `~/ci_shared` and shared across all repositories.
+
+**NEVER:**
+- Make CI pipeline changes locally in individual repositories
+- Modify local Makefiles to change CI behavior
+- Create repository-specific CI workarounds
+
+**ALWAYS:**
+- Make CI changes in `~/ci_shared/ci_shared.mk` (the shared CI configuration)
+- Changes propagate to all repos that use the shared infrastructure
+- Test changes in one repo, then push to ci_shared for broad adoption
+
+**Why this matters:**
+- Consistent CI standards across all projects
+- Single source of truth for pipeline configuration
+- Changes benefit all repositories simultaneously
+- Avoids drift between repo-specific CI customizations
+
+**Shared CI location:** `~/ci_shared/`
+- `ci_shared.mk` - Main shared Makefile with all CI targets
+- `ci_tools/` - Shared guard scripts and utilities
+
 ## Quick Reference
 
 | Topic               | Command / Rule                                                                    |
