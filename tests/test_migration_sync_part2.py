@@ -6,13 +6,16 @@ from unittest import mock
 
 import pytest
 
-from migration_sync import BucketSyncer
+from migration_sync import (
+    BucketSyncer,
+    _display_progress,
+    _monitor_sync_progress,
+)
 from migration_sync_test_helpers import create_mock_process
 
 
-def test_monitor_sync_progress_parses_completed_lines(tmp_path):
+def test_monitor_sync_progress_parses_completed_lines():
     """Test that completed lines are parsed and counted"""
-    syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
     mock_process = mock.Mock()
 
     # Use a counter to track calls and return different results
@@ -29,16 +32,17 @@ def test_monitor_sync_progress_parses_completed_lines(tmp_path):
     mock_process.poll = lambda: next(poll_iter, 0)
 
     start_time = time.time()
-    files_done, bytes_done = syncer.monitor_sync_progress(mock_process, start_time)
+    files_done, bytes_done = _monitor_sync_progress(
+        mock_process, start_time, lambda: False, _display_progress
+    )
 
     # parse_aws_size has bugs, so bytes_done will be 0
     assert files_done == 0
     assert bytes_done == 0
 
 
-def test_monitor_sync_progress_ignores_non_completed_lines(tmp_path):
+def test_monitor_sync_progress_ignores_non_completed_lines():
     """Test that non-completed lines are ignored"""
-    syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
     mock_process = mock.Mock()
 
     readline_calls = [
@@ -55,15 +59,16 @@ def test_monitor_sync_progress_ignores_non_completed_lines(tmp_path):
     mock_process.poll = lambda: next(poll_iter, 0)
 
     start_time = time.time()
-    files_done, _bytes_done = syncer.monitor_sync_progress(mock_process, start_time)
+    files_done, _bytes_done = _monitor_sync_progress(
+        mock_process, start_time, lambda: False, _display_progress
+    )
 
     # Non-completed lines are not counted
     assert files_done == 0
 
 
-def test_monitor_sync_progress_handles_malformed_completed_lines(tmp_path):
+def test_monitor_sync_progress_handles_malformed_completed_lines():
     """Test that malformed completed lines don't cause crashes"""
-    syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
     mock_process = mock.Mock()
 
     readline_calls = [
@@ -80,15 +85,16 @@ def test_monitor_sync_progress_handles_malformed_completed_lines(tmp_path):
 
     start_time = time.time()
     # Should not crash
-    files_done, bytes_done = syncer.monitor_sync_progress(mock_process, start_time)
+    files_done, bytes_done = _monitor_sync_progress(
+        mock_process, start_time, lambda: False, _display_progress
+    )
 
     assert isinstance(files_done, int)
     assert isinstance(bytes_done, int)
 
 
-def test_monitor_sync_progress_returns_zero_on_empty_output(tmp_path):
+def test_monitor_sync_progress_returns_zero_on_empty_output():
     """Test that empty output returns zero counts"""
-    syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
     mock_process = mock.Mock()
 
     readline_calls = ["", ""]
@@ -100,15 +106,16 @@ def test_monitor_sync_progress_returns_zero_on_empty_output(tmp_path):
     mock_process.poll = lambda: next(poll_iter, 0)
 
     start_time = time.time()
-    files_done, bytes_done = syncer.monitor_sync_progress(mock_process, start_time)
+    files_done, bytes_done = _monitor_sync_progress(
+        mock_process, start_time, lambda: False, _display_progress
+    )
 
     assert files_done == 0
     assert bytes_done == 0
 
 
-def test_monitor_sync_progress_continues_while_process_running(tmp_path):
+def test_monitor_sync_progress_continues_while_process_running():
     """Test that monitoring continues while process is running"""
-    syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
     mock_process = mock.Mock()
 
     readline_calls = [
@@ -125,21 +132,23 @@ def test_monitor_sync_progress_continues_while_process_running(tmp_path):
     mock_process.poll = lambda: next(poll_iter, 0)
 
     start_time = time.time()
-    files_done, _bytes_done = syncer.monitor_sync_progress(mock_process, start_time)
+    files_done, _bytes_done = _monitor_sync_progress(
+        mock_process, start_time, lambda: False, _display_progress
+    )
 
     # All lines contain "Completed" but parse_aws_size returns None
     assert files_done == 0
 
 
-def test_monitor_sync_progress_terminates_on_interrupted(tmp_path):
+def test_monitor_sync_progress_terminates_on_interrupted():
     """Test that process is terminated when interrupted flag is set"""
-    syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
-    syncer.interrupted = True
     mock_process = mock.Mock()
     mock_process.stdout.readline.return_value = ""
 
     start_time = time.time()
-    files_done, bytes_done = syncer.monitor_sync_progress(mock_process, start_time)
+    files_done, bytes_done = _monitor_sync_progress(
+        mock_process, start_time, lambda: True, _display_progress
+    )
 
     mock_process.terminate.assert_called_once()
     assert files_done == 0
@@ -250,31 +259,31 @@ def test_sync_bucket_handles_large_files(tmp_path):
         syncer.sync_bucket("bucket")
 
 
-def test_monitor_sync_progress_interrupt_immediately_terminates(tmp_path):
+def test_monitor_sync_progress_interrupt_immediately_terminates():
     """Test that interrupt flag terminates process immediately"""
-    syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
-    syncer.interrupted = True
     mock_process = mock.Mock()
     mock_process.stdout.readline.return_value = ""
 
     start_time = time.time()
-    _files_done, _bytes_done = syncer.monitor_sync_progress(mock_process, start_time)
+    _files_done, _bytes_done = _monitor_sync_progress(
+        mock_process, start_time, lambda: True, _display_progress
+    )
 
     mock_process.terminate.assert_called_once()
 
 
-def test_monitor_sync_progress_interrupt_returns_stats(tmp_path):
+def test_monitor_sync_progress_interrupt_returns_stats():
     """Test that interrupt returns accumulated stats"""
-    syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
     mock_process = mock.Mock()
 
     # Setup readline to trigger interrupt after first call
     call_count = [0]
+    interrupted = [False]
 
     def readline():
         call_count[0] += 1
         if call_count[0] == 1:
-            syncer.interrupted = True
+            interrupted[0] = True
             return ""
         return ""
 
@@ -282,7 +291,9 @@ def test_monitor_sync_progress_interrupt_returns_stats(tmp_path):
     mock_process.poll.return_value = None
 
     start_time = time.time()
-    files_done, bytes_done = syncer.monitor_sync_progress(mock_process, start_time)
+    files_done, bytes_done = _monitor_sync_progress(
+        mock_process, start_time, lambda: interrupted[0], _display_progress
+    )
 
     mock_process.terminate.assert_called_once()
     assert files_done == 0

@@ -4,22 +4,20 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-from botocore.exceptions import ClientError
-
 from cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup import (
     _analyze_instances,
     _get_stopped_instances,
     _print_instance_details,
     _print_termination_summary,
     _terminate_all_instances,
-    get_instance_details,
+    get_instance_cleanup_details,
 )
 
 
-class TestGetInstanceDetails:
-    """Tests for get_instance_details function."""
+class TestGetInstanceCleanupDetails:
+    """Tests for get_instance_cleanup_details function."""
 
-    def test_get_instance_details_success(self):
+    def test_get_instance_cleanup_details_success(self):
         """Test successful retrieval of instance details."""
         mock_instance = {
             "Tags": [{"Key": "Name", "Value": "test-instance"}],
@@ -47,7 +45,7 @@ class TestGetInstanceDetails:
             "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.describe_instance",
             return_value=mock_instance,
         ):
-            result = get_instance_details("us-east-1", "i-123", "key", "secret")
+            result = get_instance_cleanup_details("us-east-1", "i-123", "key", "secret")
         assert result is not None
         assert result["instance_id"] == "i-123"
         assert result["name"] == "test-instance"
@@ -56,7 +54,7 @@ class TestGetInstanceDetails:
         assert len(result["volumes"]) == 1
         assert result["volumes"][0]["volume_id"] == "vol-123"
 
-    def test_get_instance_details_no_name_tag(self):
+    def test_get_instance_cleanup_details_no_name_tag(self):
         """Test instance without Name tag."""
         mock_instance = {
             "Tags": [],
@@ -71,23 +69,10 @@ class TestGetInstanceDetails:
             "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.describe_instance",
             return_value=mock_instance,
         ):
-            result = get_instance_details("us-east-1", "i-123", "key", "secret")
+            result = get_instance_cleanup_details("us-east-1", "i-123", "key", "secret")
         assert result["name"] == "No Name"
 
-    def test_get_instance_details_error(self, capsys):
-        """Test error when retrieving instance details."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.describe_instance"
-        ) as mock_describe:
-            mock_describe.side_effect = ClientError(
-                {"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances"
-            )
-            result = get_instance_details("us-east-1", "i-notfound", "key", "secret")
-        assert result is None
-        captured = capsys.readouterr()
-        assert "Error getting instance details" in captured.out
-
-    def test_get_instance_details_multiple_volumes(self):
+    def test_get_instance_cleanup_details_multiple_volumes(self):
         """Test instance with multiple volumes."""
         mock_instance = {
             "Tags": [{"Key": "Name", "Value": "multi-volume"}],
@@ -111,7 +96,7 @@ class TestGetInstanceDetails:
             "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.describe_instance",
             return_value=mock_instance,
         ):
-            result = get_instance_details("us-east-1", "i-123", "key", "secret")
+            result = get_instance_cleanup_details("us-east-1", "i-123", "key", "secret")
         assert len(result["volumes"]) == 2
         assert result["volumes"][0]["delete_on_termination"] is True
         assert result["volumes"][1]["delete_on_termination"] is False
@@ -185,13 +170,9 @@ class TestAnalyzeInstances:
             "network_interfaces": [],
         }
 
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.get_instance_details",
-            return_value=mock_details,
-        ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._print_instance_details"
-            ):
+        patch_path = "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup"
+        with patch(f"{patch_path}.get_instance_cleanup_details", return_value=mock_details):
+            with patch(f"{patch_path}._print_instance_details"):
                 result = _analyze_instances(stopped_instances, "key", "secret")
 
         assert len(result) == 2
@@ -205,16 +186,15 @@ class TestAnalyzeInstances:
             {"region": "us-east-2", "instance_id": "i-2", "type": "t2.small"},
         ]
 
+        patch_path = "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup"
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.get_instance_details",
+            f"{patch_path}.get_instance_cleanup_details",
             side_effect=[
                 {"instance_id": "i-1", "name": "test", "volumes": [], "network_interfaces": []},
                 None,
             ],
         ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._print_instance_details"
-            ):
+            with patch(f"{patch_path}._print_instance_details"):
                 result = _analyze_instances(stopped_instances, "key", "secret")
 
         assert len(result) == 1

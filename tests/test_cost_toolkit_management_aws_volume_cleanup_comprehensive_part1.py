@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.management.aws_volume_cleanup import (
@@ -148,43 +149,46 @@ class TestDeleteSnapshot:
 class TestGetBucketRegion:
     """Tests for get_bucket_region function."""
 
-    @patch("cost_toolkit.scripts.management.aws_volume_cleanup.boto3.client")
-    def test_get_bucket_region_us_east_1(self, _mock_boto3_client, capsys):
+    def test_get_bucket_region_us_east_1(self, capsys):
         """Test getting bucket region for us-east-1."""
-        mock_s3_client = MagicMock()
-        mock_s3_client.get_bucket_location.return_value = {"LocationConstraint": None}
+        # Mock get_bucket_location to return us-east-1
+        with patch(
+            "cost_toolkit.scripts.aws_s3_operations.get_bucket_location"
+        ) as mock_get_location:
+            mock_get_location.return_value = "us-east-1"
 
-        result = get_bucket_region(mock_s3_client, "test-bucket")
+            result = get_bucket_region("test-bucket")
 
-        assert result == "us-east-1"
-        captured = capsys.readouterr()
-        assert "Region: us-east-1" in captured.out
+            assert result == "us-east-1"
+            captured = capsys.readouterr()
+            assert "Region: us-east-1" in captured.out
 
-    @patch("cost_toolkit.scripts.management.aws_volume_cleanup.boto3.client")
-    def test_get_bucket_region_other_region(self, _mock_boto3_client, capsys):
+    def test_get_bucket_region_other_region(self, capsys):
         """Test getting bucket region for non-us-east-1."""
-        mock_s3_client = MagicMock()
-        mock_s3_client.get_bucket_location.return_value = {"LocationConstraint": "us-west-2"}
+        # Mock get_bucket_location to return us-west-2
+        with patch(
+            "cost_toolkit.scripts.aws_s3_operations.get_bucket_location"
+        ) as mock_get_location:
+            mock_get_location.return_value = "us-west-2"
 
-        result = get_bucket_region(mock_s3_client, "test-bucket")
+            result = get_bucket_region("test-bucket")
 
-        assert result == "us-west-2"
-        captured = capsys.readouterr()
-        assert "Region: us-west-2" in captured.out
+            assert result == "us-west-2"
+            captured = capsys.readouterr()
+            assert "Region: us-west-2" in captured.out
 
-    @patch("cost_toolkit.scripts.management.aws_volume_cleanup.boto3.client")
-    def test_get_bucket_region_error(self, _mock_boto3_client, capsys):
+    def test_get_bucket_region_error(self):
         """Test error getting bucket region."""
-        mock_s3_client = MagicMock()
-        mock_s3_client.get_bucket_location.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchBucket"}}, "get_bucket_location"
-        )
+        # Mock get_bucket_location to raise ClientError
+        with patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client") as mock_create:
+            mock_client = MagicMock()
+            mock_create.return_value = mock_client
+            mock_client.get_bucket_location.side_effect = ClientError(
+                {"Error": {"Code": "NoSuchBucket"}}, "get_bucket_location"
+            )
 
-        result = get_bucket_region(mock_s3_client, "non-existent")
-
-        assert result == "Unknown"
-        captured = capsys.readouterr()
-        assert "Unable to determine" in captured.out
+            with pytest.raises(ClientError):
+                get_bucket_region("non-existent")
 
 
 class TestGetBucketSizeMetrics:

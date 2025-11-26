@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit import (
@@ -331,11 +332,11 @@ class TestGetInstanceHourlyCost:
         assert eu_cost > base_cost
 
     def test_unknown_instance_type(self):
-        """Test fallback for unknown instance types."""
-        cost = get_instance_hourly_cost("unknown.type", "us-east-1")
-        assert cost == 0.05
+        """Test error raised for unknown instance types."""
+        with pytest.raises(ValueError, match="Unknown instance type: unknown.type"):
+            get_instance_hourly_cost("unknown.type", "us-east-1")
 
     def test_unknown_region(self):
-        """Test default multiplier for unknown regions."""
-        cost = get_instance_hourly_cost("t3.micro", "unknown-region-1")
-        assert cost == 0.0104 * 1.1
+        """Test error raised for unknown regions."""
+        with pytest.raises(ValueError, match="Unknown region: unknown-region-1"):
+            get_instance_hourly_cost("t3.micro", "unknown-region-1")

@@ -4,15 +4,14 @@ import subprocess
 import time
 from pathlib import Path
 
-try:  # Prefer package-relative imports for tooling
-    from cost_toolkit.common.format_utils import format_bytes
+from cost_toolkit.common.format_utils import format_bytes
 
+try:
     from .migration_state_v2 import MigrationStateV2
     from .migration_utils import ProgressTracker, format_duration
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from cost_toolkit.common.format_utils import format_bytes
-    from migration_state_v2 import MigrationStateV2
-    from migration_utils import ProgressTracker, format_duration
+except ImportError:
+    from migration_state_v2 import MigrationStateV2  # type: ignore[no-redef]
+    from migration_utils import ProgressTracker, format_duration  # type: ignore[no-redef]
 
 
 def check_sync_process_errors(process):
@@ -66,42 +65,7 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
             progress_callback=_display_progress,
         )
         check_sync_process_errors(process)
-        fallback_files, fallback_bytes = _calculate_local_stats(local_path)
-        if files_done == 0 and fallback_files > 0:
-            files_done = fallback_files
-        if bytes_done == 0 and fallback_bytes > 0:
-            bytes_done = fallback_bytes
         _print_sync_summary(start_time, files_done, bytes_done)
-
-    # Compatibility wrappers for tests that access previous private methods
-    def monitor_sync_progress(self, process, start_time):
-        """Delegate to the module-level monitor helper."""
-        return _monitor_sync_progress(
-            process,
-            start_time,
-            interrupted_check=lambda: self.interrupted,
-            progress_callback=_display_progress,
-        )
-
-    def parse_aws_size(self, line: str):
-        """Delegate to the shared AWS size parser."""
-        return _parse_aws_size(line)
-
-    def display_progress(self, start_time, files_done, bytes_done):
-        """Proxy to the shared progress renderer."""
-        _display_progress(start_time, files_done, bytes_done)
-
-    def print_sync_summary(self, start_time, files_done, bytes_done):
-        """Proxy to the shared summary renderer."""
-        _print_sync_summary(start_time, files_done, bytes_done)
-
-    def calculate_local_stats(self, local_path: Path):
-        """Proxy to the shared stats calculator."""
-        return _calculate_local_stats(local_path)
-
-    def check_sync_errors(self, process):
-        """Proxy to the shared error checker."""
-        check_sync_process_errors(process)
 
 
 def _monitor_sync_progress(process, start_time, interrupted_check, progress_callback):
@@ -159,21 +123,11 @@ def _display_progress(start_time, files_done, bytes_done):
 def _print_sync_summary(start_time, files_done, bytes_done):
     """Print sync completion summary"""
     elapsed = time.time() - start_time
-    throughput = bytes_done / elapsed if elapsed > 0 else 0
+    if elapsed > 0:
+        throughput = bytes_done / elapsed
+    else:
+        throughput = 0
     print(f"\n✓ Completed in {format_duration(elapsed)}")
     print(f"  Downloaded: {files_done:,} files, {format_bytes(bytes_done, binary_units=False)}")
     print(f"  Throughput: {format_bytes(throughput, binary_units=False)}/s")
     print()
-
-
-def _calculate_local_stats(local_path: Path):
-    """Return total files and bytes currently present for the bucket."""
-    files = 0
-    total_bytes = 0
-    if not local_path.exists():
-        return files, total_bytes
-    for file_path in local_path.rglob("*"):
-        if file_path.is_file():
-            files += 1
-            total_bytes += file_path.stat().st_size
-    return files, total_bytes

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.audit.s3_audit.bucket_analysis import (
@@ -37,7 +38,7 @@ def test_get_bucket_region_specific_region():
 
 
 def test_get_bucket_region_client_error():
-    """Test get_bucket_region returns us-east-1 on ClientError."""
+    """Test get_bucket_region raises ClientError on error."""
     with patch(
         "cost_toolkit.scripts.audit.s3_audit.bucket_analysis.get_bucket_location"
     ) as mock_get_location:
@@ -46,10 +47,8 @@ def test_get_bucket_region_client_error():
             "GetBucketLocation",
         )
 
-        with patch("builtins.print") as mock_print:
-            region = get_bucket_region("nonexistent-bucket")
-            assert_equal(region, "us-east-1")
-            mock_print.assert_called_once()
+        with pytest.raises(ClientError):
+            get_bucket_region("nonexistent-bucket")
 
 
 def test_get_bucket_metadata_versioning_enabled():

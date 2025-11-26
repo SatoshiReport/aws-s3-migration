@@ -3,19 +3,18 @@
 import sys
 from pathlib import Path
 
-try:  # Prefer package-relative imports for tooling
-    from cost_toolkit.common.format_utils import format_bytes
+from cost_toolkit.common.format_utils import format_bytes
 
+try:
     from .migration_state_v2 import MigrationStateV2, Phase
     from .migration_sync import BucketSyncer
     from .migration_utils import print_verification_success_messages
     from .migration_verify import BucketDeleter, BucketVerifier
-except ImportError:  # pragma: no cover - fallback for script entrypoints
-    from cost_toolkit.common.format_utils import format_bytes
-    from migration_state_v2 import MigrationStateV2, Phase
-    from migration_sync import BucketSyncer
-    from migration_utils import print_verification_success_messages
-    from migration_verify import BucketDeleter, BucketVerifier
+except ImportError:
+    from migration_state_v2 import MigrationStateV2, Phase  # type: ignore[no-redef]
+    from migration_sync import BucketSyncer  # type: ignore[no-redef]
+    from migration_utils import print_verification_success_messages  # type: ignore[no-redef]
+    from migration_verify import BucketDeleter, BucketVerifier  # type: ignore[no-redef]
 
 
 def show_verification_summary(bucket_info: dict):

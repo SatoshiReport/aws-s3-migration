@@ -46,10 +46,13 @@ def load_aws_credentials(env_path: Optional[str] = None) -> bool:
 def setup_aws_credentials(env_path: Optional[str] = None):
     """
     Load AWS credentials and exit if not found.
-    This is for scripts that require credentials to function.
 
-    DEPRECATED: Prefer using setup_aws_credentials from credential_utils
-    and handling ValueError exceptions instead of process exit.
+    Args:
+        env_path: Optional path to .env file containing credentials
+
+    Note:
+        This function exits the process if credentials are not found.
+        For non-exit behavior, use credential_utils.setup_aws_credentials directly.
     """
     if not credential_utils.setup_aws_credentials(env_path=env_path):
         sys.exit(1)

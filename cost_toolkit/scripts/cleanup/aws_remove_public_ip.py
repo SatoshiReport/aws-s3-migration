@@ -9,8 +9,20 @@ from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_utils import get_instance_info
 
 
-def get_instance_details(_ec2, instance_id, region_name):
-    """Get current instance details and network information"""
+def get_instance_network_info(instance_id, region_name):
+    """Get current instance details and network information for public IP removal.
+
+    Args:
+        instance_id: EC2 instance ID
+        region_name: AWS region name
+
+    Returns:
+        tuple: (instance, current_state, current_public_ip, network_interface_id)
+
+    Raises:
+        ClientError: If API call fails
+        IndexError: If instance has no network interfaces
+    """
     print("Step 1: Getting instance details...")
     instance = get_instance_info(instance_id, region_name)
 
@@ -124,8 +136,8 @@ def remove_public_ip_from_instance(instance_id, region_name):
     try:
         ec2 = create_client("ec2", region=region_name)
 
-        _instance, current_state, current_public_ip, network_interface_id = get_instance_details(
-            ec2, instance_id, region_name
+        _instance, current_state, current_public_ip, network_interface_id = (
+            get_instance_network_info(instance_id, region_name)
         )
 
         if not current_public_ip:

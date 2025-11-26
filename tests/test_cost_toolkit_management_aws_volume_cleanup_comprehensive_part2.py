@@ -18,18 +18,17 @@ from cost_toolkit.scripts.management.aws_volume_cleanup import (
 @patch("cost_toolkit.scripts.management.aws_volume_cleanup.get_bucket_size_metrics")
 def test_process_bucket_info_success(mock_get_size, mock_get_region, capsys):
     """Test processing bucket info successfully."""
-    mock_s3_client = MagicMock()
     bucket = {"Name": "test-bucket", "CreationDate": datetime(2025, 11, 13, 12, 0, 0)}
 
     mock_get_region.return_value = "us-east-1"
 
-    result = process_bucket_info(mock_s3_client, bucket)
+    result = process_bucket_info(bucket)
 
     assert result["name"] == "test-bucket"
     assert result["creation_date"] == datetime(2025, 11, 13, 12, 0, 0)
     assert result["region"] == "us-east-1"
 
-    mock_get_region.assert_called_once_with(mock_s3_client, "test-bucket")
+    mock_get_region.assert_called_once_with("test-bucket")
     mock_get_size.assert_called_once_with("test-bucket", "us-east-1")
 
     captured = capsys.readouterr()

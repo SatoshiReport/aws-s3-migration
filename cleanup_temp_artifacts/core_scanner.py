@@ -52,10 +52,16 @@ class CandidateLoadError(RuntimeError):
 
 
 def iter_relevant_dirs(file_path: Path, base_path: Path) -> Iterator[Path]:
-    """Yield ancestor directories under base_path (excluding base_path itself)."""
+    """Yield ancestor directories under base_path (excluding base_path itself).
+
+    Note:
+        Silently yields nothing if file_path is outside base_path.
+        This is intentional to allow callers to iterate without checking paths first.
+    """
     try:
         file_path.relative_to(base_path)
     except ValueError:
+        # file_path is outside base_path - yield nothing
         return
     current = file_path.parent
     while True:
@@ -95,15 +101,22 @@ class ProgressTracker:
         print()
 
 
+class MatcherError(RuntimeError):
+    """Raised when a category matcher fails."""
+
+
 def match_category(path: Path, is_dir: bool, categories: list[Category]) -> Category | None:
-    """Find matching category for a given path using category matchers."""
+    """Find matching category for a given path using category matchers.
+
+    Raises:
+        MatcherError: If a category matcher raises an exception
+    """
     for category in categories:
         try:
             if category.matcher(path, is_dir):
                 return category
-        # Defensive: user-provided matchers may raise any exception; log and continue
-        except Exception as exc:  # pylint: disable=broad-exception-caught
-            logging.warning("Matcher %s failed on %s: %s", category.name, path, exc)
+        except Exception as exc:
+            raise MatcherError(f"Matcher {category.name} failed on {path}: {exc}") from exc
     return None
 
 
@@ -116,15 +129,24 @@ def _process_parent_directory(
     categories: list[Category],
     cutoff_ts: float | None,
 ) -> None:
-    """Process a single parent directory for inclusion in candidates."""
+    """Process a single parent directory for inclusion in candidates.
+
+    Note:
+        Silently returns if the directory cannot be resolved (e.g., deleted during scan).
+        This allows batch processing to continue for remaining directories.
+    """
     try:
         canonical = parent.resolve()
     except OSError:
+        # Directory may have been deleted during scan
         return
 
     entry = candidates.get(canonical)
     if entry:
-        entry.size_bytes = (entry.size_bytes or 0) + file_size
+        if entry.size_bytes is None:
+            entry.size_bytes = file_size
+        else:
+            entry.size_bytes = entry.size_bytes + file_size
         return
 
     if canonical in non_matching:
@@ -160,10 +182,10 @@ def _filter_candidates_by_size(
     """Filter candidates by minimum size requirement."""
     results: list[Candidate] = []
     for candidate in candidates.values():
-        size_bytes = candidate.size_bytes or 0
-        if min_size_bytes is not None and size_bytes < min_size_bytes:
+        if candidate.size_bytes is None:
+            candidate.size_bytes = 0
+        if min_size_bytes is not None and candidate.size_bytes < min_size_bytes:
             continue
-        candidate.size_bytes = size_bytes
         results.append(candidate)
     return results
 
@@ -192,7 +214,7 @@ def scan_candidates_from_db(
         local_file = derive_local_path(base_path, row["bucket"], row["key"])
         if local_file is None:
             continue
-        file_size = row["size"] or 0
+        file_size = row["size"] if row["size"] is not None else 0
         for parent in iter_relevant_dirs(local_file, base_path):
             _process_parent_directory(
                 parent,

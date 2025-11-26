@@ -37,13 +37,13 @@ class TestGetResourceName:
 
         name = get_resource_name(tags)
 
-        assert name == "Unnamed"
+        assert name is None
 
     def test_get_name_no_tags(self):
         """Test when no tags provided."""
         name = get_resource_name(None)
 
-        assert name == "Unnamed"
+        assert name is None
 
 
 def test_get_active_instances_get_active_instances():

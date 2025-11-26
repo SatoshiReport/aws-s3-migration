@@ -87,8 +87,8 @@ def create_client(
     return boto3.client(service_name, **client_kwargs)
 
 
-# Backward-compatible wrapper functions for existing code
-# These now delegate to the generic create_client() function
+# Service-specific client factory functions
+# These delegate to the generic create_client() function with the appropriate service name
 
 
 def create_ec2_client(

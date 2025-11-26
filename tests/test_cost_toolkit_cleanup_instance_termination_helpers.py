@@ -103,20 +103,20 @@ class TestExtractHelpers:
         instance = {
             "Tags": [{"Key": "Name", "Value": "MyInstance"}, {"Key": "Env", "Value": "prod"}]
         }
-        name = extract_tag_value(instance, "Name", "Unnamed")
+        name = extract_tag_value(instance, "Name")
         assert name == "MyInstance"
 
     def test_extract_instance_name_without_name_tag(self):
         """Test extracting instance name when Name tag doesn't exist."""
         instance = {"Tags": [{"Key": "Env", "Value": "prod"}]}
-        name = extract_tag_value(instance, "Name", "Unnamed")
-        assert name == "Unnamed"
+        name = extract_tag_value(instance, "Name")
+        assert name is None
 
     def test_extract_instance_name_no_tags(self):
         """Test extracting instance name when no tags exist."""
         instance = {}
-        name = extract_tag_value(instance, "Name", "Unnamed")
-        assert name == "Unnamed"
+        name = extract_tag_value(instance, "Name")
+        assert name is None
 
     def test_extract_volumes_with_multiple_volumes(self):
         """Test extracting volumes from instance with multiple volumes."""

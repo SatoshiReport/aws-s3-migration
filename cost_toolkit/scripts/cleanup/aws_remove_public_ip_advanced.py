@@ -134,8 +134,8 @@ def remove_public_ip_by_network_interface_replacement(instance_id, region_name):
         if not _replace_eni(ec2, instance_id, details["current_eni"], new_eni_id):
             try:
                 ec2.delete_network_interface(NetworkInterfaceId=new_eni_id)
-            except ClientError:
-                pass
+            except ClientError as e:
+                print(f"  ⚠️  Failed to clean up ENI {new_eni_id}: {e}")
             return False
 
         print("Step 6: Starting instance...")

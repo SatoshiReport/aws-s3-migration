@@ -100,7 +100,14 @@ class RealSmokeContext:
         bucket_name = f"migrate-v2-smoke-{uuid.uuid4().hex}"
         session = Session()
         s3 = session.client("s3")
-        region = session.region_name or s3.meta.region_name or "us-east-1"
+        region = session.region_name
+        if not region:
+            region = s3.meta.region_name
+        if not region:
+            raise RuntimeError(
+                "AWS region not configured. Set AWS_DEFAULT_REGION environment variable "
+                "or configure a default region in your AWS config."
+            )
         state_db_path = temp_dir / "smoke_state.db"
         external_drive_root = Path(deps.config.LOCAL_BASE_PATH)
         drive_checker = deps.drive_checker_cls(external_drive_root)

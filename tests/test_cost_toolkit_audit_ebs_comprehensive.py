@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
@@ -65,7 +66,8 @@ def test_calculate_volume_cost_calculate_volume_costs():
     assert calculate_ebs_volume_cost(100, "gp3") == 8.0
     assert calculate_ebs_volume_cost(50, "gp2") == 5.0
     assert calculate_ebs_volume_cost(80, "io1") == 10.0
-    assert calculate_ebs_volume_cost(100, "unknown-type") == 10.0
+    with pytest.raises(ValueError, match="Unknown volume type: unknown-type"):
+        calculate_ebs_volume_cost(100, "unknown-type")
 
 
 def test_get_attachment_info_get_attachment_info():

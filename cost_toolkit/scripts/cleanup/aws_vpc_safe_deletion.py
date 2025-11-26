@@ -29,10 +29,6 @@ def delete_vpc_and_dependencies(vpc_id, region_name):
         return False
 
 
-# Alias for backward compatibility
-_delete_vpc_with_region = delete_vpc_and_dependencies
-
-
 def _get_safe_vpcs():
     """Return list of VPCs safe to delete."""
     return [

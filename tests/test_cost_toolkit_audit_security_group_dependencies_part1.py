@@ -122,7 +122,7 @@ class TestCollectInstanceDeps:
         result = _collect_instance_deps(mock_client, "sg-456")
 
         assert len(result) == 1
-        assert result[0]["name"] == "Unnamed"
+        assert result[0]["name"] is None
 
     def test_collect_instances_multiple_reservations(self):
         """Test collecting instances across multiple reservations."""

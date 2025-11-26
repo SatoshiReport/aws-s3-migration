@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
@@ -86,7 +87,7 @@ def test_scan_region_for_unattached_volumes_all_attached():
 
 
 def test_scan_region_for_unattached_volumes_error():
-    """Test _scan_region_for_unattached_volumes handles errors."""
+    """Test _scan_region_for_unattached_volumes raises errors."""
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
         mock_ec2.describe_volumes.side_effect = ClientError(
@@ -94,10 +95,8 @@ def test_scan_region_for_unattached_volumes_error():
         )
         mock_client.return_value = mock_ec2
 
-        count, cost = _scan_region_for_unattached_volumes("us-east-1")
-
-        assert count == 0
-        assert cost == 0.0
+        with pytest.raises(ClientError):
+            _scan_region_for_unattached_volumes("us-east-1")
 
 
 def test_check_unattached_ebs_volumes_with_volumes():
@@ -167,7 +166,7 @@ def test_check_unused_elastic_ips_all_used():
 
 
 def test_check_unused_elastic_ips_error():
-    """Test _check_unused_elastic_ips handles errors gracefully."""
+    """Test _check_unused_elastic_ips raises errors."""
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
         mock_ec2.describe_addresses.side_effect = ClientError(
@@ -175,43 +174,31 @@ def test_check_unused_elastic_ips_error():
         )
         mock_client.return_value = mock_ec2
 
-        result = _check_unused_elastic_ips()
-
-        # Should handle error and return None
-        assert result is None or isinstance(result, dict)
+        with pytest.raises(ClientError):
+            _check_unused_elastic_ips()
 
 
 def test_check_unattached_ebs_volumes_client_error():
-    """Test _check_unattached_ebs_volumes handles ClientError."""
+    """Test _check_unattached_ebs_volumes raises ClientError."""
     with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
         mock_regions.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
 
-        result = _check_unattached_ebs_volumes()
-
-        assert result is None
+        with pytest.raises(ClientError):
+            _check_unattached_ebs_volumes()
 
 
 def test_check_unused_elastic_ips_regional_error():
-    """Test _check_unused_elastic_ips handles regional errors."""
+    """Test _check_unused_elastic_ips raises on first regional error."""
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
-        # First region fails, others succeed
-        call_count = [0]
-
-        def side_effect():
-            call_count[0] += 1
-            if call_count[0] == 1:
-                raise ClientError({"Error": {"Code": "TestError"}}, "test")
-            return {"Addresses": [{"PublicIp": "1.2.3.4"}]}
-
-        mock_ec2.describe_addresses.side_effect = side_effect
+        # First region fails
+        mock_ec2.describe_addresses.side_effect = ClientError(
+            {"Error": {"Code": "TestError"}}, "test"
+        )
         mock_client.return_value = mock_ec2
 
-        result = _check_unused_elastic_ips()
-
-        # Should find the unused IP from the successful regions
-        assert result is not None
-        assert result["category"] == "VPC Optimization"
+        with pytest.raises(ClientError):
+            _check_unused_elastic_ips()
 
 
 def test_check_old_snapshots_with_old_snapshots():
@@ -261,7 +248,7 @@ def test_check_old_snapshots_no_old_snapshots():
 
 
 def test_check_old_snapshots_regional_error():
-    """Test _check_old_snapshots handles regional errors."""
+    """Test _check_old_snapshots raises on regional errors."""
     with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
@@ -271,20 +258,17 @@ def test_check_old_snapshots_regional_error():
             mock_client.return_value = mock_ec2
             mock_regions.return_value = ["us-east-1"]
 
-            result = _check_old_snapshots()
-
-            # Should handle error and return None if no snapshots found
-            assert result is None
+            with pytest.raises(ClientError):
+                _check_old_snapshots()
 
 
 def test_check_old_snapshots_client_error():
-    """Test _check_old_snapshots handles top-level ClientError."""
+    """Test _check_old_snapshots raises on top-level ClientError."""
     with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
         mock_regions.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
 
-        result = _check_old_snapshots()
-
-        assert result is None
+        with pytest.raises(ClientError):
+            _check_old_snapshots()
 
 
 def test_check_old_snapshots_missing_volume_size():

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import GP3_DEFAULT_THROUGHPUT_MBS
@@ -153,6 +154,6 @@ class TestCalculateEbsMonthlyCost:
         assert cost == 12.5
 
     def test_unknown_volume_type(self):
-        """Test fallback for unknown volume types."""
-        cost = calculate_ebs_monthly_cost("unknown", 100, 0, 0)
-        assert cost == 10.0
+        """Test error raised for unknown volume types."""
+        with pytest.raises(ValueError, match="Unknown volume type: unknown"):
+            calculate_ebs_monthly_cost("unknown", 100, 0, 0)

@@ -95,11 +95,11 @@ def test_get_instance_name(mock_boto_client, mock_get_name):
 
 @patch("cost_toolkit.scripts.management.ebs_manager.utils._get_instance_name_with_client")
 @patch("boto3.client")
-def test_get_instance_name_converts_unknown_to_no_name(mock_boto_client, mock_get_name):
-    """Test get_instance_name converts 'Unknown' to 'No Name'."""
+def test_get_instance_name_converts_none_to_no_name(mock_boto_client, mock_get_name):
+    """Test get_instance_name converts None to 'No Name'."""
     mock_ec2 = MagicMock()
     mock_boto_client.return_value = mock_ec2
-    mock_get_name.return_value = "Unknown"
+    mock_get_name.return_value = None
 
     result = get_instance_name("i-1234567890abcdef0", "us-east-1")
 

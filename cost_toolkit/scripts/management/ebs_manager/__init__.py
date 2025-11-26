@@ -5,6 +5,7 @@ information retrieval, and snapshot creation.
 """
 
 from .cli import main
+from .exceptions import VolumeNotFoundError
 from .operations import delete_ebs_volume, get_volume_detailed_info
 from .reporting import print_snapshot_summary, print_volume_detailed_report
 from .snapshot import create_volume_snapshot
@@ -26,4 +27,5 @@ __all__ = [
     "get_volume_tags",
     "print_snapshot_summary",
     "print_volume_detailed_report",
+    "VolumeNotFoundError",
 ]

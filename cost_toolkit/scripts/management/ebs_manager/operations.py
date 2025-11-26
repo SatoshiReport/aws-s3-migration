@@ -9,14 +9,8 @@ from typing import Dict
 import boto3
 from botocore.exceptions import ClientError
 
+from .exceptions import VolumeNotFoundError
 from .utils import find_volume_region, get_instance_name, get_volume_tags
-
-
-class VolumeNotFoundError(ValueError):
-    """Raised when a volume is not found in any region."""
-
-    def __init__(self, volume_id: str):
-        super().__init__(f"Volume {volume_id} not found in any region")
 
 
 def _extract_basic_volume_info(volume: Dict, volume_id: str, region: str) -> Dict:

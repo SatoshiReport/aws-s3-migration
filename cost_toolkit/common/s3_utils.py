@@ -4,8 +4,6 @@ Shared S3 utilities to reduce code duplication.
 Common S3 operations used across multiple scripts.
 """
 
-from botocore.exceptions import ClientError
-
 from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
 
 
@@ -14,24 +12,24 @@ def get_bucket_region(bucket_name, verbose=False, location_getter=None):
     Get the region where an S3 bucket is located.
 
     Canonical wrapper that delegates to get_bucket_location() from aws_s3_operations.py.
-    Provides consistent error handling across all scripts.
 
     Args:
         bucket_name: Name of the S3 bucket
         verbose: If True, print region information
+        location_getter: Optional function to get bucket location (for testing)
 
     Returns:
-        str: AWS region name, defaults to "us-east-1" on error
-    """
-    resolver = location_getter or get_bucket_location
+        str: AWS region name
 
-    try:
-        region = resolver(bucket_name)
-    except ClientError as e:
-        error_msg = f"Unable to determine region for {bucket_name}: {str(e)}"
-        if verbose:
-            print(f"    Region: {error_msg}")
-        return "us-east-1"
+    Raises:
+        ClientError: If bucket not found or API call fails
+    """
+    if location_getter is not None:
+        resolver = location_getter
+    else:
+        resolver = get_bucket_location
+
+    region = resolver(bucket_name)
 
     if verbose:
         print(f"    Region: {region}")

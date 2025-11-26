@@ -75,7 +75,10 @@ def rename_instance(instance_id, new_name, region_name):
 
 def _get_instance_name_tag(instance):
     """Extract instance name from tags. Delegates to canonical implementation."""
-    return extract_tag_value(instance, "Name", "Unknown")
+    name = extract_tag_value(instance, "Name")
+    if name is None:
+        return "Unknown"
+    return name
 
 
 def _get_last_activity_from_metrics(cloudwatch, instance_id):

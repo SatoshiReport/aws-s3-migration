@@ -191,15 +191,12 @@ def test_glacier_restorer_handles_non_restore_error():
         restorer.request_all_restores()
 
 
-def test_glacier_waiter_handles_head_object_error():
-    """Test that head_object errors are handled gracefully"""
+def test_glacier_waiter_raises_on_head_object_error():
+    """Test that head_object errors are raised (fail-fast)."""
     mock_s3 = mock.Mock()
     mock_state = mock.Mock(spec=MigrationStateV2)
-    # Use side_effect to return files on first call, then empty on second
-    mock_state.get_files_restoring.side_effect = [
-        [{"bucket": "test-bucket", "key": "file.txt"}],
-        [],  # Empty on retry
-    ]
+    # Use side_effect to return files on first call
+    mock_state.get_files_restoring.return_value = [{"bucket": "test-bucket", "key": "file.txt"}]
     mock_s3.head_object.side_effect = ClientError(
         {"Error": {"Code": "NoSuchKey", "Message": "Not found"}}, "HeadObject"
     )
@@ -207,7 +204,5 @@ def test_glacier_waiter_handles_head_object_error():
     waiter = GlacierWaiter(mock_s3, mock_state)
 
     with mock.patch("migration_scanner.time.sleep"):
-        waiter.wait_for_restores()
-
-    # Should handle error gracefully and exit
-    mock_state.set_current_phase.assert_called_once_with(Phase.SYNCING)
+        with pytest.raises(ClientError):
+            waiter.wait_for_restores()

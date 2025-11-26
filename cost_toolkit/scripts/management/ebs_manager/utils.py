@@ -8,9 +8,6 @@ from typing import Dict, Optional
 import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.aws_common import (
-    get_default_regions,
-)
 from cost_toolkit.common.aws_common import get_instance_name as _get_instance_name_with_client
 from cost_toolkit.common.aws_common import (
     get_resource_tags,
@@ -20,13 +17,14 @@ __all__ = ["get_all_aws_regions", "find_volume_region", "get_volume_tags", "get_
 
 
 def get_all_aws_regions():
-    """Get all AWS regions using EC2 describe_regions."""
-    try:
-        ec2_client = boto3.client("ec2", region_name="us-east-1")
-        response = ec2_client.describe_regions()
-        return [region["RegionName"] for region in response.get("Regions", [])]
-    except ClientError:
-        return get_default_regions()
+    """Get all AWS regions using EC2 describe_regions.
+
+    Raises:
+        ClientError: If the AWS API call fails.
+    """
+    ec2_client = boto3.client("ec2", region_name="us-east-1")
+    response = ec2_client.describe_regions()
+    return [region["RegionName"] for region in response["Regions"]]
 
 
 def find_volume_region(volume_id: str) -> Optional[str]:
@@ -64,8 +62,9 @@ def get_instance_name(instance_id: str, region: str) -> str:
     """
     ec2_client = boto3.client("ec2", region_name=region)
     result = _get_instance_name_with_client(ec2_client, instance_id)
-    # Convert "Unknown" to "No Name" for compatibility
-    return "No Name" if result == "Unknown" else result
+    if result is None:
+        return "No Name"
+    return result
 
 
 def get_volume_tags(volume: Dict) -> Dict[str, str]:

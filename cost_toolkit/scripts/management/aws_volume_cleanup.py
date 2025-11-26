@@ -77,16 +77,26 @@ def delete_snapshot(snapshot_id, region):
     return True
 
 
-def get_bucket_region(s3_client, bucket_name):
-    """Get the region for an S3 bucket."""
-    try:
-        response = s3_client.get_bucket_location(Bucket=bucket_name)
-        location = response.get("LocationConstraint")
-        region = "us-east-1" if not location else location
-        print(f"    Region: {region}")
-    except ClientError:
-        print("    Region: Unable to determine")
-        return "Unknown"
+def get_bucket_region(bucket_name):
+    """
+    Get the region for an S3 bucket.
+
+    Args:
+        bucket_name: Name of the S3 bucket
+
+    Returns:
+        str: AWS region name
+
+    Raises:
+        ClientError: If bucket not found or API call fails
+    """
+    # Delegate to canonical implementation
+    from cost_toolkit.scripts.aws_s3_operations import (  # pylint: disable=import-outside-toplevel
+        get_bucket_location,
+    )
+
+    region = get_bucket_location(bucket_name)
+    print(f"    Region: {region}")
     return region
 
 
@@ -135,7 +145,7 @@ def get_bucket_size_metrics(bucket_name, region):
         print("    Size: Unable to determine")
 
 
-def process_bucket_info(s3_client, bucket):
+def process_bucket_info(bucket):
     """Process and display information for a single bucket"""
     bucket_name = bucket["Name"]
     creation_date = bucket["CreationDate"]
@@ -143,7 +153,7 @@ def process_bucket_info(s3_client, bucket):
     print(f"  Bucket: {bucket_name}")
     print(f"    Created: {creation_date}")
 
-    region = get_bucket_region(s3_client, bucket_name)
+    region = get_bucket_region(bucket_name)
     get_bucket_size_metrics(bucket_name, region)
 
     print()
@@ -159,14 +169,12 @@ def list_s3_buckets():
         List of bucket information dictionaries
     """
     try:
-        s3_client = boto3.client("s3")
-
         buckets = list_buckets()
 
         print(f"🪣 Found {len(buckets)} S3 bucket(s):")
         print()
 
-        bucket_info = [process_bucket_info(s3_client, bucket) for bucket in buckets]
+        bucket_info = [process_bucket_info(bucket) for bucket in buckets]
 
     except ClientError as e:
         print(f"❌ Error listing S3 buckets: {str(e)}")

@@ -56,10 +56,26 @@ def _build_file_row(
     created_at: str,
     default_state: str,
 ) -> tuple | None:
-    """Build a database row tuple for a single file, or None if file is inaccessible."""
+    """Build a database row tuple for a single file, or None if file is inaccessible.
+
+    Args:
+        bucket_name: Name of the S3 bucket
+        file_path: Path to the local file
+        bucket_dir: Directory containing the bucket files
+        created_at: ISO timestamp for record creation
+        default_state: Default state value for the file record
+
+    Returns:
+        Tuple of file metadata for database insertion, or None if file cannot be accessed.
+
+    Note:
+        Returns None for inaccessible files to allow batch processing to continue.
+        Callers should handle None values appropriately.
+    """
     try:
         stat = file_path.stat()
     except OSError:
+        # File may have been deleted or permissions changed during scan
         return None
     key = file_path.relative_to(bucket_dir).as_posix()
     last_modified = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()

@@ -189,13 +189,14 @@ class GlacierWaiter:  # pylint: disable=too-few-public-methods
         print()
 
     def check_restore_status(self, file: dict) -> bool:
-        """Check if restore is complete for a file"""
-        try:
-            response = self.s3.head_object(Bucket=file["bucket"], Key=file["key"])
-            restore_status = response.get("Restore")
-            if restore_status and 'ongoing-request="false"' in restore_status:
-                self.state.mark_glacier_restored(file["bucket"], file["key"])
-                return True
-        except ClientError:
-            pass
+        """Check if restore is complete for a file.
+
+        Raises:
+            ClientError: If the S3 API call fails for reasons other than expected restore states.
+        """
+        response = self.s3.head_object(Bucket=file["bucket"], Key=file["key"])
+        restore_status = response.get("Restore")
+        if restore_status and 'ongoing-request="false"' in restore_status:
+            self.state.mark_glacier_restored(file["bucket"], file["key"])
+            return True
         return False

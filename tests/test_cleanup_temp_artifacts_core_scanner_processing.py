@@ -8,8 +8,11 @@ from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from cleanup_temp_artifacts.categories import Category  # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts.core_scanner import (  # pylint: disable=no-name-in-module
+    MatcherError,
     ProgressTracker,
     _process_parent_directory,
     match_category,
@@ -100,8 +103,8 @@ def test_match_category_no_match():
     assert result is None
 
 
-def test_match_category_exception_handling(caplog):
-    """Test match_category handles matcher exceptions."""
+def test_match_category_exception_handling():
+    """Test match_category raises MatcherError on matcher exceptions."""
 
     def failing_matcher(path: Path, is_dir: bool) -> bool:
         raise ValueError("Matcher failed")
@@ -111,12 +114,11 @@ def test_match_category_exception_handling(caplog):
 
     categories = [cat1, cat2]
 
-    with caplog.at_level(logging.WARNING):
-        result = match_category(Path("/tmp/test"), True, categories)
+    with pytest.raises(MatcherError) as exc_info:
+        match_category(Path("/tmp/test"), True, categories)
 
-    assert result is cat2
-    assert len(caplog.records) == 1
-    assert "Matcher cat1 failed" in caplog.text
+    assert "Matcher cat1 failed" in str(exc_info.value)
+    assert "Matcher failed" in str(exc_info.value)
 
 
 def test_match_category_file_vs_directory():

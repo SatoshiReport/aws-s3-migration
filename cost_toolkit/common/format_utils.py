@@ -141,7 +141,3 @@ def parse_size(value: str, *, for_argparse: bool = False) -> int:
         if for_argparse:
             raise argparse.ArgumentTypeError(error_msg) from exc
         raise ValueError(error_msg) from exc
-
-
-# Convenience aliases for backward compatibility
-format_size = format_bytes

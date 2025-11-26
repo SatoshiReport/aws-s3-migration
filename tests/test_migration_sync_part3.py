@@ -3,7 +3,7 @@
 import time
 from unittest import mock
 
-from migration_sync import BucketSyncer
+from migration_sync import BucketSyncer, _display_progress, _parse_aws_size
 from migration_sync_test_helpers import create_mock_process
 
 
@@ -23,11 +23,10 @@ class TestEdgeCases:
         local_path = tmp_path / bucket_name
         assert local_path.exists()
 
-    def test_parse_aws_size_with_scientific_notation(self, tmp_path):
+    def test_parse_aws_size_with_scientific_notation(self):
         """Test parsing size with scientific notation (if it occurs)"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         line = "Completed 1e6 Bytes"  # 1 million bytes
-        result = syncer.parse_aws_size(line)
+        result = _parse_aws_size(line)
         # Should handle gracefully or return None
         assert result is None or isinstance(result, int)
 
@@ -44,21 +43,19 @@ class TestEdgeCases:
         local_path = tmp_path / "bucket"
         assert local_path.exists()
 
-    def test_parse_size_with_capital_b_suffix(self, tmp_path):
+    def test_parse_size_with_capital_b_suffix(self):
         """Test that parsing fails gracefully for non-standard suffix"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         line = "Completed 1.0 B"  # Single 'B' instead of standard format
-        result = syncer.parse_aws_size(line)
+        result = _parse_aws_size(line)
         # Should return None due to exception handling
         assert result is None or isinstance(result, int)
 
-    def test_display_progress_called_multiple_times(self, tmp_path, capsys):
+    def test_display_progress_called_multiple_times(self, capsys):
         """Test that display progress can be called multiple times"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
         start_time = time.time() - 100
 
-        syncer.display_progress(start_time, 5, 1024)
-        syncer.display_progress(start_time, 10, 2048)
+        _display_progress(start_time, 5, 1024)
+        _display_progress(start_time, 10, 2048)
 
         captured = capsys.readouterr()
         # Should have progress output from both calls

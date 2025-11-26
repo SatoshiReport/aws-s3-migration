@@ -201,7 +201,7 @@ class TestPrintAmiUsage:
         captured = capsys.readouterr()
         assert "Currently used by 2 instance(s)" in captured.out
         assert "i-123 (web-server)" in captured.out
-        assert "i-456 (Unnamed)" in captured.out
+        assert "i-456 (None)" in captured.out
 
     def test_print_usage_no_instances(self, capsys):
         """Test printing when no instances."""

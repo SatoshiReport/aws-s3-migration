@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_remove_public_ip import (
-    get_instance_details,
+    get_instance_network_info,
     main,
     modify_network_interface,
     remove_public_ip_from_instance,
@@ -18,10 +18,10 @@ from cost_toolkit.scripts.cleanup.aws_remove_public_ip import (
 )
 
 
-class TestGetInstanceDetails:
-    """Tests for get_instance_details function."""
+class TestGetInstanceNetworkInfo:
+    """Tests for get_instance_network_info function."""
 
-    def test_get_instance_details_running_with_public_ip(self, capsys):
+    def test_get_instance_network_info_running_with_public_ip(self, capsys):
         """Test getting details for running instance with public IP."""
         mock_instance = {
             "State": {"Name": "running"},
@@ -32,16 +32,14 @@ class TestGetInstanceDetails:
             "cost_toolkit.scripts.cleanup.aws_remove_public_ip.get_instance_info",
             return_value=mock_instance,
         ):
-            _instance, state, public_ip, eni_id = get_instance_details(
-                MagicMock(), "i-123", "us-east-1"
-            )
+            _instance, state, public_ip, eni_id = get_instance_network_info("i-123", "us-east-1")
         assert state == "running"
         assert public_ip == "1.2.3.4"
         assert eni_id == "eni-123"
         captured = capsys.readouterr()
         assert "Getting instance details" in captured.out
 
-    def test_get_instance_details_stopped(self):
+    def test_get_instance_network_info_stopped(self):
         """Test getting details for stopped instance."""
         mock_instance = {
             "State": {"Name": "stopped"},
@@ -51,9 +49,7 @@ class TestGetInstanceDetails:
             "cost_toolkit.scripts.cleanup.aws_remove_public_ip.get_instance_info",
             return_value=mock_instance,
         ):
-            _instance, state, public_ip, eni_id = get_instance_details(
-                MagicMock(), "i-456", "us-west-2"
-            )
+            _instance, state, public_ip, eni_id = get_instance_network_info("i-456", "us-west-2")
         assert state == "stopped"
         assert public_ip is None
         assert eni_id == "eni-456"

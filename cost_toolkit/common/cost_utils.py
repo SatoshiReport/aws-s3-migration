@@ -46,7 +46,12 @@ def calculate_ebs_volume_cost(
     }
 
     # Calculate base storage cost
-    rate = cost_per_gb.get(volume_type, 0.10)
+    if volume_type not in cost_per_gb:
+        raise ValueError(
+            f"Unknown volume type: {volume_type}. "
+            f"Supported types: {', '.join(sorted(cost_per_gb.keys()))}"
+        )
+    rate = cost_per_gb[volume_type]
     base_cost = size_gb * rate
 
     # Add IOPS costs for io1/io2 volumes

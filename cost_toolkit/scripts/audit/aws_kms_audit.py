@@ -22,17 +22,25 @@ def _print_key_info(key_info):
 
 
 def _print_key_aliases(kms, key_id):
-    """Print aliases for a KMS key"""
+    """Print aliases for a KMS key.
+
+    Note:
+        Logs warnings on API errors but continues execution to allow audit to complete.
+    """
     try:
         aliases = kms.list_aliases(KeyId=key_id)
         if aliases["Aliases"]:
             print(f"  Aliases: {[alias['AliasName'] for alias in aliases['Aliases']]}")
-    except ClientError:
-        pass
+    except ClientError as e:
+        print(f"  Aliases: (unable to retrieve: {e.response['Error']['Code']})")
 
 
 def _print_key_grants(kms, key_id):
-    """Print grants for a KMS key"""
+    """Print grants for a KMS key.
+
+    Note:
+        Logs warnings on API errors but continues execution to allow audit to complete.
+    """
     try:
         grants = kms.list_grants(KeyId=key_id)
         if grants["Grants"]:
@@ -40,8 +48,8 @@ def _print_key_grants(kms, key_id):
             for grant in grants["Grants"][:3]:  # Show first 3 grants
                 print(f"    - Grantee: {grant.get('GranteePrincipal', 'Unknown')}")
                 print(f"      Operations: {grant.get('Operations', [])}")
-    except ClientError:
-        pass
+    except ClientError as e:
+        print(f"  Grants: (unable to retrieve: {e.response['Error']['Code']})")
 
 
 def _process_kms_key(kms, key_id):

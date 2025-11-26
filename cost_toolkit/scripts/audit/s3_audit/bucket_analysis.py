@@ -26,27 +26,39 @@ def get_bucket_region(bucket_name):
 
 
 def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
-    """Collect bucket-level metadata like versioning, lifecycle, encryption, and public access"""
+    """Collect bucket-level metadata like versioning, lifecycle, encryption, and public access.
+
+    Note:
+        Reports API errors instead of silently ignoring them, but continues
+        collecting other metadata to provide partial audit results.
+    """
     # Check bucket versioning
     try:
         versioning_response = s3_client.get_bucket_versioning(Bucket=bucket_name)
         bucket_analysis["versioning_enabled"] = versioning_response.get("Status") == "Enabled"
-    except ClientError:
-        pass
+    except ClientError as e:
+        print(f"  ⚠️  Could not check versioning: {e.response['Error']['Code']}")
+        bucket_analysis["versioning_enabled"] = None
 
     # Check lifecycle policy
     try:
         lifecycle_response = s3_client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
         bucket_analysis["lifecycle_policy"] = lifecycle_response.get("Rules", [])
-    except ClientError:
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code != "NoSuchLifecycleConfiguration":
+            print(f"  ⚠️  Could not check lifecycle: {error_code}")
         bucket_analysis["lifecycle_policy"] = []
 
     # Check encryption
     try:
         encryption_response = s3_client.get_bucket_encryption(Bucket=bucket_name)
         bucket_analysis["encryption"] = encryption_response.get("ServerSideEncryptionConfiguration")
-    except ClientError:
-        pass
+    except ClientError as e:
+        error_code = e.response["Error"]["Code"]
+        if error_code != "ServerSideEncryptionConfigurationNotFoundError":
+            print(f"  ⚠️  Could not check encryption: {error_code}")
+        bucket_analysis["encryption"] = None
 
     # Check public access
     try:
@@ -61,8 +73,9 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
                 pab.get("RestrictPublicBuckets", True),
             ]
         )
-    except ClientError:
+    except ClientError as e:
         # If we can't get public access block, assume it might be public
+        print(f"  ⚠️  Could not check public access: {e.response['Error']['Code']}")
         bucket_analysis["public_access"] = True
 
 

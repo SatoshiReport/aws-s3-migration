@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import extract_tag_value, extract_volumes_from_instance
@@ -24,16 +25,16 @@ def test_extract_instance_name_combined():
             {"Key": "Environment", "Value": "prod"},
         ]
     }
-    name = extract_tag_value(instance, "Name", "Unnamed")
+    name = extract_tag_value(instance, "Name")
     assert name == "my-instance"
 
     instance = {"Tags": []}
-    name = extract_tag_value(instance, "Name", "Unnamed")
-    assert name == "Unnamed"
+    name = extract_tag_value(instance, "Name")
+    assert name is None
 
     instance = {"Tags": [{"Key": "Environment", "Value": "dev"}]}
-    name = extract_tag_value(instance, "Name", "Unnamed")
-    assert name == "Unnamed"
+    name = extract_tag_value(instance, "Name")
+    assert name is None
 
 
 class TestExtractVolumes:
@@ -73,7 +74,7 @@ class TestExtractVolumes:
         assert not volumes
 
 
-def test_get_instance_details_combined(capsys):
+def test_get_instance_details_combined():
     """Test getting instance details in various scenarios."""
 
     with patch("boto3.client") as mock_client:
@@ -109,10 +110,8 @@ def test_get_instance_details_combined(capsys):
             {"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances"
         )
         mock_client.return_value = mock_ec2
-        result = get_instance_details("i-notfound", "us-east-1")
-        assert result is None
-        captured = capsys.readouterr()
-        assert "Error getting instance details" in captured.out
+        with pytest.raises(ClientError):
+            get_instance_details("i-notfound", "us-east-1")
 
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
@@ -163,7 +162,7 @@ def test_get_volume_details_combined(capsys):
         }
         mock_client.return_value = mock_ec2
         result = get_volume_details("vol-123", "us-east-1")
-        assert result["name"] == "Unnamed"
+        assert result["name"] is None
 
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()

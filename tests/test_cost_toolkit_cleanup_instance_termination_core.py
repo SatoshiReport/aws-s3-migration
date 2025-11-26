@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_instance_termination import (
@@ -146,8 +147,8 @@ class TestGetInstanceDetails:
             assert details["instance_type"] == "t2.micro"
             assert details["region"] == "us-east-1"
 
-    def test_get_instance_details_client_error(self, capsys):
-        """Test error handling in get_instance_details."""
+    def test_get_instance_details_client_error(self):
+        """Test error handling in get_instance_details - raises ClientError (fail-fast)."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_ec2.describe_instances.side_effect = ClientError(
@@ -155,11 +156,8 @@ class TestGetInstanceDetails:
             )
             mock_client.return_value = mock_ec2
 
-            details = get_instance_details("i-notfound", "us-east-1")
-
-            assert details is None
-            captured = capsys.readouterr()
-            assert "Error getting instance details" in captured.out
+            with pytest.raises(ClientError):
+                get_instance_details("i-notfound", "us-east-1")
 
     def test_get_instance_details_no_reservations(self):
         """Test get_instance_details when no reservations returned."""
@@ -223,7 +221,7 @@ class TestGetVolumeDetails:
 
             details = get_volume_details("vol-123", "us-east-1")
 
-            assert details["name"] == "Unnamed"
+            assert details["name"] is None
 
     def test_get_volume_details_client_error(self, capsys):
         """Test error handling in get_volume_details."""

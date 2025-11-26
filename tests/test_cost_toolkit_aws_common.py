@@ -113,7 +113,7 @@ def test_get_instance_name_with_name_tag():
 
 
 def test_get_instance_name_without_name_tag():
-    """Test get_instance_name returns 'Unknown' when Name tag missing."""
+    """Test get_instance_name returns None when Name tag missing."""
     mock_ec2 = MagicMock()
     mock_ec2.describe_instances.return_value = {
         "Reservations": [{"Instances": [{"Tags": [{"Key": "Env", "Value": "prod"}]}]}]
@@ -121,17 +121,17 @@ def test_get_instance_name_without_name_tag():
 
     result = get_instance_name(mock_ec2, "i-1234567890abcdef0")
 
-    assert_equal(result, "Unknown")
+    assert_equal(result, None)
 
 
 def test_get_instance_name_no_tags():
-    """Test get_instance_name returns 'Unknown' when no tags present."""
+    """Test get_instance_name returns None when no tags present."""
     mock_ec2 = MagicMock()
     mock_ec2.describe_instances.return_value = {"Reservations": [{"Instances": [{}]}]}
 
     result = get_instance_name(mock_ec2, "i-1234567890abcdef0")
 
-    assert_equal(result, "Unknown")
+    assert_equal(result, None)
 
 
 def test_get_default_regions():

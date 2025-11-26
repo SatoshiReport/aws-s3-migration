@@ -11,12 +11,14 @@ Performance Optimizations:
 
 # Local destination directory for all bucket data
 # Set this in config_local.py (not committed to git)
-LOCAL_BASE_PATH: str = "/path/to/your/backup/directory"  # Default - override in config_local.py
+LOCAL_BASE_PATH: str = "/path/to/your/backup/directory"
 try:
     from config_local import LOCAL_BASE_PATH as _LOCAL_BASE_PATH_OVERRIDE
 
     LOCAL_BASE_PATH = _LOCAL_BASE_PATH_OVERRIDE
 except ImportError:
+    # config_local.py is optional; using default LOCAL_BASE_PATH
+    # Users must create config_local.py with LOCAL_BASE_PATH for production use
     pass
 
 # State database location

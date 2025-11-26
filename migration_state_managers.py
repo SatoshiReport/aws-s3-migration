@@ -11,8 +11,8 @@ get_utc_now = import_module(f"{_PACKAGE_PREFIX}migration_utils").get_utc_now
 if TYPE_CHECKING:
     try:
         from .migration_state_v2 import DatabaseConnection, Phase
-    except ImportError:  # pragma: no cover - mypy/pylint path fallback
-        from migration_state_v2 import DatabaseConnection, Phase
+    except ImportError:
+        from migration_state_v2 import DatabaseConnection, Phase  # type: ignore[no-redef]
 
 
 @dataclass
@@ -303,8 +303,13 @@ class PhaseManager:
         """Initialize phase if not set"""
         try:
             from .migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
-        except ImportError:  # pragma: no cover - allow running as standalone script
-            from migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            # isort: off
+            from migration_state_v2 import (  # pylint: disable=import-outside-toplevel
+                Phase,  # type: ignore[no-redef]
+            )
+
+            # isort: on
 
         with self.db_conn.get_connection() as conn:
             cursor = conn.execute(
@@ -317,8 +322,13 @@ class PhaseManager:
         """Get current migration phase"""
         try:
             from .migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
-        except ImportError:  # pragma: no cover - allow running as standalone script
-            from migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
+        except ImportError:
+            # isort: off
+            from migration_state_v2 import (  # pylint: disable=import-outside-toplevel
+                Phase,  # type: ignore[no-redef]
+            )
+
+            # isort: on
 
         with self.db_conn.get_connection() as conn:
             cursor = conn.execute(

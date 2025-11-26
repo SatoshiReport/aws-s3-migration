@@ -11,6 +11,8 @@ from cost_toolkit.common.aws_common import get_resource_tags
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.scripts import aws_ec2_operations
 
+# boto3 used for per-region clients in audit_network_interfaces_in_region
+
 
 def load_aws_credentials():
     """Load AWS credentials for the audit workflow."""
@@ -18,23 +20,14 @@ def load_aws_credentials():
 
 
 def get_all_regions():
-    """Get list of all AWS regions for EC2."""
-    try:
-        ec2 = aws_ec2_operations.create_ec2_client(region="us-east-1")
-    except (ClientError, ValueError):  # pragma: no cover - fallback when credentials missing
-        ec2 = None
+    """Get list of all AWS regions for EC2.
 
-    # Fall back to a direct boto3 client if factory setup fails
-    if ec2 is None:
-        ec2 = boto3.client("ec2", region_name="us-east-1")
-
-    try:
-        regions = ec2.describe_regions()["Regions"]
-    except ClientError:
-        # Retry with a fresh client to avoid leaking real credentials in tests
-        ec2 = boto3.client("ec2", region_name="us-east-1")
-        regions = ec2.describe_regions()["Regions"]
-
+    Raises:
+        ClientError: If the AWS API call fails.
+        ValueError: If credentials cannot be loaded.
+    """
+    ec2 = aws_ec2_operations.create_ec2_client(region="us-east-1")
+    regions = ec2.describe_regions()["Regions"]
     return [r["RegionName"] for r in regions]
 
 

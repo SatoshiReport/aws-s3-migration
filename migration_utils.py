@@ -10,6 +10,10 @@ SECONDS_PER_HOUR = 3600
 SECONDS_PER_DAY = 86400
 
 
+class PathTraversalError(ValueError):
+    """Raised when path traversal is detected in an S3 key."""
+
+
 def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
     """
     Convert a bucket/key pair into the expected local filesystem path.
@@ -21,6 +25,10 @@ def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
 
     Returns:
         Path object if valid, None if path traversal detected
+
+    Note:
+        Returns None for path traversal to allow callers to skip invalid keys.
+        Use derive_local_path_strict if you want exceptions raised.
     """
     candidate = base_path / bucket
     for part in PurePosixPath(key).parts:

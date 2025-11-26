@@ -15,54 +15,68 @@ from cost_toolkit.common.aws_common import (
 from cost_toolkit.scripts.aws_ec2_operations import describe_instance, terminate_instance
 
 
-def get_instance_details(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
+def get_instance_cleanup_details(
+    region_name, instance_id, aws_access_key_id, aws_secret_access_key
+):
     """
-    Get detailed information about an EC2 instance.
-    Delegates to canonical implementations in aws_common for tag and volume extraction.
+    Get detailed information about an EC2 instance for cleanup operations.
+
+    Uses canonical implementations from aws_common for tag and volume extraction.
+
+    Args:
+        region_name: AWS region name
+        instance_id: EC2 instance ID
+        aws_access_key_id: AWS access key ID
+        aws_secret_access_key: AWS secret access key
+
+    Returns:
+        dict: Instance details for cleanup operations
+
+    Raises:
+        ClientError: If API call fails
     """
-    try:
-        instance = describe_instance(
-            region=region_name,
-            instance_id=instance_id,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
+    instance = describe_instance(
+        region=region_name,
+        instance_id=instance_id,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
-        # Use canonical tag and volume extraction functions
-        tags = get_resource_tags(instance)
-        volumes_raw = extract_volumes_from_instance(instance)
+    # Use canonical tag and volume extraction functions
+    tags = get_resource_tags(instance)
+    volumes_raw = extract_volumes_from_instance(instance)
 
-        # Convert volumes to the format expected by this script (device vs device_name)
-        volumes = [
-            {
-                "volume_id": vol["volume_id"],
-                "device_name": vol["device"],
-                "delete_on_termination": vol["delete_on_termination"],
-            }
-            for vol in volumes_raw
-        ]
-
-        instance_info = {
-            "instance_id": instance_id,
-            "name": extract_tag_value(instance, "Name", default="No Name"),
-            "instance_type": instance["InstanceType"],
-            "state": instance["State"]["Name"],
-            "vpc_id": instance.get("VpcId", "N/A"),
-            "subnet_id": instance.get("SubnetId", "N/A"),
-            "private_ip": instance.get("PrivateIpAddress", "N/A"),
-            "public_ip": instance.get("PublicIpAddress", "None"),
-            "launch_time": instance.get("LaunchTime", "Unknown"),
-            "volumes": volumes,
-            "tags": tags,
-            "security_groups": [sg["GroupId"] for sg in instance.get("SecurityGroups", [])],
-            "network_interfaces": [
-                eni["NetworkInterfaceId"] for eni in instance.get("NetworkInterfaces", [])
-            ],
+    # Convert volumes to the format expected by this script (device vs device_name)
+    volumes = [
+        {
+            "volume_id": vol["volume_id"],
+            "device_name": vol["device"],
+            "delete_on_termination": vol["delete_on_termination"],
         }
+        for vol in volumes_raw
+    ]
 
-    except ClientError as e:
-        print(f"❌ Error getting instance details for {instance_id}: {str(e)}")
-        return None
+    name = extract_tag_value(instance, "Name")
+    if name is None:
+        name = "No Name"
+
+    instance_info = {
+        "instance_id": instance_id,
+        "name": name,
+        "instance_type": instance["InstanceType"],
+        "state": instance["State"]["Name"],
+        "vpc_id": instance.get("VpcId", "N/A"),
+        "subnet_id": instance.get("SubnetId", "N/A"),
+        "private_ip": instance.get("PrivateIpAddress", "N/A"),
+        "public_ip": instance.get("PublicIpAddress", "None"),
+        "launch_time": instance.get("LaunchTime", "Unknown"),
+        "volumes": volumes,
+        "tags": tags,
+        "security_groups": [sg["GroupId"] for sg in instance.get("SecurityGroups", [])],
+        "network_interfaces": [
+            eni["NetworkInterfaceId"] for eni in instance.get("NetworkInterfaces", [])
+        ],
+    }
 
     return instance_info
 
@@ -100,7 +114,7 @@ def _analyze_instances(stopped_instances, aws_access_key_id, aws_secret_access_k
         instance_id = instance["instance_id"]
 
         print(f"🔍 Analyzing instance: {instance_id} ({region})")
-        details = get_instance_details(
+        details = get_instance_cleanup_details(
             region, instance_id, aws_access_key_id, aws_secret_access_key
         )
 

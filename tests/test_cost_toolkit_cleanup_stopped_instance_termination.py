@@ -39,7 +39,7 @@ class TestMainSuccessful:
             ):
                 with patch(
                     "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup."
-                    "get_instance_details",
+                    "get_instance_cleanup_details",
                     return_value=mock_instance_details,
                 ):
                     with patch(
@@ -86,7 +86,7 @@ class TestMainSuccessful:
             ):
                 with patch(
                     "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup."
-                    "get_instance_details",
+                    "get_instance_cleanup_details",
                     return_value=mock_instance_details,
                 ):
                     with patch(
@@ -116,7 +116,7 @@ class TestMainEdgeCases:
             ):
                 with patch(
                     "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup."
-                    "get_instance_details",
+                    "get_instance_cleanup_details",
                     return_value=None,
                 ):
                     main()
@@ -176,7 +176,7 @@ class TestMainPartialResults:
             ):
                 with patch(
                     "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup."
-                    "get_instance_details",
+                    "get_instance_cleanup_details",
                     return_value=mock_instance_details,
                 ):
                     with patch(
@@ -221,7 +221,7 @@ class TestMainPartialResults:
             ):
                 with patch(
                     "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup."
-                    "get_instance_details",
+                    "get_instance_cleanup_details",
                     return_value=mock_instance_details,
                 ):
                     with patch(

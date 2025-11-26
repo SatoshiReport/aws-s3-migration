@@ -199,7 +199,7 @@ class TestGetInstanceName:
 
         result = _get_instance_name(instance)
 
-        assert result == "Unnamed"
+        assert result is None
 
     def test_get_instance_name_no_tags(self):
         """Test getting instance name with no tags."""
@@ -207,7 +207,7 @@ class TestGetInstanceName:
 
         result = _get_instance_name(instance)
 
-        assert result == "Unnamed"
+        assert result is None
 
 
 class TestEstimateMonthlyCost:

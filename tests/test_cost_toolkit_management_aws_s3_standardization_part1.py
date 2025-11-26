@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.management.aws_s3_standardization import (
@@ -17,7 +18,7 @@ from cost_toolkit.scripts.management.aws_s3_standardization import (
 class TestGetBucketRegion:
     """Tests for get_bucket_region function."""
 
-    @patch("cost_toolkit.scripts.management.aws_s3_standardization.get_bucket_location")
+    @patch("cost_toolkit.scripts.aws_s3_operations.get_bucket_location")
     def test_get_bucket_region_success(self, mock_get_location):
         """Test successful bucket region retrieval."""
         mock_get_location.return_value = "us-west-2"
@@ -25,16 +26,15 @@ class TestGetBucketRegion:
         assert region == "us-west-2"
         mock_get_location.assert_called_once_with("test-bucket")
 
-    @patch("cost_toolkit.scripts.management.aws_s3_standardization.get_bucket_location")
-    def test_get_bucket_region_error_returns_default(self, mock_get_location, capsys):
-        """Test bucket region error returns default region."""
+    @patch("cost_toolkit.scripts.aws_s3_operations.get_bucket_location")
+    def test_get_bucket_region_error_raises(self, mock_get_location):
+        """Test bucket region error raises exception (fail-fast)."""
         mock_get_location.side_effect = ClientError(
             {"Error": {"Code": "NoSuchBucket"}}, "get_bucket_location"
         )
-        region = get_bucket_region("non-existent-bucket")
-        assert region == "us-east-1"
-        captured = capsys.readouterr()
-        assert "Error getting region" in captured.out
+
+        with pytest.raises(ClientError):
+            get_bucket_region("non-existent-bucket")
 
 
 class TestDeleteBucketCompletelySuccess:

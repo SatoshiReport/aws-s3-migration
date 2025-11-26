@@ -143,11 +143,13 @@ def cache_is_valid(
     if ttl_seconds > 0:
         generated_at = metadata.get("generated_at")
         if not generated_at:
+            logging.warning("Cache metadata missing 'generated_at' timestamp")
             return False
         try:
             generated_dt = datetime.fromisoformat(generated_at)
             age = (datetime.now(timezone.utc) - generated_dt).total_seconds()
         except ValueError:
+            logging.warning("Cache has malformed 'generated_at' timestamp: %s", generated_at)
             return False
         return age <= ttl_seconds
     return True

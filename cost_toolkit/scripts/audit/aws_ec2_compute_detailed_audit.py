@@ -186,8 +186,19 @@ def get_instance_hourly_cost(instance_type, region_name):
         "ap-northeast-1": 1.15,
     }
 
-    base_cost = pricing_map.get(instance_type, 0.05)  # Default fallback
-    regional_multiplier = regional_multipliers.get(region_name, 1.1)
+    if instance_type not in pricing_map:
+        raise ValueError(
+            f"Unknown instance type: {instance_type}. "
+            f"Add pricing for this instance type to the pricing_map."
+        )
+    base_cost = pricing_map[instance_type]
+
+    if region_name not in regional_multipliers:
+        raise ValueError(
+            f"Unknown region: {region_name}. "
+            f"Add pricing multiplier for this region to regional_multipliers."
+        )
+    regional_multiplier = regional_multipliers[region_name]
 
     return base_cost * regional_multiplier
 

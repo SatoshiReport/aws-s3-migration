@@ -8,7 +8,6 @@ Implements specific S3 bucket configurations:
 4. Move all objects to Standard storage class
 """
 
-import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
 from cost_toolkit.common.aws_client_factory import create_s3_client
@@ -23,20 +22,25 @@ BUCKET_TO_DELETE = "mail.satoshi.report"
 
 
 def get_bucket_region(bucket_name):
-    """Get the region where a bucket is located."""
-    try:
-        return get_bucket_location(bucket_name)
-    except ClientError as e:
-        print(f"Error getting region for {bucket_name}: {e}")
-        return "us-east-1"
+    """
+    Get the region where a bucket is located.
 
+    Delegates to canonical get_bucket_location from aws_s3_operations.
 
-def get_bucket_location(bucket_name):
-    """Retrieve bucket location using boto3."""
-    s3 = boto3.client("s3")
-    response = s3.get_bucket_location(Bucket=bucket_name)
-    location = response.get("LocationConstraint")
-    return "us-east-1" if not location else location
+    Args:
+        bucket_name: Name of the S3 bucket
+
+    Returns:
+        str: AWS region name
+
+    Raises:
+        ClientError: If bucket not found or API call fails
+    """
+    from cost_toolkit.scripts.aws_s3_operations import (  # pylint: disable=import-outside-toplevel
+        get_bucket_location,
+    )
+
+    return get_bucket_location(bucket_name)
 
 
 def _delete_versioned_objects(s3_client, bucket_name):

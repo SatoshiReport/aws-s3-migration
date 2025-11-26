@@ -136,7 +136,7 @@ shared-checks:
 	if [ -n "$(BANDIT_BASELINE)" ] && [ -f "$(BANDIT_BASELINE)" ]; then \
 		BANDIT_BASELINE_FLAG="-b $(BANDIT_BASELINE)"; \
 	fi; \
-	$(PYTHON) -m ci_tools.scripts.bandit_wrapper -c pyproject.toml -r $(FORMAT_TARGETS) -q --exclude $(BANDIT_EXCLUDE) $$BANDIT_BASELINE_FLAG || FAILED_CHECKS=$$((FAILED_CHECKS + 1)); \
+	$(PYTHON) -m ci_tools.ci_runtime.bandit_wrapper -c pyproject.toml -r $(FORMAT_TARGETS) -q --exclude $(BANDIT_EXCLUDE) $$BANDIT_BASELINE_FLAG || FAILED_CHECKS=$$((FAILED_CHECKS + 1)); \
 	\
 	if [ -z "$(CI_AUTOMATION)" ]; then \
 		echo "→ Running safety..."; \

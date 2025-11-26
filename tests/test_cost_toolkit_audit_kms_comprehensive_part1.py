@@ -109,7 +109,7 @@ class TestPrintKeyAliases:
         assert "Aliases:" not in captured.out
 
     def test_print_aliases_error(self, capsys):
-        """Test error handling when listing aliases."""
+        """Test error handling when listing aliases shows error message."""
         mock_kms = MagicMock()
         mock_kms.list_aliases.side_effect = ClientError(
             {"Error": {"Code": "AccessDenied"}}, "list_aliases"
@@ -118,7 +118,7 @@ class TestPrintKeyAliases:
         _print_key_aliases(mock_kms, "key-123")
 
         captured = capsys.readouterr()
-        assert "Aliases:" not in captured.out
+        assert "unable to retrieve: AccessDenied" in captured.out
 
 
 class TestPrintKeyGrants:

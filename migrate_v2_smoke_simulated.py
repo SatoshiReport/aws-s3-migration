@@ -20,15 +20,15 @@ import boto3
 
 AWS_SYNC_MIN_ARGS = 4
 
-try:  # Prefer package-relative imports
+try:
     from .migrate_v2_smoke_shared import (
         SmokeTestDeps,
         ensure_matching_manifests,
         manifest_directory,
         materialize_sample_tree,
     )
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from migrate_v2_smoke_shared import (  # type: ignore
+except ImportError:
+    from migrate_v2_smoke_shared import (  # type: ignore[no-redef]
         SmokeTestDeps,
         ensure_matching_manifests,
         manifest_directory,

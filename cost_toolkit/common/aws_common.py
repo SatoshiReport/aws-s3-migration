@@ -58,7 +58,7 @@ def create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key):
     return ec2_client, s3_client
 
 
-def get_instance_name(ec2_client, instance_id):
+def get_instance_name(ec2_client, instance_id: str) -> Optional[str]:
     """
     Get the Name tag of an EC2 instance.
 
@@ -67,18 +67,18 @@ def get_instance_name(ec2_client, instance_id):
         instance_id: EC2 instance ID
 
     Returns:
-        str: Instance name from Name tag, or "Unknown" if not found or on error
+        str: Instance name from Name tag, or None if not found
+
+    Raises:
+        ClientError: If API call fails
     """
-    try:
-        response = ec2_client.describe_instances(InstanceIds=[instance_id])
-        for reservation in response["Reservations"]:
-            for instance in reservation["Instances"]:
-                for tag in instance.get("Tags", []):
-                    if tag["Key"] == "Name":
-                        return tag["Value"]
-    except ClientError:
-        return "Unknown"
-    return "Unknown"
+    response = ec2_client.describe_instances(InstanceIds=[instance_id])
+    for reservation in response["Reservations"]:
+        for instance in reservation["Instances"]:
+            for tag in instance.get("Tags", []):
+                if tag["Key"] == "Name":
+                    return tag["Value"]
+    return None
 
 
 def get_all_aws_regions(
@@ -95,22 +95,21 @@ def get_all_aws_regions(
     Returns:
         list: List of all AWS region names
 
+    Raises:
+        ClientError: If API call fails
+
     Note:
         This makes an API call to AWS. For a static list of common regions,
         use get_default_regions() instead.
     """
-    try:
-        ec2_client = create_ec2_client(
-            region="us-east-1",
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
+    ec2_client = create_ec2_client(
+        region="us-east-1",
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
-        response = ec2_client.describe_regions()
-        return [region["RegionName"] for region in response["Regions"]]
-    except ClientError as e:
-        print(f"Error getting regions: {e}")
-        return get_default_regions()
+    response = ec2_client.describe_regions()
+    return [region["RegionName"] for region in response["Regions"]]
 
 
 def get_default_regions():
@@ -137,22 +136,21 @@ def get_default_regions():
     ]
 
 
-def extract_tag_value(resource, key, default="Unnamed"):
+def extract_tag_value(resource, key):
     """
     Extract a specific tag value from an AWS resource.
 
     Args:
         resource: AWS resource dict containing 'Tags' key
         key: Tag key to search for
-        default: Default value if tag not found (default: "Unnamed")
 
     Returns:
-        str: Tag value if found, otherwise default value
+        str: Tag value if found, None otherwise
     """
     for tag in resource.get("Tags", []):
         if tag["Key"] == key:
             return tag["Value"]
-    return default
+    return None
 
 
 def get_resource_tags(resource):
@@ -200,37 +198,40 @@ def get_instance_details(ec2_client, instance_id):
         instance_id: The EC2 instance ID
 
     Returns:
-        dict: Instance details or None on error. Contains keys:
+        dict: Instance details or None if instance not found. Contains keys:
             - instance_id: Instance ID
-            - name: Instance name from Name tag
+            - name: Instance name from Name tag (None if not set)
             - state: Current instance state
             - instance_type: Instance type
             - launch_time: Launch timestamp
             - availability_zone: AZ where instance is running
             - volumes: List of attached volumes
             - tags: Dict of all instance tags
+
+    Raises:
+        ClientError: If API call fails
     """
-    try:
-        response = ec2_client.describe_instances(InstanceIds=[instance_id])
+    response = ec2_client.describe_instances(InstanceIds=[instance_id])
 
-        for reservation in response["Reservations"]:
-            for instance in reservation["Instances"]:
-                return {
-                    "instance_id": instance_id,
-                    "name": extract_tag_value(instance, "Name"),
-                    "state": instance["State"]["Name"],
-                    "instance_type": instance["InstanceType"],
-                    "launch_time": instance.get("LaunchTime"),
-                    "availability_zone": instance.get("Placement", {}).get(
-                        "AvailabilityZone", "unknown"
-                    ),
-                    "volumes": extract_volumes_from_instance(instance),
-                    "tags": get_resource_tags(instance),
-                }
+    for reservation in response["Reservations"]:
+        for instance in reservation["Instances"]:
+            placement = instance.get("Placement")
+            if placement is not None:
+                availability_zone = placement.get("AvailabilityZone")
+            else:
+                availability_zone = None
 
-    except ClientError as e:
-        print(f"Error getting instance details for {instance_id}: {e}")
-        return None
+            return {
+                "instance_id": instance_id,
+                "name": extract_tag_value(instance, "Name"),
+                "state": instance["State"]["Name"],
+                "instance_type": instance["InstanceType"],
+                "launch_time": instance.get("LaunchTime"),
+                "availability_zone": availability_zone,
+                "volumes": extract_volumes_from_instance(instance),
+                "tags": get_resource_tags(instance),
+            }
+
     return None
 
 
