@@ -16,25 +16,6 @@ from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from ..aws_utils import setup_aws_credentials
 
 
-def _get_instance_with_region(instance_id, region):
-    """
-    Get detailed information about an EC2 instance with region info.
-    Delegates to canonical implementation in aws_common.
-
-    Args:
-        instance_id: The EC2 instance ID
-        region: AWS region where the instance is located
-
-    Returns:
-        Dictionary containing instance information with region added
-    """
-    ec2_client = boto3.client("ec2", region_name=region)
-    details = aws_common.get_instance_details(ec2_client, instance_id)
-    if details:
-        details["region"] = region
-    return details
-
-
 def get_instance_details(instance_id, region):
     """Wrapper for tests to fetch instance details using boto3 client."""
     ec2_client = boto3.client("ec2", region_name=region)

@@ -3,6 +3,8 @@ Service status checking functions for AWS billing optimization.
 Contains functions to check the status of various AWS services.
 """
 
+import logging
+
 import botocore.exceptions
 from botocore.exceptions import ClientError
 
@@ -11,8 +13,24 @@ from cost_toolkit.common.aws_client_factory import create_client
 PENDING_DELETION_TARGET = 4
 
 
+class ServiceCheckError(Exception):
+    """Raised when a service status check fails."""
+
+
+class AccessDeniedError(ServiceCheckError):
+    """Raised when access is denied to check a service."""
+
+
 def check_global_accelerator_status():
-    """Check if Global Accelerator is disabled"""
+    """Check if Global Accelerator is disabled.
+
+    Returns:
+        tuple: (resolved: bool, message: str)
+
+    Raises:
+        AccessDeniedError: If access is denied to check the service
+        ServiceCheckError: If the API call fails
+    """
     try:
         ga_client = create_client("globalaccelerator", region="us-west-2")
         response = ga_client.list_accelerators()
@@ -29,12 +47,12 @@ def check_global_accelerator_status():
         if disabled_count > 0:
             return True, f"🔄 PARTIAL - {disabled_count}/{total_count} accelerators disabled"
 
+        return False, f"❌ ACTIVE - {total_count} accelerators still enabled"
+
     except (botocore.exceptions.ClientError, ClientError) as e:
         if "AccessDenied" in str(e):
-            return None, "⚠️ UNKNOWN - No permission to check Global Accelerator status"
-        return None, f"⚠️ ERROR - {str(e)}"
-
-    return False, f"❌ ACTIVE - {total_count} accelerators still enabled"
+            raise AccessDeniedError("No permission to check Global Accelerator status") from e
+        raise ServiceCheckError(f"Failed to check Global Accelerator: {e}") from e
 
 
 def _check_lightsail_instances_in_region(lightsail_client):
@@ -87,70 +105,80 @@ def _format_lightsail_status(
 
 
 def check_lightsail_status():
-    """Check if Lightsail instances and databases are stopped"""
-    try:
-        regions = ["eu-central-1", "us-east-1", "us-west-2"]
-        stopped_instances = 0
-        total_instances = 0
-        stopped_databases = 0
-        total_databases = 0
+    """Check if Lightsail instances and databases are stopped.
 
-        for region in regions:
-            try:
-                lightsail_client = create_client("lightsail", region=region)
+    Returns:
+        tuple: (resolved: bool, message: str)
 
-                inst_stopped, inst_total = _check_lightsail_instances_in_region(lightsail_client)
-                stopped_instances += inst_stopped
-                total_instances += inst_total
+    Raises:
+        ServiceCheckError: If all regions fail to respond
+    """
+    regions = ["eu-central-1", "us-east-1", "us-west-2"]
+    stopped_instances = 0
+    total_instances = 0
+    stopped_databases = 0
+    total_databases = 0
+    failed_regions = []
 
-                db_stopped, db_total = _check_lightsail_databases_in_region(lightsail_client)
-                stopped_databases += db_stopped
-                total_databases += db_total
+    for region in regions:
+        try:
+            lightsail_client = create_client("lightsail", region=region)
 
-            except botocore.exceptions.ClientError:
-                continue
+            inst_stopped, inst_total = _check_lightsail_instances_in_region(lightsail_client)
+            stopped_instances += inst_stopped
+            total_instances += inst_total
 
-        total_resources = total_instances + total_databases
-        stopped_resources = stopped_instances + stopped_databases
+            db_stopped, db_total = _check_lightsail_databases_in_region(lightsail_client)
+            stopped_databases += db_stopped
+            total_databases += db_total
 
-        return _format_lightsail_status(
-            total_resources, stopped_resources, stopped_instances, stopped_databases
-        )
+        except botocore.exceptions.ClientError as e:
+            logging.warning("Failed to check Lightsail in region %s: %s", region, e)
+            failed_regions.append(region)
 
-    except ClientError as e:
-        return None, f"⚠️ ERROR - {str(e)}"
+    if len(failed_regions) == len(regions):
+        raise ServiceCheckError(f"Failed to check Lightsail in all regions: {failed_regions}")
+
+    total_resources = total_instances + total_databases
+    stopped_resources = stopped_instances + stopped_databases
+
+    return _format_lightsail_status(
+        total_resources, stopped_resources, stopped_instances, stopped_databases
+    )
 
 
 def _check_cloudwatch_canaries_in_region(synthetics_client):
-    """Check CloudWatch canaries in a single region."""
+    """Check CloudWatch canaries in a single region.
+
+    Raises:
+        ClientError: If AWS API call fails
+    """
     stopped_count = 0
     total_count = 0
 
-    try:
-        canaries_response = synthetics_client.describe_canaries()
-        for canary in canaries_response["Canaries"]:
-            total_count += 1
-            if canary["Status"]["State"] == "STOPPED":
-                stopped_count += 1
-    except botocore.exceptions.ClientError:
-        pass
+    canaries_response = synthetics_client.describe_canaries()
+    for canary in canaries_response["Canaries"]:
+        total_count += 1
+        if canary["Status"]["State"] == "STOPPED":
+            stopped_count += 1
 
     return stopped_count, total_count
 
 
 def _check_cloudwatch_alarms_in_region(cw_client):
-    """Check CloudWatch alarms in a single region."""
+    """Check CloudWatch alarms in a single region.
+
+    Raises:
+        ClientError: If AWS API call fails
+    """
     disabled_count = 0
     total_count = 0
 
-    try:
-        alarms_response = cw_client.describe_alarms()
-        for alarm in alarms_response["MetricAlarms"]:
-            total_count += 1
-            if not alarm["ActionsEnabled"]:
-                disabled_count += 1
-    except botocore.exceptions.ClientError:
-        pass
+    alarms_response = cw_client.describe_alarms()
+    for alarm in alarms_response["MetricAlarms"]:
+        total_count += 1
+        if not alarm["ActionsEnabled"]:
+            disabled_count += 1
 
     return disabled_count, total_count
 
@@ -178,39 +206,41 @@ def _format_cloudwatch_status(total_canaries, stopped_canaries, total_alarms, di
 
 
 def check_cloudwatch_status():
-    """Check if CloudWatch canaries are stopped and alarms disabled"""
-    try:
-        regions = ["us-east-1", "us-east-2", "us-west-2"]
-        stopped_canaries = 0
-        total_canaries = 0
-        disabled_alarms = 0
-        total_alarms = 0
+    """Check if CloudWatch canaries are stopped and alarms disabled.
 
-        for region in regions:
-            try:
-                cw_client = create_client("cloudwatch", region=region)
-                synthetics_client = create_client("synthetics", region=region)
+    Returns:
+        tuple: (resolved: bool, message: str)
 
-                canary_stopped, canary_total = _check_cloudwatch_canaries_in_region(
-                    synthetics_client
-                )
-                stopped_canaries += canary_stopped
-                total_canaries += canary_total
+    Raises:
+        ServiceCheckError: If all regions fail to respond
+    """
+    regions = ["us-east-1", "us-east-2", "us-west-2"]
+    stopped_canaries = 0
+    total_canaries = 0
+    disabled_alarms = 0
+    total_alarms = 0
+    failed_regions = []
 
-                alarm_disabled, alarm_total = _check_cloudwatch_alarms_in_region(cw_client)
-                disabled_alarms += alarm_disabled
-                total_alarms += alarm_total
+    for region in regions:
+        try:
+            cw_client = create_client("cloudwatch", region=region)
+            synthetics_client = create_client("synthetics", region=region)
 
-            except botocore.exceptions.ClientError:
-                continue
+            canary_stopped, canary_total = _check_cloudwatch_canaries_in_region(synthetics_client)
+            stopped_canaries += canary_stopped
+            total_canaries += canary_total
 
-        return _format_cloudwatch_status(
-            total_canaries, stopped_canaries, total_alarms, disabled_alarms
-        )
+            alarm_disabled, alarm_total = _check_cloudwatch_alarms_in_region(cw_client)
+            disabled_alarms += alarm_disabled
+            total_alarms += alarm_total
 
-    except ClientError as e:
-        return None, f"⚠️ ERROR - {str(e)}"
+        except botocore.exceptions.ClientError as e:
+            logging.warning("Failed to check CloudWatch in region %s: %s", region, e)
+            failed_regions.append(region)
 
+    if len(failed_regions) == len(regions):
+        raise ServiceCheckError(f"Failed to check CloudWatch in all regions: {failed_regions}")
 
-if __name__ == "__main__":
-    pass
+    return _format_cloudwatch_status(
+        total_canaries, stopped_canaries, total_alarms, disabled_alarms
+    )

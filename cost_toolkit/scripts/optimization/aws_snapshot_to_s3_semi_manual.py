@@ -28,11 +28,6 @@ from cost_toolkit.scripts.optimization.snapshot_export_common import (
 from cost_toolkit.scripts.snapshot_export_common import SAMPLE_SNAPSHOTS
 
 
-def load_aws_credentials_from_env():
-    """Expose credential loader for tests/legacy callers."""
-    return load_credentials_from_env()
-
-
 def prepare_snapshot_for_export(snapshot_info, aws_access_key_id, aws_secret_access_key):
     """Prepare a snapshot for manual export by creating AMI and S3 bucket"""
     snapshot_id = snapshot_info["snapshot_id"]

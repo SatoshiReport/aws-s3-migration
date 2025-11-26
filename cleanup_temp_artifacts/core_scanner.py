@@ -8,13 +8,12 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator
 
-from migration_utils import derive_local_path
+from migration_utils import ProgressTracker, derive_local_path
 
 from .categories import Category
 
@@ -73,32 +72,6 @@ def iter_relevant_dirs(file_path: Path, base_path: Path) -> Iterator[Path]:
             break
         yield current
         current = current.parent
-
-
-class ProgressTracker:
-    """Minimal progress indicator for long-running scans."""
-
-    def __init__(self, total: int, label: str):
-        self.total = total
-        self.label = label
-        self.start = time.time()
-        self.last_print = 0.0
-
-    def update(self, current: int):
-        """Update progress display if update interval has elapsed."""
-        now = time.time()
-        if current == self.total or now - self.last_print >= PROGRESS_UPDATE_INTERVAL_SECONDS:
-            if self.total:
-                pct = (current / self.total) * 100
-                status = f"{current:,}/{self.total:,} ({pct:5.1f}%)"
-            else:
-                status = f"{current:,}"
-            print(f"\r{self.label}: {status}", end="", flush=True)
-            self.last_print = now
-
-    def finish(self):
-        """Print final newline to complete progress display."""
-        print()
 
 
 class MatcherError(RuntimeError):
@@ -201,7 +174,11 @@ def scan_candidates_from_db(
 ) -> list[Candidate]:
     """Inspect the migration SQLite database and find directories worth pruning."""
     base_path = base_path.resolve()
-    progress = ProgressTracker(total_files, "Scanning migration database")
+    progress = ProgressTracker(
+        total=total_files,
+        label="Scanning migration database",
+        update_interval=PROGRESS_UPDATE_INTERVAL_SECONDS,
+    )
     candidates: dict[Path, Candidate] = {}
     non_matching: set[Path] = set()
 

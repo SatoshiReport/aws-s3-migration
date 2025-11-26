@@ -14,6 +14,8 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .cache import (  # pylint: disable=no-name-in-module
+    CacheReadError,
+    CacheValidationError,
     build_cache_key,
     cache_is_valid,
     load_cache,
@@ -92,18 +94,20 @@ def _try_load_from_cache(
     if not cache_path.exists() or cache_config.refresh_cache:
         return cache_path, False, None
 
-    loaded = load_cache(cache_path, scan_params, category_map)
-    if not loaded:
+    try:
+        cached_candidates, metadata = load_cache(cache_path, scan_params, category_map)
+        is_valid = cache_is_valid(
+            metadata,
+            ttl_seconds=cache_config.cache_ttl,
+            rowcount=db_info.total_files,
+            max_rowid=db_info.max_rowid,
+            db_mtime_ns=db_info.db_stat.st_mtime_ns,
+        )
+    except (CacheReadError, CacheValidationError) as exc:
+        logging.info("Cache invalid, will rescan: %s", exc)
         return cache_path, False, None
 
-    cached_candidates, metadata = loaded
-    if not cache_is_valid(
-        metadata,
-        ttl_seconds=cache_config.cache_ttl,
-        rowcount=db_info.total_files,
-        max_rowid=db_info.max_rowid,
-        db_mtime_ns=db_info.db_stat.st_mtime_ns,
-    ):
+    if not is_valid:
         return cache_path, False, None
 
     generated = metadata.get("generated_at", "unknown time")
@@ -227,6 +231,10 @@ def load_candidates_from_db(
         conn.close()
 
 
+class CacheWriteError(RuntimeError):
+    """Raised when cache file cannot be written."""
+
+
 def write_cache_if_needed(
     cache_config: CacheConfig,
     load_result: CandidateLoadResult,
@@ -237,7 +245,11 @@ def write_cache_if_needed(
     db_info: DatabaseInfo,
     scan_params: dict[str, object],
 ) -> None:
-    """Write cache if enabled and not already used."""
+    """Write cache if enabled and not already used.
+
+    Raises:
+        CacheWriteError: If cache file cannot be written
+    """
     if not cache_config.enabled or not cache_path or cache_used:
         return
 
@@ -250,4 +262,4 @@ def write_cache_if_needed(
             db_info=db_info,
         )
     except OSError as exc:
-        logging.warning("Failed to write cache %s: %s", cache_path, exc)
+        raise CacheWriteError(f"Failed to write cache {cache_path}: {exc}") from exc

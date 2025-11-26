@@ -123,10 +123,6 @@ def find_exact_duplicates(index: DirectoryIndex) -> List[DuplicateCluster]:
     return _prune_nested_clusters(sorted_clusters)
 
 
-def _path_tuple_to_str(path: PathTuple) -> str:
-    return "/".join(path)
-
-
 def _collapse_nested_nodes(nodes: Iterable[DirectoryNode]) -> List[DirectoryNode]:
     """Return only the top-most directories from a duplicate cluster."""
     sorted_nodes = sorted(nodes, key=lambda n: len(n.path))

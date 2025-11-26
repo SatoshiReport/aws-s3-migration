@@ -58,8 +58,6 @@ def get_common_regions() -> list[str]:
     return regions
 
 
-# Re-export get_instance_name from aws_common for backward compatibility
-# (this module is widely imported)
 __all__ = [
     "get_all_regions",
     "get_common_regions",

@@ -6,6 +6,8 @@ import json
 
 import boto3
 
+from cost_toolkit.scripts.aws_s3_operations import list_buckets as _list_buckets_raw
+
 
 def get_boto3_clients():
     """
@@ -41,12 +43,13 @@ def list_s3_buckets():
     """
     List all S3 buckets in the account.
 
+    Delegates to canonical implementation in cost_toolkit.scripts.aws_s3_operations.
+
     Returns:
         list: List of bucket names
     """
-    s3, _, _ = get_boto3_clients()
-    response = s3.list_buckets()
-    return [bucket["Name"] for bucket in response.get("Buckets", [])]
+    buckets = _list_buckets_raw()
+    return [bucket["Name"] for bucket in buckets]
 
 
 def generate_restrictive_bucket_policy(user_arn, bucket_name):

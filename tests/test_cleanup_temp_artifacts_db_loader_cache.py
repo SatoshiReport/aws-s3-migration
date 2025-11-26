@@ -111,6 +111,8 @@ def test_try_load_from_cache_refresh_requested(tmp_path):
 
 def test_try_load_from_cache_invalid_cache(tmp_path):
     """Test _try_load_from_cache when cached data is invalid."""
+    from cleanup_temp_artifacts.cache import CacheValidationError
+
     cache_dir = tmp_path / "cache"
     cache_dir.mkdir()
     cache_file = cache_dir / "test.json"
@@ -129,7 +131,10 @@ def test_try_load_from_cache_invalid_cache(tmp_path):
     mock_db_info.db_stat.st_mtime_ns = 123456789
 
     with patch("cleanup_temp_artifacts.db_loader.build_cache_key", return_value="test"):
-        with patch("cleanup_temp_artifacts.db_loader.load_cache", return_value=None):
+        with patch(
+            "cleanup_temp_artifacts.db_loader.load_cache",
+            side_effect=CacheValidationError("Invalid version"),
+        ):
             cache_path, cache_used, candidates = _try_load_from_cache(
                 cache_config,
                 Path("/base"),

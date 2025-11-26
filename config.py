@@ -11,15 +11,13 @@ Performance Optimizations:
 
 # Local destination directory for all bucket data
 # Set this in config_local.py (not committed to git)
-LOCAL_BASE_PATH: str = "/path/to/your/backup/directory"
 try:
-    from config_local import LOCAL_BASE_PATH as _LOCAL_BASE_PATH_OVERRIDE
-
-    LOCAL_BASE_PATH = _LOCAL_BASE_PATH_OVERRIDE
-except ImportError:
-    # config_local.py is optional; using default LOCAL_BASE_PATH
-    # Users must create config_local.py with LOCAL_BASE_PATH for production use
-    pass
+    from config_local import LOCAL_BASE_PATH
+except ImportError as exc:
+    raise ImportError(
+        "config_local.py is required. Create config_local.py with LOCAL_BASE_PATH defined. "
+        "Example: LOCAL_BASE_PATH = '/path/to/your/backup/directory'"
+    ) from exc
 
 # State database location
 STATE_DB_PATH: str = "s3_migration_state.db"
@@ -53,13 +51,13 @@ MULTIPART_CHUNKSIZE: int = 8 * 1024 * 1024  # 8MB - size of each part
 MAX_CONCURRENCY: int = 10  # Number of threads for multipart transfers
 USE_THREADS: bool = True  # Use threads for S3 transfers
 
-# Bucket exclusions (optional)
+# Bucket exclusions
 # Set this in config_local.py (not committed to git)
 # Add bucket names to skip during scanning (e.g., buckets you don't own or can't access)
-EXCLUDED_BUCKETS: list[str] = []  # Default - override in config_local.py
 try:
-    from config_local import EXCLUDED_BUCKETS as _EXCLUDED_BUCKETS_OVERRIDE
-
-    EXCLUDED_BUCKETS = _EXCLUDED_BUCKETS_OVERRIDE
-except ImportError:
-    pass
+    from config_local import EXCLUDED_BUCKETS
+except ImportError as exc:
+    raise ImportError(
+        "config_local.py must define EXCLUDED_BUCKETS (can be empty list []). "
+        "Example: EXCLUDED_BUCKETS = []"
+    ) from exc

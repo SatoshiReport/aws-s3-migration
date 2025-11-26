@@ -4,11 +4,12 @@ Database scanning and candidate processing for cleanup_temp_artifacts.
 This module provides backward compatibility by re-exporting from core_scanner and db_loader.
 """
 
+from migration_utils import ProgressTracker
+
 from .core_scanner import (
     Candidate,
     CandidateLoadError,
     CandidateLoadResult,
-    ProgressTracker,
     derive_local_path,
     iter_relevant_dirs,
     match_category,

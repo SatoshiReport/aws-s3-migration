@@ -18,11 +18,9 @@ from cost_toolkit.scripts.optimization.monitor_manual_exports import (
 class TestCheckExportStatusBasic:
     """Test basic export status checking scenarios."""
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-    def test_check_export_status_all_tasks(self, mock_boto_client, mock_load_creds, capsys):
+    def test_check_export_status_all_tasks(self, mock_boto_client, capsys):
         """Test checking all export tasks."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
         mock_ec2.describe_export_image_tasks.return_value = {
@@ -51,9 +49,8 @@ class TestCheckExportStatusBasic:
         assert "export-123" in captured.out
         assert "export-456" in captured.out
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-    def test_check_export_status_specific_ami(self, mock_boto_client, _mock_load_creds):
+    def test_check_export_status_specific_ami(self, mock_boto_client):
         """Test checking specific AMI export status."""
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
@@ -78,11 +75,9 @@ class TestCheckExportStatusBasic:
         assert tasks[0]["ImageId"] == "ami-specific"
 
 
-@patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
 @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-def test_check_export_status_various_statuses(mock_boto_client, mock_load_creds, capsys):
+def test_check_export_status_various_statuses(mock_boto_client, capsys):
     """Test display of various export statuses."""
-    mock_load_creds.return_value = ("access_key", "secret_key")
     mock_ec2 = MagicMock()
     mock_boto_client.return_value = mock_ec2
     mock_ec2.describe_export_image_tasks.return_value = {
@@ -125,11 +120,9 @@ def test_check_export_status_various_statuses(mock_boto_client, mock_load_creds,
 class TestCheckExportStatusEdgeCases:
     """Test edge cases and error scenarios for export status checking."""
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-    def test_check_export_status_no_tasks(self, mock_boto_client, mock_load_creds, capsys):
+    def test_check_export_status_no_tasks(self, mock_boto_client, capsys):
         """Test when no export tasks exist."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
         mock_ec2.describe_export_image_tasks.return_value = {"ExportImageTasks": []}
@@ -140,11 +133,9 @@ class TestCheckExportStatusEdgeCases:
         captured = capsys.readouterr()
         assert "No export tasks found" in captured.out
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-    def test_check_export_status_error(self, mock_boto_client, mock_load_creds, capsys):
+    def test_check_export_status_error(self, mock_boto_client, capsys):
         """Test handling errors when checking export status."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
         mock_ec2.describe_export_image_tasks.side_effect = ClientError(
@@ -161,11 +152,9 @@ class TestCheckExportStatusEdgeCases:
 class TestCheckS3Files:
     """Test S3 file checking functionality."""
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-    def test_check_s3_files_with_vmdks(self, mock_boto_client, mock_load_creds, capsys):
+    def test_check_s3_files_with_vmdks(self, mock_boto_client, capsys):
         """Test checking S3 files with VMDK files present."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_s3 = MagicMock()
         mock_boto_client.return_value = mock_s3
         mock_s3.list_objects_v2.return_value = {
@@ -192,11 +181,9 @@ class TestCheckS3Files:
         captured = capsys.readouterr()
         assert "Found 2 VMDK files" in captured.out
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-    def test_check_s3_files_no_contents(self, mock_boto_client, mock_load_creds, capsys):
+    def test_check_s3_files_no_contents(self, mock_boto_client, capsys):
         """Test when S3 bucket has no files."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_s3 = MagicMock()
         mock_boto_client.return_value = mock_s3
         mock_s3.list_objects_v2.return_value = {}
@@ -207,11 +194,9 @@ class TestCheckS3Files:
         captured = capsys.readouterr()
         assert "No files found" in captured.out
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-    def test_check_s3_files_bucket_not_found(self, mock_boto_client, mock_load_creds, capsys):
+    def test_check_s3_files_bucket_not_found(self, mock_boto_client, capsys):
         """Test when S3 bucket does not exist."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_s3 = MagicMock()
         mock_boto_client.return_value = mock_s3
 
@@ -227,11 +212,9 @@ class TestCheckS3Files:
         captured = capsys.readouterr()
         assert "does not exist" in captured.out
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
-    def test_check_s3_files_client_error(self, mock_boto_client, mock_load_creds, capsys):
+    def test_check_s3_files_client_error(self, mock_boto_client, capsys):
         """Test handling S3 client errors."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_s3 = MagicMock()
         mock_boto_client.return_value = mock_s3
 

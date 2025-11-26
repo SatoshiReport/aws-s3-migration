@@ -11,13 +11,6 @@ from datetime import datetime
 import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.aws_client_factory import load_credentials_from_env
-
-
-def load_aws_credentials_from_env():
-    """Expose credential loader for legacy callers/tests."""
-    return load_credentials_from_env()
-
 
 def check_export_status(region, ami_id=None):
     """Check status of export tasks in a region"""

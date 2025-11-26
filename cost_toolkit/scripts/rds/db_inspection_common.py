@@ -236,14 +236,10 @@ def analyze_tables(cursor, tables, max_sample_columns=5):
                 get_table_columns(cursor, schema_name, table_name, max_sample_columns)
                 show_sample_data(cursor, schema_name, table_name)
 
-        except Exception as e:  # pylint: disable=broad-exception-caught
+        except (OSError, RuntimeError) as e:
             print(f"   • {schema_name}.{table_name}: Error reading - {e}")
 
     print("\n📈 SUMMARY:")
     print(f"   Total Tables: {len(tables)}")
     print(f"   Total Rows: {total_rows:,}")
     return total_rows
-
-
-if __name__ == "__main__":
-    pass

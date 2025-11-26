@@ -96,24 +96,16 @@ def record_migration_action(original_instance, endpoint_info, monthly_savings):
 
     log_file = os.path.join(os.path.dirname(__file__), "..", "..", "config", "migration_log.json")
 
-    try:
-        if os.path.exists(log_file):
-            with open(log_file, "r", encoding="utf-8") as f:
-                log_data = json.load(f)
-        else:
-            log_data = {"migrations": []}
+    if os.path.exists(log_file):
+        with open(log_file, "r", encoding="utf-8") as f:
+            log_data = json.load(f)
+    else:
+        log_data = {"migrations": []}
 
-        log_data["migrations"].append(migration_log)
+    log_data["migrations"].append(migration_log)
 
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
-        with open(log_file, "w", encoding="utf-8") as f:
-            json.dump(log_data, f, indent=2)
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    with open(log_file, "w", encoding="utf-8") as f:
+        json.dump(log_data, f, indent=2)
 
-        print(f"📝 Migration recorded in {log_file}")
-
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        print(f"⚠️  Could not record migration: {e}")
-
-
-if __name__ == "__main__":
-    pass
+    print(f"📝 Migration recorded in {log_file}")

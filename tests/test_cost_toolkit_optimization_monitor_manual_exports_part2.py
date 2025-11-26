@@ -38,14 +38,10 @@ def test_monitor_all_regions(mock_check_files, mock_check_status, capsys):
 class TestCheckSpecificAmi:
     """Test checking specific AMI exports."""
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.check_export_status")
-    def test_check_specific_ami_with_files(
-        self, mock_check_status, mock_boto_client, mock_load_creds, capsys
-    ):
+    def test_check_specific_ami_with_files(self, mock_check_status, mock_boto_client, capsys):
         """Test checking specific AMI with S3 files."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_s3 = MagicMock()
         mock_boto_client.return_value = mock_s3
         mock_check_status.return_value = []
@@ -64,14 +60,10 @@ class TestCheckSpecificAmi:
         assert "Checking AMI ami-specific" in captured.out
         assert "S3 files for AMI ami-specific" in captured.out
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.check_export_status")
-    def test_check_specific_ami_no_files(
-        self, mock_check_status, mock_boto_client, mock_load_creds, capsys
-    ):
+    def test_check_specific_ami_no_files(self, mock_check_status, mock_boto_client, capsys):
         """Test checking specific AMI with no S3 files."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_s3 = MagicMock()
         mock_boto_client.return_value = mock_s3
         mock_check_status.return_value = []
@@ -82,14 +74,10 @@ class TestCheckSpecificAmi:
         captured = capsys.readouterr()
         assert "No S3 files found for AMI ami-nofiles" in captured.out
 
-    @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.load_aws_credentials_from_env")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.boto3.client")
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.check_export_status")
-    def test_check_specific_ami_s3_error(
-        self, mock_check_status, mock_boto_client, mock_load_creds, capsys
-    ):
+    def test_check_specific_ami_s3_error(self, mock_check_status, mock_boto_client, capsys):
         """Test checking specific AMI with S3 error."""
-        mock_load_creds.return_value = ("access_key", "secret_key")
         mock_s3 = MagicMock()
         mock_boto_client.return_value = mock_s3
         mock_check_status.return_value = []

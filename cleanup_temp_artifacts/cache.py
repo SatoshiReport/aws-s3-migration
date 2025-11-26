@@ -52,21 +52,35 @@ def build_cache_key(base_path: Path, db_path: Path, scan_params: dict[str, objec
     return hashlib.sha256(data).hexdigest()
 
 
+class CacheReadError(RuntimeError):
+    """Raised when cache file cannot be read."""
+
+
+class CacheValidationError(RuntimeError):
+    """Raised when cache fails validation."""
+
+
 def load_cache(
     cache_path: Path,
     scan_params: dict[str, object],
     category_map: dict[str, Category],
-) -> tuple[list[Candidate], dict] | None:
-    """Load cached scan results and validate against current scan parameters."""
+) -> tuple[list[Candidate], dict]:
+    """Load cached scan results and validate against current scan parameters.
+
+    Raises:
+        CacheReadError: If cache file cannot be read
+        CacheValidationError: If cache version or parameters don't match
+    """
     try:
         payload = json.loads(cache_path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
-        logging.warning("Failed to read cache %s: %s", cache_path, exc)
-        return None
+        raise CacheReadError(f"Failed to read cache {cache_path}: {exc}") from exc
     if payload.get("version") != CACHE_VERSION:
-        return None
+        raise CacheValidationError(
+            f"Cache version mismatch: expected {CACHE_VERSION}, got {payload.get('version')}"
+        )
     if payload.get("scan_params") != scan_params:
-        return None
+        raise CacheValidationError("Cache scan parameters don't match current parameters")
     metadata = {
         "generated_at": payload.get("generated_at"),
         "rowcount": payload.get("rowcount"),
@@ -78,7 +92,7 @@ def load_cache(
     for item in items:
         cat_name = item.get("category")
         if cat_name not in category_map:
-            return None
+            raise CacheValidationError(f"Unknown category '{cat_name}' in cached data")
         candidates.append(
             Candidate(
                 path=Path(item["path"]),
@@ -143,13 +157,13 @@ def cache_is_valid(
     if ttl_seconds > 0:
         generated_at = metadata.get("generated_at")
         if not generated_at:
-            logging.warning("Cache metadata missing 'generated_at' timestamp")
-            return False
+            raise CacheValidationError("Cache metadata missing 'generated_at' timestamp")
         try:
             generated_dt = datetime.fromisoformat(generated_at)
             age = (datetime.now(timezone.utc) - generated_dt).total_seconds()
-        except ValueError:
-            logging.warning("Cache has malformed 'generated_at' timestamp: %s", generated_at)
-            return False
+        except ValueError as exc:
+            raise CacheValidationError(
+                f"Cache has malformed 'generated_at' timestamp: {generated_at}"
+            ) from exc
         return age <= ttl_seconds
     return True

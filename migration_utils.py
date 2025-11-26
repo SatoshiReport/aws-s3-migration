@@ -27,21 +27,45 @@ def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
         Path object if valid, None if path traversal detected
 
     Note:
-        Returns None for path traversal to allow callers to skip invalid keys.
-        Use derive_local_path_strict if you want exceptions raised.
+        Returns None for path traversal to allow callers to skip invalid keys
+        in batch processing contexts. This is intentional - callers should
+        log/skip invalid keys rather than failing the entire batch.
     """
     candidate = base_path / bucket
     for part in PurePosixPath(key).parts:
         if part in ("", "."):
             continue
         if part == "..":
+            # Path traversal attempt - return None to let caller skip this key
             return None
         candidate /= part
     try:
         candidate.relative_to(base_path)
     except ValueError:
+        # Path escaped base_path - return None to let caller skip this key
         return None
     return candidate
+
+
+def derive_local_path_strict(base_path: Path, bucket: str, key: str) -> Path:
+    """
+    Convert a bucket/key pair into the expected local filesystem path.
+
+    Args:
+        base_path: Base directory containing bucket folders
+        bucket: S3 bucket name
+        key: S3 object key
+
+    Returns:
+        Path object for valid paths
+
+    Raises:
+        PathTraversalError: If path traversal is detected in key
+    """
+    result = derive_local_path(base_path, bucket, key)
+    if result is None:
+        raise PathTraversalError(f"Path traversal detected in key: {key}")
+    return result
 
 
 def format_duration(seconds: float) -> str:
@@ -110,11 +134,24 @@ def hash_file_in_chunks(file_path, hash_obj, chunk_size: int = 8 * 1024 * 1024):
 
 
 class ProgressTracker:
-    """Tracks progress with time-based updates"""
+    """Tracks progress with time-based updates.
 
-    def __init__(self, update_interval: float = 2.0):
+    Can be used in two modes:
+    1. Simple mode: Just tracks time intervals with should_update()
+    2. Display mode: Tracks total/current progress with update() for console output
+    """
+
+    def __init__(
+        self,
+        total: int | None = None,
+        label: str | None = None,
+        update_interval: float = 2.0,
+    ):
+        self.total = total
+        self.label = label
         self.update_interval = update_interval
         self.last_update = time.time()
+        self.start = time.time()
 
     def should_update(self, force: bool = False) -> bool:
         """Check if enough time has elapsed to update progress"""
@@ -124,6 +161,32 @@ class ProgressTracker:
             return True
         return False
 
-    def reset(self):
+    def update(self, current: int) -> None:
+        """Update progress display if update interval has elapsed.
+
+        Args:
+            current: Current progress count
+
+        Raises:
+            ValueError: If total or label not set (display mode not initialized)
+        """
+        if self.total is None or self.label is None:
+            raise ValueError("ProgressTracker.update() requires total and label to be set")
+        now = time.time()
+        if current == self.total or now - self.last_update >= self.update_interval:
+            if self.total:
+                pct = (current / self.total) * 100
+                status = f"{current:,}/{self.total:,} ({pct:5.1f}%)"
+            else:
+                status = f"{current:,}"
+            print(f"\r{self.label}: {status}", end="", flush=True)
+            self.last_update = now
+
+    def finish(self) -> None:
+        """Print final newline to complete progress display."""
+        print()
+
+    def reset(self) -> None:
         """Reset the tracker"""
         self.last_update = time.time()
+        self.start = time.time()

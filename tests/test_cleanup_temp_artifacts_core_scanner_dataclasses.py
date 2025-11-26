@@ -10,10 +10,10 @@ from cleanup_temp_artifacts.core_scanner import (  # pylint: disable=no-name-in-
     Candidate,
     CandidateLoadError,
     CandidateLoadResult,
-    ProgressTracker,
     _filter_candidates_by_size,
     iter_relevant_dirs,
 )
+from migration_utils import ProgressTracker
 from tests.assertions import assert_equal
 
 
@@ -206,7 +206,7 @@ def test_progress_tracker_initialization():
     assert_equal(tracker.total, 100)
     assert_equal(tracker.label, "Testing")
     assert tracker.start > 0
-    assert_equal(tracker.last_print, 0.0)
+    assert tracker.last_update > 0  # Uses last_update instead of last_print
 
 
 def test_progress_tracker_finish(capsys):

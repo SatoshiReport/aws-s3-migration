@@ -186,12 +186,13 @@ def _select_exports(exports):
 
     try:
         index = int(selection) - 1
-        if 0 <= index < len(exports):
-            return [exports[index]]
-    except ValueError:
-        pass
+    except ValueError as e:
+        raise ValueError(f"Invalid selection '{selection}': not a number") from e
 
-    return None
+    if not 0 <= index < len(exports):
+        raise ValueError(f"Selection {selection} out of range (1-{len(exports)})")
+
+    return [exports[index]]
 
 
 def _process_export_restore(ec2_client, bucket_name, export):
@@ -246,20 +247,18 @@ def _create_aws_clients(aws_access_key_id, aws_secret_access_key, region):
 
 
 def _get_and_validate_exports(s3_client, bucket_name):
-    """Get exports from S3 and validate user selection."""
+    """Get exports from S3 and validate user selection.
+
+    Raises:
+        ValueError: If user selection is invalid
+    """
     print(f"\n🔍 Scanning S3 bucket {bucket_name} for exports...")
     exports = list_s3_exports(s3_client, bucket_name)
 
     if not exports:
-        print("❌ No snapshot exports found in the specified bucket")
-        return None
+        raise ValueError("No snapshot exports found in the specified bucket")
 
-    selected_exports = _select_exports(exports)
-    if not selected_exports:
-        print("❌ Invalid selection")
-        return None
-
-    return selected_exports
+    return _select_exports(exports)
 
 
 def _confirm_restore_operation(selected_exports):
@@ -326,8 +325,6 @@ def restore_snapshots_from_s3():
     ec2_client, s3_client = _create_aws_clients(aws_access_key_id, aws_secret_access_key, region)
 
     selected_exports = _get_and_validate_exports(s3_client, bucket_name)
-    if not selected_exports:
-        return
 
     if not _confirm_restore_operation(selected_exports):
         return
@@ -340,7 +337,7 @@ def main():
     """Main function."""
     try:
         restore_snapshots_from_s3()
-    except (ClientError, KeyboardInterrupt) as e:
+    except (ClientError, ValueError, KeyboardInterrupt) as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
 
