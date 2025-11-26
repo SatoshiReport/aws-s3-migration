@@ -28,17 +28,6 @@ profile = "black"
 line_length = 100
 skip = ["ci_shared"]
 
-[tool.pylint.MASTER]
-init-hook = "import sys, os; sys.path.insert(0, os.getcwd())"
-ignored-modules = ["psycopg2"]
-
-[tool.pylint.'MESSAGES CONTROL']
-disable = ["duplicate-code"]  # R0801 - Many duplications in test fixtures and similar utility patterns
-
-[tool.pylint.DESIGN]
-max-attributes = 10
-max-args = 7
-
 [tool.vulture]
 exclude = ["ci_shared/", "scripts/", "docs/", ".venv/"]
 
@@ -79,6 +68,12 @@ skips = [
 
 [tool.coverage]
 
+[tool.coverage.report]
+omit = [
+    "*helpers/__init__.py",
+    "*/_module_references.py",
+]
+
 [tool.coverage.run]
 omit = [
     "*/vendor/*",
@@ -89,7 +84,71 @@ omit = [
     "*/dependency_injector/*.pyx",
     "*/dependency_injector/**/*.pyx",
     "*/site-packages/*",
+    "*helpers/__init__.py",
+    "*/_module_references.py",
 ]
+
+[tool.pylint]
+
+[tool.pylint.BASIC]
+method-rgx = "([a-z_][a-z0-9_]*|visit_[A-Z][A-Za-z]*)"
+
+[tool.pylint.MAIN]
+init-hook = "import sys; sys.path.insert(0, 'tests')"
+
+[tool.pylint.SIMILARITIES]
+min-similarity-lines = 7
+
+[tool.pylint.design]
+max-args = 7
+max-positional-arguments = 7
+
+[tool.pylint.messages_control]
+disable = "too-few-public-methods"
+
+[tool.pyright]
+pythonVersion = "3.12"
+reportArgumentType = "warning"
+reportAssertAlwaysTrue = "warning"
+reportAssignmentType = "warning"
+reportAttributeAccessIssue = "warning"
+reportCallInDefaultInitializer = "none"
+reportCallIssue = "warning"
+reportDuplicateImport = "error"
+reportFunctionMemberAccess = "warning"
+reportGeneralTypeIssues = "error"
+reportImplicitStringConcatenation = "none"
+reportIncompleteStub = "none"
+reportIndexIssue = "warning"
+reportInvalidStubStatement = "warning"
+reportInvalidTypeVarUse = "warning"
+reportMissingImports = "error"
+reportMissingModuleSource = "none"
+reportMissingTypeStubs = "none"
+reportOperatorIssue = "warning"
+reportOptionalCall = "warning"
+reportOptionalContextManager = "warning"
+reportOptionalIterable = "warning"
+reportOptionalMemberAccess = "warning"
+reportOptionalOperand = "warning"
+reportOptionalSubscript = "warning"
+reportPrivateUsage = "none"
+reportPropertyTypeMismatch = "warning"
+reportReturnType = "warning"
+reportSelfClsParameterName = "warning"
+reportUnboundVariable = "error"
+reportUndefinedVariable = "error"
+reportUninitializedInstanceVariable = "none"
+reportUnnecessaryCast = "warning"
+reportUnnecessaryComparison = "warning"
+reportUnnecessaryIsInstance = "warning"
+reportUntypedBaseClass = "none"
+reportUntypedClassDecorator = "none"
+reportUntypedFunctionDecorator = "none"
+reportUntypedNamedTuple = "warning"
+reportUnusedImport = "error"
+reportUnusedVariable = "error"
+typeCheckingMode = "basic"
 
 [tool.pytest]
 
