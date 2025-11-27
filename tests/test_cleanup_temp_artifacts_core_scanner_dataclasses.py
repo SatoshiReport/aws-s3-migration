@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from cleanup_temp_artifacts.categories import Category  # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts.core_scanner import (  # pylint: disable=no-name-in-module
     Candidate,
@@ -181,8 +183,12 @@ def test_filter_candidates_by_size_no_minimum():
     assert_equal(len(result), 2)
 
 
-def test_filter_candidates_by_size_none_sizes():
-    """Test _filter_candidates_by_size with None size values."""
+def test_filter_candidates_by_size_raises_on_none_sizes():
+    """Test _filter_candidates_by_size raises MissingSizeError for None size values."""
+    from cleanup_temp_artifacts.core_scanner import (
+        MissingSizeError,  # pylint: disable=no-name-in-module
+    )
+
     category = Category("cat", "Category", _dummy_matcher)
 
     candidates = {
@@ -190,13 +196,11 @@ def test_filter_candidates_by_size_none_sizes():
         Path("/tmp/b"): Candidate(Path("/tmp/b"), category, 1000, 124.0),
     }
 
-    result = _filter_candidates_by_size(candidates, min_size_bytes=500)
+    with pytest.raises(MissingSizeError) as exc_info:
+        _filter_candidates_by_size(candidates, min_size_bytes=500)
 
-    assert_equal(len(result), 1)
-    assert_equal(result[0].path, Path("/tmp/b"))
-
-    for candidate in result:
-        assert candidate.size_bytes is not None
+    assert "/tmp/a" in str(exc_info.value)
+    assert "no size information" in str(exc_info.value)
 
 
 def test_progress_tracker_initialization():

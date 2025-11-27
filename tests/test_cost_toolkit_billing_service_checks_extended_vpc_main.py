@@ -5,8 +5,10 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import botocore.exceptions
+import pytest
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.billing.billing_report.service_checks import ServiceCheckError
 from cost_toolkit.scripts.billing.billing_report.service_checks_extended import (
     _add_service_status,
     check_vpc_status,
@@ -193,17 +195,13 @@ class TestAddServiceStatus:
 
 
 def test_get_resolved_services_static_entries():
-    """Test that static service entries are always included."""
+    """Test that static service entries fail fast when all checks raise errors."""
     with patch("boto3.client") as mock_client:
         error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
         mock_client.side_effect = error
-        services = get_resolved_services_status()
-        assert "AMAZONWORKMAIL" in services
-        assert "no optimization planned" in services["AMAZONWORKMAIL"]
-        assert "TAX" in services
-        assert "no optimization planned" in services["TAX"]
-        assert "AMAZON RELATIONAL DATABASE SERVICE" in services
-        assert "MariaDB stopped" in services["AMAZON RELATIONAL DATABASE SERVICE"]
+        # Now raises exception instead of returning partial results
+        with pytest.raises(ServiceCheckError):
+            get_resolved_services_status()
 
 
 class TestGetResolvedServicesStatus:

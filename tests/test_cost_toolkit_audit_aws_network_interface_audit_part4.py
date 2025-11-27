@@ -30,7 +30,7 @@ class TestMainNoInterfaces:  # pylint: disable=too-few-public-methods
         """Test main when no network interfaces are found."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -97,7 +97,7 @@ class TestMainWithUnusedInterfaces:  # pylint: disable=too-few-public-methods
 
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -157,7 +157,7 @@ class TestMainOnlyAttached:  # pylint: disable=too-few-public-methods
 
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -220,7 +220,7 @@ class TestMainMultipleRegions:  # pylint: disable=too-few-public-methods
 
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -267,7 +267,7 @@ class TestMainMixedRegions:  # pylint: disable=too-few-public-methods
 
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -332,7 +332,7 @@ class TestMainSummaryCalculations:  # pylint: disable=too-few-public-methods
         }
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -357,7 +357,7 @@ class TestMainErrorHandling:  # pylint: disable=too-few-public-methods
         """Test main function with ClientError."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             side_effect=ClientError(
                 {"Error": {"Code": "InvalidClientTokenId", "Message": "Invalid token"}},
                 "GetCredentials",

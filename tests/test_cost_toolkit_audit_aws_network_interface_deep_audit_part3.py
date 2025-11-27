@@ -179,7 +179,7 @@ class TestMainSuccess:
         """Test successful main execution with cleanup candidates."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -209,7 +209,7 @@ class TestMainSuccess:
         """Test successful main execution with all active interfaces."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -232,7 +232,7 @@ class TestMainSuccess:
         """Test main execution with mixed results."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -259,7 +259,7 @@ class TestMainSuccessExtended:
         """Test main when only cleanup candidates exist."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -282,7 +282,7 @@ class TestMainSuccessExtended:
         """Test that error results are not categorized as cleanup or active."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -302,7 +302,7 @@ class TestMainDetailsAndErrors:
         """Test that main investigates all specified regions and interfaces."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -328,7 +328,7 @@ class TestMainDetailsAndErrors:
         """Test that main prints detailed cleanup candidate information."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -345,7 +345,7 @@ class TestMainDetailsAndErrors:
         """Test that main prints detailed active interface information."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(
@@ -373,7 +373,7 @@ class TestMainErrorHandling:
         """Test main execution with credential error."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             side_effect=ValueError("AWS credentials not found"),
         ):
             with pytest.raises(ValueError, match="AWS credentials not found"):
@@ -383,7 +383,7 @@ class TestMainErrorHandling:
         """Test main execution with ClientError during investigation."""
         module_path = "cost_toolkit.scripts.audit.aws_network_interface_deep_audit"
         with patch(
-            f"{module_path}.load_aws_credentials",
+            f"{module_path}.setup_aws_credentials",
             return_value=("test-key", "test-secret"),
         ):
             with patch(

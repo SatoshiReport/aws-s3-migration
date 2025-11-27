@@ -4,23 +4,15 @@ import time
 
 from botocore.exceptions import ClientError
 
-try:  # Prefer package-relative imports when linting
-    from . import config as config_module
-except ImportError:  # pragma: no cover - allow running as standalone script
-    import config as config_module  # type: ignore
+import config as config_module
+from cost_toolkit.common.format_utils import format_bytes
+from migration_state_v2 import MigrationStateV2, Phase
 
-config = config_module  # expose module for tests
+# pylint: disable=no-member  # Attributes imported from config_local at runtime
 EXCLUDED_BUCKETS = config_module.EXCLUDED_BUCKETS
 GLACIER_RESTORE_DAYS = config_module.GLACIER_RESTORE_DAYS
 GLACIER_RESTORE_TIER = config_module.GLACIER_RESTORE_TIER
-
-try:  # Prefer package-relative imports when linting/packaged
-    from cost_toolkit.common.format_utils import format_bytes
-
-    from .migration_state_v2 import MigrationStateV2, Phase
-except ImportError:  # pragma: no cover - allow direct script execution
-    from cost_toolkit.common.format_utils import format_bytes
-    from migration_state_v2 import MigrationStateV2, Phase
+# pylint: enable=no-member
 
 
 class BucketScanner:  # pylint: disable=too-few-public-methods
@@ -38,8 +30,8 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
         print("=" * 70)
         print()
         response = self.s3.list_buckets()
-        buckets = [b["Name"] for b in response.get("Buckets", [])]
-        excluded = config.EXCLUDED_BUCKETS
+        buckets = [b["Name"] for b in response["Buckets"]]
+        excluded = EXCLUDED_BUCKETS
         buckets = [b for b in buckets if b not in excluded]
         print(f"Found {len(buckets)} bucket(s)")
         if excluded:
@@ -74,7 +66,9 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
                 if key.endswith("/"):
                     continue
                 size = obj["Size"]
-                etag = obj.get("ETag", "").strip('"')
+                # ETag is always present for S3 objects
+                etag = obj["ETag"].strip('"')
+                # StorageClass is omitted for STANDARD - documented AWS behavior
                 storage_class = obj.get("StorageClass", "STANDARD")
                 last_modified = obj["LastModified"].isoformat()
                 self.state.add_file(bucket, key, size, etag, storage_class, last_modified)
@@ -135,20 +129,20 @@ class GlacierRestorer:  # pylint: disable=too-few-public-methods
         bucket = file["bucket"]
         key = file["key"]
         storage_class = file["storage_class"]
-        tier = "Bulk" if storage_class == "DEEP_ARCHIVE" else config.GLACIER_RESTORE_TIER
+        tier = "Bulk" if storage_class == "DEEP_ARCHIVE" else GLACIER_RESTORE_TIER
         try:
             self.s3.restore_object(
                 Bucket=bucket,
                 Key=key,
                 RestoreRequest={
-                    "Days": config.GLACIER_RESTORE_DAYS,
+                    "Days": GLACIER_RESTORE_DAYS,
                     "GlacierJobParameters": {"Tier": tier},
                 },
             )
             self.state.mark_glacier_restore_requested(bucket, key)
             print(f"  [{idx}/{total}] Requested: {bucket}/{key}")
         except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
+            error_code = e.response["Error"]["Code"]
             if error_code == "RestoreAlreadyInProgress":
                 self.state.mark_glacier_restore_requested(bucket, key)
             else:

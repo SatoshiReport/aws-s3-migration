@@ -42,8 +42,10 @@ try:  # Prefer package-relative imports for smoke-test helpers
 except ImportError:  # pragma: no cover - allow running as standalone script
     import migrate_v2_smoke as smoke_tests  # type: ignore
 
+# pylint: disable=no-member  # Attributes imported from config_local at runtime
 LOCAL_BASE_PATH = config_module.LOCAL_BASE_PATH
 STATE_DB_PATH = config_module.STATE_DB_PATH
+# pylint: enable=no-member
 config = config_module  # expose module for tests
 try:  # Prefer package-relative imports for tooling
     from .migration_orchestrator import (

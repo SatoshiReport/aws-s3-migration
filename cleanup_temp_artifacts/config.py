@@ -9,10 +9,11 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-try:
-    import config as config_module  # type: ignore
-except ImportError:  # pragma: no cover - best-effort fallback
-    config_module = None
+import config as config_module
+
+
+class ConfigurationError(RuntimeError):
+    """Raised when required configuration is missing."""
 
 
 def get_repo_root() -> Path:
@@ -23,45 +24,123 @@ def get_repo_root() -> Path:
 REPO_ROOT = get_repo_root()
 
 
-def determine_default_base_path() -> Path | None:
-    """Return the most likely local base path for migrated objects."""
+def determine_default_base_path() -> Path:
+    """Return the local base path for migrated objects.
 
+    Raises:
+        ConfigurationError: If no valid base path can be determined.
+    """
     candidates: list[Path] = []
-    if config_module and getattr(config_module, "LOCAL_BASE_PATH", None):
-        candidates.append(Path(config_module.LOCAL_BASE_PATH).expanduser())
+
+    # Check config module first
+    local_base = getattr(config_module, "LOCAL_BASE_PATH", None)
+    if local_base:
+        candidates.append(Path(local_base).expanduser())
+
+    # Check environment variables
     for name in ("CLEANUP_TEMP_ROOT", "CLEANUP_ROOT"):
-        if os.environ.get(name):
-            candidates.append(Path(os.environ[name]).expanduser())
+        env_val = os.environ.get(name)
+        if env_val:
+            candidates.append(Path(env_val).expanduser())
+
+    # Standard paths
     candidates.extend(
         [
             Path("/Volumes/Extreme SSD/s3_backup"),
             Path("/Volumes/Extreme SSD"),
-            Path.cwd(),
         ]
     )
+
     seen: set[Path] = set()
     for candidate in candidates:
-        if not candidate:  # pragma: no cover - defensive, all candidates are Path objects
-            continue
         if candidate in seen:
             continue
         seen.add(candidate)
         if candidate.exists():
             return candidate
-    return candidates[0] if candidates else None
+
+    raise ConfigurationError(
+        "No valid base path found. Set LOCAL_BASE_PATH in config.py "
+        "or CLEANUP_TEMP_ROOT environment variable."
+    )
 
 
 def determine_default_db_path() -> Path:
-    """Return the default SQLite DB path shared with migrate_v2."""
+    """Return the default SQLite DB path shared with migrate_v2.
 
-    if config_module and getattr(config_module, "STATE_DB_PATH", None):
-        candidate = Path(config_module.STATE_DB_PATH)
-    else:
-        candidate = Path("s3_migration_state.db")
+    Raises:
+        ConfigurationError: If STATE_DB_PATH is not configured.
+    """
+    state_db = getattr(config_module, "STATE_DB_PATH", None)
+    if not state_db:
+        raise ConfigurationError("STATE_DB_PATH must be set in config.py")
+    candidate = Path(state_db)
     if not candidate.is_absolute():
         candidate = (REPO_ROOT / candidate).resolve()
     return candidate
 
 
-DEFAULT_BASE_PATH = determine_default_base_path()
-DEFAULT_DB_PATH = determine_default_db_path()
+def _get_default_base_path() -> Path:
+    """Lazily retrieve default base path."""
+    return determine_default_base_path()
+
+
+def _get_default_db_path() -> Path:
+    """Lazily retrieve default DB path."""
+    return determine_default_db_path()
+
+
+# For backwards compatibility, these can be imported but will raise on access
+# if configuration is missing. Tests that don't need these paths won't trigger errors.
+class _LazyPath:
+    """Lazy path accessor that defers configuration checks until first access."""
+
+    def __init__(self, getter):
+        self._getter = getter
+        self._value: Path | None = None
+        self._resolved = False
+
+    def __fspath__(self):
+        return str(self._resolve())
+
+    def __str__(self):
+        return str(self._resolve())
+
+    def __repr__(self):
+        if self._resolved:
+            return repr(self._value)
+        return f"<LazyPath: {self._getter.__name__}>"
+
+    def _resolve(self) -> Path:
+        if not self._resolved:
+            self._value = self._getter()
+            self._resolved = True
+        # At this point _value is always a Path (getter returns Path)
+        assert self._value is not None
+        return self._value
+
+    def __truediv__(self, other):
+        return self._resolve() / other
+
+    def __eq__(self, other):
+        return self._resolve() == other
+
+    def __hash__(self):
+        return hash(self._resolve())
+
+    @property
+    def parent(self):
+        """Return the parent directory of the resolved path."""
+        return self._resolve().parent
+
+    def exists(self):
+        """Check if the resolved path exists on disk."""
+        return self._resolve().exists()
+
+    def resolve(self):
+        """Return the absolute resolved path."""
+        return self._resolve().resolve()
+
+
+DEFAULT_BASE_PATH = _LazyPath(_get_default_base_path)
+DEFAULT_DB_PATH = _LazyPath(_get_default_db_path)

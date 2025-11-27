@@ -266,37 +266,5 @@ def list_domains(
     return []
 
 
-def get_hosted_zone_cost(hosted_zone_count: int, query_count: int = 0) -> dict:
-    """
-    Calculate the cost of Route53 hosted zones.
-
-    Args:
-        hosted_zone_count: Number of hosted zones
-        query_count: Number of queries per month (for query cost estimation)
-
-    Returns:
-        dict: Cost breakdown including monthly and annual costs
-    """
-    # Pricing as of 2024: $0.50 per hosted zone per month
-    hosted_zone_monthly_cost = hosted_zone_count * 0.50
-
-    # Query pricing: First 1 billion queries/month: $0.40 per million
-    query_monthly_cost = 0.0
-    if query_count > 0:
-        millions_of_queries = query_count / 1_000_000
-        query_monthly_cost = millions_of_queries * 0.40
-
-    total_monthly_cost = hosted_zone_monthly_cost + query_monthly_cost
-
-    return {
-        "hosted_zone_count": hosted_zone_count,
-        "hosted_zone_monthly_cost": hosted_zone_monthly_cost,
-        "query_count": query_count,
-        "query_monthly_cost": query_monthly_cost,
-        "total_monthly_cost": total_monthly_cost,
-        "total_annual_cost": total_monthly_cost * 12,
-    }
-
-
 if __name__ == "__main__":  # pragma: no cover - script entry point
     pass

@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore import (
     _confirm_restore_operation,
     _get_and_validate_exports,
@@ -45,13 +47,13 @@ class TestSelectExports:
         assert len(selected) == 2
 
     def test_select_invalid_input(self, monkeypatch):
-        """Test invalid selection."""
+        """Test invalid selection - now raises exception."""
         exports = [{"key": "snap1.vmdk", "size": 1024, "last_modified": datetime.now()}]
         monkeypatch.setattr("builtins.input", lambda _: "invalid")
 
-        selected = _select_exports(exports)
-
-        assert selected is None
+        with pytest.raises(ValueError) as exc_info:
+            _select_exports(exports)
+        assert "Invalid selection 'invalid': not a number" in str(exc_info.value)
 
 
 class TestProcessExportRestore:
@@ -239,29 +241,26 @@ class TestGetAndValidateExports:
         assert len(result) == 1
 
     @patch("cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore.list_s3_exports")
-    def test_get_and_validate_exports_no_exports(self, mock_list, capsys):
-        """Test when no exports found."""
+    def test_get_and_validate_exports_no_exports(self, mock_list):
+        """Test when no exports found - now raises exception."""
         mock_list.return_value = []
 
         mock_s3 = MagicMock()
-        result = _get_and_validate_exports(mock_s3, "test-bucket")
-
-        assert result is None
-        captured = capsys.readouterr()
-        assert "No snapshot exports found" in captured.out
+        with pytest.raises(ValueError) as exc_info:
+            _get_and_validate_exports(mock_s3, "test-bucket")
+        assert "No snapshot exports found in the specified bucket" in str(exc_info.value)
 
     @patch("cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore.list_s3_exports")
     @patch("cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore._select_exports")
-    def test_get_and_validate_exports_invalid_selection(self, mock_select, mock_list, capsys):
-        """Test with invalid selection."""
+    def test_get_and_validate_exports_invalid_selection(self, mock_select, mock_list):
+        """Test with invalid selection - now raises exception."""
         mock_list.return_value = [
             {"key": "snap1.vmdk", "size": 1024, "last_modified": datetime.now()}
         ]
-        mock_select.return_value = None
+        # Mock _select_exports to raise ValueError (simulating invalid input)
+        mock_select.side_effect = ValueError("Invalid selection 'foo': not a number")
 
         mock_s3 = MagicMock()
-        result = _get_and_validate_exports(mock_s3, "test-bucket")
-
-        assert result is None
-        captured = capsys.readouterr()
-        assert "Invalid selection" in captured.out
+        with pytest.raises(ValueError) as exc_info:
+            _get_and_validate_exports(mock_s3, "test-bucket")
+        assert "Invalid selection" in str(exc_info.value)

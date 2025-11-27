@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.vpc_cleanup_utils import (
@@ -39,8 +40,8 @@ class TestDeleteInternetGateways:
         assert "IGW igw-1 detached" in captured.out
         assert "IGW igw-1 deleted" in captured.out
 
-    def test_delete_igws_with_error(self, capsys):
-        """Test IGW deletion with error."""
+    def test_delete_igws_with_error_raises(self):
+        """Test IGW deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_internet_gateways.return_value = {
             "InternetGateways": [{"InternetGatewayId": "igw-error"}]
@@ -49,10 +50,10 @@ class TestDeleteInternetGateways:
             {"Error": {"Code": "DependencyViolation"}}, "detach_internet_gateway"
         )
 
-        _delete_internet_gateways(mock_ec2, "vpc-123")
+        with pytest.raises(ClientError) as exc_info:
+            _delete_internet_gateways(mock_ec2, "vpc-123")
 
-        captured = capsys.readouterr()
-        assert "Error with IGW igw-error" in captured.out
+        assert exc_info.value.response["Error"]["Code"] == "DependencyViolation"
 
     def test_delete_no_igws(self):
         """Test deletion with no IGWs."""
@@ -99,8 +100,8 @@ class TestDeleteVpcEndpoints:
         assert mock_ec2.delete_vpc_endpoint.call_count == 1
         mock_ec2.delete_vpc_endpoint.assert_called_with(VpcEndpointId="vpce-2")
 
-    def test_delete_endpoints_with_error(self, capsys):
-        """Test endpoint deletion with error."""
+    def test_delete_endpoints_with_error_raises(self):
+        """Test endpoint deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_vpc_endpoints.return_value = {
             "VpcEndpoints": [{"VpcEndpointId": "vpce-error", "State": "available"}]
@@ -109,10 +110,10 @@ class TestDeleteVpcEndpoints:
             {"Error": {"Code": "ServiceError"}}, "delete_vpc_endpoint"
         )
 
-        _delete_vpc_endpoints(mock_ec2, "vpc-123")
+        with pytest.raises(ClientError) as exc_info:
+            _delete_vpc_endpoints(mock_ec2, "vpc-123")
 
-        captured = capsys.readouterr()
-        assert "Error deleting endpoint vpce-error" in captured.out
+        assert exc_info.value.response["Error"]["Code"] == "ServiceError"
 
 
 class TestDeleteNatGateways:
@@ -150,8 +151,8 @@ class TestDeleteNatGateways:
         assert mock_ec2.delete_nat_gateway.call_count == 1
         mock_ec2.delete_nat_gateway.assert_called_with(NatGatewayId="nat-3")
 
-    def test_delete_nat_gateways_with_error(self, capsys):
-        """Test NAT gateway deletion with error."""
+    def test_delete_nat_gateways_with_error_raises(self):
+        """Test NAT gateway deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_nat_gateways.return_value = {
             "NatGateways": [{"NatGatewayId": "nat-error", "State": "available"}]
@@ -160,10 +161,10 @@ class TestDeleteNatGateways:
             {"Error": {"Code": "ServiceError"}}, "delete_nat_gateway"
         )
 
-        _delete_nat_gateways(mock_ec2, "vpc-123")
+        with pytest.raises(ClientError) as exc_info:
+            _delete_nat_gateways(mock_ec2, "vpc-123")
 
-        captured = capsys.readouterr()
-        assert "Error deleting NAT Gateway nat-error" in captured.out
+        assert exc_info.value.response["Error"]["Code"] == "ServiceError"
 
 
 class TestDeleteSecurityGroups:
@@ -197,8 +198,8 @@ class TestDeleteSecurityGroups:
 
         mock_ec2.delete_security_group.assert_not_called()
 
-    def test_delete_sgs_with_error(self, capsys):
-        """Test security group deletion with error."""
+    def test_delete_sgs_with_error_raises(self):
+        """Test security group deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_security_groups.return_value = {
             "SecurityGroups": [{"GroupId": "sg-error", "GroupName": "error-sg"}]
@@ -207,10 +208,10 @@ class TestDeleteSecurityGroups:
             {"Error": {"Code": "DependencyViolation"}}, "delete_security_group"
         )
 
-        _delete_security_groups(mock_ec2, "vpc-123")
+        with pytest.raises(ClientError) as exc_info:
+            _delete_security_groups(mock_ec2, "vpc-123")
 
-        captured = capsys.readouterr()
-        assert "Error deleting security group sg-error" in captured.out
+        assert exc_info.value.response["Error"]["Code"] == "DependencyViolation"
 
 
 class TestDeleteNetworkAcls:
@@ -244,8 +245,8 @@ class TestDeleteNetworkAcls:
 
         mock_ec2.delete_network_acl.assert_not_called()
 
-    def test_delete_nacls_with_error(self, capsys):
-        """Test network ACL deletion with error."""
+    def test_delete_nacls_with_error_raises(self):
+        """Test network ACL deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_network_acls.return_value = {
             "NetworkAcls": [{"NetworkAclId": "acl-error", "IsDefault": False}]
@@ -254,10 +255,10 @@ class TestDeleteNetworkAcls:
             {"Error": {"Code": "ServiceError"}}, "delete_network_acl"
         )
 
-        _delete_network_acls(mock_ec2, "vpc-123")
+        with pytest.raises(ClientError) as exc_info:
+            _delete_network_acls(mock_ec2, "vpc-123")
 
-        captured = capsys.readouterr()
-        assert "Error deleting network ACL acl-error" in captured.out
+        assert exc_info.value.response["Error"]["Code"] == "ServiceError"
 
 
 class TestDeleteRouteTables:
@@ -291,8 +292,8 @@ class TestDeleteRouteTables:
 
         mock_ec2.delete_route_table.assert_not_called()
 
-    def test_delete_route_tables_with_error(self, capsys):
-        """Test route table deletion with error."""
+    def test_delete_route_tables_with_error_raises(self):
+        """Test route table deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_route_tables.return_value = {
             "RouteTables": [{"RouteTableId": "rtb-error", "Associations": []}]
@@ -301,10 +302,10 @@ class TestDeleteRouteTables:
             {"Error": {"Code": "DependencyViolation"}}, "delete_route_table"
         )
 
-        _delete_route_tables(mock_ec2, "vpc-123")
+        with pytest.raises(ClientError) as exc_info:
+            _delete_route_tables(mock_ec2, "vpc-123")
 
-        captured = capsys.readouterr()
-        assert "Error deleting route table rtb-error" in captured.out
+        assert exc_info.value.response["Error"]["Code"] == "DependencyViolation"
 
 
 class TestDeleteSubnets:
@@ -323,15 +324,15 @@ class TestDeleteSubnets:
         captured = capsys.readouterr()
         assert "Subnet subnet-1 deleted" in captured.out
 
-    def test_delete_subnets_with_error(self, capsys):
-        """Test subnet deletion with error."""
+    def test_delete_subnets_with_error_raises(self):
+        """Test subnet deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_subnets.return_value = {"Subnets": [{"SubnetId": "subnet-error"}]}
         mock_ec2.delete_subnet.side_effect = ClientError(
             {"Error": {"Code": "DependencyViolation"}}, "delete_subnet"
         )
 
-        _delete_subnets(mock_ec2, "vpc-123")
+        with pytest.raises(ClientError) as exc_info:
+            _delete_subnets(mock_ec2, "vpc-123")
 
-        captured = capsys.readouterr()
-        assert "Error deleting subnet subnet-error" in captured.out
+        assert exc_info.value.response["Error"]["Code"] == "DependencyViolation"

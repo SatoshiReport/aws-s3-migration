@@ -202,7 +202,7 @@ class TestCleanupUnusedVpcResources:
         monkeypatch.setattr("builtins.input", lambda _: "CLEANUP VPC RESOURCES")
         mod = "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources"
         with (
-            patch(f"{mod}.load_aws_credentials", return_value=("key", "secret")),
+            patch(f"{mod}.setup_aws_credentials", return_value=("key", "secret")),
             patch(f"{mod}.clean_security_groups", return_value=(8, 2)),
             patch(f"{mod}.review_empty_vpcs"),
         ):
@@ -240,7 +240,7 @@ class TestMain:
         mod = "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources"
         error = ClientError({"Error": {"Code": "ServiceError"}}, "delete")
         with (
-            patch(f"{mod}.load_aws_credentials", return_value=("key", "secret")),
+            patch(f"{mod}.setup_aws_credentials", return_value=("key", "secret")),
             patch(f"{mod}.clean_security_groups", side_effect=error),
         ):
             try:

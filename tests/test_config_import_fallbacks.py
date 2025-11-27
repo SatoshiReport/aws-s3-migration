@@ -2,11 +2,6 @@
 
 from __future__ import annotations
 
-import builtins
-import sys
-
-from tests.assertions import assert_equal
-
 
 def test_local_base_path_import_fallback():
     """Test LOCAL_BASE_PATH fallback when config_local import fails."""
@@ -26,32 +21,50 @@ def test_excluded_buckets_import_fallback():
     assert isinstance(config.EXCLUDED_BUCKETS, list)
 
 
-def test_config_module_imports_successfully():
-    """Test that config module can be imported without config_local."""
+def test_config_module_requires_config_local():
+    """Test that config module requires config_local to be present."""
+    import builtins  # pylint: disable=import-outside-toplevel
+    import sys  # pylint: disable=import-outside-toplevel
+
+    import pytest  # pylint: disable=import-outside-toplevel
+
     # Temporarily hide config_local if it exists
     config_local_module = sys.modules.get("config_local")
     if config_local_module:
         del sys.modules["config_local"]
+
+    # Block config_local import
+    original_import = builtins.__import__
+
+    def mock_import(name, *args, **kwargs):
+        if name == "config_local":
+            raise ImportError("Mocked ImportError for config_local")
+        return original_import(name, *args, **kwargs)
 
     try:
         # Force reimport
         if "config" in sys.modules:
             del sys.modules["config"]
 
-        import config  # pylint: disable=import-outside-toplevel
+        builtins.__import__ = mock_import
 
-        # Should have default values
-        assert hasattr(config, "LOCAL_BASE_PATH")
-        assert hasattr(config, "EXCLUDED_BUCKETS")
-        assert isinstance(config.STATE_DB_PATH, str)
+        # Should raise ImportError - fail fast, no fallbacks
+        with pytest.raises(ImportError, match="config_local.py is required"):
+            import config  # pylint: disable=import-outside-toplevel,unused-import
     finally:
+        builtins.__import__ = original_import
         # Restore if it existed
         if config_local_module:
             sys.modules["config_local"] = config_local_module
 
 
-def test_local_base_path_fallback_on_import_error():
-    """Test LOCAL_BASE_PATH uses default when config_local import fails."""
+def test_local_base_path_raises_on_import_error():
+    """Test LOCAL_BASE_PATH import fails fast when config_local is missing."""
+    import builtins  # pylint: disable=import-outside-toplevel
+    import sys  # pylint: disable=import-outside-toplevel
+
+    import pytest  # pylint: disable=import-outside-toplevel
+
     # Ensure config_local is not importable
     config_local_module = sys.modules.get("config_local")
     if config_local_module:
@@ -72,18 +85,22 @@ def test_local_base_path_fallback_on_import_error():
 
         builtins.__import__ = mock_import
 
-        import config  # pylint: disable=import-outside-toplevel,reimported
-
-        # Should use default value
-        assert_equal(config.LOCAL_BASE_PATH, "/path/to/your/backup/directory")
+        # Should raise ImportError - fail fast, no fallbacks
+        with pytest.raises(ImportError, match="config_local.py is required"):
+            import config  # pylint: disable=import-outside-toplevel,reimported,unused-import
     finally:
         builtins.__import__ = original_import
         if config_local_module:
             sys.modules["config_local"] = config_local_module
 
 
-def test_excluded_buckets_fallback_on_import_error():
-    """Test EXCLUDED_BUCKETS uses default when config_local import fails."""
+def test_excluded_buckets_raises_on_import_error():
+    """Test EXCLUDED_BUCKETS import fails fast when config_local is missing."""
+    import builtins  # pylint: disable=import-outside-toplevel
+    import sys  # pylint: disable=import-outside-toplevel
+
+    import pytest  # pylint: disable=import-outside-toplevel
+
     # Ensure config_local is not importable
     config_local_module = sys.modules.get("config_local")
     if config_local_module:
@@ -104,10 +121,9 @@ def test_excluded_buckets_fallback_on_import_error():
 
         builtins.__import__ = mock_import
 
-        import config  # pylint: disable=import-outside-toplevel,reimported
-
-        # Should use default value
-        assert_equal(config.EXCLUDED_BUCKETS, [])
+        # Should raise ImportError - fail fast, no fallbacks
+        with pytest.raises(ImportError, match="config_local.py is required"):
+            import config  # pylint: disable=import-outside-toplevel,reimported,unused-import
     finally:
         builtins.__import__ = original_import
         if config_local_module:

@@ -13,11 +13,6 @@ from cost_toolkit.common.credential_utils import setup_aws_credentials
 EXPECTED_ORPHANED_INTERFACES_COUNT = 2
 
 
-def load_aws_credentials():
-    """Load AWS credentials for the cleanup workflow."""
-    return setup_aws_credentials()
-
-
 def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_key):
     """Delete orphaned RDS network interfaces"""
 
@@ -107,7 +102,7 @@ def main():
 
     try:
         # Load credentials
-        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
         print("⚠️  IMPORTANT: This will delete orphaned RDS network interfaces")
         print("   • These interfaces are from deleted RDS instances")

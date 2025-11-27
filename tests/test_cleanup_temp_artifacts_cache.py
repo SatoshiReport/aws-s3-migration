@@ -303,8 +303,8 @@ def test_cache_is_valid_no_ttl():
     assert result is True
 
 
-def test_cache_is_valid_invalid_timestamp():
-    """Test cache_is_valid with invalid timestamp."""
+def test_cache_is_valid_invalid_timestamp_raises():
+    """Test cache_is_valid raises CacheValidationError with invalid timestamp."""
     metadata = {
         "generated_at": "invalid timestamp",
         "rowcount": 100,
@@ -312,12 +312,14 @@ def test_cache_is_valid_invalid_timestamp():
         "db_mtime_ns": 123456789,
     }
 
-    result = cache_is_valid(
-        metadata,
-        ttl_seconds=60,
-        rowcount=100,
-        max_rowid=500,
-        db_mtime_ns=123456789,
-    )
+    with pytest.raises(CacheValidationError) as exc_info:
+        cache_is_valid(
+            metadata,
+            ttl_seconds=60,
+            rowcount=100,
+            max_rowid=500,
+            db_mtime_ns=123456789,
+        )
 
-    assert result is False
+    assert "malformed" in str(exc_info.value)
+    assert "generated_at" in str(exc_info.value)

@@ -7,51 +7,23 @@ import sys
 from pathlib import Path
 from typing import Optional, Sequence
 
-try:
-    import config as config_module
-except ImportError:  # pragma: no cover
-    import config as config_module  # type: ignore[import]
-
-try:
-    from cost_toolkit.common.cli_utils import (
-        create_migration_cli_parser,
-        handle_state_db_reset,
-    )
-except ImportError:  # pragma: no cover
-    from cost_toolkit.common.cli_utils import (  # type: ignore[import]
-        create_migration_cli_parser,
-        handle_state_db_reset,
-    )
-
-try:  # Prefer package-relative imports when packaged
-    from duplicate_tree.analysis import (
-        MIN_REPORT_BYTES,
-        MIN_REPORT_FILES,
-        build_directory_index_from_db,
-        recompute_clusters_for_deletion,
-    )
-    from duplicate_tree.deletion import delete_duplicate_directories
-    from duplicate_tree.workflow import (
-        DuplicateAnalysisContext,
-        load_or_compute_duplicates,
-    )
-except ImportError:  # pragma: no cover - execution as standalone script
-    from analysis import (  # type: ignore[import]
-        MIN_REPORT_BYTES,
-        MIN_REPORT_FILES,
-        build_directory_index_from_db,
-        recompute_clusters_for_deletion,
-    )
-    from deletion import delete_duplicate_directories  # type: ignore[import]
-    from workflow import (  # type: ignore[import]
-        DuplicateAnalysisContext,
-        load_or_compute_duplicates,
-    )
-
-try:
-    from state_db_admin import reseed_state_db_from_local_drive
-except ImportError:  # pragma: no cover
-    from state_db_admin import reseed_state_db_from_local_drive  # type: ignore[import]
+import config as config_module
+from cost_toolkit.common.cli_utils import (
+    create_migration_cli_parser,
+    handle_state_db_reset,
+)
+from duplicate_tree.analysis import (
+    MIN_REPORT_BYTES,
+    MIN_REPORT_FILES,
+    build_directory_index_from_db,
+    recompute_clusters_for_deletion,
+)
+from duplicate_tree.deletion import delete_duplicate_directories
+from duplicate_tree.workflow import (
+    DuplicateAnalysisContext,
+    load_or_compute_duplicates,
+)
+from state_db_admin import reseed_state_db_from_local_drive
 
 
 def _add_module_specific_args(parser: argparse.ArgumentParser) -> None:
@@ -85,6 +57,7 @@ def _add_module_specific_args(parser: argparse.ArgumentParser) -> None:
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     """Parse CLI arguments controlling database path, base path, and tolerance."""
+    # pylint: disable=no-member  # Attributes imported from config_local at runtime
     parser = create_migration_cli_parser(
         description=(
             "Detect exact duplicate directory trees on the external drive "
@@ -94,6 +67,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         base_path_default=config_module.LOCAL_BASE_PATH,
         add_custom_args=_add_module_specific_args,
     )
+    # pylint: enable=no-member
     return parser.parse_args(argv)
 
 

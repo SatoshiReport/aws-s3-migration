@@ -5,7 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from cleanup_temp_artifacts import config  # pylint: disable=no-name-in-module
+from cleanup_temp_artifacts.config import ConfigurationError  # pylint: disable=no-name-in-module
 
 DEFAULT_BASE_PATH = config.DEFAULT_BASE_PATH
 DEFAULT_DB_PATH = config.DEFAULT_DB_PATH
@@ -42,18 +45,17 @@ def test_determine_default_base_path_from_env(tmp_path: Path, monkeypatch):
     assert result == test_dir
 
 
-def test_determine_default_base_path_fallback(monkeypatch):
-    """Test determine_default_base_path falls back when paths don't exist."""
+def test_determine_default_base_path_raises_without_config(monkeypatch):
+    """Test determine_default_base_path raises ConfigurationError when no valid config exists."""
     # Clear environment variables
     monkeypatch.delenv("CLEANUP_TEMP_ROOT", raising=False)
     monkeypatch.delenv("CLEANUP_ROOT", raising=False)
 
-    # Mock config module to return non-existent path
+    # Mock config module to return None (no config)
     with patch("cleanup_temp_artifacts.config.config_module", None):
-        result = determine_default_base_path()
-        # Should return something (either cwd or first candidate)
-        assert result is not None
-        assert isinstance(result, Path)
+        with pytest.raises(ConfigurationError) as exc_info:
+            determine_default_base_path()
+        assert "No valid base path found" in str(exc_info.value)
 
 
 def test_determine_default_db_path_with_config():
@@ -64,25 +66,27 @@ def test_determine_default_db_path_with_config():
     assert result.name.endswith(".db")
 
 
-def test_determine_default_db_path_without_config():
-    """Test determine_default_db_path fallback without config module."""
+def test_determine_default_db_path_raises_without_config():
+    """Test determine_default_db_path raises ConfigurationError without config module."""
     with patch("cleanup_temp_artifacts.config.config_module", None):
-        result = determine_default_db_path()
-        assert isinstance(result, Path)
-        assert result.is_absolute()
-        assert result.name == "s3_migration_state.db"
+        with pytest.raises(ConfigurationError) as exc_info:
+            determine_default_db_path()
+        assert "STATE_DB_PATH must be set" in str(exc_info.value)
 
 
-def test_default_constants_are_set():
-    """Test that DEFAULT_BASE_PATH and DEFAULT_DB_PATH are set."""
-    # DEFAULT_BASE_PATH might be None if no valid paths exist
-    assert DEFAULT_BASE_PATH is None or isinstance(DEFAULT_BASE_PATH, Path)
-    assert isinstance(DEFAULT_DB_PATH, Path)
-    assert DEFAULT_DB_PATH.is_absolute()
+def test_default_constants_are_lazy():
+    """Test that DEFAULT_BASE_PATH and DEFAULT_DB_PATH are lazy path objects."""
+    from cleanup_temp_artifacts.config import _LazyPath  # pylint: disable=no-name-in-module
+
+    # Both are now _LazyPath objects for deferred evaluation
+    assert isinstance(DEFAULT_BASE_PATH, _LazyPath)
+    assert isinstance(DEFAULT_DB_PATH, _LazyPath)
+    # They resolve to Path when accessed - test this indirectly
+    # (actual resolution is tested elsewhere)
 
 
-def test_determine_default_base_path_with_none_in_config(monkeypatch):
-    """Test determine_default_base_path when config has None value."""
+def test_determine_default_base_path_raises_with_none_in_config(monkeypatch):
+    """Test determine_default_base_path raises when config has None value."""
     # Clear environment variables
     monkeypatch.delenv("CLEANUP_TEMP_ROOT", raising=False)
     monkeypatch.delenv("CLEANUP_ROOT", raising=False)
@@ -91,14 +95,13 @@ def test_determine_default_base_path_with_none_in_config(monkeypatch):
     mock_config = type("MockConfig", (), {"LOCAL_BASE_PATH": None})()
 
     with patch("cleanup_temp_artifacts.config.config_module", mock_config):
-        result = determine_default_base_path()
-        # Should skip None and return an existing path
-        assert result is not None
-        assert isinstance(result, Path)
+        with pytest.raises(ConfigurationError) as exc_info:
+            determine_default_base_path()
+        assert "No valid base path found" in str(exc_info.value)
 
 
-def test_determine_default_base_path_no_existing_paths(monkeypatch, tmp_path):
-    """Test determine_default_base_path when no candidates exist."""
+def test_determine_default_base_path_raises_when_path_nonexistent(monkeypatch, tmp_path):
+    """Test determine_default_base_path raises when configured path doesn't exist."""
     # Clear environment variables
     monkeypatch.delenv("CLEANUP_TEMP_ROOT", raising=False)
     monkeypatch.delenv("CLEANUP_ROOT", raising=False)
@@ -109,20 +112,7 @@ def test_determine_default_base_path_no_existing_paths(monkeypatch, tmp_path):
     # Mock config module to return non-existent path
     mock_config = type("MockConfig", (), {"LOCAL_BASE_PATH": str(nonexistent)})()
 
-    # Change cwd to a temp location
-    monkeypatch.chdir(tmp_path)
-
     with patch("cleanup_temp_artifacts.config.config_module", mock_config):
-        with patch("cleanup_temp_artifacts.config.Path.cwd", return_value=nonexistent):
-            # Mock all Path.exists() to return False
-            original_exists = Path.exists
-
-            def _mock_exists(self):  # pylint: disable=unused-variable
-                if str(self).startswith(str(tmp_path)):
-                    return False
-                return original_exists(self)
-
-            with patch.object(Path, "exists", _mock_exists):
-                result = determine_default_base_path()
-                # Should return first candidate even if it doesn't exist
-                assert result == nonexistent
+        with pytest.raises(ConfigurationError) as exc_info:
+            determine_default_base_path()
+        assert "No valid base path found" in str(exc_info.value)

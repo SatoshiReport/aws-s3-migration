@@ -361,8 +361,10 @@ def test_write_cache_if_needed_success(tmp_path):
         )
 
 
-def test_write_cache_if_needed_handles_oserror(tmp_path, caplog):
-    """Test write_cache_if_needed logs warning on OSError."""
+def test_write_cache_if_needed_handles_oserror(tmp_path):
+    """Test write_cache_if_needed raises CacheWriteError on OSError."""
+    from cleanup_temp_artifacts.db_loader import CacheWriteError
+
     cache_config = CacheConfig(
         enabled=True,
         cache_dir=tmp_path / "cache",
@@ -377,14 +379,13 @@ def test_write_cache_if_needed_handles_oserror(tmp_path, caplog):
     with patch("cleanup_temp_artifacts.db_loader.write_cache") as mock_write:
         mock_write.side_effect = OSError("Permission denied")
 
-        write_cache_if_needed(
-            cache_config,
-            load_result,
-            cache_path=cache_path,
-            cache_used=False,
-            base_path=Path("/base"),
-            db_info=MagicMock(),
-            scan_params={},
-        )
-
-        assert any("Failed to write cache" in record.message for record in caplog.records)
+        with pytest.raises(CacheWriteError, match="Failed to write cache.*Permission denied"):
+            write_cache_if_needed(
+                cache_config,
+                load_result,
+                cache_path=cache_path,
+                cache_used=False,
+                base_path=Path("/base"),
+                db_info=MagicMock(),
+                scan_params={},
+            )

@@ -315,7 +315,7 @@ class TestCleanupCircularSecurityGroups:
         """Test when user cancels operation."""
         with patch(
             "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
-            "load_aws_credentials",
+            "setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(
@@ -336,7 +336,7 @@ class TestCleanupCircularSecurityGroups:
         ]
         with patch(
             "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
-            "load_aws_credentials",
+            "setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(
@@ -368,7 +368,7 @@ class TestCleanupCircularSecurityGroups:
         ]
         with patch(
             "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup."
-            "load_aws_credentials",
+            "setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(

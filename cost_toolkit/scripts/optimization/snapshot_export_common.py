@@ -175,32 +175,6 @@ def start_ami_export_task(ec2_client, ami_id, bucket_name, snapshot_id=None):
     return export_task_id, s3_key
 
 
-def extract_s3_key_from_export_task(task, export_task_id, ami_id):
-    """Extract S3 key from export task response
-
-    Args:
-        task: Export task dictionary from describe_export_image_tasks
-        export_task_id: Export task ID
-        ami_id: AMI ID being exported
-
-    Returns:
-        S3 key string
-    """
-    s3_key = None
-    if "S3ExportLocation" in task:
-        s3_export_location = task["S3ExportLocation"]
-        if "S3Key" in s3_export_location:
-            s3_key = s3_export_location["S3Key"]
-        elif "S3Prefix" in s3_export_location:
-            s3_prefix = s3_export_location["S3Prefix"]
-            s3_key = f"{s3_prefix}{export_task_id}.vmdk"
-
-    if not s3_key:
-        s3_key = f"ebs-snapshots/{ami_id}/{export_task_id}.vmdk"
-
-    return s3_key
-
-
 def print_export_status(status, progress, status_msg, elapsed_hours):
     """Print formatted export status update
 

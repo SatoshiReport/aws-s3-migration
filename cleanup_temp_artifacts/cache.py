@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
@@ -24,7 +23,11 @@ CACHE_VERSION = 2
 
 
 def _default_cache_dir() -> Path:
-    base = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")).expanduser()
+    xdg_cache = os.environ.get("XDG_CACHE_HOME")
+    if xdg_cache:
+        base = Path(xdg_cache).expanduser()
+    else:
+        base = Path.home() / ".cache"
     return base / "cleanup_temp_artifacts"
 
 
@@ -87,18 +90,26 @@ def load_cache(
         "max_rowid": payload.get("max_rowid"),
         "db_mtime_ns": payload.get("db_mtime_ns"),
     }
-    items = payload.get("candidates", [])
+    if "candidates" not in payload:
+        raise CacheValidationError("Cache missing 'candidates' key")
+    items = payload["candidates"]
     candidates: list[Candidate] = []
     for item in items:
-        cat_name = item.get("category")
+        if "category" not in item:
+            raise CacheValidationError("Cache item missing 'category' key")
+        cat_name = item["category"]
         if cat_name not in category_map:
             raise CacheValidationError(f"Unknown category '{cat_name}' in cached data")
+        if "path" not in item:
+            raise CacheValidationError("Cache item missing 'path' key")
+        if "mtime" not in item:
+            raise CacheValidationError("Cache item missing 'mtime' key")
         candidates.append(
             Candidate(
                 path=Path(item["path"]),
                 category=category_map[cat_name],
                 size_bytes=item.get("size_bytes"),
-                mtime=item.get("mtime", 0),
+                mtime=item["mtime"],
             )
         )
     return candidates, metadata

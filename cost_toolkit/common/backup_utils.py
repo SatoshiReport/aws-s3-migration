@@ -68,27 +68,3 @@ def check_aws_backup_plans(region):
     backup_plans = plans_response.get("BackupPlansList", [])
 
     return backup_plans
-
-
-def get_backup_plan_details(backup_client, plan_id, plan_name, creation_date):
-    """
-    Get and print details for a specific backup plan.
-
-    Args:
-        backup_client: Boto3 Backup client
-        plan_id: Backup plan ID
-        plan_name: Backup plan name
-        creation_date: Plan creation date
-
-    Returns:
-        dict: Backup plan details
-
-    Raises:
-        ClientError: If API call fails
-    """
-    print(f"  Plan: {plan_name} ({plan_id})")
-    print(f"    Created: {creation_date}")
-
-    plan_details = backup_client.get_backup_plan(BackupPlanId=plan_id)
-
-    return plan_details

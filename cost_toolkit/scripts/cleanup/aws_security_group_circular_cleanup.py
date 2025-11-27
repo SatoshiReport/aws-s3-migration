@@ -15,11 +15,6 @@ from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_GROUPS
 
 
-def load_aws_credentials():
-    """Load AWS credentials for the cleanup workflow."""
-    return setup_aws_credentials()
-
-
 def remove_security_group_rule(ec2_client, group_id, rule_type, rule_data):
     """Remove a specific security group rule"""
     try:
@@ -196,7 +191,7 @@ def _print_final_summary(total_rules_removed, total_groups_deleted, total_groups
 
 def cleanup_circular_security_groups():
     """Clean up security groups with circular dependencies"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
     circular_security_groups = _get_circular_security_groups()
 
     print("AWS Security Group Circular Dependencies Cleanup")

@@ -2,9 +2,11 @@
 
 from datetime import datetime
 
+import pytest
 
-def test_scan_bucket_handles_missing_etag(scanner, state_mock):
-    """Test handling of objects without ETag field"""
+
+def test_scan_bucket_raises_on_missing_etag(scanner, state_mock):
+    """Test that missing ETag field raises KeyError (fail-fast)"""
     scanner.s3.get_paginator.return_value.paginate.return_value = [
         {
             "Contents": [
@@ -13,17 +15,17 @@ def test_scan_bucket_handles_missing_etag(scanner, state_mock):
                     "Size": 100,
                     "StorageClass": "STANDARD",
                     "LastModified": datetime.now(),
-                    # ETag missing
+                    # ETag missing - AWS always provides this, so missing indicates bad data
                 }
             ]
         }
     ]
 
-    scanner.scan_bucket("test-bucket")
+    with pytest.raises(KeyError, match="ETag"):
+        scanner.scan_bucket("test-bucket")
 
-    # Should still call add_file with empty string etag
-    call_args = state_mock.add_file.call_args
-    assert call_args[0][3] == ""
+    # Should not have called add_file since we raised before that
+    state_mock.add_file.assert_not_called()
 
 
 def test_scan_bucket_strips_etag_quotes(scanner, state_mock):

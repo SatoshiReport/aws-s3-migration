@@ -5,9 +5,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import botocore.exceptions
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.billing.billing_report.service_checks import (
+    ServiceCheckError,
     _check_cloudwatch_alarms_in_region,
     _check_cloudwatch_canaries_in_region,
     _format_cloudwatch_status,
@@ -36,11 +38,11 @@ def test_cloud_watch_canaries_region_canary_states():
     stopped, total = _check_cloudwatch_canaries_in_region(mock_client)
     assert stopped == 1
     assert total == 2
+    # Now raises exception instead of returning fallback values
     error = botocore.exceptions.ClientError({"Error": {"Code": "Error"}}, "describe_canaries")
     mock_client.describe_canaries.side_effect = error
-    stopped, total = _check_cloudwatch_canaries_in_region(mock_client)
-    assert stopped == 0
-    assert total == 0
+    with pytest.raises(ClientError):
+        _check_cloudwatch_canaries_in_region(mock_client)
 
 
 def test_cloud_watch_alarms_region_alarm_states():
@@ -65,11 +67,11 @@ def test_cloud_watch_alarms_region_alarm_states():
     disabled, total = _check_cloudwatch_alarms_in_region(mock_client)
     assert disabled == 2
     assert total == 3
+    # Now raises exception instead of returning fallback values
     error = botocore.exceptions.ClientError({"Error": {"Code": "Error"}}, "describe_alarms")
     mock_client.describe_alarms.side_effect = error
-    disabled, total = _check_cloudwatch_alarms_in_region(mock_client)
-    assert disabled == 0
-    assert total == 0
+    with pytest.raises(ClientError):
+        _check_cloudwatch_alarms_in_region(mock_client)
 
 
 class TestFormatCloudWatchStatus:
@@ -202,15 +204,16 @@ class TestCheckCloudWatchStatus:
             assert "ACTIVE" in message
 
     def test_cloudwatch_error_handling(self):
-        """Test error handling in CloudWatch status checks."""
+        """Test error handling in CloudWatch status checks - now raises exception."""
         with patch("boto3.client") as mock_client:
             error = botocore.exceptions.ClientError({"Error": {"Code": "Error"}}, "client")
             mock_client.side_effect = error
-            is_resolved, _ = check_cloudwatch_status()
-            assert is_resolved is not None
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_cloudwatch_status()
+            assert "Failed to check CloudWatch in all regions" in str(exc_info.value)
         with patch("boto3.client") as mock_client:
             error = ClientError({"Error": {"Code": "ServiceError"}}, "client")
             mock_client.side_effect = error
-            result = check_cloudwatch_status()
-            assert result is not None
-            assert len(result) == 2
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_cloudwatch_status()
+            assert "Failed to check CloudWatch in all regions" in str(exc_info.value)

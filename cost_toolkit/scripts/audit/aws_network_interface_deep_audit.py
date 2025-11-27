@@ -10,11 +10,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
-def load_aws_credentials():
-    """Load AWS credentials for the deep audit."""
-    return setup_aws_credentials()
-
-
 def _print_basic_eni_info(eni):
     """Print basic ENI information."""
     status = eni["Status"]
@@ -128,7 +123,7 @@ def main():
 
     try:
         # Load credentials
-        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
         # Suspicious network interfaces from previous audit
         suspicious_interfaces = [

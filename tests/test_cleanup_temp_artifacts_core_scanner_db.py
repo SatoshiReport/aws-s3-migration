@@ -6,6 +6,8 @@ import sqlite3
 import time
 from pathlib import Path
 
+import pytest
+
 # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts import categories, core_scanner
 from tests.assertions import assert_equal
@@ -261,8 +263,12 @@ def test_scan_candidates_from_db_multiple_categories(tmp_path):
     conn.close()
 
 
-def test_scan_candidates_from_db_null_sizes(tmp_path):
-    """Test scan_candidates_from_db handles NULL sizes."""
+def test_scan_candidates_from_db_raises_on_null_sizes(tmp_path):
+    """Test scan_candidates_from_db raises CandidateLoadError for NULL sizes."""
+    from cleanup_temp_artifacts.core_scanner import (
+        CandidateLoadError,  # pylint: disable=no-name-in-module
+    )
+
     db_path = tmp_path / "test.db"
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row
@@ -279,15 +285,15 @@ def test_scan_candidates_from_db_null_sizes(tmp_path):
 
     category = Category("pycache", "Python cache", _pycache_matcher)
 
-    result = scan_candidates_from_db(
-        conn,
-        tmp_path,
-        [category],
-        cutoff_ts=None,
-        min_size_bytes=None,
-        total_files=1,
-    )
+    with pytest.raises(CandidateLoadError) as exc_info:
+        scan_candidates_from_db(
+            conn,
+            tmp_path,
+            [category],
+            cutoff_ts=None,
+            min_size_bytes=None,
+            total_files=1,
+        )
 
-    assert_equal(len(result), 1)
-    assert_equal(result[0].size_bytes, 0)
+    assert "NULL size in database" in str(exc_info.value)
     conn.close()

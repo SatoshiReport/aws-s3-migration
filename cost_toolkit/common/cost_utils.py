@@ -83,20 +83,3 @@ def calculate_snapshot_cost(size_gb: int) -> float:
     """
     # EBS snapshot pricing: $0.05 per GB-month
     return size_gb * 0.05
-
-
-def calculate_elastic_ip_cost(is_attached: bool = False) -> float:
-    """
-    Calculate monthly cost for an Elastic IP address.
-
-    Args:
-        is_attached: Whether the EIP is attached to a running instance
-
-    Returns:
-        float: Estimated monthly cost in USD
-    """
-    # Unattached EIPs: ~$3.60/month ($0.005/hour)
-    # Attached EIPs to running instances: free
-    if is_attached:
-        return 0.0
-    return 0.005 * 24 * 30  # $0.005/hour * 24 hours * 30 days

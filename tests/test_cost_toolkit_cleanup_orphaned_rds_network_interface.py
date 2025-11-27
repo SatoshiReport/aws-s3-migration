@@ -182,7 +182,7 @@ class TestMain:
         with patch("builtins.input", return_value="NO"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup."
-                "load_aws_credentials"
+                "setup_aws_credentials"
             ) as mock_load:
                 mock_load.return_value = ("key_id", "secret_key")
                 main()
@@ -194,7 +194,7 @@ class TestMain:
         with patch("builtins.input", return_value="DELETE ORPHANED RDS INTERFACES"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup."
-                "load_aws_credentials"
+                "setup_aws_credentials"
             ) as mock_load:
                 mock_load.return_value = ("key_id", "secret_key")
                 with patch("boto3.client") as mock_client:
@@ -215,7 +215,7 @@ class TestMain:
         with patch("builtins.input", return_value="DELETE ORPHANED RDS INTERFACES"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup."
-                "load_aws_credentials"
+                "setup_aws_credentials"
             ) as mock_load:
                 mock_load.return_value = ("key_id", "secret_key")
                 with patch("boto3.client") as mock_client:
@@ -258,7 +258,7 @@ class TestMain:
         with patch("builtins.input", return_value="DELETE ORPHANED RDS INTERFACES"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup."
-                "load_aws_credentials"
+                "setup_aws_credentials"
             ) as mock_load:
                 error = ClientError(
                     {"Error": {"Code": "ServiceUnavailable"}}, "setup_aws_credentials"

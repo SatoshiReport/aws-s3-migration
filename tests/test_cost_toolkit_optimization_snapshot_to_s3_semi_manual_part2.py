@@ -11,7 +11,7 @@ def test_main_success(capsys):
     """Test successful main execution."""
     mod = "cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual"
     with (
-        patch(f"{mod}.load_aws_credentials_from_env") as mock_load_creds,
+        patch(f"{mod}.load_credentials_from_env") as mock_load_creds,
         patch(f"{mod}._get_target_snapshots") as mock_get_snapshots,
         patch(f"{mod}._prepare_all_snapshots") as mock_prepare,
         patch(f"{mod}.generate_manual_commands") as mock_generate,

@@ -47,27 +47,6 @@ def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
     return candidate
 
 
-def derive_local_path_strict(base_path: Path, bucket: str, key: str) -> Path:
-    """
-    Convert a bucket/key pair into the expected local filesystem path.
-
-    Args:
-        base_path: Base directory containing bucket folders
-        bucket: S3 bucket name
-        key: S3 object key
-
-    Returns:
-        Path object for valid paths
-
-    Raises:
-        PathTraversalError: If path traversal is detected in key
-    """
-    result = derive_local_path(base_path, bucket, key)
-    if result is None:
-        raise PathTraversalError(f"Path traversal detected in key: {key}")
-    return result
-
-
 def format_duration(seconds: float) -> str:
     """Format seconds to human readable duration"""
     if seconds < SECONDS_PER_MINUTE:

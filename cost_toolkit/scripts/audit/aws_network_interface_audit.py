@@ -14,11 +14,6 @@ from cost_toolkit.scripts import aws_ec2_operations
 # boto3 used for per-region clients in audit_network_interfaces_in_region
 
 
-def load_aws_credentials():
-    """Load AWS credentials for the audit workflow."""
-    return setup_aws_credentials()
-
-
 def get_all_regions():
     """Get list of all AWS regions for EC2.
 
@@ -163,7 +158,7 @@ def main():
     print("=" * 60)
 
     try:
-        aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+        aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
         regions = get_all_regions()
         print(f"🌍 Scanning {len(regions)} AWS regions for network interfaces...")

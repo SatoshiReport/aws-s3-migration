@@ -33,18 +33,21 @@ def test_scan_bucket_with_mixed_storage_classes(scanner, state_mock):
         {
             "Key": "standard.txt",
             "Size": 100,
+            "ETag": '"etag1"',
             "StorageClass": "STANDARD",
             "LastModified": datetime.now(),
         },
         {
             "Key": "glacier.txt",
             "Size": 200,
+            "ETag": '"etag2"',
             "StorageClass": "GLACIER",
             "LastModified": datetime.now(),
         },
         {
             "Key": "deep_archive.txt",
             "Size": 300,
+            "ETag": '"etag3"',
             "StorageClass": "DEEP_ARCHIVE",
             "LastModified": datetime.now(),
         },
@@ -67,8 +70,9 @@ def test_scan_bucket_handles_missing_storage_class(scanner, state_mock):
                 {
                     "Key": "file.txt",
                     "Size": 100,
+                    "ETag": '"abc123"',
                     "LastModified": datetime.now(),
-                    # StorageClass missing
+                    # StorageClass missing - AWS omits this for STANDARD
                 }
             ]
         }
@@ -89,12 +93,14 @@ def test_scan_bucket_accumulates_size(scanner, state_mock):
                 {
                     "Key": "file1.txt",
                     "Size": 1000,
+                    "ETag": '"etag1"',
                     "StorageClass": "STANDARD",
                     "LastModified": datetime.now(),
                 },
                 {
                     "Key": "file2.txt",
                     "Size": 2000,
+                    "ETag": '"etag2"',
                     "StorageClass": "STANDARD",
                     "LastModified": datetime.now(),
                 },

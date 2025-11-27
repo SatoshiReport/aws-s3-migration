@@ -357,19 +357,17 @@ class TestAnalyzeTables:
         assert total == 0
         mock_cursor.execute.assert_not_called()
 
-    def test_analyze_tables_with_errors(self, capsys):
+    def test_analyze_tables_with_errors(self):
         """Test analyzing tables with errors."""
+        import pytest
+
         mock_cursor = MagicMock()
         mock_cursor.fetchone.side_effect = Exception("Connection lost")
 
         tables = [("public", "users", "postgres")]
 
-        total = analyze_tables(mock_cursor, tables, max_sample_columns=5)
-
-        assert total == 0
-        captured = capsys.readouterr()
-        assert "Error reading" in captured.out
-        assert "Connection lost" in captured.out
+        with pytest.raises(Exception, match="Connection lost"):
+            analyze_tables(mock_cursor, tables, max_sample_columns=5)
 
     def test_analyze_tables_empty_tables(self, capsys):
         """Test analyzing tables with no rows."""

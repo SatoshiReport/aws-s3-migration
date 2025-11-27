@@ -208,9 +208,10 @@ def test_record_migration_action_existing_file(_mock_print, mock_file, mock_date
 
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow.datetime")
 @patch("builtins.open", new_callable=mock_open)
-@patch("builtins.print")
-def test_record_migration_action_write_error(_mock_print, mock_file, mock_datetime):
+def test_record_migration_action_write_error(mock_file, mock_datetime):
     """Test recording migration action with write error."""
+    import pytest
+
     mock_datetime.now.return_value.isoformat.return_value = "2025-01-14T12:00:00"
     mock_file.side_effect = IOError("Permission denied")
 
@@ -228,12 +229,8 @@ def test_record_migration_action_write_error(_mock_print, mock_file, mock_dateti
 
     with patch("os.path.exists", return_value=False):
         with patch("os.makedirs"):
-            record_migration_action(original, endpoint, 77.0)
-
-    # Should print warning but not raise
-    call_args = [str(call) for call in _mock_print.call_args_list]
-    combined = " ".join(call_args)
-    assert "Could not record" in combined or "Permission denied" in combined
+            with pytest.raises(IOError, match="Permission denied"):
+                record_migration_action(original, endpoint, 77.0)
 
 
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow.datetime")

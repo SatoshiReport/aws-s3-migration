@@ -16,11 +16,6 @@ from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
-def load_aws_credentials():
-    """Load AWS credentials for snapshot cleanup."""
-    return setup_aws_credentials()
-
-
 def delete_snapshot(_ec2_client, snapshot_id, region):
     """
     Delete a specific snapshot.
@@ -178,7 +173,7 @@ def print_cleanup_summary(successful_deletions, failed_deletions, total_savings)
 
 def delete_freed_snapshots():
     """Delete snapshots that were freed after AMI deregistration"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
     snapshots_to_delete = get_snapshots_to_delete()
 
     print_deletion_warning(snapshots_to_delete)

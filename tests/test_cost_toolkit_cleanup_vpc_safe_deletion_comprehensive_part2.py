@@ -30,10 +30,10 @@ class TestDeleteVpcAndDependencies:
             mock_ec2.describe_network_acls.return_value = {"NetworkAcls": []}
             mock_ec2.describe_route_tables.return_value = {"RouteTables": []}
             mock_ec2.describe_subnets.return_value = {"Subnets": []}
+            mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": []}
 
-            result = delete_vpc_and_dependencies("vpc-123", "us-east-1")
+            delete_vpc_and_dependencies("vpc-123", "us-east-1")
 
-            assert result is True
             mock_ec2.delete_vpc.assert_called_once_with(VpcId="vpc-123")
             captured = capsys.readouterr()
             assert "VPC vpc-123 deleted successfully" in captured.out

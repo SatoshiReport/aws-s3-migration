@@ -105,7 +105,7 @@ class TestDeleteFreedSnapshots:
         """Test deletion with user confirmation."""
         mod = "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final"
         with (
-            patch(f"{mod}.load_aws_credentials") as mock_creds,
+            patch(f"{mod}.setup_aws_credentials") as mock_creds,
             patch(f"{mod}.confirm_snapshot_deletion") as mock_confirm,
             patch(f"{mod}.process_snapshot_deletions") as mock_process,
         ):
@@ -123,7 +123,7 @@ class TestDeleteFreedSnapshots:
         """Test deletion cancelled by user."""
         mod = "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final"
         with (
-            patch(f"{mod}.load_aws_credentials") as mock_creds,
+            patch(f"{mod}.setup_aws_credentials") as mock_creds,
             patch(f"{mod}.confirm_snapshot_deletion") as mock_confirm,
             patch(f"{mod}.process_snapshot_deletions") as mock_process,
         ):
@@ -140,7 +140,7 @@ class TestDeleteFreedSnapshots:
         """Test that credentials are passed to process function."""
         mod = "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final"
         with (
-            patch(f"{mod}.load_aws_credentials") as mock_creds,
+            patch(f"{mod}.setup_aws_credentials") as mock_creds,
             patch(f"{mod}.confirm_snapshot_deletion") as mock_confirm,
             patch(f"{mod}.process_snapshot_deletions") as mock_process,
         ):

@@ -34,25 +34,24 @@ def check_global_accelerator_status():
     try:
         ga_client = create_client("globalaccelerator", region="us-west-2")
         response = ga_client.list_accelerators()
-
-        disabled_count = 0
-        total_count = len(response["Accelerators"])
-
-        for accelerator in response["Accelerators"]:
-            if not accelerator["Enabled"]:
-                disabled_count += 1
-
-        if total_count > 0 and disabled_count == total_count:
-            return True, f"✅ RESOLVED - All {total_count} accelerators disabled"
-        if disabled_count > 0:
-            return True, f"🔄 PARTIAL - {disabled_count}/{total_count} accelerators disabled"
-
-        return False, f"❌ ACTIVE - {total_count} accelerators still enabled"
-
     except (botocore.exceptions.ClientError, ClientError) as e:
         if "AccessDenied" in str(e):
             raise AccessDeniedError("No permission to check Global Accelerator status") from e
         raise ServiceCheckError(f"Failed to check Global Accelerator: {e}") from e
+
+    disabled_count = 0
+    total_count = len(response["Accelerators"])
+
+    for accelerator in response["Accelerators"]:
+        if not accelerator["Enabled"]:
+            disabled_count += 1
+
+    if total_count > 0 and disabled_count == total_count:
+        return True, f"✅ RESOLVED - All {total_count} accelerators disabled"
+    if disabled_count > 0:
+        return True, f"🔄 PARTIAL - {disabled_count}/{total_count} accelerators disabled"
+
+    return False, f"❌ ACTIVE - {total_count} accelerators still enabled"
 
 
 def _check_lightsail_instances_in_region(lightsail_client):

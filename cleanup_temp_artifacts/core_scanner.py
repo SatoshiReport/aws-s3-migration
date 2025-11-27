@@ -50,25 +50,25 @@ class CandidateLoadError(RuntimeError):
     """Raised when the migration database cannot be queried."""
 
 
+class PathOutsideBaseError(ValueError):
+    """Raised when a file path is outside the expected base path."""
+
+
 def iter_relevant_dirs(file_path: Path, base_path: Path) -> Iterator[Path]:
     """Yield ancestor directories under base_path (excluding base_path itself).
 
-    Note:
-        Silently yields nothing if file_path is outside base_path.
-        This is intentional to allow callers to iterate without checking paths first.
+    Raises:
+        PathOutsideBaseError: If file_path is outside base_path.
     """
     try:
         file_path.relative_to(base_path)
     except ValueError:
-        # file_path is outside base_path - yield nothing
-        return
+        raise PathOutsideBaseError(f"{file_path} is outside base path {base_path}") from None
     current = file_path.parent
-    while True:
+    while current != base_path:
         try:
             current.relative_to(base_path)
         except ValueError:
-            break
-        if current == base_path:
             break
         yield current
         current = current.parent
@@ -105,13 +105,13 @@ def _process_parent_directory(
     """Process a single parent directory for inclusion in candidates.
 
     Note:
-        Silently returns if the directory cannot be resolved (e.g., deleted during scan).
+        Logs and skips directories that cannot be resolved (e.g., deleted during scan).
         This allows batch processing to continue for remaining directories.
     """
     try:
         canonical = parent.resolve()
-    except OSError:
-        # Directory may have been deleted during scan
+    except OSError as exc:
+        logging.warning("Cannot resolve directory %s during scan: %s", parent, exc)
         return
 
     entry = candidates.get(canonical)
@@ -149,14 +149,22 @@ def _process_parent_directory(
     )
 
 
+class MissingSizeError(RuntimeError):
+    """Raised when a candidate has no size information."""
+
+
 def _filter_candidates_by_size(
     candidates: dict[Path, Candidate], min_size_bytes: int | None
 ) -> list[Candidate]:
-    """Filter candidates by minimum size requirement."""
+    """Filter candidates by minimum size requirement.
+
+    Raises:
+        MissingSizeError: If a candidate has None for size_bytes.
+    """
     results: list[Candidate] = []
     for candidate in candidates.values():
         if candidate.size_bytes is None:
-            candidate.size_bytes = 0
+            raise MissingSizeError(f"Candidate {candidate.path} has no size information")
         if min_size_bytes is not None and candidate.size_bytes < min_size_bytes:
             continue
         results.append(candidate)
@@ -191,7 +199,9 @@ def scan_candidates_from_db(
         local_file = derive_local_path(base_path, row["bucket"], row["key"])
         if local_file is None:
             continue
-        file_size = row["size"] if row["size"] is not None else 0
+        if row["size"] is None:
+            raise CandidateLoadError(f"File {row['bucket']}/{row['key']} has NULL size in database")
+        file_size = row["size"]
         for parent in iter_relevant_dirs(local_file, base_path):
             _process_parent_directory(
                 parent,

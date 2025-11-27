@@ -17,9 +17,6 @@ from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 # Bucket to exclude from standardization - DO NOT TOUCH
 EXCLUDED_BUCKET = "akiaiw6gwdirbsbuzqiq-arq-1"
 
-# Bucket to delete (already deleted, but keeping for reference)
-BUCKET_TO_DELETE = "mail.satoshi.report"
-
 
 def get_bucket_region(bucket_name):
     """
@@ -72,38 +69,6 @@ def _delete_regular_objects(s3_client, bucket_name):
             for obj in page["Contents"]:
                 print(f"    Deleting object: {obj['Key']}")
                 s3_client.delete_object(Bucket=bucket_name, Key=obj["Key"])
-
-
-def delete_bucket_completely(bucket_name):
-    """Delete a bucket and all its contents"""
-    try:
-        region = get_bucket_region(bucket_name)
-        s3_client = create_s3_client(region=region)
-
-        print(f"🗑️  Deleting bucket: {bucket_name}")
-        print(f"  Listing objects in {bucket_name}...")
-
-        try:
-            _delete_versioned_objects(s3_client, bucket_name)
-        except ClientError as e:
-            if e.response["Error"]["Code"] != "NoSuchBucket":
-                _delete_regular_objects(s3_client, bucket_name)
-
-        print(f"  Deleting bucket {bucket_name}...")
-        s3_client.delete_bucket(Bucket=bucket_name)
-        print(f"✅ Successfully deleted bucket: {bucket_name}")
-
-    except ClientError as e:
-        error_code = e.response["Error"]["Code"]
-        if error_code == "NoSuchBucket":
-            print(f"✅ Bucket {bucket_name} does not exist (already deleted)")
-            return True
-        if error_code == "BucketNotEmpty":
-            print(f"❌ Bucket {bucket_name} is not empty. Manual cleanup may be required.")
-            return False
-        print(f"❌ Error deleting bucket {bucket_name}: {e}")
-        return False
-    return True
 
 
 def ensure_bucket_private(bucket_name, region):

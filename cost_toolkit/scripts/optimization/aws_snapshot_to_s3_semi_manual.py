@@ -244,7 +244,7 @@ def main():
     print("📋 Provide monitoring and cleanup commands")
     print()
 
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials_from_env()
+    aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
     snapshots = _get_target_snapshots()
 
     total_size_gb = sum(snap["size_gb"] for snap in snapshots)

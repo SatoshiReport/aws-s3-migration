@@ -28,6 +28,7 @@ def test_scan_bucket_respects_pagination_interrupt():
                     {
                         "Key": f"file{page_count}.txt",
                         "Size": 100,
+                        "ETag": '"abc123"',
                         "StorageClass": "STANDARD",
                         "LastModified": datetime.now(),
                     }
@@ -55,6 +56,7 @@ def test_scan_bucket_progress_output():
             {
                 "Key": f"file{i}.txt",
                 "Size": 100,
+                "ETag": f'"etag{i}"',
                 "StorageClass": "STANDARD",
                 "LastModified": datetime.now(),
             }
@@ -84,6 +86,7 @@ def test_bucket_scanner_handles_very_large_bucket():
         {
             "Key": f"file{i}.txt",
             "Size": 1000000,
+            "ETag": f'"etag{i}"',
             "StorageClass": "STANDARD",
             "LastModified": datetime.now(),
         }
@@ -111,6 +114,7 @@ def test_bucket_scanner_handles_zero_size_files():
                 {
                     "Key": "zero.txt",
                     "Size": 0,
+                    "ETag": '"abc123"',
                     "StorageClass": "STANDARD",
                     "LastModified": datetime.now(),
                 }

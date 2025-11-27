@@ -134,50 +134,6 @@ def create_cost_explorer_client(
     return create_client("ce", "us-east-1", aws_access_key_id, aws_secret_access_key)
 
 
-def create_iam_client(
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-):
-    """Create an IAM boto3 client. IAM is a global service accessed through us-east-1."""
-    return create_client("iam", "us-east-1", aws_access_key_id, aws_secret_access_key)
-
-
-def create_cloudwatch_client(
-    region: str,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-):
-    """Create a CloudWatch boto3 client with credentials."""
-    return create_client("cloudwatch", region, aws_access_key_id, aws_secret_access_key)
-
-
-def create_lambda_client(
-    region: str,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-):
-    """Create a Lambda boto3 client with credentials."""
-    return create_client("lambda", region, aws_access_key_id, aws_secret_access_key)
-
-
-def create_efs_client(
-    region: str,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-):
-    """Create an EFS boto3 client with credentials."""
-    return create_client("efs", region, aws_access_key_id, aws_secret_access_key)
-
-
-def create_backup_client(
-    region: str,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-):
-    """Create an AWS Backup boto3 client with credentials."""
-    return create_client("backup", region, aws_access_key_id, aws_secret_access_key)
-
-
 def create_route53resolver_client(
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,

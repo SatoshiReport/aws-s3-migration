@@ -24,20 +24,6 @@ def get_today_date_range() -> tuple[str, str]:
     return start_of_day.strftime("%Y-%m-%d"), end_of_day.strftime("%Y-%m-%d")
 
 
-def get_month_date_range() -> tuple[str, str]:
-    """
-    Get the date range for the current month in YYYY-MM-DD format.
-
-    Returns:
-        tuple: (start_date, end_date) where start is first day of month, end is tomorrow
-    """
-    now = datetime.now()
-    start_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-    end_date = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-
-    return start_of_month.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
-
-
 def get_cost_and_usage(
     start_date: str,
     end_date: str,
@@ -145,72 +131,6 @@ def get_hourly_costs_by_service(
         granularity="HOURLY",
         metrics=["BlendedCost", "UsageQuantity"],
         group_by=[{"Type": "DIMENSION", "Key": "SERVICE"}],
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-
-def get_costs_by_service_and_usage_type(
-    start_date: str,
-    end_date: str,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-) -> dict:
-    """
-    Get costs grouped by both service and usage type.
-
-    Args:
-        start_date: Start date in YYYY-MM-DD format
-        end_date: End date in YYYY-MM-DD format
-        aws_access_key_id: Optional AWS access key
-        aws_secret_access_key: Optional AWS secret key
-
-    Returns:
-        dict: Cost and usage data grouped by service and usage type
-
-    Raises:
-        ClientError: If API call fails
-    """
-    return get_cost_and_usage(
-        start_date=start_date,
-        end_date=end_date,
-        granularity="DAILY",
-        metrics=["BlendedCost", "UsageQuantity"],
-        group_by=[
-            {"Type": "DIMENSION", "Key": "SERVICE"},
-            {"Type": "DIMENSION", "Key": "USAGE_TYPE"},
-        ],
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-
-def get_monthly_costs(
-    start_date: str,
-    end_date: str,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-) -> dict:
-    """
-    Get monthly aggregated costs.
-
-    Args:
-        start_date: Start date in YYYY-MM-DD format
-        end_date: End date in YYYY-MM-DD format
-        aws_access_key_id: Optional AWS access key
-        aws_secret_access_key: Optional AWS secret key
-
-    Returns:
-        dict: Cost and usage data with monthly granularity
-
-    Raises:
-        ClientError: If API call fails
-    """
-    return get_cost_and_usage(
-        start_date=start_date,
-        end_date=end_date,
-        granularity="MONTHLY",
-        metrics=["BlendedCost", "UsageQuantity"],
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )

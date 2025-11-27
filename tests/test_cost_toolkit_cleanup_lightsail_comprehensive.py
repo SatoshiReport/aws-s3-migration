@@ -5,9 +5,11 @@ from __future__ import annotations
 import json
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_lightsail_cleanup import (
+    UnknownBundleError,
     _delete_database,
     _delete_instance,
     _print_summary,
@@ -250,10 +252,12 @@ class TestEstimateCosts:
         cost = estimate_instance_cost("xlarge_2_0")
         assert cost == 80.00
 
-    def test_estimate_instance_cost_unknown_bundle(self):
-        """Test cost estimation for unknown instance bundle."""
-        cost = estimate_instance_cost("unknown_bundle")
-        assert cost == 10.00
+    def test_estimate_instance_cost_unknown_bundle_raises(self):
+        """Test cost estimation raises UnknownBundleError for unknown instance bundle."""
+        with pytest.raises(UnknownBundleError) as exc_info:
+            estimate_instance_cost("unknown_bundle")
+
+        assert "unknown_bundle" in str(exc_info.value)
 
     def test_estimate_database_cost_known_bundle(self):
         """Test cost estimation for known database bundle."""
@@ -263,10 +267,12 @@ class TestEstimateCosts:
         cost = estimate_database_cost("large_1_0")
         assert cost == 115.00
 
-    def test_estimate_database_cost_unknown_bundle(self):
-        """Test cost estimation for unknown database bundle."""
-        cost = estimate_database_cost("unknown_bundle")
-        assert cost == 30.00
+    def test_estimate_database_cost_unknown_bundle_raises(self):
+        """Test cost estimation raises UnknownBundleError for unknown database bundle."""
+        with pytest.raises(UnknownBundleError) as exc_info:
+            estimate_database_cost("unknown_bundle")
+
+        assert "unknown_bundle" in str(exc_info.value)
 
 
 class TestRecordCleanupAction:

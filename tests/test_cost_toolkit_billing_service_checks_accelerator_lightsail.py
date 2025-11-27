@@ -4,9 +4,12 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.billing.billing_report.service_checks import (
+    AccessDeniedError,
+    ServiceCheckError,
     _check_lightsail_databases_in_region,
     _check_lightsail_instances_in_region,
     _format_lightsail_status,
@@ -59,24 +62,27 @@ class TestGlobalAcceleratorStatus:
             assert is_resolved is False
             assert "ACTIVE" in message
 
-    def test_accelerator_errors(self):
-        """Test handling of errors when checking accelerators."""
+    def test_accelerator_errors_access_denied_raises(self):
+        """Test handling of AccessDenied error when checking accelerators."""
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
             error = ClientError({"Error": {"Code": "AccessDenied"}}, "list_accelerators")
             mock_ga.list_accelerators.side_effect = error
             mock_client.return_value = mock_ga
-            is_resolved, message = check_global_accelerator_status()
-            assert is_resolved is None
-            assert "No permission" in message
+            with pytest.raises(AccessDeniedError) as exc_info:
+                check_global_accelerator_status()
+            assert "No permission" in str(exc_info.value)
+
+    def test_accelerator_errors_service_error_raises(self):
+        """Test handling of other errors when checking accelerators."""
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
             error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "list_accelerators")
             mock_ga.list_accelerators.side_effect = error
             mock_client.return_value = mock_ga
-            is_resolved, message = check_global_accelerator_status()
-            assert is_resolved is None
-            assert "ERROR" in message
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_global_accelerator_status()
+            assert "Failed to check Global Accelerator" in str(exc_info.value)
 
 
 def test_lightsail_instances_region_instance_states():
@@ -213,6 +219,10 @@ def test_check_lightsail_status_lightsail_status():
         is_resolved, message = check_lightsail_status()
         assert is_resolved is True
         assert "All Lightsail resources stopped" in message
+
+
+def test_check_lightsail_status_no_resources():
+    """Test Lightsail status when no resources are found."""
     with patch("boto3.client") as mock_client:
         mock_ls = MagicMock()
         mock_ls.get_instances.return_value = {"instances": []}
@@ -221,9 +231,13 @@ def test_check_lightsail_status_lightsail_status():
         is_resolved, message = check_lightsail_status()
         assert is_resolved is True
         assert "No Lightsail resources found" in message
+
+
+def test_check_lightsail_status_all_regions_fail_raises():
+    """Test Lightsail status raises when all regions fail."""
     with patch("boto3.client") as mock_client:
         error = ClientError({"Error": {"Code": "ServiceError"}}, "client")
         mock_client.side_effect = error
-        result = check_lightsail_status()
-        assert result is not None
-        assert len(result) == 2
+        with pytest.raises(ServiceCheckError) as exc_info:
+            check_lightsail_status()
+        assert "Failed to check Lightsail in all regions" in str(exc_info.value)

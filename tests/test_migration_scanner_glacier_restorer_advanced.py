@@ -13,8 +13,8 @@ class TestGlacierRestorerStorageClassTiers:
 
     def test_request_restore_for_glacier(self, restorer, s3_mock):
         """Test requesting restore for GLACIER storage class"""
-        with mock.patch("migration_scanner.config.GLACIER_RESTORE_TIER", "Standard"):
-            with mock.patch("migration_scanner.config.GLACIER_RESTORE_DAYS", 1):
+        with mock.patch("migration_scanner.GLACIER_RESTORE_TIER", "Standard"):
+            with mock.patch("migration_scanner.GLACIER_RESTORE_DAYS", 1):
                 file_info = {
                     "bucket": "test-bucket",
                     "key": "file.txt",
@@ -29,7 +29,7 @@ class TestGlacierRestorerStorageClassTiers:
 
     def test_request_restore_for_deep_archive(self, restorer, s3_mock):
         """Test requesting restore for DEEP_ARCHIVE uses Bulk tier"""
-        with mock.patch("migration_scanner.config.GLACIER_RESTORE_DAYS", 1):
+        with mock.patch("migration_scanner.GLACIER_RESTORE_DAYS", 1):
             file_info = {
                 "bucket": "test-bucket",
                 "key": "file.txt",
@@ -85,8 +85,8 @@ class TestGlacierRestorerErrorHandling:
 
 def test_request_restore_uses_correct_config_values(restorer, s3_mock):
     """Test that restore request uses config values"""
-    with mock.patch("migration_scanner.config.GLACIER_RESTORE_TIER", "Expedited"):
-        with mock.patch("migration_scanner.config.GLACIER_RESTORE_DAYS", 5):
+    with mock.patch("migration_scanner.GLACIER_RESTORE_TIER", "Expedited"):
+        with mock.patch("migration_scanner.GLACIER_RESTORE_DAYS", 5):
             file_info = {
                 "bucket": "test-bucket",
                 "key": "file.txt",

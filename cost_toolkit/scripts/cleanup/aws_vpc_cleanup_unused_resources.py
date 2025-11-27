@@ -15,12 +15,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 
-
-def load_aws_credentials():
-    """Load AWS credentials for VPC cleanup workflows."""
-    return setup_aws_credentials()
-
-
 # Unused security groups identified in the audit
 UNUSED_SECURITY_GROUPS = [
     # us-east-1 region
@@ -226,7 +220,7 @@ def print_cleanup_summary(successful_deletions, failed_deletions):
 
 def cleanup_unused_vpc_resources():
     """Clean up unused VPC resources identified in the audit"""
-    aws_access_key_id, aws_secret_access_key = load_aws_credentials()
+    aws_access_key_id, aws_secret_access_key = setup_aws_credentials()
 
     print_cleanup_intro()
 

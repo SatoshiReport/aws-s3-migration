@@ -35,6 +35,7 @@ def test_scan_all_buckets_with_single_bucket(scanner, s3_mock, state_mock):
                 {
                     "Key": "file.txt",
                     "Size": 100,
+                    "ETag": '"abc123"',
                     "StorageClass": "STANDARD",
                     "LastModified": datetime.now(),
                 }
@@ -64,7 +65,7 @@ def test_scan_all_buckets_handles_empty_bucket(scanner, s3_mock, state_mock):
 
 def test_scan_all_buckets_filters_excluded_buckets(scanner, s3_mock, capsys):
     """Test that excluded buckets are filtered out"""
-    with mock.patch("migration_scanner.config.EXCLUDED_BUCKETS", ["excluded-bucket"]):
+    with mock.patch("migration_scanner.EXCLUDED_BUCKETS", ["excluded-bucket"]):
         s3_mock.list_buckets.return_value = {
             "Buckets": [
                 {"Name": "test-bucket"},
@@ -89,6 +90,7 @@ def test_scan_all_buckets_with_multiple_pages(scanner, s3_mock, state_mock):
                 {
                     "Key": "file1.txt",
                     "Size": 100,
+                    "ETag": '"abc123"',
                     "StorageClass": "STANDARD",
                     "LastModified": datetime.now(),
                 }
@@ -98,6 +100,7 @@ def test_scan_all_buckets_with_multiple_pages(scanner, s3_mock, state_mock):
             "Contents": [
                 {
                     "Key": "file2.txt",
+                    "ETag": '"def456"',
                     "Size": 200,
                     "StorageClass": "GLACIER",
                     "LastModified": datetime.now(),

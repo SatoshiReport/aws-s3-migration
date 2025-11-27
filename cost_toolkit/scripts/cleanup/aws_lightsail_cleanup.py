@@ -155,8 +155,16 @@ def delete_lightsail_instances():
     return total_instances_deleted, total_databases_deleted, total_savings
 
 
+class UnknownBundleError(ValueError):
+    """Raised when a Lightsail bundle ID is not recognized."""
+
+
 def estimate_instance_cost(bundle_id):
-    """Estimate monthly cost based on Lightsail bundle ID"""
+    """Estimate monthly cost based on Lightsail bundle ID.
+
+    Raises:
+        UnknownBundleError: If bundle_id is not in the known pricing table.
+    """
     # Common Lightsail bundle pricing (approximate)
     bundle_costs = {
         "nano_2_0": 3.50,
@@ -168,11 +176,17 @@ def estimate_instance_cost(bundle_id):
         "2xlarge_2_0": 160.00,
     }
 
-    return bundle_costs.get(bundle_id, 10.00)  # Default estimate
+    if bundle_id not in bundle_costs:
+        raise UnknownBundleError(f"Unknown Lightsail instance bundle: {bundle_id}")
+    return bundle_costs[bundle_id]
 
 
 def estimate_database_cost(bundle_id):
-    """Estimate monthly cost for Lightsail database"""
+    """Estimate monthly cost for Lightsail database.
+
+    Raises:
+        UnknownBundleError: If bundle_id is not in the known pricing table.
+    """
     # Common database bundle pricing (approximate)
     db_costs = {
         "micro_1_0": 15.00,
@@ -181,7 +195,9 @@ def estimate_database_cost(bundle_id):
         "large_1_0": 115.00,
     }
 
-    return db_costs.get(bundle_id, 30.00)  # Default estimate
+    if bundle_id not in db_costs:
+        raise UnknownBundleError(f"Unknown Lightsail database bundle: {bundle_id}")
+    return db_costs[bundle_id]
 
 
 def record_cleanup_action(service, resources_deleted, savings):

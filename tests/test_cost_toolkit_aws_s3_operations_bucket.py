@@ -183,14 +183,15 @@ def test_list_buckets_success(mock_create_client):
 
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
 def test_list_buckets_empty(mock_create_client):
-    """Test list_buckets returns empty list when no buckets exist."""
+    """Test list_buckets raises KeyError when Buckets key is missing."""
+    import pytest
+
     mock_s3 = MagicMock()
     mock_create_client.return_value = mock_s3
     mock_s3.list_buckets.return_value = {}
 
-    result = list_buckets()
-
-    assert_equal(result, [])
+    with pytest.raises(KeyError, match="Buckets"):
+        list_buckets()
 
 
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
@@ -383,14 +384,15 @@ def test_get_bucket_tagging_no_such_tag_set(mock_create_client):
 
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
 def test_get_bucket_tagging_empty_tag_set(mock_create_client):
-    """Test get_bucket_tagging returns empty list when TagSet not present."""
+    """Test get_bucket_tagging raises KeyError when TagSet not present."""
+    import pytest
+
     mock_s3 = MagicMock()
     mock_create_client.return_value = mock_s3
     mock_s3.get_bucket_tagging.return_value = {}
 
-    result = get_bucket_tagging("test-bucket", "us-west-2")
-
-    assert_equal(result, [])
+    with pytest.raises(KeyError, match="TagSet"):
+        get_bucket_tagging("test-bucket", "us-west-2")
 
 
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")

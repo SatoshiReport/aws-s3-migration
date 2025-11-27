@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+import pytest
+from botocore.exceptions import ClientError
+
 from cost_toolkit.scripts.billing.aws_hourly_billing_report import (
     _display_optimization_insights,
     format_hourly_billing_report,
@@ -161,9 +164,11 @@ class TestMain:
         mod = "cost_toolkit.scripts.billing.aws_hourly_billing_report"
         with (
             patch(f"{mod}.clear_screen") as mock_clear_screen,
+            patch(f"{mod}.aws_utils.load_aws_credentials") as mock_load_creds,
             patch(f"{mod}.get_hourly_billing_data") as mock_get_data,
             patch(f"{mod}.format_hourly_billing_report") as mock_format_report,
         ):
+            mock_load_creds.return_value = True
             mock_get_data.return_value = ({"ResultsByTime": []}, {"ResultsByTime": []})
 
             main()
@@ -183,40 +188,46 @@ class TestMain:
         mock_clear_screen.assert_called_once()
 
     @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.clear_screen")
+    @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.aws_utils.load_aws_credentials")
     @patch("cost_toolkit.scripts.billing.aws_hourly_billing_report.get_hourly_billing_data")
-    def test_main_failed_data_retrieval(self, mock_get_data, _mock_clear_screen, capsys):
-        """Test main function with failed data retrieval."""
-        mock_get_data.return_value = (None, None)
+    def test_main_failed_data_retrieval(self, mock_get_data, mock_load_creds, _mock_clear_screen):
+        """Test main function with failed data retrieval - now raises exception."""
+        mock_load_creds.return_value = True
+        mock_get_data.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+            "GetCostAndUsage",
+        )
 
-        main()
+        with pytest.raises(ClientError):
+            main()
 
-        captured = capsys.readouterr()
-        assert "Failed to retrieve billing data" in captured.out
-
-    def test_main_partial_data_failure(self, capsys):
-        """Test main function with partial data retrieval."""
+    def test_main_partial_data_failure(self):
+        """Test main function with partial data retrieval - now raises exception."""
         mod = "cost_toolkit.scripts.billing.aws_hourly_billing_report"
         with (
             patch(f"{mod}.clear_screen"),
+            patch(f"{mod}.aws_utils.load_aws_credentials") as mock_load_creds,
             patch(f"{mod}.get_hourly_billing_data") as mock_get_data,
-            patch(f"{mod}.format_hourly_billing_report") as mock_format_report,
         ):
-            mock_get_data.return_value = ({"ResultsByTime": []}, None)
+            mock_load_creds.return_value = True
+            mock_get_data.side_effect = ClientError(
+                {"Error": {"Code": "ServiceError", "Message": "Service error"}},
+                "GetCostAndUsage",
+            )
 
-            main()
-
-            mock_format_report.assert_not_called()
-            captured = capsys.readouterr()
-            assert "Failed to retrieve billing data" in captured.out
+            with pytest.raises(ClientError):
+                main()
 
     def test_main_displays_usage_tips(self, capsys):
         """Test main function displays usage tips."""
         mod = "cost_toolkit.scripts.billing.aws_hourly_billing_report"
         with (
             patch(f"{mod}.clear_screen"),
+            patch(f"{mod}.aws_utils.load_aws_credentials") as mock_load_creds,
             patch(f"{mod}.get_hourly_billing_data") as mock_get_data,
             patch(f"{mod}.format_hourly_billing_report"),
         ):
+            mock_load_creds.return_value = True
             mock_get_data.return_value = ({"ResultsByTime": []}, {"ResultsByTime": []})
 
             main()

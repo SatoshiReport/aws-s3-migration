@@ -5,8 +5,6 @@ This module provides reusable functions for VPC and related resource cleanup
 to eliminate duplicate cleanup code across scripts.
 """
 
-from botocore.exceptions import ClientError
-
 
 def delete_internet_gateways(ec2_client, vpc_id):
     """
@@ -28,16 +26,13 @@ def delete_internet_gateways(ec2_client, vpc_id):
     for igw in igw_response.get("InternetGateways", []):
         igw_id = igw["InternetGatewayId"]
         print(f"  Detaching IGW {igw_id} from VPC {vpc_id}")
-        try:
-            ec2_client.detach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
-            print(f"  ✅ IGW {igw_id} detached")
+        ec2_client.detach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
+        print(f"  ✅ IGW {igw_id} detached")
 
-            print(f"  Deleting IGW {igw_id}")
-            ec2_client.delete_internet_gateway(InternetGatewayId=igw_id)
-            print(f"  ✅ IGW {igw_id} deleted")
-            deleted_count += 1
-        except ClientError as e:
-            print(f"  ❌ Error with IGW {igw_id}: {e}")
+        print(f"  Deleting IGW {igw_id}")
+        ec2_client.delete_internet_gateway(InternetGatewayId=igw_id)
+        print(f"  ✅ IGW {igw_id} deleted")
+        deleted_count += 1
 
     return deleted_count
 
@@ -63,12 +58,9 @@ def delete_vpc_endpoints(ec2_client, vpc_id):
         if endpoint["State"] != "deleted":
             endpoint_id = endpoint["VpcEndpointId"]
             print(f"  Deleting VPC Endpoint {endpoint_id}")
-            try:
-                ec2_client.delete_vpc_endpoint(VpcEndpointId=endpoint_id)
-                print(f"  ✅ VPC Endpoint {endpoint_id} deleted")
-                deleted_count += 1
-            except ClientError as e:
-                print(f"  ❌ Error deleting endpoint {endpoint_id}: {e}")
+            ec2_client.delete_vpc_endpoint(VpcEndpointId=endpoint_id)
+            print(f"  ✅ VPC Endpoint {endpoint_id} deleted")
+            deleted_count += 1
 
     return deleted_count
 
@@ -94,12 +86,9 @@ def delete_nat_gateways(ec2_client, vpc_id):
         if nat["State"] not in ["deleted", "deleting"]:
             nat_id = nat["NatGatewayId"]
             print(f"  Deleting NAT Gateway {nat_id}")
-            try:
-                ec2_client.delete_nat_gateway(NatGatewayId=nat_id)
-                print(f"  ✅ NAT Gateway {nat_id} deletion initiated")
-                deleted_count += 1
-            except ClientError as e:
-                print(f"  ❌ Error deleting NAT Gateway {nat_id}: {e}")
+            ec2_client.delete_nat_gateway(NatGatewayId=nat_id)
+            print(f"  ✅ NAT Gateway {nat_id} deletion initiated")
+            deleted_count += 1
 
     return deleted_count
 
@@ -128,12 +117,9 @@ def delete_security_groups(ec2_client, vpc_id, skip_default=True):
 
         sg_id = sg["GroupId"]
         print(f"  Deleting Security Group {sg_id} ({sg['GroupName']})")
-        try:
-            ec2_client.delete_security_group(GroupId=sg_id)
-            print(f"  ✅ Security Group {sg_id} deleted")
-            deleted_count += 1
-        except ClientError as e:
-            print(f"  ❌ Error deleting security group {sg_id}: {e}")
+        ec2_client.delete_security_group(GroupId=sg_id)
+        print(f"  ✅ Security Group {sg_id} deleted")
+        deleted_count += 1
 
     return deleted_count
 
@@ -162,12 +148,9 @@ def delete_network_acls(ec2_client, vpc_id, skip_default=True):
 
         nacl_id = nacl["NetworkAclId"]
         print(f"  Deleting Network ACL {nacl_id}")
-        try:
-            ec2_client.delete_network_acl(NetworkAclId=nacl_id)
-            print(f"  ✅ Network ACL {nacl_id} deleted")
-            deleted_count += 1
-        except ClientError as e:
-            print(f"  ❌ Error deleting network ACL {nacl_id}: {e}")
+        ec2_client.delete_network_acl(NetworkAclId=nacl_id)
+        print(f"  ✅ Network ACL {nacl_id} deleted")
+        deleted_count += 1
 
     return deleted_count
 
@@ -196,12 +179,9 @@ def delete_route_tables(ec2_client, vpc_id, skip_main=True):
 
         rt_id = rt["RouteTableId"]
         print(f"  Deleting Route Table {rt_id}")
-        try:
-            ec2_client.delete_route_table(RouteTableId=rt_id)
-            print(f"  ✅ Route Table {rt_id} deleted")
-            deleted_count += 1
-        except ClientError as e:
-            print(f"  ❌ Error deleting route table {rt_id}: {e}")
+        ec2_client.delete_route_table(RouteTableId=rt_id)
+        print(f"  ✅ Route Table {rt_id} deleted")
+        deleted_count += 1
 
     return deleted_count
 
@@ -224,51 +204,11 @@ def delete_subnets(ec2_client, vpc_id):
     for subnet in subnet_response.get("Subnets", []):
         subnet_id = subnet["SubnetId"]
         print(f"  Deleting Subnet {subnet_id}")
-        try:
-            ec2_client.delete_subnet(SubnetId=subnet_id)
-            print(f"  ✅ Subnet {subnet_id} deleted")
-            deleted_count += 1
-        except ClientError as e:
-            print(f"  ❌ Error deleting subnet {subnet_id}: {e}")
+        ec2_client.delete_subnet(SubnetId=subnet_id)
+        print(f"  ✅ Subnet {subnet_id} deleted")
+        deleted_count += 1
 
     return deleted_count
-
-
-def release_elastic_ips(ec2_client, vpc_id=None):
-    """
-    Release Elastic IPs associated with a VPC or all unassociated Elastic IPs.
-
-    Args:
-        ec2_client: Boto3 EC2 client instance
-        vpc_id: Optional VPC ID to filter by (if None, releases all unassociated EIPs)
-
-    Returns:
-        int: Number of Elastic IPs successfully released
-    """
-    print("Releasing Elastic IPs...")
-
-    if vpc_id:
-        addresses = ec2_client.describe_addresses(Filters=[{"Name": "domain", "Values": ["vpc"]}])
-    else:
-        addresses = ec2_client.describe_addresses()
-
-    released_count = 0
-    for address in addresses.get("Addresses", []):
-        # Only release unassociated EIPs
-        if "AssociationId" not in address:
-            allocation_id = address.get("AllocationId")
-            public_ip = address.get("PublicIp")
-
-            if allocation_id:
-                print(f"  Releasing EIP {public_ip} (allocation: {allocation_id})")
-                try:
-                    ec2_client.release_address(AllocationId=allocation_id)
-                    print(f"  ✅ EIP {public_ip} released")
-                    released_count += 1
-                except ClientError as e:
-                    print(f"  ❌ Error releasing EIP {public_ip}: {e}")
-
-    return released_count
 
 
 def delete_network_interfaces(ec2_client, vpc_id):
@@ -293,12 +233,9 @@ def delete_network_interfaces(ec2_client, vpc_id):
         if eni["Status"] == "available":
             eni_id = eni["NetworkInterfaceId"]
             print(f"  Deleting Network Interface {eni_id}")
-            try:
-                ec2_client.delete_network_interface(NetworkInterfaceId=eni_id)
-                print(f"  ✅ Network Interface {eni_id} deleted")
-                deleted_count += 1
-            except ClientError as e:
-                print(f"  ❌ Error deleting ENI {eni_id}: {e}")
+            ec2_client.delete_network_interface(NetworkInterfaceId=eni_id)
+            print(f"  ✅ Network Interface {eni_id} deleted")
+            deleted_count += 1
 
     return deleted_count
 
@@ -307,37 +244,31 @@ def delete_vpc_and_dependencies(ec2_client, vpc_id):
     """
     Delete a VPC and all its dependencies in the correct order.
 
-    This is a comprehensive cleanup function that attempts to delete all
+    This is a comprehensive cleanup function that deletes all
     resources associated with a VPC before deleting the VPC itself.
 
     Args:
         ec2_client: Boto3 EC2 client instance
         vpc_id: VPC ID to delete
 
-    Returns:
-        bool: True if VPC was successfully deleted, False otherwise
+    Raises:
+        ClientError: If any AWS API call fails during the deletion process.
     """
     print(f"\n🗑️  Deleting VPC {vpc_id}")
     print("=" * 80)
 
-    try:
-        # Delete resources in the correct order to avoid dependency issues
-        delete_internet_gateways(ec2_client, vpc_id)
-        delete_vpc_endpoints(ec2_client, vpc_id)
-        delete_nat_gateways(ec2_client, vpc_id)
-        delete_network_interfaces(ec2_client, vpc_id)
-        delete_security_groups(ec2_client, vpc_id)
-        delete_network_acls(ec2_client, vpc_id)
-        delete_route_tables(ec2_client, vpc_id)
-        delete_subnets(ec2_client, vpc_id)
+    # Delete resources in the correct order to avoid dependency issues
+    delete_internet_gateways(ec2_client, vpc_id)
+    delete_vpc_endpoints(ec2_client, vpc_id)
+    delete_nat_gateways(ec2_client, vpc_id)
+    delete_network_interfaces(ec2_client, vpc_id)
+    delete_security_groups(ec2_client, vpc_id)
+    delete_network_acls(ec2_client, vpc_id)
+    delete_route_tables(ec2_client, vpc_id)
+    delete_subnets(ec2_client, vpc_id)
 
-        # Finally, delete the VPC itself
-        print("Deleting VPC...")
-        print(f"  Deleting VPC {vpc_id}")
-        ec2_client.delete_vpc(VpcId=vpc_id)
-        print(f"  ✅ VPC {vpc_id} deleted successfully")
-    except ClientError as e:
-        print(f"❌ Error during VPC deletion process: {e}")
-        return False
-
-    return True
+    # Finally, delete the VPC itself
+    print("Deleting VPC...")
+    print(f"  Deleting VPC {vpc_id}")
+    ec2_client.delete_vpc(VpcId=vpc_id)
+    print(f"  ✅ VPC {vpc_id} deleted successfully")

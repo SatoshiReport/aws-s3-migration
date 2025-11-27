@@ -104,6 +104,7 @@ def list_buckets(
 
     Raises:
         ClientError: If API call fails
+        KeyError: If response is missing expected 'Buckets' key
     """
     s3_client = create_s3_client(
         region="us-east-1",
@@ -112,81 +113,7 @@ def list_buckets(
     )
 
     response = s3_client.list_buckets()
-    return response.get("Buckets", [])
-
-
-def get_bucket_size(
-    bucket_name: str,
-    region: str,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-) -> int:
-    """
-    Get the total size of all objects in an S3 bucket.
-
-    Args:
-        bucket_name: Name of the S3 bucket
-        region: AWS region name
-        aws_access_key_id: Optional AWS access key
-        aws_secret_access_key: Optional AWS secret key
-
-    Returns:
-        int: Total size in bytes
-
-    Raises:
-        ClientError: If API call fails
-    """
-    s3_client = create_s3_client(
-        region=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-    total_size = 0
-    paginator = s3_client.get_paginator("list_objects_v2")
-
-    for page in paginator.paginate(Bucket=bucket_name):
-        for obj in page.get("Contents", []):
-            total_size += obj.get("Size", 0)
-
-    return total_size
-
-
-def list_objects(
-    bucket_name: str,
-    region: str,
-    prefix: Optional[str] = None,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-) -> list[dict]:
-    """
-    List objects in an S3 bucket with optional prefix filter.
-
-    Args:
-        bucket_name: Name of the S3 bucket
-        region: AWS region name
-        prefix: Optional prefix to filter objects
-        aws_access_key_id: Optional AWS access key
-        aws_secret_access_key: Optional AWS secret key
-
-    Returns:
-        list: List of object dictionaries
-
-    Raises:
-        ClientError: If API call fails
-    """
-    s3_client = create_s3_client(
-        region=region,
-        aws_access_key_id=aws_access_key_id,
-        aws_secret_access_key=aws_secret_access_key,
-    )
-
-    params = {"Bucket": bucket_name}
-    if prefix:
-        params["Prefix"] = prefix
-
-    response = s3_client.list_objects_v2(**params)
-    return response.get("Contents", [])
+    return response["Buckets"]
 
 
 def head_object(
@@ -350,7 +277,7 @@ def get_bucket_tagging(
         )
 
         response = s3_client.get_bucket_tagging(Bucket=bucket_name)
-        return response.get("TagSet", [])
+        return response["TagSet"]
 
     except ClientError as e:
         if e.response["Error"]["Code"] == "NoSuchTagSet":

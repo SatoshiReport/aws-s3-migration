@@ -7,28 +7,14 @@ import sqlite3
 from datetime import datetime, timezone
 from typing import Dict, Optional, Sequence
 
-try:  # Prefer package-relative imports when packaged
-    from duplicate_tree.analysis import (
-        MIN_REPORT_BYTES,
-        MIN_REPORT_FILES,
-        ScanFingerprint,
-        cache_key,
-        clusters_to_rows,
-    )
-except ImportError:  # pragma: no cover - execution as standalone script
-    from analysis import (  # type: ignore[import]
-        MIN_REPORT_BYTES,
-        MIN_REPORT_FILES,
-        ScanFingerprint,
-        cache_key,
-        clusters_to_rows,
-    )
-
-try:
-    from duplicate_tree_core import DuplicateCluster
-except ImportError:  # pragma: no cover
-    from duplicate_tree_core import DuplicateCluster  # type: ignore[import]
-
+from duplicate_tree.analysis import (
+    MIN_REPORT_BYTES,
+    MIN_REPORT_FILES,
+    ScanFingerprint,
+    cache_key,
+    clusters_to_rows,
+)
+from duplicate_tree_core import DuplicateCluster
 
 CACHE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS duplicate_tree_cache (

@@ -206,7 +206,7 @@ class TestMainUserCancelsAndSuccess:
         with patch("builtins.input", return_value="NO"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-                "load_aws_credentials"
+                "setup_aws_credentials"
             ) as mock_load:
                 mock_load.return_value = ("key", "secret")
                 main()
@@ -218,7 +218,7 @@ class TestMainUserCancelsAndSuccess:
         with patch("builtins.input", return_value="DISABLE PROTECTION AND TERMINATE"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-                "load_aws_credentials"
+                "setup_aws_credentials"
             ) as mock_load:
                 mock_load.return_value = ("key", "secret")
                 with patch(
@@ -248,7 +248,7 @@ class TestMainFailures:
         with patch("builtins.input", return_value="DISABLE PROTECTION AND TERMINATE"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-                "load_aws_credentials"
+                "setup_aws_credentials"
             ) as mock_load:
                 mock_load.return_value = ("key", "secret")
                 with patch(
@@ -270,7 +270,7 @@ class TestMainFailures:
         with patch("builtins.input", return_value="DISABLE PROTECTION AND TERMINATE"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-                "load_aws_credentials"
+                "setup_aws_credentials"
             ) as mock_load:
                 mock_load.return_value = ("key", "secret")
                 with patch(
@@ -292,7 +292,7 @@ class TestMainFailures:
         with patch("builtins.input", return_value="DISABLE PROTECTION AND TERMINATE"):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate."
-                "load_aws_credentials"
+                "setup_aws_credentials"
             ) as mock_load:
                 error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
                 mock_load.side_effect = error
