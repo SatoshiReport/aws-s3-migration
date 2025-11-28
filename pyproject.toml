@@ -70,6 +70,7 @@ skips = [
 
 [tool.coverage.report]
 omit = [
+    "**/__init__.py",
     "*helpers/__init__.py",
     "*/_module_references.py",
 ]
@@ -78,6 +79,7 @@ omit = [
 omit = [
     "*/vendor/*",
     "*/__main__.py",
+    "**/__init__.py",
     "tests/*",
     "*/tests/*",
     "*_test_*.py",
