@@ -12,10 +12,7 @@ from __future__ import annotations
 
 import sys
 
-try:  # Prefer package-relative imports when packaged
-    from .duplicate_tree.cli import main
-except ImportError:  # pragma: no cover - execution as standalone script
-    from duplicate_tree.cli import main  # type: ignore
+from duplicate_tree.cli import main
 
 
 if __name__ == "__main__":  # pragma: no cover

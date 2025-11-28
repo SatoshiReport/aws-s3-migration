@@ -2,6 +2,7 @@
 
 from datetime import datetime, timezone
 
+from cost_toolkit.scripts.aws_utils import wait_for_route53_change
 from cost_toolkit.scripts.setup.exceptions import (
     HostedZoneNotFoundError,
     NSRecordsNotFoundError,
@@ -11,7 +12,7 @@ from cost_toolkit.scripts.setup.exceptions import (
 def _find_hosted_zone(route53, domain_name):
     """Find the hosted zone for the domain"""
     response = route53.list_hosted_zones()
-    hosted_zones = response.get("HostedZones", [])
+    hosted_zones = response["HostedZones"]
 
     for zone in hosted_zones:
         if zone["Name"] == f"{domain_name}.":
@@ -23,7 +24,7 @@ def _find_hosted_zone(route53, domain_name):
 def _get_nameserver_records(route53, zone_id, domain_name):
     """Get nameserver records for the zone"""
     records_response = route53.list_resource_record_sets(HostedZoneId=zone_id)
-    records = records_response.get("ResourceRecordSets", [])
+    records = records_response["ResourceRecordSets"]
 
     for record in records:
         if record.get("Type") == "NS" and record.get("Name") == f"{domain_name}.":
@@ -177,10 +178,11 @@ def _apply_dns_changes(route53, zone_id, changes):
 
     # Wait for changes to propagate
     print("  ⏳ Waiting for DNS changes to propagate...")
-    waiter = route53.get_waiter("resource_record_sets_changed")
-    waiter.wait(Id=change_id, WaiterConfig={"Delay": 10, "MaxAttempts": 30})
+    wait_for_route53_change(route53, change_id)
     print("  ✅ DNS changes completed successfully")
 
 
 if __name__ == "__main__":
-    pass
+    raise SystemExit(
+        "This module only provides helpers; run aws_route53_domain_setup.py for the CLI workflow."
+    )

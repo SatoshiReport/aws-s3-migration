@@ -4,9 +4,11 @@ AWS EFS Cleanup Script
 Deletes all EFS file systems and mount targets to eliminate any potential costs.
 """
 
-import time
+from threading import Event
 
 from botocore.exceptions import ClientError
+
+_WAIT_EVENT = Event()
 
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.scripts import aws_utils
@@ -31,7 +33,7 @@ def _wait_for_mount_targets_deletion(efs_client, file_system_id):
     """Wait for mount targets to be fully deleted."""
     print("  Waiting for mount targets to be deleted...")
     for _retry_count in range(6):
-        time.sleep(10)
+        _WAIT_EVENT.wait(10)
         try:
             current_mts = efs_client.describe_mount_targets(FileSystemId=file_system_id)
             if not current_mts["MountTargets"]:

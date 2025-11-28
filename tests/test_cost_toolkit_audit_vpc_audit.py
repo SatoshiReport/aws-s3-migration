@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.audit.aws_vpc_audit import (
@@ -17,46 +19,37 @@ from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 class TestGetAllRegions:
     """Tests for get_all_regions function."""
 
-    def test_get_all_regions_success(self):
+    @patch("cost_toolkit.common.aws_common.create_ec2_client")
+    def test_get_all_regions_success(self, mock_create_client):
         """Test successful retrieval of regions."""
-        with patch("boto3.client") as mock_client:
-            mock_ec2 = MagicMock()
-            mock_client.return_value = mock_ec2
-            mock_ec2.describe_regions.return_value = {
-                "Regions": [
-                    {"RegionName": "us-east-1"},
-                    {"RegionName": "us-west-2"},
-                    {"RegionName": "eu-west-1"},
-                ]
-            }
+        mock_ec2 = MagicMock()
+        mock_create_client.return_value = mock_ec2
+        mock_ec2.describe_regions.return_value = {
+            "Regions": [
+                {"RegionName": "us-east-1"},
+                {"RegionName": "us-west-2"},
+                {"RegionName": "eu-west-1"},
+            ]
+        }
 
-            regions = get_all_regions()
+        regions = get_all_regions()
 
         assert len(regions) == 3
         assert "us-east-1" in regions
         assert "us-west-2" in regions
         assert "eu-west-1" in regions
 
-    def test_get_all_regions_client_error(self, capsys):
+    @patch("cost_toolkit.common.aws_common.create_ec2_client")
+    def test_get_all_regions_client_error(self, mock_create_client, capsys):
         """Test error handling when describe_regions fails."""
-        with patch("boto3.client") as mock_client:
-            mock_ec2 = MagicMock()
-            mock_client.return_value = mock_ec2
-            mock_ec2.describe_regions.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_regions"
-            )
+        mock_ec2 = MagicMock()
+        mock_create_client.return_value = mock_ec2
+        mock_ec2.describe_regions.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied"}}, "describe_regions"
+        )
 
-            # The consolidated implementation catches error and returns default regions
-            regions = get_all_regions()
-
-            # Should return default regions (9 regions)
-            assert len(regions) == 9
-            assert "us-east-1" in regions
-            assert "us-east-2" in regions
-
-            # Should have printed error message
-            captured = capsys.readouterr()
-            assert "Error getting regions" in captured.out
+        with pytest.raises(ClientError):
+            get_all_regions()
 
 
 class TestProcessElasticIpAddress:

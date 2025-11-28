@@ -10,10 +10,6 @@ SECONDS_PER_HOUR = 3600
 SECONDS_PER_DAY = 86400
 
 
-class PathTraversalError(ValueError):
-    """Raised when path traversal is detected in an S3 key."""
-
-
 def derive_local_path(base_path: Path, bucket: str, key: str) -> Path | None:
     """
     Convert a bucket/key pair into the expected local filesystem path.

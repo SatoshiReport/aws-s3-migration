@@ -8,6 +8,7 @@ import sys
 from typing import Optional
 
 import boto3
+from botocore.exceptions import ClientError
 
 from cost_toolkit.common import credential_utils
 from cost_toolkit.common.aws_client_factory import (
@@ -16,7 +17,7 @@ from cost_toolkit.common.aws_client_factory import (
 from cost_toolkit.common.aws_client_factory import (
     load_credentials_from_env as load_aws_credentials_from_env,
 )
-from cost_toolkit.common.aws_common import get_default_regions
+from cost_toolkit.common.aws_common import describe_instance_raw, get_default_regions
 
 
 class CredentialLoadError(Exception):
@@ -38,9 +39,9 @@ def load_aws_credentials(env_path: Optional[str] = None) -> None:
     except ValueError as exc:
         resolved_path = _resolve_env_path(env_path)
         msg = (
-            f"AWS credentials not found. "
-            f"Please ensure {resolved_path} contains: "
-            "AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION"
+            "AWS credentials not found. "
+            f"Ensure {resolved_path} contains AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_DEFAULT_REGION, "
+            "or configure credentials via the default AWS provider chain (env vars, config/SSO, or IAM role)."
         )
         raise CredentialLoadError(msg) from exc
 
@@ -56,7 +57,12 @@ def setup_aws_credentials(env_path: Optional[str] = None):
         This function exits the process if credentials are not found.
         For non-exit behavior, use credential_utils.setup_aws_credentials directly.
     """
-    if not credential_utils.setup_aws_credentials(env_path=env_path):
+    try:
+        result = credential_utils.setup_aws_credentials(env_path=env_path)
+    except ValueError as exc:
+        print(exc)
+        sys.exit(1)
+    if not result:
         sys.exit(1)
 
 
@@ -85,9 +91,106 @@ def get_instance_info(instance_id: str, region_name: str) -> dict:
         ClientError: If instance not found or API call fails
     """
     ec2 = boto3.client("ec2", region_name=region_name)
-    response = ec2.describe_instances(InstanceIds=[instance_id])
-    instance = response["Reservations"][0]["Instances"][0]
+    instance = describe_instance_raw(ec2, instance_id)
+    if instance is None:
+        raise ClientError(
+            {"Error": {"Code": "InvalidInstanceID.NotFound", "Message": "Instance not found"}},
+            "describe_instances",
+        )
     return instance
+
+
+def wait_for_instance_state(
+    ec2_client,
+    instance_id: str,
+    waiter_name: str,
+    delay: int = 15,
+    max_attempts: int = 40,
+):
+    """
+    Wait for an EC2 instance waiter state with consistent configuration.
+
+    Args:
+        ec2_client: Boto3 EC2 client
+        instance_id: EC2 instance ID
+        waiter_name: Waiter name, e.g., "instance_stopped" or "instance_running"
+        delay: Waiter poll delay seconds
+        max_attempts: Maximum waiter attempts
+
+    Raises:
+        botocore.exceptions.WaiterError: If the waiter times out or errors
+    """
+    waiter = ec2_client.get_waiter(waiter_name)
+    waiter.wait(
+        InstanceIds=[instance_id],
+        WaiterConfig={"Delay": delay, "MaxAttempts": max_attempts},
+    )
+
+
+def wait_for_db_snapshot_completion(
+    rds_client,
+    snapshot_identifier: str,
+    delay: int = 30,
+    max_attempts: int = 120,
+):
+    """
+    Wait for an RDS snapshot to complete with consistent waiter settings.
+
+    Args:
+        rds_client: Boto3 RDS client
+        snapshot_identifier: Snapshot identifier to monitor
+        delay: Waiter poll delay seconds
+        max_attempts: Maximum waiter attempts
+    """
+    waiter = rds_client.get_waiter("db_snapshot_completed")
+    waiter.wait(
+        DBSnapshotIdentifier=snapshot_identifier,
+        WaiterConfig={"Delay": delay, "MaxAttempts": max_attempts},
+    )
+
+
+def wait_for_db_cluster_available(
+    rds_client,
+    cluster_identifier: str,
+    delay: int = 30,
+    max_attempts: int = 120,
+):
+    """
+    Wait for an RDS/Aurora cluster to reach available state using shared config.
+
+    Args:
+        rds_client: Boto3 RDS client
+        cluster_identifier: Cluster identifier to monitor
+        delay: Waiter poll delay seconds
+        max_attempts: Maximum waiter attempts
+    """
+    waiter = rds_client.get_waiter("db_cluster_available")
+    waiter.wait(
+        DBClusterIdentifier=cluster_identifier,
+        WaiterConfig={"Delay": delay, "MaxAttempts": max_attempts},
+    )
+
+
+def wait_for_route53_change(
+    route53_client,
+    change_id: str,
+    delay: int = 10,
+    max_attempts: int = 30,
+):
+    """
+    Wait for a Route53 change to propagate using consistent waiter settings.
+
+    Args:
+        route53_client: Boto3 Route53 client
+        change_id: Change ID returned from change_resource_record_sets
+        delay: Waiter poll delay seconds
+        max_attempts: Maximum waiter attempts
+    """
+    waiter = route53_client.get_waiter("resource_record_sets_changed")
+    waiter.wait(
+        Id=change_id,
+        WaiterConfig={"Delay": delay, "MaxAttempts": max_attempts},
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point

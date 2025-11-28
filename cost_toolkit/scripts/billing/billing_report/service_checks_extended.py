@@ -4,12 +4,12 @@ Contains additional AWS service check functions.
 """
 
 import botocore.exceptions
-from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
 
 from .service_checks import (
     PENDING_DELETION_TARGET,
+    ServiceCheckError,
     check_cloudwatch_status,
     check_global_accelerator_status,
     check_lightsail_status,
@@ -17,84 +17,90 @@ from .service_checks import (
 
 
 def check_lambda_status():
-    """Check if Lambda functions have been deleted"""
-    try:
-        regions = ["us-east-1", "us-east-2", "us-west-2"]
-        total_functions = 0
+    """Check if Lambda functions have been deleted.
 
-        for region in regions:
-            try:
-                lambda_client = create_client("lambda", region=region)
-                response = lambda_client.list_functions()
-                total_functions += len(response["Functions"])
+    Raises:
+        ServiceCheckError: If the API call fails.
+    """
+    regions = ["us-east-1", "us-east-2", "us-west-2"]
+    total_functions = 0
+    failed_regions = []
 
-            except botocore.exceptions.ClientError:
-                continue
+    for region in regions:
+        try:
+            lambda_client = create_client("lambda", region=region)
+            response = lambda_client.list_functions()
+            total_functions += len(response["Functions"])
+        except botocore.exceptions.ClientError as e:
+            failed_regions.append(f"{region}: {e}")
 
-        if total_functions == 0:
-            return True, "✅ RESOLVED - All Lambda functions deleted"
+    if failed_regions:
+        raise ServiceCheckError(f"Failed to check Lambda in regions: {'; '.join(failed_regions)}")
 
-    except ClientError as e:
-        return None, f"⚠️ ERROR - {str(e)}"
+    if total_functions == 0:
+        return True, "✅ RESOLVED - All Lambda functions deleted"
 
     return False, f"❌ ACTIVE - {total_functions} Lambda functions still exist"
 
 
 def check_efs_status():
-    """Check if EFS file systems have been deleted"""
-    try:
-        regions = ["us-east-1", "us-east-2"]
-        total_filesystems = 0
+    """Check if EFS file systems have been deleted.
 
-        for region in regions:
-            try:
-                efs_client = create_client("efs", region=region)
-                response = efs_client.describe_file_systems()
-                total_filesystems += len(response["FileSystems"])
+    Raises:
+        ServiceCheckError: If the API call fails.
+    """
+    regions = ["us-east-1", "us-east-2"]
+    total_filesystems = 0
+    failed_regions = []
 
-            except botocore.exceptions.ClientError:
-                continue
+    for region in regions:
+        try:
+            efs_client = create_client("efs", region=region)
+            response = efs_client.describe_file_systems()
+            total_filesystems += len(response["FileSystems"])
+        except botocore.exceptions.ClientError as e:
+            failed_regions.append(f"{region}: {e}")
 
-        if total_filesystems == 0:
-            return True, "✅ RESOLVED - All EFS file systems deleted"
+    if failed_regions:
+        raise ServiceCheckError(f"Failed to check EFS in regions: {'; '.join(failed_regions)}")
 
-    except ClientError as e:
-        return None, f"⚠️ ERROR - {str(e)}"
+    if total_filesystems == 0:
+        return True, "✅ RESOLVED - All EFS file systems deleted"
 
     return False, f"❌ ACTIVE - {total_filesystems} EFS file systems still exist"
 
 
 def check_route53_status():
-    """Check if specific Route 53 hosted zones have been deleted"""
-    try:
-        route53_client = create_client("route53")
+    """Check if specific Route 53 hosted zones have been deleted.
 
-        # Zones that should be deleted
-        target_zones = ["88.176.35.in-addr.arpa", "apicentral.ai"]
+    Raises:
+        ServiceCheckError: If the API call fails.
+    """
+    route53_client = create_client("route53")
 
-        # List all hosted zones
-        response = route53_client.list_hosted_zones()
-        hosted_zones = response.get("HostedZones", [])
+    # Zones that should be deleted
+    target_zones = ["88.176.35.in-addr.arpa", "apicentral.ai"]
 
-        existing_target_zones = []
-        for zone in hosted_zones:
-            zone_name = zone["Name"].rstrip(".")
-            if zone_name in target_zones:
-                existing_target_zones.append(zone_name)
+    # List all hosted zones
+    response = route53_client.list_hosted_zones()
+    hosted_zones = response["HostedZones"]
 
-        if len(existing_target_zones) == 0:
-            return (
-                True,
-                "✅ RESOLVED - Target hosted zones deleted (88.176.35.in-addr.arpa, apicentral.ai)",
-            )
+    existing_target_zones = []
+    for zone in hosted_zones:
+        zone_name = zone["Name"].rstrip(".")
+        if zone_name in target_zones:
+            existing_target_zones.append(zone_name)
+
+    if len(existing_target_zones) == 0:
         return (
-            False,
-            f"❌ ACTIVE - {len(existing_target_zones)} target zones still exist: "
-            f"{', '.join(existing_target_zones)}",
+            True,
+            "✅ RESOLVED - Target hosted zones deleted (88.176.35.in-addr.arpa, apicentral.ai)",
         )
-
-    except ClientError as e:
-        return None, f"⚠️ ERROR - {str(e)}"
+    return (
+        False,
+        f"❌ ACTIVE - {len(existing_target_zones)} target zones still exist: "
+        f"{', '.join(existing_target_zones)}",
+    )
 
 
 def _check_kms_key_status(kms_client, key_id):
@@ -125,72 +131,82 @@ def _format_kms_status(pending_deletion_count, pending_deletion_target):
 
 
 def check_kms_status():
-    """Check if KMS keys have been scheduled for deletion"""
-    try:
-        regions_to_check = ["us-west-1", "eu-west-1", "us-east-1"]
+    """Check if KMS keys have been scheduled for deletion.
 
-        target_keys = [
-            "09e32e6e-12cf-4dd1-ad49-b651bf81e152",
-            "36eabc4d-f9ec-4c48-a44c-0a3e267f096d",
-            "fd385fc7-d349-4dfa-87a5-aa032d47e5bb",
-            "6e4195b1-7e5d-4b9c-863b-0d33bbb8f71b",
-        ]
+    Raises:
+        ServiceCheckError: If the API call fails.
+    """
+    regions_to_check = ["us-west-1", "eu-west-1", "us-east-1"]
 
-        pending_deletion_count = 0
+    target_keys = [
+        "09e32e6e-12cf-4dd1-ad49-b651bf81e152",
+        "36eabc4d-f9ec-4c48-a44c-0a3e267f096d",
+        "fd385fc7-d349-4dfa-87a5-aa032d47e5bb",
+        "6e4195b1-7e5d-4b9c-863b-0d33bbb8f71b",
+    ]
 
-        for region in regions_to_check:
-            try:
-                kms_client = create_client("kms", region=region)
+    pending_deletion_count = 0
+    failed_regions = []
 
-                for key_id in target_keys:
-                    if _check_kms_key_status(kms_client, key_id):
-                        pending_deletion_count += 1
+    for region in regions_to_check:
+        try:
+            kms_client = create_client("kms", region=region)
 
-            except botocore.exceptions.ClientError:
-                continue
+            for key_id in target_keys:
+                if _check_kms_key_status(kms_client, key_id):
+                    pending_deletion_count += 1
+        except botocore.exceptions.ClientError as e:
+            failed_regions.append(f"{region}: {e}")
 
-        return _format_kms_status(pending_deletion_count, PENDING_DELETION_TARGET)
+    if failed_regions:
+        raise ServiceCheckError(f"Failed to check KMS in regions: {'; '.join(failed_regions)}")
 
-    except ClientError as e:
-        return None, f"⚠️ ERROR - {str(e)}"
+    return _format_kms_status(pending_deletion_count, PENDING_DELETION_TARGET)
 
 
 def check_vpc_status():
-    """Check VPC Elastic IP status"""
-    try:
-        regions_to_check = ["us-east-1", "eu-west-2"]
+    """Check VPC Elastic IP status.
 
-        total_elastic_ips = 0
+    Raises:
+        ServiceCheckError: If the API call fails.
+    """
+    regions_to_check = ["us-east-1", "eu-west-2"]
 
-        for region in regions_to_check:
-            try:
-                ec2 = create_client("ec2", region=region)
-                response = ec2.describe_addresses()
-                addresses = response.get("Addresses", [])
-                total_elastic_ips += len(addresses)
-            except botocore.exceptions.ClientError:
-                continue
+    total_elastic_ips = 0
+    failed_regions = []
 
-        if total_elastic_ips == 0:
-            return True, "✅ RESOLVED - All Elastic IPs released (saves $14.40/month)"
-        if total_elastic_ips <= 1:
-            return (
-                False,
-                f"📝 NOTED - {total_elastic_ips} Elastic IP locked by AWS "
-                "(requires Support contact)",
-            )
+    for region in regions_to_check:
+        try:
+            ec2 = create_client("ec2", region=region)
+            response = ec2.describe_addresses()
+            addresses = response["Addresses"]
+            total_elastic_ips += len(addresses)
+        except botocore.exceptions.ClientError as e:
+            failed_regions.append(f"{region}: {e}")
 
-    except ClientError as e:
-        return None, f"⚠️ ERROR - {str(e)}"
+    if failed_regions:
+        raise ServiceCheckError(f"Failed to check VPC in regions: {'; '.join(failed_regions)}")
+
+    if total_elastic_ips == 0:
+        return True, "✅ RESOLVED - All Elastic IPs released (saves $14.40/month)"
+    if total_elastic_ips <= 1:
+        return (
+            False,
+            f"📝 NOTED - {total_elastic_ips} Elastic IP locked by AWS "
+            "(requires Support contact)",
+        )
 
     return False, f"🔴 UNRESOLVED - {total_elastic_ips} Elastic IPs still allocated"
 
 
 def _add_service_status(resolved_services, service_name, check_func):
-    """Add service status to resolved_services if check returns a status."""
+    """Add service status to resolved_services.
+
+    Raises:
+        ServiceCheckError: If the service check fails.
+    """
     resolved, status = check_func()
-    if resolved is not None:
-        resolved_services[service_name] = status
+    resolved_services[service_name] = status
 
 
 def get_resolved_services_status():
@@ -221,4 +237,6 @@ def get_resolved_services_status():
 
 
 if __name__ == "__main__":
-    pass
+    raise SystemExit(
+        "This module is library-only. Run cost_toolkit.scripts.billing.billing_report.cli instead."
+    )

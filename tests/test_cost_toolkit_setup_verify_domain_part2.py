@@ -96,13 +96,21 @@ class TestCheckSslCertificate:
 class TestCanvaVerification:
     """Tests for verify_canva_verification function."""
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.subprocess.run")
-    def verify_canva_verification_found(self, mock_run, capsys):
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.BOTO3_AVAILABLE", True)
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._find_hosted_zone_for_domain")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.boto3.client")
+    def test_verify_canva_verification_found(self, mock_client, mock_find_zone, capsys):
         """Test Canva verification TXT record found."""
-        mock_result = MagicMock()
-        mock_result.returncode = 0
-        mock_result.stdout = '"canva-verification-code-123"'
-        mock_run.return_value = mock_result
+        mock_find_zone.return_value = {"Id": "/hostedzone/Z123", "Name": "example.com."}
+        mock_client.return_value.list_resource_record_sets.return_value = {
+            "ResourceRecordSets": [
+                {
+                    "Type": "TXT",
+                    "Name": "_canva-domain-verify.example.com.",
+                    "ResourceRecords": [{"Value": '"canva-verification-code-123"'}],
+                }
+            ]
+        }
 
         result = verify_canva_verification("example.com")
 
@@ -110,13 +118,13 @@ class TestCanvaVerification:
         captured = capsys.readouterr()
         assert "Canva verification TXT record found" in captured.out
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.subprocess.run")
-    def verify_canva_verification_not_found_no_output(self, mock_run, capsys):
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.BOTO3_AVAILABLE", True)
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._find_hosted_zone_for_domain")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.boto3.client")
+    def test_verify_canva_verification_not_found_no_output(self, mock_client, mock_find_zone, capsys):
         """Test Canva verification TXT record not found."""
-        mock_result = MagicMock()
-        mock_result.returncode = 0
-        mock_result.stdout = ""
-        mock_run.return_value = mock_result
+        mock_find_zone.return_value = {"Id": "/hostedzone/Z123", "Name": "example.com."}
+        mock_client.return_value.list_resource_record_sets.return_value = {"ResourceRecordSets": []}
 
         result = verify_canva_verification("example.com")
 
@@ -124,23 +132,26 @@ class TestCanvaVerification:
         captured = capsys.readouterr()
         assert "No Canva verification TXT record found" in captured.out
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.subprocess.run")
-    def verify_canva_verification_not_found_error(self, mock_run):
-        """Test Canva verification with non-zero return code."""
-        mock_result = MagicMock()
-        mock_result.returncode = 1
-        mock_result.stdout = ""
-        mock_run.return_value = mock_result
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.BOTO3_AVAILABLE", True)
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._find_hosted_zone_for_domain")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.boto3.client")
+    def test_verify_canva_verification_not_found_error(self, mock_client, mock_find_zone):
+        """Test Canva verification when hosted zone is missing."""
+        mock_find_zone.return_value = None
+        mock_client.return_value = MagicMock()
 
         result = verify_canva_verification("example.com")
 
         assert result is False
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.subprocess.run")
-    def verify_canva_verification_client_error(self, mock_run, capsys):
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.BOTO3_AVAILABLE", True)
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._find_hosted_zone_for_domain")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.boto3.client")
+    def test_verify_canva_verification_client_error(self, mock_client, mock_find_zone, capsys):
         """Test Canva verification with ClientError."""
-        mock_run.side_effect = ClientError(
-            {"Error": {"Code": "Error", "Message": "DNS error"}}, "dig"
+        mock_find_zone.return_value = {"Id": "/hostedzone/Z123", "Name": "example.com."}
+        mock_client.return_value.list_resource_record_sets.side_effect = ClientError(
+            {"Error": {"Code": "Error", "Message": "DNS error"}}, "ListResourceRecordSets"
         )
 
         result = verify_canva_verification("example.com")
@@ -267,7 +278,7 @@ class TestCheckRoute53Configuration:
         """Test Route53 check when boto3 is unavailable."""
         result = check_route53_configuration("example.com")
 
-        assert result is True
+        assert result is False
         captured = capsys.readouterr()
         assert "boto3 not available" in captured.out
 

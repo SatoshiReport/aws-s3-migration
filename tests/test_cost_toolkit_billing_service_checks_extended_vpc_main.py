@@ -8,8 +8,8 @@ import botocore.exceptions
 import pytest
 from botocore.exceptions import ClientError
 
-from cost_toolkit.scripts.billing.billing_report.service_checks import ServiceCheckError
 from cost_toolkit.scripts.billing.billing_report.service_checks_extended import (
+    ServiceCheckError,
     _add_service_status,
     check_vpc_status,
     get_resolved_services_status,
@@ -99,7 +99,7 @@ class TestCheckVPCStatusErrors:
     """Error handling tests for VPC status checking."""
 
     def test_vpc_region_access_error(self):
-        """Test VPC status with region access errors."""
+        """Test VPC status raises ServiceCheckError with region access errors."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             error = botocore.exceptions.ClientError(
@@ -107,22 +107,22 @@ class TestCheckVPCStatusErrors:
             )
             mock_ec2.describe_addresses.side_effect = error
             mock_client.return_value = mock_ec2
-            is_resolved, message = check_vpc_status()
-            assert is_resolved is True
-            assert "RESOLVED" in message
-            assert "All Elastic IPs released" in message
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_vpc_status()
+            assert "Failed to check VPC in regions" in str(exc_info.value)
 
     def test_vpc_client_error(self):
-        """Test VPC status with general ClientError."""
+        """Test VPC status raises ServiceCheckError when client creation fails in all regions."""
         with patch("boto3.client") as mock_client:
             error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
             mock_client.side_effect = error
-            is_resolved, message = check_vpc_status()
-            assert is_resolved is True
-            assert "RESOLVED" in message
+            # ClientError during client creation is caught per-region, then aggregated
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_vpc_status()
+            assert "Failed to check VPC in regions" in str(exc_info.value)
 
     def test_vpc_mixed_regions_one_error(self):
-        """Test VPC when one region errors but other succeeds."""
+        """Test VPC raises ServiceCheckError when one region errors."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             call_count = [0]
@@ -137,9 +137,9 @@ class TestCheckVPCStatusErrors:
 
             mock_ec2.describe_addresses.side_effect = describe_with_error
             mock_client.return_value = mock_ec2
-            is_resolved, message = check_vpc_status()
-            assert is_resolved is False
-            assert "1 Elastic IP locked by AWS" in message
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_vpc_status()
+            assert "Failed to check VPC in regions" in str(exc_info.value)
 
 
 class TestAddServiceStatus:
@@ -168,13 +168,14 @@ class TestAddServiceStatus:
         assert resolved_services["TEST_SERVICE"] == "Service is active"
 
     def test_add_service_status_error(self):
-        """Test adding service status with error (None is skipped)."""
+        """Test adding service status with error raises ServiceCheckError."""
         resolved_services = {}
 
         def mock_check():
-            return None, "Service check error"
+            raise ServiceCheckError("Service check failed")
 
-        _add_service_status(resolved_services, "TEST_SERVICE", mock_check)
+        with pytest.raises(ServiceCheckError):
+            _add_service_status(resolved_services, "TEST_SERVICE", mock_check)
         assert "TEST_SERVICE" not in resolved_services
 
     def test_add_service_status_multiple_services(self):

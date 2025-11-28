@@ -2,7 +2,9 @@
 Shared utilities for snapshot export operations.
 
 This module provides common patterns for snapshot export scripts
-to eliminate code duplication.
+to eliminate code duplication. AWS-facing helpers live in
+cost_toolkit.scripts.optimization.snapshot_export_common to keep the
+operational logic canonical and avoid drift between similarly named modules.
 """
 
 
@@ -77,4 +79,6 @@ SAMPLE_SNAPSHOTS = [
 
 
 if __name__ == "__main__":
-    pass
+    raise SystemExit(
+        "This module is library-only. Import cost_toolkit.scripts.snapshot_export_common instead."
+    )

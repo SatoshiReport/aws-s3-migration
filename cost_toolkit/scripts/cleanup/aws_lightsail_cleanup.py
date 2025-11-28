@@ -6,35 +6,47 @@ Completely removes all Lightsail instances and databases to eliminate charges.
 
 import json
 import os
-import time
+from threading import Event
 from datetime import datetime
 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.aws_common import get_default_regions
+from cost_toolkit.common.lightsail_utils import (
+    UnknownBundleError,
+    estimate_database_cost,
+    estimate_instance_cost,
+)
 
 from ..aws_utils import setup_aws_credentials
+
+_WAIT_EVENT = Event()
 
 
 def _delete_instance(lightsail_client, instance):
     """Delete a single Lightsail instance."""
     instance_name = instance["name"]
     instance_state = instance["state"]["name"]
-    bundle_id = instance.get("bundleId", "unknown")
+    bundle_id = instance.get("bundleId")
 
     print(f"\n📦 Found instance: {instance_name}")
     print(f"   State: {instance_state}")
     print(f"   Bundle: {bundle_id}")
 
-    monthly_cost = estimate_instance_cost(bundle_id)
+    try:
+        monthly_cost = estimate_instance_cost(bundle_id)
+    except UnknownBundleError as e:
+        print(f"⚠️  Unknown bundle for instance {instance_name}: {e}")
+        monthly_cost = 0.0
 
     try:
         print(f"🗑️  Deleting instance: {instance_name}")
         lightsail_client.delete_instance(instanceName=instance_name, forceDeleteAddOns=True)
         print(f"✅ Successfully deleted instance: {instance_name}")
-        print(f"💰 Monthly savings: ${monthly_cost:.2f}")
-        time.sleep(2)
+        if monthly_cost > 0:
+            print(f"💰 Monthly savings: ${monthly_cost:.2f}")
+        _WAIT_EVENT.wait(2)
     except ClientError as e:
         print(f"❌ Error deleting instance {instance_name}: {e}")
         return 0, 0.0
@@ -45,13 +57,17 @@ def _delete_database(lightsail_client, database):
     """Delete a single Lightsail database."""
     db_name = database["name"]
     db_state = database["state"]
-    db_bundle = database.get("relationalDatabaseBundleId", "unknown")
+    db_bundle = database.get("relationalDatabaseBundleId")
 
     print(f"\n🗄️  Found database: {db_name}")
     print(f"   State: {db_state}")
     print(f"   Bundle: {db_bundle}")
 
-    monthly_cost = estimate_database_cost(db_bundle)
+    try:
+        monthly_cost = estimate_database_cost(db_bundle)
+    except UnknownBundleError as e:
+        print(f"⚠️  Unknown bundle for database {db_name}: {e}")
+        monthly_cost = 0.0
 
     try:
         print(f"🗑️  Deleting database: {db_name}")
@@ -59,8 +75,9 @@ def _delete_database(lightsail_client, database):
             relationalDatabaseName=db_name, skipFinalSnapshot=True
         )
         print(f"✅ Successfully deleted database: {db_name}")
-        print(f"💰 Monthly savings: ${monthly_cost:.2f}")
-        time.sleep(2)
+        if monthly_cost > 0:
+            print(f"💰 Monthly savings: ${monthly_cost:.2f}")
+        _WAIT_EVENT.wait(2)
     except ClientError as e:
         print(f"❌ Error deleting database {db_name}: {e}")
         return 0, 0.0
@@ -100,9 +117,9 @@ def _process_region(region):
     except ClientError as e:
         if "InvalidAction" in str(e) or "not available" in str(e):
             print(f"ℹ️  Lightsail not available in {region}")
-        else:
-            print(f"❌ Error accessing Lightsail in {region}: {e}")
-        return 0, 0, 0.0
+            return 0, 0, 0.0
+        print(f"❌ Error accessing Lightsail in {region}: {e}")
+        raise
     return instances_deleted, databases_deleted, region_savings
 
 
@@ -153,51 +170,6 @@ def delete_lightsail_instances():
         )
 
     return total_instances_deleted, total_databases_deleted, total_savings
-
-
-class UnknownBundleError(ValueError):
-    """Raised when a Lightsail bundle ID is not recognized."""
-
-
-def estimate_instance_cost(bundle_id):
-    """Estimate monthly cost based on Lightsail bundle ID.
-
-    Raises:
-        UnknownBundleError: If bundle_id is not in the known pricing table.
-    """
-    # Common Lightsail bundle pricing (approximate)
-    bundle_costs = {
-        "nano_2_0": 3.50,
-        "micro_2_0": 5.00,
-        "small_2_0": 10.00,
-        "medium_2_0": 20.00,
-        "large_2_0": 40.00,
-        "xlarge_2_0": 80.00,
-        "2xlarge_2_0": 160.00,
-    }
-
-    if bundle_id not in bundle_costs:
-        raise UnknownBundleError(f"Unknown Lightsail instance bundle: {bundle_id}")
-    return bundle_costs[bundle_id]
-
-
-def estimate_database_cost(bundle_id):
-    """Estimate monthly cost for Lightsail database.
-
-    Raises:
-        UnknownBundleError: If bundle_id is not in the known pricing table.
-    """
-    # Common database bundle pricing (approximate)
-    db_costs = {
-        "micro_1_0": 15.00,
-        "small_1_0": 30.00,
-        "medium_1_0": 60.00,
-        "large_1_0": 115.00,
-    }
-
-    if bundle_id not in db_costs:
-        raise UnknownBundleError(f"Unknown Lightsail database bundle: {bundle_id}")
-    return db_costs[bundle_id]
 
 
 def record_cleanup_action(service, resources_deleted, savings):

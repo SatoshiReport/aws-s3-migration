@@ -111,14 +111,15 @@ def test_iter_relevant_dirs_excludes_base(tmp_path):
 
 
 def test_iter_relevant_dirs_outside_base(tmp_path):
-    """Test iter_relevant_dirs with file outside base_path."""
+    """Test iter_relevant_dirs raises PathOutsideBaseError for file outside base_path."""
+    from cleanup_temp_artifacts.core_scanner import PathOutsideBaseError
+
     base = tmp_path / "base"
     base.mkdir()
 
     file_path = tmp_path / "other" / "file.txt"
-    dirs = list(iter_relevant_dirs(file_path, base))
-
-    assert_equal(len(dirs), 0)
+    with pytest.raises(PathOutsideBaseError):
+        list(iter_relevant_dirs(file_path, base))
 
 
 def test_iter_relevant_dirs_deep_hierarchy(tmp_path):

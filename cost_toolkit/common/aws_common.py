@@ -6,11 +6,9 @@ to eliminate duplicate client creation code across scripts.
 """
 
 from typing import Optional
-
-import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.aws_client_factory import create_ec2_client
+from cost_toolkit.common.aws_client_factory import create_ec2_client, create_s3_client
 
 # Map resource types to their describe methods and response keys
 _RESOURCE_CONFIG = {
@@ -43,15 +41,13 @@ def create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key):
     Returns:
         tuple: (ec2_client, s3_client)
     """
-    ec2_client = boto3.client(
-        "ec2",
-        region_name=region,
+    ec2_client = create_ec2_client(
+        region=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
-    s3_client = boto3.client(
-        "s3",
-        region_name=region,
+    s3_client = create_s3_client(
+        region=region,
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
     )
@@ -136,6 +132,18 @@ def get_default_regions():
     ]
 
 
+def get_common_regions_extended():
+    """
+    Return the canonical list of commonly used AWS regions (extended set).
+
+    Adds a couple of high-usage regions on top of the default list.
+    """
+    regions = get_default_regions()
+    extras = ["eu-west-3", "ap-northeast-1"]
+    regions.extend([region for region in extras if region not in regions])
+    return regions
+
+
 def extract_tag_value(resource, key):
     """
     Extract a specific tag value from an AWS resource.
@@ -189,6 +197,15 @@ def extract_volumes_from_instance(instance):
     return volumes
 
 
+def describe_instance_raw(ec2_client, instance_id: str):
+    """Return the raw describe_instances payload for a single instance."""
+    response = ec2_client.describe_instances(InstanceIds=[instance_id])
+    for reservation in response["Reservations"]:
+        for instance in reservation["Instances"]:
+            return instance
+    return None
+
+
 def get_instance_details(ec2_client, instance_id):
     """
     Get detailed information about an EC2 instance.
@@ -211,28 +228,23 @@ def get_instance_details(ec2_client, instance_id):
     Raises:
         ClientError: If API call fails
     """
-    response = ec2_client.describe_instances(InstanceIds=[instance_id])
+    instance = describe_instance_raw(ec2_client, instance_id)
+    if instance is None:
+        return None
 
-    for reservation in response["Reservations"]:
-        for instance in reservation["Instances"]:
-            placement = instance.get("Placement")
-            if placement is not None:
-                availability_zone = placement.get("AvailabilityZone")
-            else:
-                availability_zone = None
+    placement = instance.get("Placement")
+    availability_zone = placement.get("AvailabilityZone") if placement else None
 
-            return {
-                "instance_id": instance_id,
-                "name": extract_tag_value(instance, "Name"),
-                "state": instance["State"]["Name"],
-                "instance_type": instance["InstanceType"],
-                "launch_time": instance.get("LaunchTime"),
-                "availability_zone": availability_zone,
-                "volumes": extract_volumes_from_instance(instance),
-                "tags": get_resource_tags(instance),
-            }
-
-    return None
+    return {
+        "instance_id": instance_id,
+        "name": extract_tag_value(instance, "Name"),
+        "state": instance["State"]["Name"],
+        "instance_type": instance["InstanceType"],
+        "launch_time": instance.get("LaunchTime"),
+        "availability_zone": availability_zone,
+        "volumes": extract_volumes_from_instance(instance),
+        "tags": get_resource_tags(instance),
+    }
 
 
 def _check_resource_in_region(
@@ -270,8 +282,7 @@ def _check_resource_in_region(
     except ClientError as e:
         if not_found_error in str(e):
             return False
-        print(f"⚠️  Error checking {region} for {resource_id}: {str(e)}")
-        return False
+        raise
 
 
 def find_resource_region(

@@ -8,26 +8,15 @@ import json
 import time
 from typing import Dict, Iterable, List, Set
 
-try:  # Prefer package-local imports when packaged
-    from .duplicate_tree_models import (
-        ChildSignatureMissingError,
-        DirectoryNode,
-        DuplicateCluster,
-        FileEntry,
-        PathTuple,
-        ProgressPrinter,
-    )
-    from .migration_verify_common import should_ignore_key
-except ImportError:  # pragma: no cover - direct script execution
-    from duplicate_tree_models import (  # type: ignore
-        ChildSignatureMissingError,
-        DirectoryNode,
-        DuplicateCluster,
-        FileEntry,
-        PathTuple,
-        ProgressPrinter,
-    )
-    from migration_verify_common import should_ignore_key  # type: ignore
+from duplicate_tree_models import (
+    ChildSignatureMissingError,
+    DirectoryNode,
+    DuplicateCluster,
+    FileEntry,
+    PathTuple,
+    ProgressPrinter,
+)
+from migration_verify_common import should_ignore_key
 
 
 MIN_DUPLICATE_CLUSTER = 2

@@ -1,115 +1,20 @@
-"""Comprehensive tests for migration_sync.py - Part 3: Edge Cases and Integration"""
+"""Additional tests for migration_sync.py edge cases."""
 
-import time
+from __future__ import annotations
+
 from unittest import mock
 
-from migration_sync import BucketSyncer, _display_progress, _parse_aws_size
-from migration_sync_test_helpers import create_mock_process
+from migration_sync import BucketSyncer
 
 
-class TestEdgeCases:
-    """Test edge cases and boundary conditions"""
+def test_multiple_sync_calls_share_base_dir(tmp_path):
+    """BucketSyncer can sync multiple buckets into base path."""
+    fake_s3 = mock.Mock()
+    fake_s3.get_paginator.return_value.paginate.return_value = [{"Contents": []}]
+    syncer = BucketSyncer(fake_s3, mock.Mock(), tmp_path)
 
-    def test_sync_bucket_with_special_characters_in_name(self, tmp_path):
-        """Test syncing bucket with special characters in name"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
-        bucket_name = "test-bucket-with-dashes"
+    syncer.sync_bucket("bucket-a")
+    syncer.sync_bucket("bucket-b")
 
-        with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = create_mock_process([""], [None, 0])
-
-            syncer.sync_bucket(bucket_name)
-
-        local_path = tmp_path / bucket_name
-        assert local_path.exists()
-
-    def test_parse_aws_size_with_scientific_notation(self):
-        """Test parsing size with scientific notation (if it occurs)"""
-        line = "Completed 1e6 Bytes"  # 1 million bytes
-        result = _parse_aws_size(line)
-        # Should handle gracefully or return None
-        assert result is None or isinstance(result, int)
-
-    def test_multiple_sync_calls_reuse_directory(self, tmp_path):
-        """Test that multiple syncs to same directory work correctly"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
-
-        with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = create_mock_process(["", ""], [None, 0, None, 0])
-
-            syncer.sync_bucket("bucket")
-            syncer.sync_bucket("bucket")
-
-        local_path = tmp_path / "bucket"
-        assert local_path.exists()
-
-    def test_parse_size_with_capital_b_suffix(self):
-        """Test that parsing fails gracefully for non-standard suffix"""
-        line = "Completed 1.0 B"  # Single 'B' instead of standard format
-        result = _parse_aws_size(line)
-        # Should return None due to exception handling
-        assert result is None or isinstance(result, int)
-
-    def test_display_progress_called_multiple_times(self, capsys):
-        """Test that display progress can be called multiple times"""
-        start_time = time.time() - 100
-
-        _display_progress(start_time, 5, 1024)
-        _display_progress(start_time, 10, 2048)
-
-        captured = capsys.readouterr()
-        # Should have progress output from both calls
-        assert "Progress:" in captured.out
-
-
-class TestIntegration:
-    """Integration tests combining multiple components"""
-
-    def test_full_sync_workflow_with_mock_aws_output(self, tmp_path):
-        """Test complete sync workflow with realistic AWS CLI output"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
-
-        with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = create_mock_process(
-                [
-                    "Completed s3://bucket/file1.txt  512.0 KiB\n",
-                    "Completed s3://bucket/file2.txt  1.5 MiB\n",
-                    "Completed s3://bucket/file3.txt  2.0 MiB\n",
-                    "",
-                ],
-                [None, None, None, 0],
-            )
-
-            syncer.sync_bucket("integration-bucket")
-
-        local_path = tmp_path / "integration-bucket"
-        assert local_path.exists()
-
-    def test_sync_with_empty_bucket(self, tmp_path):
-        """Test syncing an empty bucket"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
-
-        with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = create_mock_process([""], [None, 0])
-
-            syncer.sync_bucket("empty-bucket")
-
-        local_path = tmp_path / "empty-bucket"
-        assert local_path.exists()
-
-    def test_sync_handles_various_size_units(self, tmp_path):
-        """Test that sync handles various size units throughout"""
-        syncer = BucketSyncer(mock.Mock(), mock.Mock(), tmp_path)
-
-        with mock.patch("migration_sync.subprocess.Popen") as mock_popen:
-            mock_popen.return_value = create_mock_process(
-                [
-                    "Completed s3://bucket/small.txt  100 Bytes\n",
-                    "Completed s3://bucket/medium.bin  50 KiB\n",
-                    "Completed s3://bucket/large.iso  1.2 GiB\n",
-                    "",
-                ],
-                [None, None, None, 0],
-            )
-
-            syncer.sync_bucket("mixed-sizes-bucket")
+    assert (tmp_path / "bucket-a").exists()
+    assert (tmp_path / "bucket-b").exists()

@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 from cost_toolkit.common.format_utils import format_bytes, parse_size
 
 if TYPE_CHECKING:
-    from cleanup_temp_artifacts.scanner import Candidate
+    from cleanup_temp_artifacts.core_scanner import Candidate
 
 __all__ = [
     "format_bytes",
@@ -27,14 +27,6 @@ __all__ = [
     "delete_paths",
     "print_candidates_report",
 ]
-
-
-def _format_size_no_space(num_bytes: int | None) -> str:
-    """Helper to format bytes without space for backward compat output."""
-    # Use 1 decimal place and no space to match original behavior
-    result = format_bytes(num_bytes, decimal_places=1, binary_units=False)
-    # Remove space between number and unit for backward compat
-    return result.replace(" ", "") if result != "n/a" else result
 
 
 def summarise(candidates: list[Candidate]) -> list[tuple[str, int, int]]:
@@ -58,7 +50,7 @@ def write_reports(
             "path": str(c.path),
             "category": c.category.name,
             "size_bytes": c.size_bytes,
-            "size_human": _format_size_no_space(c.size_bytes),
+            "size_human": format_bytes(c.size_bytes, decimal_places=1, binary_units=False),
             "mtime": c.iso_mtime,
         }
         for c in candidates
@@ -120,7 +112,7 @@ def print_candidates_report(
         f"Identified {len(candidates)} candidate(s) (showing {len(acted_upon)}) under {base_path}:"
     )
     for candidate in acted_upon:
-        size_str = _format_size_no_space(candidate.size_bytes)
+        size_str = format_bytes(candidate.size_bytes, decimal_places=1, binary_units=False)
         print(
             f"- [{candidate.category.name}] {candidate.path} "
             f"(mtime {candidate.iso_mtime}, size {size_str})"
@@ -129,4 +121,7 @@ def print_candidates_report(
     summary = summarise(candidates)
     print("\nPer-category totals:")
     for name, count, size in summary:
-        print(f"  {name:20} count={count:6d} size={_format_size_no_space(size)}")
+        print(
+            f"  {name:20} count={count:6d} "
+            f"size={format_bytes(size, decimal_places=1, binary_units=False)}"
+        )

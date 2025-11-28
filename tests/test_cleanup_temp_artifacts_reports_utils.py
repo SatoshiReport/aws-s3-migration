@@ -168,7 +168,7 @@ class TestWriteReports:
             assert_equal(data[0]["path"], "/tmp/test1")
             assert_equal(data[0]["category"], "cat1")
             assert_equal(data[0]["size_bytes"], 1024)
-            assert_equal(data[0]["size_human"], "1.0KB")
+            assert_equal(data[0]["size_human"], "1.0 KB")
             assert "mtime" in data[0]
 
     def test_write_csv_report(self, make_candidate):
@@ -191,7 +191,7 @@ class TestWriteReports:
             assert_equal(rows[0]["path"], "/tmp/test1")
             assert_equal(rows[0]["category"], "cat1")
             assert_equal(rows[0]["size_bytes"], "1024")
-            assert_equal(rows[0]["size_human"], "1.0KB")
+            assert_equal(rows[0]["size_human"], "1.0 KB")
 
     def test_write_both_reports(self, make_candidate):
         """Test writing both JSON and CSV reports."""
@@ -275,7 +275,7 @@ class TestPrintCandidatesReportExtended:
 
         # Check that size formatting appears in output
         calls = [str(call) for call in mock_print.call_args_list]
-        size_found = any("1.0KB" in str(call) for call in calls)
+        size_found = any("1.0 KB" in str(call) for call in calls)
         assert size_found
 
     def test_print_report_shows_mtime(self, make_candidate):

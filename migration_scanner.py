@@ -1,6 +1,6 @@
 """Phase 1-3: Scanning buckets and handling Glacier restores"""
 
-import time
+from threading import Event
 
 from botocore.exceptions import ClientError
 
@@ -156,6 +156,15 @@ class GlacierWaiter:  # pylint: disable=too-few-public-methods
         self.s3 = s3
         self.state = state
         self.interrupted = False
+        self._wait_event = Event()
+
+    def _wait_with_interrupt(self, seconds: int):
+        """Wait in small increments so interrupts are respected without time.sleep."""
+        remaining = seconds
+        step = 5
+        while remaining > 0 and not self.interrupted:
+            self._wait_event.wait(min(step, remaining))
+            remaining -= step
 
     def wait_for_restores(self):
         """Wait for all Glacier restores to complete"""
@@ -175,7 +184,7 @@ class GlacierWaiter:  # pylint: disable=too-few-public-methods
                     print(f"  [{idx+1}/{len(restoring)}] Restored: {file['bucket']}/{file['key']}")
             print()
             print("Waiting 5 minutes before next check...")
-            time.sleep(300)
+            self._wait_with_interrupt(300)
         self.state.set_current_phase(Phase.SYNCING)
         print("=" * 70)
         print("✓ PHASE 3 COMPLETE: All Restores Complete")

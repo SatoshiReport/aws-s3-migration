@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Clean up Route53 DNS records and hosted zones."""
 
-import time
+from threading import Event
 
 from botocore.exceptions import ClientError
 
@@ -254,3 +254,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+_WAIT_EVENT = Event()

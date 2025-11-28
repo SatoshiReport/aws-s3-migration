@@ -217,9 +217,6 @@ def main():
     print("Real-time cost analysis to identify active services")
     print()
 
-    if not aws_utils.load_aws_credentials():
-        return
-
     # Get billing data
     hourly_data, daily_data = get_hourly_billing_data()
 

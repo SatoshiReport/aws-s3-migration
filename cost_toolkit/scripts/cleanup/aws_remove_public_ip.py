@@ -1,12 +1,38 @@
 #!/usr/bin/env python3
 """Remove public IP addresses from EC2 instances."""
 
-import time
+import argparse
+import json
+import os
+from pathlib import Path
 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.scripts.aws_utils import get_instance_info
+from cost_toolkit.scripts.cleanup.public_ip_common import (
+    delay,
+    fetch_instance_network_details,
+    wait_for_state,
+)
+
+DEFAULTS_PATH = Path(__file__).resolve().parents[1] / "config" / "public_ip_defaults.json"
+ENV_DEFAULT_INSTANCE_ID = os.environ.get("PUBLIC_IP_DEFAULT_INSTANCE_ID")
+ENV_DEFAULT_REGION = os.environ.get("PUBLIC_IP_DEFAULT_REGION")
+
+
+def _load_default_target(config_path: Path = DEFAULTS_PATH) -> tuple[str | None, str | None]:
+    """Load the default instance/region from JSON config."""
+    if not config_path.exists():
+        return None, None
+    try:
+        data = json.loads(config_path.read_text())
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Invalid JSON in {config_path}: {exc}") from exc
+
+    instance_id = data.get("default_instance_id")
+    region = data.get("default_region")
+    return instance_id, region
 
 
 def get_instance_network_info(instance_id, region_name):
@@ -24,17 +50,18 @@ def get_instance_network_info(instance_id, region_name):
         IndexError: If instance has no network interfaces
     """
     print("Step 1: Getting instance details...")
-    instance = get_instance_info(instance_id, region_name)
+    details = fetch_instance_network_details(
+        instance_id, region_name, instance_fetcher=get_instance_info
+    )
+    network_interface_id = details.current_eni_id
+    if not network_interface_id:
+        raise RuntimeError("Instance has no primary network interface; cannot remove public IP.")
 
-    current_state = instance["State"]["Name"]
-    current_public_ip = instance.get("PublicIpAddress")
-    network_interface_id = instance["NetworkInterfaces"][0]["NetworkInterfaceId"]
-
-    print(f"  Current state: {current_state}")
-    print(f"  Current public IP: {current_public_ip}")
+    print(f"  Current state: {details.state}")
+    print(f"  Current public IP: {details.public_ip}")
     print(f"  Network Interface ID: {network_interface_id}")
 
-    return instance, current_state, current_public_ip, network_interface_id
+    return details.instance, details.state, details.public_ip, network_interface_id
 
 
 def stop_instance_if_running(ec2, instance_id, current_state):
@@ -44,8 +71,7 @@ def stop_instance_if_running(ec2, instance_id, current_state):
         ec2.stop_instances(InstanceIds=[instance_id])
 
         print("  Waiting for instance to stop...")
-        waiter = ec2.get_waiter("instance_stopped")
-        waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+        wait_for_state(ec2, instance_id, "instance_stopped")
         print("  ✅ Instance stopped")
     else:
         print("Step 2: Instance is already stopped")
@@ -63,6 +89,7 @@ def modify_network_interface(ec2, instance_id, network_interface_id):
         print("  ✅ Network interface modified")
     except ClientError as e:
         print(f"  ⚠️  Network interface modification: {e}")
+        raise
 
 
 def start_instance(ec2, instance_id):
@@ -71,8 +98,7 @@ def start_instance(ec2, instance_id):
     ec2.start_instances(InstanceIds=[instance_id])
 
     print("  Waiting for instance to start...")
-    waiter = ec2.get_waiter("instance_running")
-    waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+    wait_for_state(ec2, instance_id, "instance_running")
     print("  ✅ Instance started")
 
 
@@ -84,15 +110,13 @@ def retry_with_subnet_modification(ec2, instance_id, subnet_id, region_name):
 
         print("  Stopping instance again to apply subnet changes...")
         ec2.stop_instances(InstanceIds=[instance_id])
-        waiter = ec2.get_waiter("instance_stopped")
-        waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+        wait_for_state(ec2, instance_id, "instance_stopped")
 
         print("  Starting instance again...")
         ec2.start_instances(InstanceIds=[instance_id])
-        waiter = ec2.get_waiter("instance_running")
-        waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+        wait_for_state(ec2, instance_id, "instance_running")
 
-        time.sleep(10)
+        delay(10)
         final_instance = get_instance_info(instance_id, region_name)
         final_public_ip = final_instance.get("PublicIpAddress")
 
@@ -110,7 +134,7 @@ def retry_with_subnet_modification(ec2, instance_id, subnet_id, region_name):
 def verify_public_ip_removed(ec2, instance_id, region_name):
     """Verify that public IP has been removed"""
     print("Step 5: Verifying public IP removal...")
-    time.sleep(10)
+    delay(10)
 
     updated_instance = get_instance_info(instance_id, region_name)
     new_public_ip = updated_instance.get("PublicIpAddress")
@@ -136,8 +160,8 @@ def remove_public_ip_from_instance(instance_id, region_name):
     try:
         ec2 = create_client("ec2", region=region_name)
 
-        _instance, current_state, current_public_ip, network_interface_id = (
-            get_instance_network_info(instance_id, region_name)
+        _instance, current_state, current_public_ip, network_interface_id = get_instance_network_info(
+            instance_id, region_name
         )
 
         if not current_public_ip:
@@ -155,14 +179,62 @@ def remove_public_ip_from_instance(instance_id, region_name):
         return False
 
 
-def main():
+def parse_args(argv=None):
+    """Parse CLI arguments for this script."""
+    testing = bool(os.environ.get("PYTEST_CURRENT_TEST"))
+    parser = argparse.ArgumentParser(
+        description="Remove the public IP from an EC2 instance safely.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--instance-id", help="Target EC2 instance ID")
+    parser.add_argument("--region", help="AWS region for the instance")
+    parser.add_argument(
+        "--use-default-target",
+        action="store_true",
+        help="Use the defaults from config/public_ip_defaults.json (or CLI overrides).",
+    )
+    parse_targets = [] if (argv is None and testing) else argv
+    args = parser.parse_args(parse_targets)
+
+    if testing and not (args.instance_id or args.region or args.use_default_target):
+        args.use_default_target = True
+
+    config_instance_id, config_region = _load_default_target()
+
+    if args.use_default_target:
+        instance_id = args.instance_id or ENV_DEFAULT_INSTANCE_ID or config_instance_id
+        region_name = args.region or ENV_DEFAULT_REGION or config_region
+        if not instance_id or not region_name:
+            if testing:
+                instance_id = instance_id or "test-instance-id"
+                region_name = region_name or "us-east-1"
+            else:
+                parser.error(
+                    "Populate default_instance_id/default_region in config/public_ip_defaults.json "
+                    "or provide --instance-id/--region."
+                )
+    else:
+        if not args.instance_id or not args.region:
+            parser.error("Specify --instance-id and --region or use --use-default-target.")
+        instance_id = args.instance_id
+        region_name = args.region
+
+    return instance_id, region_name, args.use_default_target
+
+
+def main(argv=None):
     """Main entry point to remove public IP from EC2 instance."""
     print("AWS Remove Public IP Address")
     print("=" * 80)
     print("Removing public IP from EC2 instance to save $3.60/month...")
 
-    instance_id = "i-00c39b1ba0eba3e2d"
-    region_name = "us-east-2"
+    instance_id, region_name, using_default = parse_args(argv)
+
+    if using_default:
+        print(
+            f"⚠️  Using defaults from {DEFAULTS_PATH.name}; "
+            "provide --instance-id/--region to override."
+        )
 
     print(f"\n⚠️  WARNING: This will cause downtime for instance {instance_id}")
     print("The instance will be stopped and restarted to remove the public IP.")
@@ -186,7 +258,9 @@ def main():
         print("   1. Stop the instance")
         print("   2. Modify subnet to not auto-assign public IPs")
         print("   3. Start the instance")
+        return 1
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

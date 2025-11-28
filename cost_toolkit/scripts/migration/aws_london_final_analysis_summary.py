@@ -6,6 +6,7 @@ import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts import aws_utils
+from cost_toolkit.scripts.aws_utils import wait_for_instance_state
 
 # Instance ID to stop
 INSTANCE_ID = "i-05ad29f28fc8a8fdc"
@@ -19,12 +20,12 @@ def _stop_instance(ec2):
         print("   ✅ Instance stop initiated")
 
         print("   Waiting for instance to stop...")
-        waiter = ec2.get_waiter("instance_stopped")
-        waiter.wait(InstanceIds=[INSTANCE_ID])
+        wait_for_instance_state(ec2, INSTANCE_ID, "instance_stopped")
         print("   ✅ Instance successfully stopped")
 
     except ClientError as e:
         print(f"   ❌ Error stopping instance: {str(e)}")
+        raise
 
     print()
 

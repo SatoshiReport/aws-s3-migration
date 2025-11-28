@@ -20,6 +20,7 @@ Usage:
     python migrate_v2.py reset     # Reset and start over
 """
 import argparse
+import shutil
 import signal
 import sys
 from dataclasses import dataclass
@@ -27,42 +28,22 @@ from pathlib import Path
 
 import boto3
 
-try:  # Prefer package-relative imports when linting
-    from . import config as config_module
-except ImportError:  # pragma: no cover - allow running as standalone script
-    import config as config_module  # type: ignore
-
-try:  # Shared helpers for state DB recreation.
-    from .state_db_admin import recreate_state_db
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from state_db_admin import recreate_state_db  # type: ignore
-
-try:  # Prefer package-relative imports for smoke-test helpers
-    from . import migrate_v2_smoke as smoke_tests
-except ImportError:  # pragma: no cover - allow running as standalone script
-    import migrate_v2_smoke as smoke_tests  # type: ignore
+import config as config_module
+import migrate_v2_smoke as smoke_tests
+from migration_orchestrator import (
+    BucketMigrationOrchestrator,
+    BucketMigrator,
+    StatusReporter,
+)
+from migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
+from migration_state_v2 import MigrationStateV2, Phase
+from state_db_admin import recreate_state_db
 
 # pylint: disable=no-member  # Attributes imported from config_local at runtime
 LOCAL_BASE_PATH = config_module.LOCAL_BASE_PATH
 STATE_DB_PATH = config_module.STATE_DB_PATH
 # pylint: enable=no-member
 config = config_module  # expose module for tests
-try:  # Prefer package-relative imports for tooling
-    from .migration_orchestrator import (
-        BucketMigrationOrchestrator,
-        BucketMigrator,
-        StatusReporter,
-    )
-    from .migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
-    from .migration_state_v2 import MigrationStateV2, Phase
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from migration_orchestrator import (
-        BucketMigrationOrchestrator,
-        BucketMigrator,
-        StatusReporter,
-    )
-    from migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
-    from migration_state_v2 import MigrationStateV2, Phase
 
 
 def reset_migration_state():
@@ -188,6 +169,10 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         print(f"Destination: {LOCAL_BASE_PATH}")
         print(f"State DB: {STATE_DB_PATH}")
         print()
+        if shutil.which("aws") is None:
+            print("✗ AWS CLI not found on PATH. Install AWS CLI v2 and retry.")
+            print("Download: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html")
+            sys.exit(1)
         self.drive_checker.check_available()
         current_phase = self.state.get_current_phase()
         if current_phase == Phase.COMPLETE:
@@ -205,7 +190,7 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         if current_phase == Phase.GLACIER_WAIT:
             self.glacier_waiter.wait_for_restores()
             current_phase = Phase.SYNCING
-        if current_phase == Phase.SYNCING:
+        if current_phase in {Phase.SYNCING, Phase.VERIFYING, Phase.DELETING}:
             self.migration_orchestrator.migrate_all_buckets()
             current_phase = self.state.get_current_phase()
         if current_phase == Phase.COMPLETE:

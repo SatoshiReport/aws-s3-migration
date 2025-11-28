@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
-from cost_toolkit.common.aws_common import extract_tag_value
+from cost_toolkit.common.aws_common import extract_tag_value, get_instance_details
 
 # Constants
 CPU_USAGE_VERY_LOW_THRESHOLD = 5
@@ -119,13 +119,13 @@ def _estimate_monthly_cost(instance_type, state):
     return estimated_monthly_cost if state == "running" else 0
 
 
-def _process_instance_details(cloudwatch, instance, region_name, start_time, end_time):
+def _process_instance_details(cloudwatch, instance_details, region_name, start_time, end_time):
     """Process detailed metrics for a single EC2 instance."""
-    instance_id = instance["InstanceId"]
-    instance_type = instance["InstanceType"]
-    state = instance["State"]["Name"]
-    launch_time = instance.get("LaunchTime")
-    name = _get_instance_name(instance)
+    instance_id = instance_details["instance_id"]
+    instance_type = instance_details["instance_type"]
+    state = instance_details["state"]
+    launch_time = instance_details.get("launch_time")
+    name = instance_details.get("name")
 
     print(f"Instance: {instance_id} ({name})")
     print(f"  Type: {instance_type}")
@@ -170,7 +170,7 @@ def get_instance_details_in_region(region_name):
         cloudwatch = create_client("cloudwatch", region=region_name)
 
         instances = [
-            instance
+            instance["InstanceId"]
             for reservation in ec2.describe_instances()["Reservations"]
             for instance in reservation["Instances"]
         ]
@@ -182,10 +182,14 @@ def get_instance_details_in_region(region_name):
         end_time = datetime.now(timezone.utc)
         start_time = end_time - timedelta(days=7)
 
-        region_summary = [
-            _process_instance_details(cloudwatch, instance, region_name, start_time, end_time)
-            for instance in instances
-        ]
+        region_summary = []
+        for instance_id in instances:
+            details = get_instance_details(ec2, instance_id)
+            if details is None:
+                continue
+            region_summary.append(
+                _process_instance_details(cloudwatch, details, region_name, start_time, end_time)
+            )
 
     except ClientError as e:
         print(f"❌ Error auditing instances in {region_name}: {e}")

@@ -78,7 +78,7 @@ def fix_default_subnet_group():
         _restore_instance_to_public_subnet(rds, snapshot_id, new_instance_id, subnet_group_name)
 
     except ClientError as e:
-        print(f"❌ Error: {e}")
+        raise RuntimeError(f"Failed to update default subnet group: {e}") from e
 
 
 def main():

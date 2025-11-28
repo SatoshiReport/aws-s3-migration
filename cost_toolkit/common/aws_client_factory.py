@@ -5,10 +5,15 @@ Provides standardized boto3 client creation for AWS services.
 """
 
 import os
+from pathlib import Path
 from typing import Optional
 
 import boto3
 from dotenv import load_dotenv
+
+
+class MissingEnvPathError(ValueError):
+    """Raised when no .env file path is configured."""
 
 
 def _resolve_env_path(env_path: Optional[str] = None) -> str:
@@ -22,12 +27,15 @@ def _resolve_env_path(env_path: Optional[str] = None) -> str:
     """
     if env_path:
         return env_path
-    if os.environ.get("AWS_ENV_FILE"):
-        return os.environ["AWS_ENV_FILE"]
-    return os.path.expanduser("~/.env")
+    aws_env_file = os.environ.get("AWS_ENV_FILE")
+    if aws_env_file:
+        return aws_env_file
+    return str(Path.home() / ".env")
 
 
-def load_credentials_from_env(env_path: Optional[str] = None) -> tuple[str, str]:
+def load_credentials_from_env(
+    env_path: Optional[str] = None,
+) -> tuple[str, str] | tuple[str, str, Optional[str]]:
     """
     Load AWS credentials from .env file and return them as a tuple.
 
@@ -35,7 +43,7 @@ def load_credentials_from_env(env_path: Optional[str] = None) -> tuple[str, str]
         env_path: Optional override path (defaults to ~/.env)
 
     Returns:
-        tuple: (aws_access_key_id, aws_secret_access_key)
+        tuple: (aws_access_key_id, aws_secret_access_key[, aws_session_token])
 
     Raises:
         ValueError: If credentials are not found in .env file
@@ -45,12 +53,23 @@ def load_credentials_from_env(env_path: Optional[str] = None) -> tuple[str, str]
 
     aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+    aws_session_token = os.getenv("AWS_SESSION_TOKEN")
+    if aws_access_key_id and aws_secret_access_key:
+        print(f"✅ AWS credentials loaded from {resolved_path}")
+        if aws_session_token:
+            return aws_access_key_id, aws_secret_access_key, aws_session_token
+        return aws_access_key_id, aws_secret_access_key
 
-    if not aws_access_key_id or not aws_secret_access_key:
-        raise ValueError(f"AWS credentials not found in {resolved_path}")
+    # Fall back to the default boto3 credential provider chain (env, config/SSO, IAM role, etc.)
+    session = boto3.Session()
+    credentials = session.get_credentials()
+    if credentials:
+        frozen = credentials.get_frozen_credentials()
+        if frozen.token:
+            return frozen.access_key, frozen.secret_key, frozen.token
+        return frozen.access_key, frozen.secret_key
 
-    print(f"✅ AWS credentials loaded from {resolved_path}")
-    return aws_access_key_id, aws_secret_access_key
+    raise ValueError(f"AWS credentials not found in {resolved_path} or default provider chain")
 
 
 def create_client(
@@ -58,6 +77,7 @@ def create_client(
     region: Optional[str] = None,
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
+    aws_session_token: Optional[str] = None,
 ):
     """
     Create a generic boto3 client for any AWS service with credentials.
@@ -74,12 +94,18 @@ def create_client(
         boto3.client: Configured AWS service client
     """
     if aws_access_key_id is None or aws_secret_access_key is None:
-        aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
+        loaded = load_credentials_from_env()
+        aws_access_key_id, aws_secret_access_key = loaded[0], loaded[1]
+        if len(loaded) > 2:
+            aws_session_token = loaded[2]
 
     client_kwargs = {
         "aws_access_key_id": aws_access_key_id,
         "aws_secret_access_key": aws_secret_access_key,
     }
+
+    if aws_session_token:
+        client_kwargs["aws_session_token"] = aws_session_token
 
     if region is not None:
         client_kwargs["region_name"] = region

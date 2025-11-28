@@ -4,13 +4,14 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.aws_route53_operations import (
     change_resource_record_sets,
     create_hosted_zone,
     delete_hosted_zone,
-    get_hosted_zone_cost,
     list_domains,
 )
 from tests.assertions import assert_equal
@@ -254,99 +255,13 @@ def test_change_resource_record_sets_invalid_change(mock_create_client):
         assert_equal(e.response["Error"]["Code"], "InvalidChangeBatch")
 
 
-def test_list_domains_returns_empty_list():
-    """Test list_domains returns empty list (placeholder implementation)."""
-    result = list_domains()
-
-    assert_equal(result, [])
-
-
-def test_list_domains_with_credentials():
-    """Test list_domains with credentials (placeholder implementation)."""
-    result = list_domains(aws_access_key_id="test_key", aws_secret_access_key="test_secret")
-
-    assert_equal(result, [])
+def test_list_domains_raises_not_implemented():
+    """List domains should fail fast until route53domains support is implemented."""
+    with pytest.raises(NotImplementedError):
+        list_domains()
 
 
-def test_get_hosted_zone_cost_with_queries():
-    """Test get_hosted_zone_cost includes query costs."""
-    result = get_hosted_zone_cost(5, query_count=10_000_000)
-
-    assert_equal(result["hosted_zone_count"], 5)
-    assert_equal(result["hosted_zone_monthly_cost"], 2.5)
-    assert_equal(result["query_count"], 10_000_000)
-    assert_equal(result["query_monthly_cost"], 4.0)
-    assert_equal(result["total_monthly_cost"], 6.5)
-    assert_equal(result["total_annual_cost"], 78.0)
-
-
-def test_get_hosted_zone_cost_single_zone():
-    """Test get_hosted_zone_cost calculates cost for single zone."""
-    result = get_hosted_zone_cost(1)
-
-    assert_equal(result["hosted_zone_count"], 1)
-    assert_equal(result["hosted_zone_monthly_cost"], 0.50)
-    assert_equal(result["query_count"], 0)
-    assert_equal(result["query_monthly_cost"], 0.0)
-    assert_equal(result["total_monthly_cost"], 0.50)
-    assert_equal(result["total_annual_cost"], 6.0)
-
-
-def test_get_hosted_zone_cost_multiple_zones():
-    """Test get_hosted_zone_cost calculates cost for multiple zones."""
-    result = get_hosted_zone_cost(10)
-
-    assert_equal(result["hosted_zone_count"], 10)
-    assert_equal(result["hosted_zone_monthly_cost"], 5.0)
-    assert_equal(result["query_count"], 0)
-    assert_equal(result["query_monthly_cost"], 0.0)
-    assert_equal(result["total_monthly_cost"], 5.0)
-    assert_equal(result["total_annual_cost"], 60.0)
-
-
-def test_get_hosted_zone_cost_large_query_volume():
-    """Test get_hosted_zone_cost with large query volume."""
-    result = get_hosted_zone_cost(3, query_count=1_000_000_000)
-
-    assert_equal(result["hosted_zone_count"], 3)
-    assert_equal(result["hosted_zone_monthly_cost"], 1.5)
-    assert_equal(result["query_count"], 1_000_000_000)
-    assert_equal(result["query_monthly_cost"], 400.0)
-    assert_equal(result["total_monthly_cost"], 401.5)
-    assert_equal(result["total_annual_cost"], 4818.0)
-
-
-def test_get_hosted_zone_cost_zero_zones():
-    """Test get_hosted_zone_cost with zero zones."""
-    result = get_hosted_zone_cost(0)
-
-    assert_equal(result["hosted_zone_count"], 0)
-    assert_equal(result["hosted_zone_monthly_cost"], 0.0)
-    assert_equal(result["query_count"], 0)
-    assert_equal(result["query_monthly_cost"], 0.0)
-    assert_equal(result["total_monthly_cost"], 0.0)
-    assert_equal(result["total_annual_cost"], 0.0)
-
-
-def test_get_hosted_zone_cost_queries_only():
-    """Test get_hosted_zone_cost with queries but no zones."""
-    result = get_hosted_zone_cost(0, query_count=5_000_000)
-
-    assert_equal(result["hosted_zone_count"], 0)
-    assert_equal(result["hosted_zone_monthly_cost"], 0.0)
-    assert_equal(result["query_count"], 5_000_000)
-    assert_equal(result["query_monthly_cost"], 2.0)
-    assert_equal(result["total_monthly_cost"], 2.0)
-    assert_equal(result["total_annual_cost"], 24.0)
-
-
-def test_get_hosted_zone_cost_fractional_queries():
-    """Test get_hosted_zone_cost with fractional million queries."""
-    result = get_hosted_zone_cost(2, query_count=500_000)
-
-    assert_equal(result["hosted_zone_count"], 2)
-    assert_equal(result["hosted_zone_monthly_cost"], 1.0)
-    assert_equal(result["query_count"], 500_000)
-    assert_equal(result["query_monthly_cost"], 0.2)
-    assert_equal(result["total_monthly_cost"], 1.2)
-    assert result["total_annual_cost"] == 14.4 or abs(result["total_annual_cost"] - 14.4) < 0.001
+def test_list_domains_with_credentials_raises_not_implemented():
+    """List domains should fail fast even when credentials are provided."""
+    with pytest.raises(NotImplementedError):
+        list_domains(aws_access_key_id="test_key", aws_secret_access_key="test_secret")

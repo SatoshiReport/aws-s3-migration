@@ -155,11 +155,10 @@ class TestExploreRestoredDatabase:
 
         # Verify connection was attempted with correct parameters
         call_args = mock_try_conn.call_args[0]
-        assert call_args[0] == "simba-db-restored.cx5li9mlv1tt.us-east-1.rds.amazonaws.com"
-        assert call_args[1] == 5432
+        assert call_args[0] == explore_user_data.DEFAULT_RESTORED_HOST
+        assert call_args[1] == explore_user_data.DEFAULT_RESTORED_PORT
         assert "postgres" in call_args[2]
-        assert "simba" in call_args[2]
-        assert call_args[3] == "postgres"
+        assert call_args[3] == explore_user_data.DEFAULT_RESTORED_USERNAME
         assert len(call_args[4]) > 0  # Has passwords
 
 

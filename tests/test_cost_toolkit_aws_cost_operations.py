@@ -9,11 +9,8 @@ from cost_toolkit.scripts.aws_cost_operations import (
     calculate_cost_savings,
     get_cost_and_usage,
     get_cost_forecast,
-    get_costs_by_service_and_usage_type,
     get_daily_costs_by_service,
     get_hourly_costs_by_service,
-    get_month_date_range,
-    get_monthly_costs,
     get_today_date_range,
 )
 from tests.assertions import assert_equal
@@ -28,18 +25,6 @@ def test_get_today_date_range():
         start, end = get_today_date_range()
 
         assert_equal(start, "2025-03-15")
-        assert_equal(end, "2025-03-16")
-
-
-def test_get_month_date_range():
-    """Test get_month_date_range returns first of month to tomorrow."""
-    with patch("cost_toolkit.scripts.aws_cost_operations.datetime") as mock_dt:
-        mock_now = datetime(2025, 3, 15, 14, 30, 0)
-        mock_dt.now.return_value = mock_now
-
-        start, end = get_month_date_range()
-
-        assert_equal(start, "2025-03-01")
         assert_equal(end, "2025-03-16")
 
 
@@ -122,36 +107,6 @@ def test_get_hourly_costs_by_service(mock_get_cost):
 
     call_args = mock_get_cost.call_args[1]
     assert_equal(call_args["granularity"], "HOURLY")
-    assert_equal(result, {"ResultsByTime": []})
-
-
-@patch("cost_toolkit.scripts.aws_cost_operations.get_cost_and_usage")
-def test_get_costs_by_service_and_usage_type(mock_get_cost):
-    """Test get_costs_by_service_and_usage_type groups by service and usage."""
-    mock_get_cost.return_value = {"ResultsByTime": []}
-
-    result = get_costs_by_service_and_usage_type("2025-03-01", "2025-03-15")
-
-    call_args = mock_get_cost.call_args[1]
-    assert_equal(
-        call_args["group_by"],
-        [
-            {"Type": "DIMENSION", "Key": "SERVICE"},
-            {"Type": "DIMENSION", "Key": "USAGE_TYPE"},
-        ],
-    )
-    assert_equal(result, {"ResultsByTime": []})
-
-
-@patch("cost_toolkit.scripts.aws_cost_operations.get_cost_and_usage")
-def test_get_monthly_costs(mock_get_cost):
-    """Test get_monthly_costs uses MONTHLY granularity."""
-    mock_get_cost.return_value = {"ResultsByTime": []}
-
-    result = get_monthly_costs("2025-01-01", "2025-03-31")
-
-    call_args = mock_get_cost.call_args[1]
-    assert_equal(call_args["granularity"], "MONTHLY")
     assert_equal(result, {"ResultsByTime": []})
 
 

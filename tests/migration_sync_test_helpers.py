@@ -2,27 +2,24 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Sequence
 from unittest import mock
 
 
-def create_mock_process(
-    readline_lines: Sequence[str] | None = None,
-    poll_returns: Sequence[int | None] | None = None,
-    stderr_output: str = "",
-):
-    """Create a mock subprocess.Popen result with programmable output."""
+def create_mock_process(stdout_lines, poll_results, stderr_output: str | None = None):
+    """Build a lightweight Popen-like mock for sync tests."""
     process = mock.Mock()
-    if readline_lines is None:
-        readline_lines = [""]
-    if poll_returns is None:
-        poll_returns = [0]
 
-    readline_iter = iter(readline_lines)
-    process.stdout.readline = lambda: next(readline_iter, "")
+    stdout_iter = iter(stdout_lines)
+    process.stdout.readline = mock.Mock(side_effect=lambda: next(stdout_iter, ""))
 
-    poll_iter: Iterable[int | None] = iter(poll_returns)
-    process.poll = lambda: next(poll_iter, 0)
+    poll_iter = iter(poll_results)
+    process.poll = mock.Mock(side_effect=lambda: next(poll_iter, 0))
+
+    process.terminate = mock.Mock()
+
+    stderr_payload = "" if stderr_output is None else stderr_output
+    process.stderr = mock.Mock()
+    process.stderr.read = mock.Mock(return_value=stderr_payload)
+
     process.returncode = 0
-    process.stderr.read.return_value = stderr_output  # pylint: disable=no-member
     return process

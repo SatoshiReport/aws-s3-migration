@@ -7,12 +7,11 @@ import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
-import requests
-
 from cost_toolkit.scripts.setup.exceptions import CertificateInfoError
 from cost_toolkit.scripts.setup.verify_iwannabenewyork_domain import (
     HTTP_STATUS_MOVED_PERMANENTLY,
     HTTP_STATUS_OK,
+    HttpRequestError,
     _check_cert_validity,
     _extract_cert_dict,
     _parse_cert_dates,
@@ -55,7 +54,7 @@ class TestDnsResolution:
 class TestHttpConnectivity:
     """Tests for test_http_connectivity function."""
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.requests.get")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._http_get")
     def test_http_redirects_to_https(self, mock_get, capsys):
         """Test HTTP redirects to HTTPS."""
         mock_response = MagicMock()
@@ -69,7 +68,7 @@ class TestHttpConnectivity:
         captured = capsys.readouterr()
         assert "HTTP redirects to HTTPS" in captured.out
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.requests.get")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._http_get")
     def test_http_no_redirect(self, mock_get, capsys):
         """Test HTTP without redirect."""
         mock_response = MagicMock()
@@ -83,10 +82,10 @@ class TestHttpConnectivity:
         captured = capsys.readouterr()
         assert f"HTTP response: {HTTP_STATUS_OK}" in captured.out
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.requests.get")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._http_get")
     def test_http_request_exception(self, mock_get, capsys):
         """Test HTTP request exception."""
-        mock_get.side_effect = requests.RequestException("Connection error")
+        mock_get.side_effect = HttpRequestError("Connection error")
 
         result = verify_http_connectivity("example.com")
 
@@ -98,7 +97,7 @@ class TestHttpConnectivity:
 class TestHttpsConnectivity:
     """Tests for test_https_connectivity function."""
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.requests.get")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._http_get")
     def test_https_success_with_cloudflare(self, mock_get, capsys):
         """Test successful HTTPS with Cloudflare."""
         mock_response = MagicMock()
@@ -113,7 +112,7 @@ class TestHttpsConnectivity:
         assert "HTTPS connection successful" in captured.out
         assert "Served by Cloudflare" in captured.out
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.requests.get")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._http_get")
     def test_https_success_without_cloudflare(self, mock_get, capsys):
         """Test successful HTTPS without Cloudflare."""
         mock_response = MagicMock()
@@ -128,7 +127,7 @@ class TestHttpsConnectivity:
         assert "HTTPS connection successful" in captured.out
         assert "Served by Cloudflare" not in captured.out
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.requests.get")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._http_get")
     def test_https_non_ok_status(self, mock_get, capsys):
         """Test HTTPS with non-OK status."""
         mock_response = MagicMock()
@@ -141,10 +140,10 @@ class TestHttpsConnectivity:
         captured = capsys.readouterr()
         assert "HTTPS response: 404" in captured.out
 
-    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.requests.get")
+    @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._http_get")
     def test_https_request_exception(self, mock_get, capsys):
         """Test HTTPS request exception."""
-        mock_get.side_effect = requests.RequestException("SSL error")
+        mock_get.side_effect = HttpRequestError("SSL error")
 
         result = verify_https_connectivity("example.com")
 

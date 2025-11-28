@@ -14,9 +14,11 @@ from cost_toolkit.scripts.audit.aws_network_interface_audit import (
 class TestGetAllRegions:
     """Tests for get_all_regions function."""
 
-    def test_get_all_regions_success(self):
+    @patch("cost_toolkit.common.aws_common.create_ec2_client")
+    def test_get_all_regions_success(self, mock_create_client):
         """Test successfully retrieving all AWS regions."""
         mock_ec2_client = MagicMock()
+        mock_create_client.return_value = mock_ec2_client
         mock_ec2_client.describe_regions.return_value = {
             "Regions": [
                 {"RegionName": "us-east-1"},
@@ -25,41 +27,36 @@ class TestGetAllRegions:
             ]
         }
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_audit.boto3.client",
-            return_value=mock_ec2_client,
-        ):
-            regions = get_all_regions()
+        regions = get_all_regions()
 
         assert regions == ["us-east-1", "us-west-2", "eu-west-1"]
+        mock_create_client.assert_called_once()
         mock_ec2_client.describe_regions.assert_called_once()
 
-    def test_get_all_regions_uses_us_east_1(self):
+    @patch("cost_toolkit.common.aws_common.create_ec2_client")
+    def test_get_all_regions_uses_us_east_1(self, mock_create_ec2):
         """Test that get_all_regions uses us-east-1 as region."""
         mock_ec2_client = MagicMock()
         mock_ec2_client.describe_regions.return_value = {"Regions": []}
+        mock_create_ec2.return_value = mock_ec2_client
 
-        with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create_ec2:
-            mock_create_ec2.return_value = mock_ec2_client
-            get_all_regions()
+        get_all_regions()
 
-        # Verify create_ec2_client was called with region="us-east-1"
         mock_create_ec2.assert_called_once()
         call_args = mock_create_ec2.call_args
         assert call_args[1]["region"] == "us-east-1" or call_args[0][0] == "us-east-1"
 
-    def test_get_all_regions_single_region(self):
+    @patch("cost_toolkit.common.aws_common.create_ec2_client")
+    def test_get_all_regions_single_region(self, mock_create_ec2):
         """Test retrieving single region."""
         mock_ec2_client = MagicMock()
         mock_ec2_client.describe_regions.return_value = {"Regions": [{"RegionName": "ap-south-1"}]}
+        mock_create_ec2.return_value = mock_ec2_client
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_audit.boto3.client",
-            return_value=mock_ec2_client,
-        ):
-            regions = get_all_regions()
+        regions = get_all_regions()
 
         assert regions == ["ap-south-1"]
+        mock_create_ec2.assert_called_once()
 
 
 class TestBuildInterfaceInfoComplete:

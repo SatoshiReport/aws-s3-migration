@@ -23,11 +23,14 @@ class _FakeS3:
 
 def test_materialize_tree_and_manifest(tmp_path):
     """Test materialize_sample_tree creates files and returns metrics."""
-    file_count, dir_count, total_bytes = shared.materialize_sample_tree(tmp_path)
+    # Create a subdirectory to avoid the autouse fixture's .env file
+    test_dir = tmp_path / "test_tree"
+    test_dir.mkdir()
+    file_count, dir_count, total_bytes = shared.materialize_sample_tree(test_dir)
     assert file_count > 0
     assert dir_count > 0
     assert total_bytes > 0
-    manifest = shared.manifest_directory(tmp_path)
+    manifest = shared.manifest_directory(test_dir)
     assert len(manifest) == file_count
 
 

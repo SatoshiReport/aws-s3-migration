@@ -5,7 +5,7 @@ This repository provides a hardened toolkit for discovering, migrating, and secu
 ---
 
 ## 1. Getting Started
-- **Python version**: 3.8+ (tested on macOS with Python 3.11)
+- **Python version**: 3.10+ (tested on macOS with Python 3.11)
 - **Core dependencies**: `boto3`, `botocore` (install via `pip install boto3`)
 - **AWS credentials**: Exported environment variables, AWS CLI profile, or an attached IAM role with S3/STS/IAM privileges
 - **Local storage**: Ensure the destination path specified in `config.py` has enough space for a full copy of every source bucket

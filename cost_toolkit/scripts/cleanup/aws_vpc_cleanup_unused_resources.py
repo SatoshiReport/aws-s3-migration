@@ -14,6 +14,7 @@ from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_ec2_operations import delete_security_group as delete_security_group_canonical
 
 # Unused security groups identified in the audit
 UNUSED_SECURITY_GROUPS = [
@@ -98,18 +99,16 @@ EMPTY_VPCS = [
 ]
 
 
-def delete_security_group(ec2_client, group_id, group_name, _region):
+def delete_security_group(ec2_client, group_id, group_name, region):
     """
     Delete a specific security group.
     """
-    print(f"   🗑️  Deleting security group: {group_id} ({group_name})")
-    try:
-        ec2_client.delete_security_group(GroupId=group_id)
-        print(f"   ✅ Successfully deleted {group_id}")
-    except ClientError as e:
-        print(f"   ❌ Error deleting {group_id}: {e}")
-        return False
-    return True
+    return delete_security_group_canonical(
+        region=region,
+        group_id=group_id,
+        group_name=group_name,
+        ec2_client=ec2_client,
+    )
 
 
 def print_cleanup_intro():

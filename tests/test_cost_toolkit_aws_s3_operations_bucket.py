@@ -11,7 +11,6 @@ from botocore.exceptions import ClientError
 from cost_toolkit.scripts.aws_s3_operations import (
     create_bucket,
     get_bucket_location,
-    get_bucket_size,
     get_bucket_tagging,
     get_bucket_versioning,
     list_buckets,
@@ -208,93 +207,6 @@ def test_list_buckets_with_credentials(mock_create_client):
         aws_access_key_id="test_key",
         aws_secret_access_key="test_secret",
     )
-
-
-@patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
-def test_get_bucket_size_single_page(mock_create_client):
-    """Test get_bucket_size calculates total size from single page."""
-    mock_s3 = MagicMock()
-    mock_create_client.return_value = mock_s3
-
-    mock_paginator = MagicMock()
-    mock_s3.get_paginator.return_value = mock_paginator
-    mock_paginator.paginate.return_value = [
-        {
-            "Contents": [
-                {"Key": "file1.txt", "Size": 1024},
-                {"Key": "file2.txt", "Size": 2048},
-                {"Key": "file3.txt", "Size": 512},
-            ]
-        }
-    ]
-
-    result = get_bucket_size("test-bucket", "us-west-2")
-
-    mock_create_client.assert_called_once_with(
-        region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None
-    )
-    mock_s3.get_paginator.assert_called_once_with("list_objects_v2")
-    mock_paginator.paginate.assert_called_once_with(Bucket="test-bucket")
-    assert_equal(result, 3584)
-
-
-@patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
-def test_get_bucket_size_multiple_pages(mock_create_client):
-    """Test get_bucket_size calculates total size across multiple pages."""
-    mock_s3 = MagicMock()
-    mock_create_client.return_value = mock_s3
-
-    mock_paginator = MagicMock()
-    mock_s3.get_paginator.return_value = mock_paginator
-    mock_paginator.paginate.return_value = [
-        {"Contents": [{"Key": "file1.txt", "Size": 1000}, {"Key": "file2.txt", "Size": 2000}]},
-        {"Contents": [{"Key": "file3.txt", "Size": 3000}, {"Key": "file4.txt", "Size": 4000}]},
-        {"Contents": [{"Key": "file5.txt", "Size": 5000}]},
-    ]
-
-    result = get_bucket_size("test-bucket", "us-west-2")
-
-    assert_equal(result, 15000)
-
-
-@patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
-def test_get_bucket_size_empty_bucket(mock_create_client):
-    """Test get_bucket_size returns zero for empty bucket."""
-    mock_s3 = MagicMock()
-    mock_create_client.return_value = mock_s3
-
-    mock_paginator = MagicMock()
-    mock_s3.get_paginator.return_value = mock_paginator
-    mock_paginator.paginate.return_value = [{}]
-
-    result = get_bucket_size("empty-bucket", "us-east-1")
-
-    assert_equal(result, 0)
-
-
-@patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
-def test_get_bucket_size_with_credentials(mock_create_client):
-    """Test get_bucket_size passes credentials to create_s3_client."""
-    mock_s3 = MagicMock()
-    mock_create_client.return_value = mock_s3
-
-    mock_paginator = MagicMock()
-    mock_s3.get_paginator.return_value = mock_paginator
-    mock_paginator.paginate.return_value = [{"Contents": [{"Key": "file.txt", "Size": 100}]}]
-
-    result = get_bucket_size(
-        "test-bucket",
-        "us-west-2",
-        aws_access_key_id="test_key",
-        aws_secret_access_key="test_secret",
-    )
-
-    mock_create_client.assert_called_once_with(
-        region="us-west-2",
-        aws_access_key_id="test_key",
-        aws_secret_access_key="test_secret",
-    )
-    assert_equal(result, 100)
 
 
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")

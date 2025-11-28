@@ -15,11 +15,11 @@ from cost_toolkit.scripts.management.ebs_manager.utils import (
 from tests.assertions import assert_equal
 
 
-@patch("boto3.client")
-def test_get_all_aws_regions(mock_boto_client):
+@patch("cost_toolkit.common.aws_common.create_ec2_client")
+def test_get_all_aws_regions(mock_create_client):
     """Test get_all_aws_regions returns list of regions."""
     mock_ec2 = MagicMock()
-    mock_boto_client.return_value = mock_ec2
+    mock_create_client.return_value = mock_ec2
     mock_ec2.describe_regions.return_value = {
         "Regions": [
             {"RegionName": "us-east-1"},
@@ -31,13 +31,15 @@ def test_get_all_aws_regions(mock_boto_client):
     result = get_all_aws_regions()
 
     assert_equal(result, ["us-east-1", "us-west-2", "eu-west-1"])
-    mock_boto_client.assert_called_once_with("ec2", region_name="us-east-1")
+    mock_create_client.assert_called_once_with(
+        region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None
+    )
     mock_ec2.describe_regions.assert_called_once()
 
 
-@patch("cost_toolkit.scripts.management.ebs_manager.utils.get_all_aws_regions")
-@patch("boto3.client")
-def test_find_volume_region_found(mock_boto_client, mock_get_regions):
+@patch("cost_toolkit.common.aws_common.get_all_aws_regions")
+@patch("cost_toolkit.common.aws_common.create_ec2_client")
+def test_find_volume_region_found(mock_create_client, mock_get_regions):
     """Test find_volume_region finds volume in second region."""
     mock_get_regions.return_value = ["us-east-1", "us-west-2", "eu-west-1"]
 
@@ -51,17 +53,17 @@ def test_find_volume_region_found(mock_boto_client, mock_get_regions):
     mock_ec2_2 = MagicMock()
     mock_ec2_2.describe_volumes.return_value = {"Volumes": [{"VolumeId": "vol-1234567890abcdef0"}]}
 
-    mock_boto_client.side_effect = [mock_ec2_1, mock_ec2_2]
+    mock_create_client.side_effect = [mock_ec2_1, mock_ec2_2]
 
     result = find_volume_region("vol-1234567890abcdef0")
 
     assert_equal(result, "us-west-2")
-    assert_equal(mock_boto_client.call_count, 2)
+    assert_equal(mock_create_client.call_count, 2)
 
 
-@patch("cost_toolkit.scripts.management.ebs_manager.utils.get_all_aws_regions")
-@patch("boto3.client")
-def test_find_volume_region_not_found(mock_boto_client, mock_get_regions):
+@patch("cost_toolkit.common.aws_common.get_all_aws_regions")
+@patch("cost_toolkit.common.aws_common.create_ec2_client")
+def test_find_volume_region_not_found(mock_create_client, mock_get_regions):
     """Test find_volume_region returns None when volume not found."""
     mock_get_regions.return_value = ["us-east-1", "us-west-2"]
 
@@ -70,12 +72,12 @@ def test_find_volume_region_not_found(mock_boto_client, mock_get_regions):
         {"Error": {"Code": "InvalidVolume.NotFound"}}, "DescribeVolumes"
     )
 
-    mock_boto_client.return_value = mock_ec2
+    mock_create_client.return_value = mock_ec2
 
     result = find_volume_region("vol-nonexistent")
 
     assert result is None
-    assert_equal(mock_boto_client.call_count, 2)
+    assert_equal(mock_create_client.call_count, 2)
 
 
 @patch("cost_toolkit.scripts.management.ebs_manager.utils._get_instance_name_with_client")
@@ -96,14 +98,14 @@ def test_get_instance_name(mock_boto_client, mock_get_name):
 @patch("cost_toolkit.scripts.management.ebs_manager.utils._get_instance_name_with_client")
 @patch("boto3.client")
 def test_get_instance_name_converts_none_to_no_name(mock_boto_client, mock_get_name):
-    """Test get_instance_name converts None to 'No Name'."""
+    """Test get_instance_name returns None when not present."""
     mock_ec2 = MagicMock()
     mock_boto_client.return_value = mock_ec2
     mock_get_name.return_value = None
 
     result = get_instance_name("i-1234567890abcdef0", "us-east-1")
 
-    assert_equal(result, "No Name")
+    assert result is None
 
 
 def test_get_volume_tags():

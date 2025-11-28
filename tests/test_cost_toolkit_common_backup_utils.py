@@ -10,7 +10,6 @@ from cost_toolkit.common.backup_utils import (
     check_aws_backup_plans,
     check_dlm_lifecycle_policies,
     check_eventbridge_scheduled_rules,
-    get_backup_plan_details,
 )
 
 
@@ -101,27 +100,3 @@ def test_check_aws_backup_plans_error():
 
         with pytest.raises(Exception, match="Backup error"):
             check_aws_backup_plans("us-east-1")
-
-
-def test_get_backup_plan_details_success(capsys):
-    """Test get_backup_plan_details with successful response."""
-    mock_backup_client = MagicMock()
-    mock_backup_client.get_backup_plan.return_value = {
-        "BackupPlan": {"BackupPlanName": "TestPlan", "Rules": [{"RuleName": "DailyBackup"}]}
-    }
-
-    _ = get_backup_plan_details(mock_backup_client, "plan-123", "TestPlan", "2024-01-01")
-
-    captured = capsys.readouterr()
-    assert "TestPlan" in captured.out
-    assert "plan-123" in captured.out
-    assert "2024-01-01" in captured.out
-
-
-def test_get_backup_plan_details_error():
-    """Test get_backup_plan_details raises on error (fail-fast)."""
-    mock_backup_client = MagicMock()
-    mock_backup_client.get_backup_plan.side_effect = Exception("API error")
-
-    with pytest.raises(Exception, match="API error"):
-        get_backup_plan_details(mock_backup_client, "plan-123", "TestPlan", "2024-01-01")

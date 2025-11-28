@@ -21,10 +21,7 @@ VerificationCountMismatchError = _migration_verify_common.VerificationCountMisma
 FileInventoryChecker = _migration_verify_inventory.FileInventoryChecker
 
 if TYPE_CHECKING:
-    try:
-        from .migration_state_v2 import MigrationStateV2
-    except ImportError:  # pragma: no cover
-        from migration_state_v2 import MigrationStateV2
+    from migration_state_v2 import MigrationStateV2
 
 
 class BucketVerifier:  # pylint: disable=too-few-public-methods

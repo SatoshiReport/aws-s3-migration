@@ -10,7 +10,7 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
-from cost_toolkit.scripts.aws_ec2_operations import find_resource_region
+from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot, find_resource_region
 
 from ..aws_utils import setup_aws_credentials
 
@@ -28,7 +28,10 @@ def find_snapshot_region(snapshot_id):
     """
     # Search common regions first for performance
     common_regions = ["eu-west-2", "us-east-1", "us-east-2", "us-west-1", "us-west-2"]
-    return find_resource_region("snapshot", snapshot_id, regions=common_regions)
+    region = find_resource_region("snapshot", snapshot_id, regions=common_regions)
+    if region is not None:
+        return region
+    return find_resource_region("snapshot", snapshot_id)
 
 
 def get_snapshot_details(snapshot_id, region):
@@ -90,10 +93,16 @@ def delete_snapshot_safely(snapshot_id, region):
         # Calculate cost savings
         monthly_savings = calculate_snapshot_cost(snapshot_info["size_gb"])
 
-        # Delete the snapshot
-        ec2_client.delete_snapshot(SnapshotId=snapshot_id)
+        # Delete the snapshot using canonical helper
+        deletion_success = delete_snapshot(
+            snapshot_id,
+            region,
+            ec2_client=ec2_client,
+        )
+        if not deletion_success:
+            print()
+            return False
 
-        print("   ✅ Successfully deleted")
         print(f"   💰 Monthly savings: ${monthly_savings:.2f}")
         print()
 

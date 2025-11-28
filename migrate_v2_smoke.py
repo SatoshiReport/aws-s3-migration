@@ -4,14 +4,9 @@ from __future__ import annotations
 
 import os
 
-try:  # Prefer package-relative imports when linting
-    from .migrate_v2_smoke_real import run_real_smoke_test
-    from .migrate_v2_smoke_shared import SmokeTestDeps
-    from .migrate_v2_smoke_simulated import run_simulated_smoke_test
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from migrate_v2_smoke_real import run_real_smoke_test  # type: ignore
-    from migrate_v2_smoke_shared import SmokeTestDeps  # type: ignore
-    from migrate_v2_smoke_simulated import run_simulated_smoke_test  # type: ignore
+from migrate_v2_smoke_real import run_real_smoke_test
+from migrate_v2_smoke_shared import SmokeTestDeps
+from migrate_v2_smoke_simulated import run_simulated_smoke_test
 
 
 def run_smoke_test(config_module, drive_checker_cls, create_migrator_fn):

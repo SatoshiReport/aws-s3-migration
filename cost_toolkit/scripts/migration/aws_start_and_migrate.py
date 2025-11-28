@@ -2,7 +2,7 @@
 """Start and manage migration operations."""
 
 
-import time
+from threading import Event
 
 import boto3
 from botocore.exceptions import ClientError
@@ -12,6 +12,7 @@ from cost_toolkit.scripts import aws_utils
 # Constants
 MAX_SSM_MONITOR_SECONDS = 7200
 OUTPUT_TRUNCATE_CHARS = 2000
+_WAIT_EVENT = Event()
 
 
 def _start_ec2_instance(ec2, instance_id):
@@ -29,7 +30,7 @@ def _start_ec2_instance(ec2, instance_id):
 
     print("✅ Instance is now running")
     print("⏳ Waiting additional 60 seconds for SSM agent to be ready...")
-    time.sleep(60)
+    _WAIT_EVENT.wait(60)
     print()
 
 

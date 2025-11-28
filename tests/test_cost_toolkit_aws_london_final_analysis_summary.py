@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.migration.aws_london_final_analysis_summary import (
@@ -17,17 +19,16 @@ from cost_toolkit.scripts.migration.aws_london_final_analysis_summary import (
 
 
 # Tests for _stop_instance
+@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.wait_for_instance_state")
 @patch("builtins.print")
-def test_stop_instance_success(mock_print):
+def test_stop_instance_success(mock_print, mock_wait_for_state):
     """Test stopping instance successfully."""
     mock_ec2 = MagicMock()
-    mock_waiter = MagicMock()
-    mock_ec2.get_waiter.return_value = mock_waiter
 
     _stop_instance(mock_ec2)
 
     mock_ec2.stop_instances.assert_called_once_with(InstanceIds=["i-05ad29f28fc8a8fdc"])
-    mock_waiter.wait.assert_called_once_with(InstanceIds=["i-05ad29f28fc8a8fdc"])
+    mock_wait_for_state.assert_called_once_with(mock_ec2, "i-05ad29f28fc8a8fdc", "instance_stopped")
     mock_print.assert_called()
 
 
@@ -39,26 +40,24 @@ def test_stop_instance_client_error(mock_print):
         {"Error": {"Code": "InstanceNotFound"}}, "StopInstances"
     )
 
-    _stop_instance(mock_ec2)
+    with pytest.raises(ClientError):
+        _stop_instance(mock_ec2)
 
     mock_ec2.stop_instances.assert_called_once()
     mock_print.assert_called()
 
 
 @patch("builtins.print")
-def test_stop_instance_waiter_error(_mock_print):
+@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.wait_for_instance_state")
+def test_stop_instance_waiter_error(mock_wait_for_state, _mock_print):
     """Test stopping instance when waiter fails."""
     mock_ec2 = MagicMock()
-    mock_waiter = MagicMock()
-    mock_ec2.get_waiter.return_value = mock_waiter
-    mock_waiter.wait.side_effect = ClientError(
+    mock_wait_for_state.side_effect = ClientError(
         {"Error": {"Code": "WaiterError"}}, "WaitUntilInstanceStopped"
     )
 
-    try:
+    with pytest.raises(ClientError):
         _stop_instance(mock_ec2)
-    except ClientError:
-        pass
 
     mock_ec2.stop_instances.assert_called_once()
 

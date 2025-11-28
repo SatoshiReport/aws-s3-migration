@@ -12,76 +12,8 @@ from cost_toolkit.scripts.aws_s3_operations import (
     delete_bucket,
     delete_object,
     head_object,
-    list_objects,
 )
 from tests.assertions import assert_equal
-
-
-@patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
-def test_list_objects_without_prefix(mock_create_client):
-    """Test list_objects returns all objects when no prefix specified."""
-    mock_s3 = MagicMock()
-    mock_create_client.return_value = mock_s3
-    objects = [
-        {"Key": "file1.txt", "Size": 100},
-        {"Key": "file2.txt", "Size": 200},
-    ]
-    mock_s3.list_objects_v2.return_value = {"Contents": objects}
-
-    result = list_objects("test-bucket", "us-west-2")
-
-    mock_create_client.assert_called_once_with(
-        region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None
-    )
-    mock_s3.list_objects_v2.assert_called_once_with(Bucket="test-bucket")
-    assert_equal(result, objects)
-
-
-@patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
-def test_list_objects_with_prefix(mock_create_client):
-    """Test list_objects filters by prefix when specified."""
-    mock_s3 = MagicMock()
-    mock_create_client.return_value = mock_s3
-    objects = [{"Key": "logs/file1.txt", "Size": 100}]
-    mock_s3.list_objects_v2.return_value = {"Contents": objects}
-
-    result = list_objects("test-bucket", "us-west-2", prefix="logs/")
-
-    mock_s3.list_objects_v2.assert_called_once_with(Bucket="test-bucket", Prefix="logs/")
-    assert_equal(result, objects)
-
-
-@patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
-def test_list_objects_empty(mock_create_client):
-    """Test list_objects returns empty list when no objects match."""
-    mock_s3 = MagicMock()
-    mock_create_client.return_value = mock_s3
-    mock_s3.list_objects_v2.return_value = {}
-
-    result = list_objects("empty-bucket", "us-east-1")
-
-    assert_equal(result, [])
-
-
-@patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
-def test_list_objects_with_credentials(mock_create_client):
-    """Test list_objects passes credentials to create_s3_client."""
-    mock_s3 = MagicMock()
-    mock_create_client.return_value = mock_s3
-    mock_s3.list_objects_v2.return_value = {"Contents": []}
-
-    list_objects(
-        "test-bucket",
-        "us-west-2",
-        aws_access_key_id="test_key",
-        aws_secret_access_key="test_secret",
-    )
-
-    mock_create_client.assert_called_once_with(
-        region="us-west-2",
-        aws_access_key_id="test_key",
-        aws_secret_access_key="test_secret",
-    )
 
 
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")

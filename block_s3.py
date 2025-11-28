@@ -11,22 +11,13 @@ import argparse
 import os
 import sys
 
-try:  # Prefer package-relative imports for static analysis
-    from .aws_utils import (
-        generate_restrictive_bucket_policy,
-        get_aws_identity,
-        list_s3_buckets,
-        print_interactive_help,
-        save_policy_to_file,
-    )
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from aws_utils import (
-        generate_restrictive_bucket_policy,
-        get_aws_identity,
-        list_s3_buckets,
-        print_interactive_help,
-        save_policy_to_file,
-    )
+from aws_utils import (
+    generate_restrictive_bucket_policy,
+    get_aws_identity,
+    list_s3_buckets,
+    print_interactive_help,
+    save_policy_to_file,
+)
 
 
 def main():

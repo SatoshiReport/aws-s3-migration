@@ -4,7 +4,8 @@ AWS Instance Termination Script
 Safely terminates specified instances and handles associated EBS volumes.
 """
 
-import time
+import argparse
+from threading import Event
 
 import boto3
 from botocore.exceptions import ClientError
@@ -15,12 +16,17 @@ from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 
 from ..aws_utils import setup_aws_credentials
 
+DEFAULT_INSTANCE_ID = "i-05ad29f28fc8a8fdc"
+DEFAULT_INSTANCE_NAME = "Tars 3"
+DEFAULT_REGION = "eu-west-2"
+_WAIT_EVENT = Event()
+
 
 def get_instance_details(instance_id, region):
     """Wrapper for tests to fetch instance details using boto3 client."""
     ec2_client = boto3.client("ec2", region_name=region)
     details = aws_common.get_instance_details(ec2_client, instance_id)
-    if details is not None:
+    if details:
         details["region"] = region
     return details
 
@@ -169,7 +175,7 @@ def terminate_instance_safely(instance_id, region):
         _perform_termination(ec2_client, instance_id, instance_info["name"])
 
         print("⏳ Waiting for termination to begin...")
-        time.sleep(10)
+        _WAIT_EVENT.wait(10)
 
         updated_info = get_instance_details(instance_id, region)
         if updated_info:
@@ -183,18 +189,45 @@ def terminate_instance_safely(instance_id, region):
     return True
 
 
-def main():
-    """Main function to terminate the Tars 3 instance."""
+def _parse_args(argv=None):
+    """Parse CLI arguments for the termination script."""
+    parser = argparse.ArgumentParser(
+        description="Safely terminate an EC2 instance and related volumes.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    parser.add_argument("--instance-id", help="Target EC2 instance ID")
+    parser.add_argument("--region", help="AWS region for the target instance")
+    parser.add_argument("--instance-name", help="Friendly instance name for messaging")
+    parser.add_argument(
+        "--use-default-target",
+        action="store_true",
+        help="Use the baked-in demo instance/region (requires explicit opt-in).",
+    )
+    args = parser.parse_args(argv)
+
+    if not args.use_default_target and (not args.instance_id or not args.region):
+        parser.error("Specify --instance-id and --region or use --use-default-target.")
+
+    instance_id = args.instance_id or DEFAULT_INSTANCE_ID
+    region = args.region or DEFAULT_REGION
+    name = args.instance_name or DEFAULT_INSTANCE_NAME
+
+    return {"id": instance_id, "name": name, "region": region}, args.use_default_target
+
+
+def main(argv=None):
+    """Main function to terminate the selected instance."""
     setup_aws_credentials()
 
     print("AWS Instance Termination Script")
     print("=" * 80)
-    print("Terminating 'Tars 3' instance and associated volumes...")
+    print("Terminating a selected instance and associated volumes...")
     print("⚠️  This action is IRREVERSIBLE!")
     print()
 
-    # Target instance details
-    target_instance = {"id": "i-05ad29f28fc8a8fdc", "name": "Tars 3", "region": "eu-west-2"}
+    target_instance, using_default = _parse_args(argv)
+    if using_default:
+        print("⚠️  Using default demo target; provide --instance-id/--region to override.")
 
     print(f"🎯 Target Instance: {target_instance['name']} ({target_instance['id']})")
     print(f"   Region: {target_instance['region']}")
@@ -202,7 +235,7 @@ def main():
 
     # Safety confirmation
     print("⚠️  FINAL WARNING: This will permanently destroy the instance and its data!")
-    print("   - Instance 'Tars 3' will be terminated")
+    print(f"   - Instance '{target_instance['name']}' will be terminated")
     print("   - Associated EBS volumes will be deleted")
     print("   - All data on these volumes will be lost")
     print("   - Snapshots will be preserved (as requested)")

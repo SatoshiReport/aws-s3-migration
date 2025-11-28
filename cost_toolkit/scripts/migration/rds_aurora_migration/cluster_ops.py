@@ -5,7 +5,12 @@ import time
 import boto3
 from botocore.exceptions import ClientError
 
-from ...aws_utils import get_aws_regions, setup_aws_credentials
+from ...aws_utils import (
+    get_aws_regions,
+    setup_aws_credentials,
+    wait_for_db_cluster_available,
+    wait_for_db_snapshot_completion,
+)
 
 
 def discover_rds_instances():
@@ -129,11 +134,7 @@ def create_rds_snapshot(rds_client, instance_identifier, _region):
         print(f"✅ Snapshot creation initiated: {snapshot_identifier}")
 
         print("⏳ Waiting for snapshot to complete...")
-        waiter = rds_client.get_waiter("db_snapshot_completed")
-        waiter.wait(
-            DBSnapshotIdentifier=snapshot_identifier,
-            WaiterConfig={"Delay": 30, "MaxAttempts": 120},
-        )
+        wait_for_db_snapshot_completion(rds_client, snapshot_identifier)
 
         print(f"✅ Snapshot completed: {snapshot_identifier}")
 
@@ -217,11 +218,7 @@ def create_aurora_serverless_cluster(
         print("   Scaling: 0.5-4.0 ACU")
 
         print("⏳ Waiting for cluster to become available...")
-        waiter = rds_client.get_waiter("db_cluster_available")
-        waiter.wait(
-            DBClusterIdentifier=cluster_identifier,
-            WaiterConfig={"Delay": 30, "MaxAttempts": 120},
-        )
+        wait_for_db_cluster_available(rds_client, cluster_identifier)
 
         print(f"✅ Aurora Serverless v2 cluster is ready: {cluster_identifier}")
 

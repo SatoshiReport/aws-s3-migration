@@ -129,4 +129,6 @@ def categorize_services(service_costs, resolved_services):
 
 
 if __name__ == "__main__":
-    pass
+    raise SystemExit(
+        "This module is library-only. Run cost_toolkit.scripts.billing.billing_report.cli instead."
+    )

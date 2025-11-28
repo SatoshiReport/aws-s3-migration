@@ -5,11 +5,13 @@ This script helps you monitor the progress of manual export tasks and check S3 f
 """
 
 import argparse
-import time
 from datetime import datetime
+from threading import Event
 
 import boto3
 from botocore.exceptions import ClientError
+
+_WAIT_EVENT = Event()
 
 
 def check_export_status(region, ami_id=None):

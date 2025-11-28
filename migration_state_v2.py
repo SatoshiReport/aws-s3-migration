@@ -8,18 +8,11 @@ from enum import Enum
 from typing import TYPE_CHECKING, Dict, List
 
 if TYPE_CHECKING:
-    try:
-        from .migration_state_managers import (
-            BucketStateManager,
-            FileStateManager,
-            PhaseManager,
-        )
-    except ImportError:  # pragma: no cover - fallback for tooling
-        from migration_state_managers import (
-            BucketStateManager,
-            FileStateManager,
-            PhaseManager,
-        )
+    from migration_state_managers import (
+        BucketStateManager,
+        FileStateManager,
+        PhaseManager,
+    )
 
 
 class Phase(Enum):
@@ -155,8 +148,11 @@ class DatabaseConnection:  # pylint: disable=too-few-public-methods
         for column in BUCKET_STATUS_MIGRATIONS:
             try:
                 conn.execute(f"ALTER TABLE bucket_status ADD COLUMN {column}")
-            except sqlite3.OperationalError:
-                continue
+            except sqlite3.OperationalError as exc:
+                message = str(exc).lower()
+                if "duplicate column name" in message:
+                    continue
+                raise
 
 
 class _FileOperationsMixin:
@@ -250,6 +246,13 @@ class _BucketOperationsMixin:
         """Fetch the stored status row for *bucket*."""
         return self.buckets.get_bucket_info(bucket)
 
+    def get_bucket_status(self, bucket: str) -> "BucketStatus":
+        """Fetch bucket status as a typed object; fail fast if missing."""
+        info = self.get_bucket_info(bucket)
+        if not info:
+            raise ValueError(f"Bucket '{bucket}' not found in migration state")
+        return BucketStatus(info)
+
     def get_scan_summary(self) -> Dict:
         """Return high level statistics for scanned buckets."""
         return self.buckets.get_scan_summary()
@@ -273,18 +276,11 @@ class MigrationStateV2(_FileOperationsMixin, _BucketOperationsMixin, _PhaseOpera
     """Migration state management delegating to specialized managers"""
 
     def __init__(self, db_path: str):
-        try:
-            from .migration_state_managers import (  # pylint: disable=import-outside-toplevel
-                BucketStateManager,
-                FileStateManager,
-                PhaseManager,
-            )
-        except ImportError:  # pragma: no cover - allow running as standalone script
-            from migration_state_managers import (  # pylint: disable=import-outside-toplevel
-                BucketStateManager,
-                FileStateManager,
-                PhaseManager,
-            )
+        from migration_state_managers import (  # pylint: disable=import-outside-toplevel
+            BucketStateManager,
+            FileStateManager,
+            PhaseManager,
+        )
 
         self.db_conn = DatabaseConnection(db_path)
         self.files = FileStateManager(self.db_conn)

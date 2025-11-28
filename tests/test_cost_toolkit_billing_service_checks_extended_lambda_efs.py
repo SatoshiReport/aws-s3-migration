@@ -5,9 +5,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import botocore.exceptions
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.billing.billing_report.service_checks_extended import (
+    ServiceCheckError,
     check_efs_status,
     check_lambda_status,
 )
@@ -65,7 +67,7 @@ class TestCheckLambdaStatus:
             assert "2 Lambda functions still exist" in message
 
     def test_lambda_region_access_error(self):
-        """Test Lambda status with region access errors."""
+        """Test Lambda status raises ServiceCheckError with region access errors."""
         with patch("boto3.client") as mock_client:
             mock_lambda = MagicMock()
             error = botocore.exceptions.ClientError(
@@ -73,22 +75,21 @@ class TestCheckLambdaStatus:
             )
             mock_lambda.list_functions.side_effect = error
             mock_client.return_value = mock_lambda
-            is_resolved, message = check_lambda_status()
-            assert is_resolved is True
-            assert "RESOLVED" in message
-            assert "All Lambda functions deleted" in message
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_lambda_status()
+            assert "Failed to check Lambda in regions" in str(exc_info.value)
 
     def test_lambda_client_error(self):
-        """Test Lambda status with general ClientError."""
+        """Test Lambda status raises ServiceCheckError with general ClientError."""
         with patch("boto3.client") as mock_client:
             error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
             mock_client.side_effect = error
-            is_resolved, message = check_lambda_status()
-            assert is_resolved is True
-            assert "RESOLVED" in message
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_lambda_status()
+            assert "Failed to check Lambda in regions" in str(exc_info.value)
 
     def test_lambda_partial_region_errors(self):
-        """Test Lambda when some regions error but others succeed."""
+        """Test Lambda raises ServiceCheckError when some regions error."""
         with patch("boto3.client") as mock_client:
             mock_lambda = MagicMock()
             call_count = [0]
@@ -103,9 +104,9 @@ class TestCheckLambdaStatus:
 
             mock_lambda.list_functions.side_effect = list_functions_with_error
             mock_client.return_value = mock_lambda
-            is_resolved, message = check_lambda_status()
-            assert is_resolved is False
-            assert "2 Lambda functions still exist" in message
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_lambda_status()
+            assert "Failed to check Lambda in regions" in str(exc_info.value)
 
 
 class TestCheckEFSStatusSuccess:
@@ -173,7 +174,7 @@ class TestCheckEFSStatusErrors:
     """Test EFS service status checking - error cases."""
 
     def test_efs_region_access_error(self):
-        """Test EFS status with region access errors."""
+        """Test EFS status raises ServiceCheckError with region access errors."""
         with patch("boto3.client") as mock_client:
             mock_efs = MagicMock()
             error = botocore.exceptions.ClientError(
@@ -181,22 +182,21 @@ class TestCheckEFSStatusErrors:
             )
             mock_efs.describe_file_systems.side_effect = error
             mock_client.return_value = mock_efs
-            is_resolved, message = check_efs_status()
-            assert is_resolved is True
-            assert "RESOLVED" in message
-            assert "All EFS file systems deleted" in message
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_efs_status()
+            assert "Failed to check EFS in regions" in str(exc_info.value)
 
     def test_efs_client_error(self):
-        """Test EFS status with general ClientError."""
+        """Test EFS status raises ServiceCheckError with general ClientError."""
         with patch("boto3.client") as mock_client:
             error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
             mock_client.side_effect = error
-            is_resolved, message = check_efs_status()
-            assert is_resolved is True
-            assert "RESOLVED" in message
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_efs_status()
+            assert "Failed to check EFS in regions" in str(exc_info.value)
 
     def test_efs_partial_region_errors(self):
-        """Test EFS when some regions error but others succeed."""
+        """Test EFS raises ServiceCheckError when some regions error."""
         with patch("boto3.client") as mock_client:
             mock_efs = MagicMock()
             call_count = [0]
@@ -211,6 +211,6 @@ class TestCheckEFSStatusErrors:
 
             mock_efs.describe_file_systems.side_effect = describe_with_error
             mock_client.return_value = mock_efs
-            is_resolved, message = check_efs_status()
-            assert is_resolved is False
-            assert "1 EFS file systems still exist" in message
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_efs_status()
+            assert "Failed to check EFS in regions" in str(exc_info.value)

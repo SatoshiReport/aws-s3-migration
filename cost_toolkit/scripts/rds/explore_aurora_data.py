@@ -2,6 +2,8 @@
 """Explore Aurora database data."""
 
 
+import os
+
 try:
     import psycopg2  # type: ignore[import-not-found]
 
@@ -22,20 +24,37 @@ from cost_toolkit.scripts.rds.db_inspection_common import (
 
 # Constants
 MAX_SAMPLE_COLUMNS = 5
+DEFAULT_AURORA_HOST = os.environ.get("AURORA_HOST", "aurora-serverless.example.com")
+DEFAULT_AURORA_PORT = int(os.environ.get("AURORA_PORT", "5432"))
+DEFAULT_AURORA_DATABASE = os.environ.get("AURORA_DATABASE", "postgres")
+DEFAULT_AURORA_USERNAME = os.environ.get("AURORA_USERNAME", "postgres")
+DEFAULT_AURORA_PASSWORD = os.environ.get("AURORA_PASSWORD")
+
+
+def _load_aurora_settings():
+    """Load Aurora connection settings from environment variables."""
+    return (
+        os.environ.get("AURORA_HOST", DEFAULT_AURORA_HOST),
+        int(os.environ.get("AURORA_PORT", DEFAULT_AURORA_PORT)),
+        os.environ.get("AURORA_DATABASE", DEFAULT_AURORA_DATABASE),
+        os.environ.get("AURORA_USERNAME", DEFAULT_AURORA_USERNAME),
+        os.environ.get("AURORA_PASSWORD", DEFAULT_AURORA_PASSWORD),
+    )
 
 
 def explore_aurora_database():
     """Connect to the Aurora Serverless v2 cluster and explore user data"""
     if not PSYCOPG2_AVAILABLE:
         print("❌ psycopg2 module not found. Install with: pip install psycopg2-binary")
-        return
+        return False
 
-    # Connection to Aurora Serverless v2 cluster
-    host = "simba-db-aurora-serverless.cluster-cx5li9mlv1tt.us-east-1.rds.amazonaws.com"
-    port = 5432
-    database = "postgres"
-    username = "postgres"
-    password = "Pizza112!"
+    host, port, database, username, password = _load_aurora_settings()
+    if not password:
+        print(
+            "❌ Aurora credentials not configured. "
+            "Set AURORA_PASSWORD (and optionally AURORA_HOST/AURORA_DATABASE/AURORA_USERNAME)."
+        )
+        return False
 
     print("🔍 Connecting to Aurora Serverless v2 cluster...")
 
@@ -51,7 +70,7 @@ def explore_aurora_database():
         print("✅ Connected successfully to Aurora Serverless v2!")
     except psycopg2.Error as e:
         print(f"❌ Connection failed: {e}")
-        return
+        return False
 
     cursor = conn.cursor()
 
@@ -85,12 +104,14 @@ def explore_aurora_database():
         print("   2. Your original data is in the restored RDS instance")
         print("   3. We need the original password to access and migrate your data")
         print("   4. Once migrated, you can delete the expensive RDS instance")
+    return True
 
 
 def main():
     """Main function."""
-    explore_aurora_database()
+    success = explore_aurora_database()
+    return 0 if success else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

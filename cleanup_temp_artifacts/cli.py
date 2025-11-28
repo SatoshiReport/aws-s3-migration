@@ -13,10 +13,7 @@ import sys
 import time
 from pathlib import Path
 
-try:  # Shared state DB utilities.
-    from .state_db_admin import reseed_state_db_from_local_drive  # type: ignore
-except ImportError:  # pragma: no cover - direct script execution
-    from state_db_admin import reseed_state_db_from_local_drive  # type: ignore
+from state_db_admin import reseed_state_db_from_local_drive
 
 from cost_toolkit.common.cli_utils import handle_state_db_reset
 

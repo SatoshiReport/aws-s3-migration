@@ -141,3 +141,71 @@ def parse_size(value: str, *, for_argparse: bool = False) -> int:
         if for_argparse:
             raise argparse.ArgumentTypeError(error_msg) from exc
         raise ValueError(error_msg) from exc
+
+
+def parse_aws_cli_size(size_str: str) -> int:
+    """
+    Parse byte size from AWS CLI output format (e.g., "1.5 GiB", "512 MiB").
+
+    This is the canonical parser for AWS CLI size output. Use this instead of
+    implementing your own parser for AWS CLI output parsing.
+
+    Args:
+        size_str: Size string from AWS CLI like "1.5 GiB", "512 MiB", "1024 KiB"
+
+    Returns:
+        Number of bytes as integer
+
+    Raises:
+        ValueError: If the size string cannot be parsed
+
+    Examples:
+        >>> parse_aws_cli_size("1.5 GiB")
+        1610612736
+        >>> parse_aws_cli_size("512 MiB")
+        536870912
+        >>> parse_aws_cli_size("1024 KiB")
+        1048576
+    """
+    raw = size_str.strip()
+    if not raw:
+        raise ValueError("Size string cannot be empty")
+
+    multipliers = {
+        "kib": BYTES_PER_KIB,
+        "mib": BYTES_PER_MIB,
+        "gib": BYTES_PER_GIB,
+        "tib": BYTES_PER_TIB,
+    }
+
+    # Try to parse as "<number> <unit>" format
+    parts = raw.split()
+    if len(parts) >= 2:
+        number_part = parts[0]
+        unit_part = parts[-1].lower()
+    elif len(parts) == 1:
+        # Try formats like "1.5GiB" without space
+        for suffix in multipliers:
+            if raw.lower().endswith(suffix):
+                number_part = raw[: -len(suffix)]
+                unit_part = suffix
+                break
+        else:
+            # No recognized unit, assume bytes
+            try:
+                return int(float(raw))
+            except ValueError as exc:
+                raise ValueError(f"Cannot parse size: {size_str}") from exc
+    else:
+        raise ValueError(f"Cannot parse size: {size_str}")
+
+    try:
+        size_val = float(number_part)
+    except ValueError as exc:
+        raise ValueError(f"Cannot parse size: {size_str}") from exc
+
+    if unit_part in multipliers:
+        return int(size_val * multipliers[unit_part])
+
+    # Unknown unit
+    raise ValueError(f"Unknown size unit in: {size_str}")

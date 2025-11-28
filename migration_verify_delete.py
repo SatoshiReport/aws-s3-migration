@@ -18,10 +18,7 @@ format_duration = _migration_utils.format_duration
 BucketNotEmptyError = _migration_verify_common.BucketNotEmptyError
 
 if TYPE_CHECKING:
-    try:
-        from .migration_state_v2 import MigrationStateV2
-    except ImportError:  # pragma: no cover
-        from migration_state_v2 import MigrationStateV2
+    from migration_state_v2 import MigrationStateV2
 
 
 class BucketDeleter:  # pylint: disable=too-few-public-methods

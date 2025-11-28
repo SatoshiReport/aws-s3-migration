@@ -9,7 +9,9 @@ from pathlib import Path
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common import lightsail_utils
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.scripts.cleanup import aws_global_accelerator_cleanup as ga_cleanup
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
@@ -17,84 +19,40 @@ if str(REPO_ROOT) not in sys.path:
 
 from cost_toolkit.scripts import aws_utils  # pylint: disable=wrong-import-position
 
-INSTANCE_BUNDLE_COSTS = {
-    "nano_2_0": 3.5,
-    "micro_2_0": 5.0,
-    "small_2_0": 10.0,
-    "medium_2_0": 20.0,
-    "large_2_0": 40.0,
-    "xlarge_2_0": 80.0,
-    "2xlarge_2_0": 160.0,
-}
 
-DATABASE_BUNDLE_COSTS = {
-    "micro_1_0": 15.0,
-    "small_1_0": 30.0,
-    "medium_1_0": 60.0,
-    "large_1_0": 115.0,
-}
+def estimate_instance_cost(bundle_id):
+    """Canonical Lightsail instance pricing lookup (fails on unknown bundles)."""
+    return lightsail_utils.estimate_instance_cost(bundle_id)  # type: ignore[arg-type]
 
 
-def estimate_instance_cost(bundle_id: str | None) -> float:
-    """Approximate monthly cost for a Lightsail instance bundle."""
-    if not bundle_id:
-        return 0.0
-    return INSTANCE_BUNDLE_COSTS.get(bundle_id, 0.0)
-
-
-def estimate_database_cost(bundle_id: str | None) -> float:
-    """Approximate monthly cost for a Lightsail database bundle."""
-    if not bundle_id:
-        return 0.0
-    return DATABASE_BUNDLE_COSTS.get(bundle_id, 0.0)
+def estimate_database_cost(bundle_id):
+    """Canonical Lightsail database pricing lookup (fails on unknown bundles)."""
+    return lightsail_utils.estimate_database_cost(bundle_id)  # type: ignore[arg-type]
 
 
 def disable_global_accelerators():
-    """Disable all Global Accelerators"""
+    """Disable all Global Accelerators via the canonical cleanup helpers."""
     aws_utils.setup_aws_credentials()
 
     print("🔍 Checking Global Accelerators...")
     print("=" * 60)
 
-    try:
-        # Global Accelerator is only available in us-west-2
-        ga_client = create_client("globalaccelerator", region="us-west-2")
+    accelerators = ga_cleanup.list_accelerators()
+    if not accelerators:
+        print("✅ No Global Accelerators found.")
+        return 0
 
-        # List all accelerators
-        response = ga_client.list_accelerators()
-        accelerators = response.get("Accelerators", [])
-
-        if not accelerators:
-            print("✅ No Global Accelerators found.")
-            return
-
-        for accelerator in accelerators:
-            accelerator_arn = accelerator["AcceleratorArn"]
-            accelerator_name = accelerator["Name"]
-            status = accelerator["Status"]
-
-            print(f"📍 Found accelerator: {accelerator_name}")
-            print(f"   ARN: {accelerator_arn}")
-            print(f"   Status: {status}")
-
-            if status == "IN_PROGRESS":
-                print(f"⏳ Accelerator {accelerator_name} is already being modified. Skipping...")
-                continue
-
-            if status == "DEPLOYED":
-                print(f"🛑 Disabling accelerator: {accelerator_name}")
-                try:
-                    ga_client.update_accelerator(AcceleratorArn=accelerator_arn, Enabled=False)
-                    print(f"✅ Successfully disabled accelerator: {accelerator_name}")
-                except ClientError as e:
-                    print(f"❌ Error disabling accelerator {accelerator_name}: {e}")
-            else:
-                print(f"ℹ️  Accelerator {accelerator_name} is already disabled or in transition.")
-
-            print("-" * 40)
-
-    except ClientError as e:
-        print(f"❌ Error accessing Global Accelerator service: {e}")
+    disabled = 0
+    for accelerator in accelerators:
+        accelerator_arn = accelerator["AcceleratorArn"]
+        accelerator_name = accelerator.get("Name", "Unnamed")
+        print(f"📍 Found accelerator: {accelerator_name}")
+        print(f"   ARN: {accelerator_arn}")
+        if not ga_cleanup.disable_accelerator(accelerator_arn):
+            raise RuntimeError(f"Failed to disable Global Accelerator {accelerator_name}")
+        disabled += 1
+        print("-" * 40)
+    return disabled
 
 
 def _stop_instance(lightsail_client, instance):
@@ -111,10 +69,7 @@ def _stop_instance(lightsail_client, instance):
         try:
             lightsail_client.stop_instance(instanceName=instance_name)
             monthly_cost = estimate_instance_cost(bundle_id)
-            if monthly_cost:
-                print(f"✅ Stopped instance {instance_name} (est. ${monthly_cost:.2f}/month)")
-            else:
-                print(f"✅ Stopped instance {instance_name}")
+            print(f"✅ Stopped instance {instance_name} (est. ${monthly_cost:.2f}/month)")
         except ClientError as exc:
             print(f"❌ Error stopping instance {instance_name}: {exc}")
         else:
@@ -130,7 +85,7 @@ def _stop_database(lightsail_client, database):
     """Stop a single Lightsail database."""
     db_name = database["name"]
     db_state = database["state"]
-    bundle_id = database.get("relationalDatabaseBundleId")
+    bundle_id = database["relationalDatabaseBundleId"]
 
     print(f"🗄️  Found database: {db_name}")
     print(f"   State: {db_state}")
@@ -140,10 +95,7 @@ def _stop_database(lightsail_client, database):
         try:
             lightsail_client.stop_relational_database(relationalDatabaseName=db_name)
             monthly_cost = estimate_database_cost(bundle_id)
-            if monthly_cost:
-                print(f"✅ Stopped database {db_name} (est. ${monthly_cost:.2f}/month)")
-            else:
-                print(f"✅ Stopped database {db_name}")
+            print(f"✅ Stopped database {db_name} (est. ${monthly_cost:.2f}/month)")
         except ClientError as exc:
             print(f"❌ Error stopping database {db_name}: {exc}")
         else:
@@ -220,11 +172,16 @@ def main():
     print("2. Stop Lightsail instances and databases")
     print("=" * 80)
 
-    disable_global_accelerators()
+    try:
+        disabled_accelerators = disable_global_accelerators()
+    except RuntimeError as exc:  # Fail fast on Global Accelerator errors
+        print(f"❌ {exc}")
+        return 1
     instances, databases, savings = stop_lightsail_instances()
 
     print("\n" + "=" * 80)
     print("🎉 Cleanup completed!")
+    print(f"🛡️  Global Accelerators disabled: {disabled_accelerators}")
     print(f"📦 Lightsail instances stopped: {instances}")
     print(f"🗄️  Lightsail databases stopped: {databases}")
     print(f"💰 Estimated monthly savings from stopped resources: ${savings:.2f}")

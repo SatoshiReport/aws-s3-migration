@@ -2,6 +2,8 @@
 """Explore RDS user data and credentials."""
 
 
+import os
+
 try:
     import psycopg2  # type: ignore[import-not-found]
 
@@ -22,6 +24,29 @@ from cost_toolkit.scripts.rds.db_inspection_common import (
 
 # Constants
 MAX_SAMPLE_COLUMNS = 5
+DEFAULT_RESTORED_HOST = os.environ.get("RESTORED_DB_HOST", "restored-db.example.com")
+DEFAULT_RESTORED_PORT = int(os.environ.get("RESTORED_DB_PORT", "5432"))
+DEFAULT_RESTORED_USERNAME = os.environ.get("RESTORED_DB_USERNAME", "postgres")
+DEFAULT_DB_NAMES = (
+    os.environ.get("RESTORED_DB_NAMES", "postgres,template1").split(",")
+)
+DEFAULT_PASSWORDS = os.environ.get("RESTORED_DB_PASSWORDS", "postgres,password,admin").split(",")
+
+
+def _load_restored_db_settings():
+    """Load restored DB connection settings from environment variables."""
+    host = os.environ.get("RESTORED_DB_HOST", DEFAULT_RESTORED_HOST)
+    port = int(os.environ.get("RESTORED_DB_PORT", DEFAULT_RESTORED_PORT))
+    username = os.environ.get("RESTORED_DB_USERNAME", DEFAULT_RESTORED_USERNAME)
+    databases = [
+        db.strip() for db in os.environ.get("RESTORED_DB_NAMES", ",".join(DEFAULT_DB_NAMES)).split(",") if db.strip()
+    ]
+    passwords = [
+        pw.strip()
+        for pw in os.environ.get("RESTORED_DB_PASSWORDS", ",".join(DEFAULT_PASSWORDS)).split(",")
+        if pw.strip()
+    ]
+    return host, port, databases, username, passwords
 
 
 def _try_database_connection(host, port, possible_databases, username, possible_passwords):
@@ -53,20 +78,9 @@ def explore_restored_database():
     """Connect to the restored RDS instance and explore user data"""
     if not PSYCOPG2_AVAILABLE:
         print("❌ psycopg2 module not found. Install with: pip install psycopg2-binary")
-        return
+        return False
 
-    host = "simba-db-restored.cx5li9mlv1tt.us-east-1.rds.amazonaws.com"
-    port = 5432
-    username = "postgres"
-    possible_passwords = [
-        "wurpov-nepqIc-puwdy9",
-        "Pizza112!",
-        "TempPassword123!",
-        "postgres",
-        "password",
-        "admin",
-    ]
-    possible_databases = ["postgres", "simba", "simba_db", "template1"]
+    host, port, possible_databases, username, possible_passwords = _load_restored_db_settings()
 
     print("🔍 Connecting to restored RDS instance (contains your original data)...")
 
@@ -77,7 +91,7 @@ def explore_restored_database():
     if not conn:
         print("❌ Could not connect with any combination")
         print("Please check the database configuration")
-        return
+        return False
 
     cursor = conn.cursor()
 
@@ -98,12 +112,14 @@ def explore_restored_database():
     conn.close()
 
     print("\n✅ Database exploration completed!")
+    return True
 
 
 def main():
     """Main function."""
-    explore_restored_database()
+    success = explore_restored_database()
+    return 0 if success else 1
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

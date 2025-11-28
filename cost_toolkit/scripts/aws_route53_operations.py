@@ -34,7 +34,7 @@ def list_hosted_zones(
     )
 
     response = route53_client.list_hosted_zones()
-    return response.get("HostedZones", [])
+    return response["HostedZones"]
 
 
 def get_hosted_zone(
@@ -62,7 +62,7 @@ def get_hosted_zone(
     )
 
     response = route53_client.get_hosted_zone(Id=hosted_zone_id)
-    return response.get("HostedZone", {})
+    return response["HostedZone"]
 
 
 def list_resource_record_sets(
@@ -90,7 +90,7 @@ def list_resource_record_sets(
     )
 
     response = route53_client.list_resource_record_sets(HostedZoneId=hosted_zone_id)
-    return response.get("ResourceRecordSets", [])
+    return response["ResourceRecordSets"]
 
 
 def create_hosted_zone(
@@ -140,7 +140,7 @@ def create_hosted_zone(
         params["VPC"] = {"VPCRegion": vpc_region, "VPCId": vpc_id}
 
     response = route53_client.create_hosted_zone(**params)
-    return response.get("HostedZone", {})
+    return response["HostedZone"]
 
 
 def delete_hosted_zone(
@@ -211,7 +211,7 @@ def change_resource_record_sets(
         params["ChangeBatch"]["Comment"] = comment
 
     response = route53_client.change_resource_record_sets(**params)
-    return response.get("ChangeInfo", {})
+    return response["ChangeInfo"]
 
 
 def get_change(
@@ -239,7 +239,7 @@ def get_change(
     )
 
     response = route53_client.get_change(Id=change_id)
-    return response.get("ChangeInfo", {})
+    return response["ChangeInfo"]
 
 
 def list_domains(
@@ -260,11 +260,12 @@ def list_domains(
         ClientError: If API call fails
     """
     # Note: This requires route53domains client, not route53
-    # For now, returning empty list as this is a different service
-    # This can be expanded if needed
+    # For now, fail fast so the caller knows this path is not implemented.
     _ = (aws_access_key_id, aws_secret_access_key)  # Reserved for future use
-    return []
+    raise NotImplementedError(
+        "Route53Domains listing is not implemented; use boto3 route53domains client directly."
+    )
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point
-    pass
+    raise SystemExit("This module is library-only; use a CLI that imports it.")

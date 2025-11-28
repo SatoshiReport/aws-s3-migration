@@ -15,36 +15,53 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
+class S3ExportError(Exception):
+    """Raised when S3 export operations fail."""
+
+
+class AMIImportError(Exception):
+    """Raised when AMI import operations fail."""
+
+
+class SnapshotCreationError(Exception):
+    """Raised when snapshot creation from AMI fails."""
+
+
 def list_s3_exports(s3_client, bucket_name):
-    """List available snapshot exports in S3 bucket"""
+    """List available snapshot exports in S3 bucket.
+
+    Raises:
+        S3ExportError: If the S3 API call fails.
+    """
     try:
         response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix="ebs-snapshots/")
-
-        exports = []
-        if "Contents" in response:
-            for obj in response["Contents"]:
-                if obj["Key"].endswith(".vmdk") or obj["Key"].endswith(".raw"):
-                    exports.append(
-                        {
-                            "key": obj["Key"],
-                            "size": obj["Size"],
-                            "last_modified": obj["LastModified"],
-                        }
-                    )
-
     except ClientError as e:
-        print(f"❌ Error listing S3 exports: {e}")
-        return []
+        raise S3ExportError(f"Failed to list S3 exports in {bucket_name}: {e}") from e
+
+    exports = []
+    if "Contents" in response:
+        for obj in response["Contents"]:
+            if obj["Key"].endswith(".vmdk") or obj["Key"].endswith(".raw"):
+                exports.append(
+                    {
+                        "key": obj["Key"],
+                        "size": obj["Size"],
+                        "last_modified": obj["LastModified"],
+                    }
+                )
 
     return exports
 
 
 def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
-    """Import AMI from S3 export"""
-    try:
-        print(f"   🔄 Importing AMI from s3://{s3_bucket}/{s3_key}...")
+    """Import AMI from S3 export.
 
-        # Start import task
+    Raises:
+        AMIImportError: If the import fails.
+    """
+    print(f"   🔄 Importing AMI from s3://{s3_bucket}/{s3_key}...")
+
+    try:
         response = ec2_client.import_image(
             Description=description,
             DiskContainers=[
@@ -55,99 +72,94 @@ def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
                 }
             ],
         )
-
-        import_task_id = response["ImportTaskId"]
-        print(f"   ✅ Started import task: {import_task_id}")
-
-        # Monitor import progress
-        print("   ⏳ Monitoring import progress...")
-        while True:
-            try:
-                status_response = ec2_client.describe_import_image_tasks(
-                    ImportTaskIds=[import_task_id]
-                )
-
-                if status_response["ImportImageTasks"]:
-                    task = status_response["ImportImageTasks"][0]
-                    status = task["Status"]
-                    progress = task.get("Progress", "N/A")
-
-                    print(f"   📊 Import status: {status}, Progress: {progress}")
-
-                    if status == "completed":
-                        ami_id = task["ImageId"]
-                        print(f"   ✅ Import completed! AMI ID: {ami_id}")
-                        return ami_id
-                    if status == "deleted" or "failed" in status.lower():
-                        error_msg = task.get("StatusMessage", "Unknown error")
-                        print(f"   ❌ Import failed: {error_msg}")
-                        return None
-
-                    # Wait before checking again
-                    time.sleep(60)  # Check every minute
-                else:
-                    print("   ❌ Import task not found")
-                    return None
-
-            except ClientError as e:
-                print(f"   ❌ Error checking import status: {e}")
-                time.sleep(60)
-
     except ClientError as e:
-        print(f"   ❌ Error importing from S3: {e}")
-        return None
+        raise AMIImportError(f"Failed to start AMI import from s3://{s3_bucket}/{s3_key}: {e}") from e
+
+    import_task_id = response["ImportTaskId"]
+    print(f"   ✅ Started import task: {import_task_id}")
+
+    # Monitor import progress
+    print("   ⏳ Monitoring import progress...")
+    while True:
+        try:
+            status_response = ec2_client.describe_import_image_tasks(
+                ImportTaskIds=[import_task_id]
+            )
+        except ClientError as e:
+            raise AMIImportError(f"Failed to check import status for task {import_task_id}: {e}") from e
+
+        if not status_response["ImportImageTasks"]:
+            raise AMIImportError(f"Import task {import_task_id} not found")
+
+        task = status_response["ImportImageTasks"][0]
+        status = task["Status"]
+        progress = task.get("Progress", "N/A")
+
+        print(f"   📊 Import status: {status}, Progress: {progress}")
+
+        if status == "completed":
+            ami_id = task["ImageId"]
+            print(f"   ✅ Import completed! AMI ID: {ami_id}")
+            return ami_id
+
+        if status == "deleted" or "failed" in status.lower():
+            error_msg = task.get("StatusMessage", "Unknown error")
+            raise AMIImportError(f"Import task {import_task_id} failed: {error_msg}")
+
+        # Wait before checking again
+        time.sleep(60)  # Check every minute
 
 
 def create_snapshot_from_ami(ec2_client, ami_id, description):
-    """Create EBS snapshot from imported AMI"""
+    """Create EBS snapshot from imported AMI.
+
+    Raises:
+        SnapshotCreationError: If snapshot creation fails.
+    """
+    print(f"   🔄 Creating snapshot from AMI {ami_id}...")
+
     try:
-        print(f"   🔄 Creating snapshot from AMI {ami_id}...")
-
-        # Get AMI details to find the root snapshot
         response = ec2_client.describe_images(ImageIds=[ami_id])
-        if not response["Images"]:
-            print(f"   ❌ AMI {ami_id} not found")
-            return None
-
-        ami = response["Images"][0]
-
-        # Find root device mapping
-        root_device_name = ami.get("RootDeviceName", "/dev/sda1")
-        root_snapshot_id = None
-
-        for mapping in ami.get("BlockDeviceMappings", []):
-            if mapping["DeviceName"] == root_device_name and "Ebs" in mapping:
-                root_snapshot_id = mapping["Ebs"]["SnapshotId"]
-                break
-
-        if root_snapshot_id:
-            print(f"   ✅ Found root snapshot: {root_snapshot_id}")
-
-            # Add tags to the snapshot for identification
-            try:
-                ec2_client.create_tags(
-                    Resources=[root_snapshot_id],
-                    Tags=[
-                        {
-                            "Key": "Name",
-                            "Value": f'Restored-{datetime.now().strftime("%Y%m%d-%H%M%S")}',
-                        },
-                        {"Key": "Source", "Value": "S3-Import"},
-                        {"Key": "OriginalDescription", "Value": description},
-                    ],
-                )
-                print(f"   ✅ Tagged snapshot {root_snapshot_id}")
-            except ClientError as e:
-                print(f"   ⚠️  Warning: Could not tag snapshot: {e}")
-
-            return root_snapshot_id
-
     except ClientError as e:
-        print(f"   ❌ Error creating snapshot from AMI: {e}")
-        return None
+        raise SnapshotCreationError(f"Failed to describe AMI {ami_id}: {e}") from e
 
-    print("   ❌ No root snapshot found in AMI")
-    return None
+    if not response["Images"]:
+        raise SnapshotCreationError(f"AMI {ami_id} not found")
+
+    ami = response["Images"][0]
+
+    # Find root device mapping
+    root_device_name = ami["RootDeviceName"]
+    root_snapshot_id = None
+
+    for mapping in ami["BlockDeviceMappings"]:
+        if mapping["DeviceName"] == root_device_name and "Ebs" in mapping:
+            root_snapshot_id = mapping["Ebs"]["SnapshotId"]
+            break
+
+    if not root_snapshot_id:
+        raise SnapshotCreationError(f"No root snapshot found in AMI {ami_id}")
+
+    print(f"   ✅ Found root snapshot: {root_snapshot_id}")
+
+    # Add tags to the snapshot for identification
+    try:
+        ec2_client.create_tags(
+            Resources=[root_snapshot_id],
+            Tags=[
+                {
+                    "Key": "Name",
+                    "Value": f'Restored-{datetime.now().strftime("%Y%m%d-%H%M%S")}',
+                },
+                {"Key": "Source", "Value": "S3-Import"},
+                {"Key": "OriginalDescription", "Value": description},
+            ],
+        )
+        print(f"   ✅ Tagged snapshot {root_snapshot_id}")
+    except ClientError as e:
+        print(f"   ⚠️  Warning: Could not tag snapshot: {e}")
+
+    return root_snapshot_id
 
 
 def _get_user_inputs():
@@ -196,20 +208,21 @@ def _select_exports(exports):
 
 
 def _process_export_restore(ec2_client, bucket_name, export):
-    """Process restore of a single export."""
+    """Process restore of a single export.
+
+    Returns:
+        dict with s3_key, ami_id, snapshot_id on success, None on failure
+    """
     s3_key = export["key"]
     print(f"🔍 Processing {s3_key}...")
 
     description = f"Restored from S3: {s3_key}"
 
-    ami_id = import_ami_from_s3(ec2_client, bucket_name, s3_key, description)
-    if not ami_id:
-        print("   ❌ Failed to import AMI from S3")
-        return None
-
-    snapshot_id = create_snapshot_from_ami(ec2_client, ami_id, description)
-    if not snapshot_id:
-        print("   ❌ Failed to create snapshot from AMI")
+    try:
+        ami_id = import_ami_from_s3(ec2_client, bucket_name, s3_key, description)
+        snapshot_id = create_snapshot_from_ami(ec2_client, ami_id, description)
+    except (AMIImportError, SnapshotCreationError) as e:
+        print(f"   ❌ Restore failed: {e}")
         return None
 
     print(f"   ✅ Successfully restored to snapshot: {snapshot_id}")
@@ -337,7 +350,7 @@ def main():
     """Main function."""
     try:
         restore_snapshots_from_s3()
-    except (ClientError, ValueError, KeyboardInterrupt) as e:
+    except (ClientError, ValueError, KeyboardInterrupt, S3ExportError, AMIImportError, SnapshotCreationError) as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
 

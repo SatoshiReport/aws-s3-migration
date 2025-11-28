@@ -11,7 +11,8 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.aws_client_factory import create_ec2_client
 from cost_toolkit.common.aws_common import find_resource_region as find_resource_region_canonical
 from cost_toolkit.common.aws_common import (
-    get_default_regions,
+    get_all_aws_regions,
+    get_common_regions_extended,
     get_instance_name,
 )
 
@@ -23,18 +24,10 @@ def get_all_regions(
     """
     Get list of all available AWS regions from EC2 API.
 
+    Raises:
+        ClientError: If the AWS API call fails.
     """
-    try:
-        ec2_client = create_ec2_client(
-            region="us-east-1",
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
-        response = ec2_client.describe_regions()
-        return [region["RegionName"] for region in response.get("Regions", [])]
-    except ClientError as e:
-        print(f"Error getting regions: {e}")
-        return get_default_regions()
+    return get_all_aws_regions(aws_access_key_id, aws_secret_access_key)
 
 
 def find_resource_region(
@@ -52,10 +45,7 @@ def find_resource_region(
 
 def get_common_regions() -> list[str]:
     """Get list of commonly used AWS regions for cost optimization."""
-    # Extended version with eu-west-3 and ap-northeast-1
-    regions = get_default_regions()
-    regions.extend(["eu-west-3", "ap-northeast-1"])
-    return regions
+    return get_common_regions_extended()
 
 
 __all__ = [
@@ -92,10 +82,11 @@ def delete_snapshot(
     verbose: bool = False,
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
+    ec2_client=None,
 ) -> bool:
     """Delete an EBS snapshot."""
     try:
-        ec2_client = create_ec2_client(
+        client = ec2_client or create_ec2_client(
             region=region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
@@ -103,10 +94,10 @@ def delete_snapshot(
 
         if verbose:
             # Get snapshot info first
-            response = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
+            response = client.describe_snapshots(SnapshotIds=[snapshot_id])
             snapshot = response["Snapshots"][0]
-            size_gb = snapshot.get("VolumeSize", 0)
-            description = snapshot.get("Description", "No description")
+            size_gb = snapshot["VolumeSize"]
+            description = snapshot.get("Description", "No description")  # Description is optional
             start_time = snapshot["StartTime"]
 
             print(f"🔍 Snapshot to delete: {snapshot_id}")
@@ -115,9 +106,13 @@ def delete_snapshot(
             print(f"   Description: {description}")
 
         print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
-        ec2_client.delete_snapshot(SnapshotId=snapshot_id)
+        client.delete_snapshot(SnapshotId=snapshot_id)
         print(f"   ✅ Successfully deleted {snapshot_id}")
     except ClientError as e:
+        error_code = e.response["Error"].get("Code") if hasattr(e, "response") else None
+        if error_code == "InvalidSnapshot.NotFound":
+            print(f"   ℹ️  Snapshot {snapshot_id} not found in {region}")
+            return False
         print(f"   ❌ Error deleting {snapshot_id}: {e}")
         return False
     return True
@@ -226,7 +221,7 @@ def describe_addresses(
     )
 
     response = ec2_client.describe_addresses()
-    return response.get("Addresses", [])
+    return response["Addresses"]
 
 
 def describe_network_interfaces(
@@ -261,7 +256,7 @@ def describe_network_interfaces(
         params["Filters"] = filters
 
     response = ec2_client.describe_network_interfaces(**params)
-    return response.get("NetworkInterfaces", [])
+    return response["NetworkInterfaces"]
 
 
 def describe_security_groups(
@@ -296,7 +291,7 @@ def describe_security_groups(
         params["GroupIds"] = group_ids
 
     response = ec2_client.describe_security_groups(**params)
-    return response.get("SecurityGroups", [])
+    return response["SecurityGroups"]
 
 
 def delete_security_group(
@@ -304,6 +299,8 @@ def delete_security_group(
     group_id: str,
     aws_access_key_id: Optional[str] = None,
     aws_secret_access_key: Optional[str] = None,
+    group_name: Optional[str] = None,
+    ec2_client=None,
 ) -> bool:
     """
     Delete a security group.
@@ -313,19 +310,23 @@ def delete_security_group(
         group_id: Security group ID
         aws_access_key_id: Optional AWS access key
         aws_secret_access_key: Optional AWS secret key
+        group_name: Optional security group name for clearer logging
+        ec2_client: Optional pre-configured EC2 client
 
     Returns:
         bool: True if successful, False otherwise
     """
     try:
-        ec2_client = create_ec2_client(
+        client = ec2_client or create_ec2_client(
             region=region,
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        ec2_client.delete_security_group(GroupId=group_id)
-        print(f"   ✅ Deleted security group: {group_id}")
+        target_label = f"{group_id} ({group_name})" if group_name else group_id
+        print(f"   🗑️  Deleting security group: {target_label}")
+        client.delete_security_group(GroupId=group_id)
+        print(f"   ✅ Deleted security group: {target_label}")
 
     except ClientError as e:
         print(f"   ❌ Failed to delete security group {group_id}: {str(e)}")
@@ -369,7 +370,7 @@ def describe_snapshots(
         params["SnapshotIds"] = snapshot_ids
 
     response = ec2_client.describe_snapshots(**params)
-    return response.get("Snapshots", [])
+    return response["Snapshots"]
 
 
 def describe_volumes(
@@ -404,7 +405,7 @@ def describe_volumes(
         params["Filters"] = filters
 
     response = ec2_client.describe_volumes(**params)
-    return response.get("Volumes", [])
+    return response["Volumes"]
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point

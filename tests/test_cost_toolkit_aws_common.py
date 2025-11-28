@@ -51,30 +51,24 @@ def test_create_s3_client(mock_boto_client):
     )
 
 
-@patch("boto3.client")
-def test_create_ec2_and_s3_clients(mock_boto_client):
+@patch("cost_toolkit.common.aws_common.create_s3_client")
+@patch("cost_toolkit.common.aws_common.create_ec2_client")
+def test_create_ec2_and_s3_clients(mock_create_ec2, mock_create_s3):
     """Test create_ec2_and_s3_clients creates both clients."""
     mock_ec2_client = MagicMock()
     mock_s3_client = MagicMock()
-    # Return different clients for ec2 and s3
-    mock_boto_client.side_effect = [mock_ec2_client, mock_s3_client]
+    mock_create_ec2.return_value = mock_ec2_client
+    mock_create_s3.return_value = mock_s3_client
 
     ec2, s3 = create_ec2_and_s3_clients("us-west-2", "test_key", "test_secret")
 
     assert_equal(ec2, mock_ec2_client)
     assert_equal(s3, mock_s3_client)
-    assert mock_boto_client.call_count == 2
-    mock_boto_client.assert_any_call(
-        "ec2",
-        region_name="us-west-2",
-        aws_access_key_id="test_key",
-        aws_secret_access_key="test_secret",
+    mock_create_ec2.assert_called_once_with(
+        region="us-west-2", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
     )
-    mock_boto_client.assert_any_call(
-        "s3",
-        region_name="us-west-2",
-        aws_access_key_id="test_key",
-        aws_secret_access_key="test_secret",
+    mock_create_s3.assert_called_once_with(
+        region="us-west-2", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
     )
 
 

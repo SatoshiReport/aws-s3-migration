@@ -5,9 +5,11 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import botocore.exceptions
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.billing.billing_report.service_checks_extended import (
+    ServiceCheckError,
     _check_kms_key_status,
     _format_kms_status,
     check_kms_status,
@@ -83,13 +85,12 @@ class TestCheckRoute53Status:
             assert "RESOLVED" in message
 
     def test_route53_client_error(self):
-        """Test Route53 status with ClientError."""
+        """Test Route53 status raises ClientError (fail-fast)."""
         with patch("boto3.client") as mock_client:
             error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "list_hosted_zones")
             mock_client.return_value.list_hosted_zones.side_effect = error
-            is_resolved, message = check_route53_status()
-            assert is_resolved is None
-            assert "ERROR" in message
+            with pytest.raises(ClientError):
+                check_route53_status()
 
     def test_route53_zone_name_matching(self):
         """Test zone name matching with and without trailing dots."""
@@ -240,13 +241,14 @@ class TestCheckKMSStatus:
             assert "ACTIVE" in message
 
     def test_kms_client_error(self):
-        """Test KMS status with general ClientError."""
+        """Test KMS status raises ServiceCheckError when client creation fails in all regions."""
         with patch("boto3.client") as mock_client:
             error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
             mock_client.side_effect = error
-            is_resolved, message = check_kms_status()
-            assert is_resolved is False
-            assert "ACTIVE" in message
+            # ClientError during client creation is caught per-region, then aggregated
+            with pytest.raises(ServiceCheckError) as exc_info:
+                check_kms_status()
+            assert "Failed to check KMS in regions" in str(exc_info.value)
 
     def test_kms_mixed_states(self):
         """Test KMS with mixed key states across regions."""

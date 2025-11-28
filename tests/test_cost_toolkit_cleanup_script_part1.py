@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from botocore.exceptions import ClientError
+
+from cost_toolkit.common.lightsail_utils import UnknownBundleError
 
 from cost_toolkit.scripts.cleanup.aws_cleanup_script import (
     _stop_instance,
@@ -39,12 +43,14 @@ class TestEstimateInstanceCost:
         assert estimate_instance_cost("2xlarge_2_0") == 160.0
 
     def test_estimate_cost_unknown_bundle(self):
-        """Test cost estimation for unknown bundle."""
-        assert estimate_instance_cost("unknown_bundle") == 0.0
+        """Unknown bundles should raise to avoid silent underestimation."""
+        with pytest.raises(UnknownBundleError):
+            estimate_instance_cost("unknown_bundle")
 
     def test_estimate_cost_none(self):
-        """Test cost estimation with None."""
-        assert estimate_instance_cost(None) == 0.0
+        """None bundle should also raise to force explicit handling."""
+        with pytest.raises(UnknownBundleError):
+            estimate_instance_cost(None)  # type: ignore[arg-type]
 
 
 class TestEstimateDatabaseCost:
@@ -58,12 +64,14 @@ class TestEstimateDatabaseCost:
         assert estimate_database_cost("large_1_0") == 115.0
 
     def test_estimate_cost_unknown_bundle(self):
-        """Test cost estimation for unknown database bundle."""
-        assert estimate_database_cost("unknown_db_bundle") == 0.0
+        """Unknown bundles should raise to avoid silent underestimation."""
+        with pytest.raises(UnknownBundleError):
+            estimate_database_cost("unknown_db_bundle")
 
     def test_estimate_cost_none(self):
-        """Test cost estimation with None."""
-        assert estimate_database_cost(None) == 0.0
+        """None bundle should also raise to force explicit handling."""
+        with pytest.raises(UnknownBundleError):
+            estimate_database_cost(None)  # type: ignore[arg-type]
 
 
 def test_disable_global_accelerators_none_found(capsys):

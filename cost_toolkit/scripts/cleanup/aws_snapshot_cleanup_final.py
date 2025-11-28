@@ -6,7 +6,7 @@ This script targets the 7 specific snapshots that should now be deletable.
 """
 
 import sys
-import time
+from threading import Event
 
 from botocore.exceptions import ClientError
 
@@ -14,24 +14,16 @@ from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.cli_utils import confirm_action
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
+
+_WAIT_EVENT = Event()
 
 
 def delete_snapshot(_ec2_client, snapshot_id, region):
     """
-    Delete a specific snapshot.
+    Delete a specific snapshot via canonical helper.
     """
-    print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
-    try:
-        _ec2_client.delete_snapshot(SnapshotId=snapshot_id)
-        print(f"   ✅ Successfully deleted {snapshot_id}")
-    except ClientError as e:
-        error_code = e.response["Error"]["Code"]
-        if error_code == "InvalidSnapshot.NotFound":
-            print(f"   ℹ️  Snapshot {snapshot_id} not found")
-        else:
-            print(f"   ❌ Error deleting {snapshot_id}: {e}")
-        return False
-    return True
+    return delete_snapshot_canonical(snapshot_id, region, ec2_client=_ec2_client)
 
 
 def get_snapshots_to_delete():
@@ -143,7 +135,7 @@ def process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secre
             failed_deletions += 1
 
         print()
-        time.sleep(1)
+        _WAIT_EVENT.wait(1)
 
     return successful_deletions, failed_deletions, total_savings
 

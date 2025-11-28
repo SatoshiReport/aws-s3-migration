@@ -4,10 +4,12 @@
 import datetime
 import socket
 import ssl
-import subprocess
 import sys
+from dataclasses import dataclass
+from typing import Mapping
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
-import requests
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.setup.exceptions import CertificateInfoError
@@ -23,6 +25,41 @@ else:
 # HTTP status codes
 HTTP_STATUS_MOVED_PERMANENTLY = 301
 HTTP_STATUS_OK = 200
+
+
+@dataclass
+class HttpResult:
+    """Minimal HTTP response representation."""
+
+    status_code: int
+    headers: Mapping[str, str]
+
+
+class HttpRequestError(RuntimeError):
+    """Raised when HTTP retrieval fails."""
+
+
+class _NoRedirectHandler(urllib_request.HTTPRedirectHandler):
+    """Prevent automatic redirect following so we can inspect status codes."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: D401
+        return None
+
+
+def _http_get(url: str, *, allow_redirects: bool, timeout: int) -> HttpResult:
+    """Perform an HTTP GET with optional redirect following."""
+    handlers = [] if allow_redirects else [_NoRedirectHandler]
+    opener = urllib_request.build_opener(*(handler() for handler in handlers))
+    try:
+        response = opener.open(urllib_request.Request(url, method="GET"), timeout=timeout)
+        status = getattr(response, "status", HTTP_STATUS_OK)
+        headers = dict(response.headers.items()) if response.headers else {}
+        return HttpResult(status_code=status, headers=headers)
+    except urllib_error.HTTPError as exc:
+        headers = dict(exc.headers.items()) if exc.headers else {}
+        return HttpResult(status_code=exc.code, headers=headers)
+    except urllib_error.URLError as exc:
+        raise HttpRequestError(str(exc)) from exc
 
 # Certificate tuple structure indices
 CERT_TUPLE_MIN_LENGTH = 2
@@ -59,7 +96,7 @@ def verify_http_connectivity(domain):
     try:
         # Test HTTP (should redirect to HTTPS)
         http_url = f"http://{domain}"
-        response = requests.get(http_url, allow_redirects=False, timeout=10)
+        response = _http_get(http_url, allow_redirects=False, timeout=10)
 
         if (
             response.status_code == HTTP_STATUS_MOVED_PERMANENTLY
@@ -72,7 +109,7 @@ def verify_http_connectivity(domain):
         else:
             print(f"  ⚠️  HTTP response: {response.status_code}")
 
-    except requests.RequestException as e:
+    except HttpRequestError as e:
         print(f"  ❌ HTTP test failed: {e}")
         return False
 
@@ -86,7 +123,7 @@ def verify_https_connectivity(domain):
     try:
         # Test HTTPS connectivity
         https_url = f"https://{domain}"
-        response = requests.get(https_url, timeout=10)
+        response = _http_get(https_url, allow_redirects=True, timeout=10)
 
         if response.status_code == HTTP_STATUS_OK:
             print(f"  ✅ HTTPS connection successful ({HTTP_STATUS_OK})")
@@ -99,7 +136,7 @@ def verify_https_connectivity(domain):
 
             return True
 
-    except requests.RequestException as e:
+    except HttpRequestError as e:
         print(f"  ❌ HTTPS test failed: {e}")
         return False
 
@@ -176,20 +213,34 @@ def verify_canva_verification(domain):
     """Check if Canva domain verification is in place"""
     print(f"\n🎨 Checking Canva domain verification for {domain}")
 
-    try:
-        # Check for Canva verification TXT record
-        result = subprocess.run(
-            ["dig", "+short", f"_canva-domain-verify.{domain}", "TXT"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
+    if not BOTO3_AVAILABLE:
+        print("  ❌ boto3 not available, cannot verify Canva TXT record")
+        return False
 
-        if result.returncode == 0 and result.stdout.strip():
-            txt_record = result.stdout.strip().replace('"', "")
-            print(f"  ✅ Canva verification TXT record found: {txt_record}")
-            return True
+    try:
+        assert boto3 is not None
+        route53 = boto3.client("route53")
+        hosted_zone = _find_hosted_zone_for_domain(route53, domain)
+        if not hosted_zone:
+            print(f"  ❌ No Route53 hosted zone found for {domain}")
+            return False
+
+        txt_records = route53.list_resource_record_sets(
+            HostedZoneId=hosted_zone["Id"],
+            StartRecordName=f"_canva-domain-verify.{domain}.",
+            StartRecordType="TXT",
+            MaxItems="5",
+        ).get("ResourceRecordSets", [])
+
+        for record in txt_records:
+            if record.get("Type") != "TXT":
+                continue
+            if not record.get("Name", "").startswith(f"_canva-domain-verify.{domain}."):
+                continue
+            values = [rr.get("Value", "").replace('"', "") for rr in record.get("ResourceRecords", [])]
+            if values:
+                print(f"  ✅ Canva verification TXT record found: {', '.join(values)}")
+                return True
 
     except ClientError as e:
         print(f"  ❌ Canva verification check failed: {e}")
@@ -229,8 +280,8 @@ def check_route53_configuration(domain):
     print(f"\n☁️  Checking Route53 configuration for {domain}")
 
     if not BOTO3_AVAILABLE:
-        print("  ⚠️  boto3 not available, skipping Route53 check")
-        return True
+        print("  ❌ boto3 not available, cannot verify Route53 configuration")
+        return False
 
     try:
         assert boto3 is not None

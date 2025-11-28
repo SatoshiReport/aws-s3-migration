@@ -1,6 +1,7 @@
 """Helper functions for fixed export operations"""
 
 import time
+from threading import Event
 from dataclasses import dataclass
 
 from botocore.exceptions import ClientError
@@ -16,6 +17,8 @@ from .constants import (
 )
 from .export_ops import validate_export_task_exists
 from .monitoring import check_s3_file_completion
+
+_WAIT_EVENT = Event()
 
 
 @dataclass
@@ -138,7 +141,7 @@ def monitor_export_with_recovery(
             )
         except ClientError as e:
             _handle_api_errors(state, e)
-            time.sleep(constants.EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
+            _WAIT_EVENT.wait(constants.EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
             continue
 
         _print_export_status(
@@ -162,7 +165,7 @@ def monitor_export_with_recovery(
                     s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours
                 )
 
-        time.sleep(EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
+        _WAIT_EVENT.wait(EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
 
 
 def export_ami_to_s3_with_recovery(

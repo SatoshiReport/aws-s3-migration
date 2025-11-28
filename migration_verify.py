@@ -7,18 +7,11 @@ in smaller, focused modules.
 
 from __future__ import annotations
 
-try:  # Prefer package-relative imports for tooling like pylint
-    from . import migration_verify_common as _common
-    from .migration_verify_bucket import BucketVerifier
-    from .migration_verify_checksums import FileChecksumVerifier, VerificationProgressTracker
-    from .migration_verify_delete import BucketDeleter
-    from .migration_verify_inventory import FileInventoryChecker
-except ImportError:  # pragma: no cover - allow running as standalone script
-    import migration_verify_common as _common
-    from migration_verify_bucket import BucketVerifier
-    from migration_verify_checksums import FileChecksumVerifier, VerificationProgressTracker
-    from migration_verify_delete import BucketDeleter
-    from migration_verify_inventory import FileInventoryChecker
+import migration_verify_common as _common
+from migration_verify_bucket import BucketVerifier
+from migration_verify_checksums import FileChecksumVerifier, VerificationProgressTracker
+from migration_verify_delete import BucketDeleter
+from migration_verify_inventory import FileInventoryChecker
 
 MAX_ERROR_DISPLAY = _common.MAX_ERROR_DISPLAY
 IGNORED_FILE_PATTERNS = list(_common.IGNORED_FILE_PATTERNS)

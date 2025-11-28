@@ -430,12 +430,8 @@ def make_candidate():
     """Factory for creating cleanup_temp_artifacts Candidate instances for testing."""
     from pathlib import Path  # pylint: disable=import-outside-toplevel
 
-    from cleanup_temp_artifacts.categories import (  # pylint: disable=import-outside-toplevel
-        Category,
-    )
-    from cleanup_temp_artifacts.scanner import (  # pylint: disable=import-outside-toplevel
-        Candidate,
-    )
+    from cleanup_temp_artifacts.categories import Category  # pylint: disable=import-outside-toplevel
+    from cleanup_temp_artifacts.core_scanner import Candidate  # pylint: disable=import-outside-toplevel
 
     def _make_candidate(
         path: str | Path,

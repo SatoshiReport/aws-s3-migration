@@ -13,6 +13,7 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_GROUPS
+from cost_toolkit.scripts.aws_ec2_operations import delete_security_group as delete_security_group_canonical
 
 
 def remove_security_group_rule(ec2_client, group_id, rule_type, rule_data):
@@ -86,14 +87,12 @@ def delete_security_group(ec2_client, group_id, group_name):
     """
     Delete a security group.
     """
-    print(f"   🗑️  Deleting security group: {group_id} ({group_name})")
-    try:
-        ec2_client.delete_security_group(GroupId=group_id)
-        print(f"   ✅ Successfully deleted {group_id}")
-    except ClientError as e:
-        print(f"   ❌ Error deleting {group_id}: {e}")
-        return False
-    return True
+    return delete_security_group_canonical(
+        region=ec2_client.meta.region_name,
+        group_id=group_id,
+        group_name=group_name,
+        ec2_client=ec2_client,
+    )
 
 
 def _get_circular_security_groups():

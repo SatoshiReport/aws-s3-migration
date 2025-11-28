@@ -11,7 +11,6 @@ from cost_toolkit.scripts.optimization.snapshot_export_common import (
     _register_ami,
     create_ami_from_snapshot,
     create_s3_bucket_if_not_exists,
-    extract_s3_key_from_export_task,
     print_export_status,
     setup_s3_bucket_versioning,
     start_ami_export_task,
@@ -278,51 +277,6 @@ def test_start_ami_export_task_with_snapshot_id(_mock_print):
     assert task_id == "export-12345"
     call_kwargs = mock_ec2.export_image.call_args[1]
     assert "snap-12345678" in call_kwargs["Description"]
-
-
-# Tests for extract_s3_key_from_export_task
-def test_extract_s3_key_from_export_task_with_s3_key():
-    """Test extracting S3 key when S3Key is present."""
-    task = {
-        "S3ExportLocation": {
-            "S3Key": "custom/path/export.vmdk",
-        }
-    }
-
-    s3_key = extract_s3_key_from_export_task(task, "export-12345", "ami-12345678")
-
-    assert s3_key == "custom/path/export.vmdk"
-
-
-def test_extract_s3_key_from_export_task_with_s3_prefix():
-    """Test extracting S3 key when only S3Prefix is present."""
-    task = {
-        "S3ExportLocation": {
-            "S3Prefix": "exports/",
-        }
-    }
-
-    s3_key = extract_s3_key_from_export_task(task, "export-12345", "ami-12345678")
-
-    assert s3_key == "exports/export-12345.vmdk"
-
-
-def test_extract_s3_key_from_export_task_no_location():
-    """Test extracting S3 key when no location info is present."""
-    task = {}
-
-    s3_key = extract_s3_key_from_export_task(task, "export-12345", "ami-12345678")
-
-    assert s3_key == "ebs-snapshots/ami-12345678/export-12345.vmdk"
-
-
-def test_extract_s3_key_from_export_task_empty_location():
-    """Test extracting S3 key when S3ExportLocation is empty."""
-    task = {"S3ExportLocation": {}}
-
-    s3_key = extract_s3_key_from_export_task(task, "export-12345", "ami-12345678")
-
-    assert s3_key == "ebs-snapshots/ami-12345678/export-12345.vmdk"
 
 
 # Tests for print_export_status

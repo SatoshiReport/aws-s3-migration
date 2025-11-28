@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
@@ -101,7 +102,8 @@ class TestModifyNetworkInterface:
             {"Error": {"Code": "InvalidNetworkInterfaceID"}},
             "modify_network_interface_attribute",
         )
-        modify_network_interface(mock_ec2, "i-123", "eni-invalid")
+        with pytest.raises(ClientError):
+            modify_network_interface(mock_ec2, "i-123", "eni-invalid")
         captured = capsys.readouterr()
         assert "Network interface modification" in captured.out
 
@@ -266,7 +268,7 @@ class TestMain:
             "cost_toolkit.scripts.cleanup.aws_remove_public_ip.remove_public_ip_from_instance",
             return_value=True,
         ):
-            main()
+            main(["--use-default-target"])
         captured = capsys.readouterr()
         assert "Successfully removed public IP" in captured.out
         assert "Cost savings: $3.60/month" in captured.out
@@ -277,7 +279,7 @@ class TestMain:
             "cost_toolkit.scripts.cleanup.aws_remove_public_ip.remove_public_ip_from_instance",
             return_value=False,
         ):
-            main()
+            main(["--use-default-target"])
         captured = capsys.readouterr()
         assert "Failed to remove public IP" in captured.out
         assert "Manual steps may be required" in captured.out
@@ -288,7 +290,7 @@ class TestMain:
             "cost_toolkit.scripts.cleanup.aws_remove_public_ip.remove_public_ip_from_instance",
             return_value=True,
         ):
-            main()
+            main(["--use-default-target"])
         captured = capsys.readouterr()
         assert "WARNING" in captured.out
         assert "downtime" in captured.out

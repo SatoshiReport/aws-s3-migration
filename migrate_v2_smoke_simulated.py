@@ -234,11 +234,7 @@ def _build_object_entries(simulated_bucket_path: Path) -> list[dict[str, Any]]:
             continue
         stat_info = file_path.stat()
         file_bytes = file_path.read_bytes()
-        try:
-            etag = hashlib.md5(file_bytes, usedforsecurity=False).hexdigest()
-        except TypeError:  # pragma: no cover - fallback for Python<3.9
-            # Legacy Python lacks usedforsecurity flag; MD5 still matches simulated S3 ETags.
-            etag = hashlib.md5(file_bytes).hexdigest()  # nosec
+        etag = hashlib.md5(file_bytes, usedforsecurity=False).hexdigest()
         object_entries.append(
             {
                 "Key": file_path.relative_to(simulated_bucket_path).as_posix(),

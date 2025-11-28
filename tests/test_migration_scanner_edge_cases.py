@@ -176,7 +176,7 @@ def test_wait_for_restores_prints_restored_files(waiter, state_mock, capsys):
         [],
     ]
 
-    with mock.patch("migration_scanner.time.sleep"):
+    with mock.patch.object(waiter, "_wait_with_interrupt"):
         waiter.wait_for_restores()
 
     output = capsys.readouterr().out

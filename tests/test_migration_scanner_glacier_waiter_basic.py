@@ -29,8 +29,8 @@ class TestGlacierWaiterBasicWaiting:
         assert "PHASE 3 COMPLETE" in output
         state_mock.set_current_phase.assert_called_once_with(Phase.SYNCING)
 
-    def test_wait_for_restores_with_sleep(self, waiter, state_mock):
-        """Test that wait_for_restores sleeps between checks"""
+    def test_wait_for_restores_with_wait_interval(self, waiter, state_mock):
+        """Test that wait_for_restores waits between checks"""
         # Mock _check_restore_status to avoid side_effect issues
         waiter.check_restore_status = mock.Mock(return_value=False)
 
@@ -39,11 +39,11 @@ class TestGlacierWaiterBasicWaiting:
             [],  # Next check shows no files
         ]
 
-        with mock.patch("migration_scanner.time.sleep") as mock_sleep:
+        with mock.patch.object(waiter, "_wait_with_interrupt") as mock_wait:
             waiter.wait_for_restores()
 
-            # Should sleep 300 seconds (5 minutes) after first check
-            mock_sleep.assert_called_with(300)
+            # Should wait 300 seconds (5 minutes) after first check
+            mock_wait.assert_called_with(300)
 
 
 class TestGlacierWaiterInterruption:
@@ -53,8 +53,7 @@ class TestGlacierWaiterInterruption:
         """Test that wait_for_restores stops on interrupt"""
         # When interrupted flag is set before entering, loop exits immediately
         waiter.interrupted = True
-        with mock.patch("migration_scanner.time.sleep"):
-            waiter.wait_for_restores()
+        waiter.wait_for_restores()
 
         # Should still transition to SYNCING phase after loop exits
         state_mock.set_current_phase.assert_called_once_with(Phase.SYNCING)
@@ -90,8 +89,7 @@ def test_wait_for_restores_loops_until_complete(waiter, state_mock):
         [],  # All done
     ]
 
-    with mock.patch("migration_scanner.time.sleep"):
-        waiter.wait_for_restores()
+    waiter.wait_for_restores()
 
     # Should call get_files_restoring 3 times
     assert_equal(state_mock.get_files_restoring.call_count, 3)

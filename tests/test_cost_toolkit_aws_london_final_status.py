@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.migration.aws_london_final_status import (
@@ -19,17 +20,16 @@ from cost_toolkit.scripts.migration.aws_london_final_status import (
 
 
 # Tests for _stop_instance
+@patch("cost_toolkit.scripts.migration.aws_london_final_status.wait_for_instance_state")
 @patch("builtins.print")
-def test_stop_instance_success(_mock_print):
+def test_stop_instance_success(_mock_print, mock_wait_for_state):
     """Test stopping instance successfully."""
     mock_ec2 = MagicMock()
-    mock_waiter = MagicMock()
-    mock_ec2.get_waiter.return_value = mock_waiter
 
     _stop_instance(mock_ec2, "i-12345678")
 
     mock_ec2.stop_instances.assert_called_once_with(InstanceIds=["i-12345678"])
-    mock_waiter.wait.assert_called_once_with(InstanceIds=["i-12345678"])
+    mock_wait_for_state.assert_called_once_with(mock_ec2, "i-12345678", "instance_stopped")
     _mock_print.assert_called()
 
 
@@ -41,22 +41,23 @@ def test_stop_instance_client_error(_mock_print):
         {"Error": {"Code": "InstanceNotFound"}}, "StopInstances"
     )
 
-    _stop_instance(mock_ec2, "i-invalid")
+    with pytest.raises(ClientError):
+        _stop_instance(mock_ec2, "i-invalid")
 
     mock_ec2.stop_instances.assert_called_once()
     _mock_print.assert_called()
 
 
+@patch("cost_toolkit.scripts.migration.aws_london_final_status.wait_for_instance_state")
 @patch("builtins.print")
-def test_stop_instance_different_id(_mock_print):
+def test_stop_instance_different_id(_mock_print, mock_wait_for_state):
     """Test stopping different instance ID."""
     mock_ec2 = MagicMock()
-    mock_waiter = MagicMock()
-    mock_ec2.get_waiter.return_value = mock_waiter
 
     _stop_instance(mock_ec2, "i-abcdef123")
 
     mock_ec2.stop_instances.assert_called_once_with(InstanceIds=["i-abcdef123"])
+    mock_wait_for_state.assert_called_once_with(mock_ec2, "i-abcdef123", "instance_stopped")
 
 
 # Tests for _extract_volume_name

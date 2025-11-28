@@ -17,20 +17,12 @@ from botocore.exceptions import ClientError
 
 from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
 
-try:  # Prefer package-relative imports
-    from .migrate_v2_smoke_shared import (
-        SmokeTestDeps,
-        create_sample_objects_in_s3,
-        ensure_matching_manifests,
-        manifest_directory,
-    )
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from migrate_v2_smoke_shared import (  # type: ignore
-        SmokeTestDeps,
-        create_sample_objects_in_s3,
-        ensure_matching_manifests,
-        manifest_directory,
-    )
+from migrate_v2_smoke_shared import (
+    SmokeTestDeps,
+    create_sample_objects_in_s3,
+    ensure_matching_manifests,
+    manifest_directory,
+)
 
 
 def run_real_smoke_test(deps: SmokeTestDeps):

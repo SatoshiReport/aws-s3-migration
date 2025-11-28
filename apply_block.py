@@ -10,18 +10,11 @@ import argparse
 import os
 import sys
 
-try:  # Prefer package-relative imports for tooling
-    from .aws_utils import (
-        apply_bucket_policy,
-        load_policy_from_file,
-        print_interactive_help,
-    )
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from aws_utils import (
-        apply_bucket_policy,
-        load_policy_from_file,
-        print_interactive_help,
-    )
+from aws_utils import (
+    apply_bucket_policy,
+    load_policy_from_file,
+    print_interactive_help,
+)
 
 
 def get_buckets_with_policy_files():
@@ -44,13 +37,13 @@ def determine_buckets(args):
         buckets = get_buckets_with_policy_files()
         if not buckets:
             print("No policy files found (looking for *_policy.json)")
-            sys.exit(1)
+            raise SystemExit(1)
         print(f"Found {len(buckets)} policy file(s)")
         return buckets
     if args.buckets:
         return args.buckets
     show_interactive_help()
-    sys.exit(0)
+    raise SystemExit(1)
 
 
 def show_interactive_help():
@@ -90,12 +83,16 @@ def main():
     )
     args = parser.parse_args()
     buckets = determine_buckets(args)
+    failures = 0
     for bucket in buckets:
-        apply_policy_to_bucket(bucket, args.dry_run)
+        if not apply_policy_to_bucket(bucket, args.dry_run):
+            failures += 1
     if args.dry_run:
         print("\nDry run completed. No changes were made.")
     else:
         print(f"\nCompleted applying policies to {len(buckets)} bucket(s)")
+    if failures:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

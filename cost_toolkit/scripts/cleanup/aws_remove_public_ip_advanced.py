@@ -1,28 +1,29 @@
 #!/usr/bin/env python3
 """Advanced removal of public IP addresses from EC2 instances."""
 
-import time
+import sys
 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.scripts import aws_utils
+from cost_toolkit.scripts.cleanup import aws_remove_public_ip as basic_remove
 from cost_toolkit.scripts.aws_utils import get_instance_info
+from cost_toolkit.scripts.cleanup.public_ip_common import (
+    delay,
+    fetch_instance_network_details,
+    wait_for_state,
+)
 
 
 def _get_instance_details(_ec2, instance_id, region_name):
     """Get current instance details."""
     print("Step 1: Getting instance details...")
-    instance = get_instance_info(instance_id, region_name)
-
-    details = {
-        "state": instance["State"]["Name"],
-        "public_ip": instance.get("PublicIpAddress"),
-        "vpc_id": instance["VpcId"],
-        "subnet_id": instance["SubnetId"],
-        "security_groups": [sg["GroupId"] for sg in instance["SecurityGroups"]],
-        "current_eni": instance["NetworkInterfaces"][0],
-        "current_eni_id": instance["NetworkInterfaces"][0]["NetworkInterfaceId"],
-    }
+    details = fetch_instance_network_details(
+        instance_id, region_name, instance_fetcher=get_instance_info
+    )
+    if not details["network_interface_id"]:
+        raise RuntimeError("Instance has no primary network interface; cannot remove public IP.")
 
     print(f"  Current state: {details['state']}")
     print(f"  Current public IP: {details['public_ip']}")
@@ -39,8 +40,7 @@ def _stop_instance(ec2, instance_id, current_state):
     if current_state == "running":
         print(f"Step 2: Stopping instance {instance_id}...")
         ec2.stop_instances(InstanceIds=[instance_id])
-        waiter = ec2.get_waiter("instance_stopped")
-        waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+        wait_for_state(ec2, instance_id, "instance_stopped")
         print("  ✅ Instance stopped")
 
 
@@ -55,7 +55,7 @@ def _create_new_eni(ec2, subnet_id, security_groups, instance_id):
         )
         new_eni_id = new_eni_response["NetworkInterface"]["NetworkInterfaceId"]
         print(f"  ✅ Created new ENI: {new_eni_id}")
-        time.sleep(5)
+        delay(5)
     except ClientError as e:
         print(f"  ❌ Error creating new ENI: {e}")
         return None
@@ -69,7 +69,7 @@ def _replace_eni(ec2, instance_id, current_eni, new_eni_id):
         attachment_id = current_eni["Attachment"]["AttachmentId"]
         ec2.detach_network_interface(AttachmentId=attachment_id, Force=True)
         print(f"  ✅ Detached ENI {current_eni['NetworkInterfaceId']}")
-        time.sleep(10)
+        delay(10)
     except ClientError as e:
         print(f"  ❌ Error detaching ENI: {e}")
         return False
@@ -80,7 +80,7 @@ def _replace_eni(ec2, instance_id, current_eni, new_eni_id):
             NetworkInterfaceId=new_eni_id, InstanceId=instance_id, DeviceIndex=0
         )
         print(f"  ✅ Attached new ENI {new_eni_id}")
-        time.sleep(10)
+        delay(10)
     except ClientError as e:
         print(f"  ❌ Error attaching new ENI: {e}")
         return False
@@ -90,7 +90,7 @@ def _replace_eni(ec2, instance_id, current_eni, new_eni_id):
 def _verify_and_cleanup(ec2, instance_id, current_eni_id, region_name):
     """Verify public IP removal and clean up old ENI."""
     print("Step 7: Verifying public IP removal...")
-    time.sleep(10)
+    delay(10)
 
     updated_instance = get_instance_info(instance_id, region_name)
     new_public_ip = updated_instance.get("PublicIpAddress")
@@ -141,8 +141,7 @@ def remove_public_ip_by_network_interface_replacement(instance_id, region_name):
         print("Step 6: Starting instance...")
         try:
             ec2.start_instances(InstanceIds=[instance_id])
-            waiter = ec2.get_waiter("instance_running")
-            waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+            wait_for_state(ec2, instance_id, "instance_running")
             print("  ✅ Instance started")
         except ClientError as e:
             print(f"  ❌ Error starting instance: {e}")
@@ -176,19 +175,17 @@ def simple_stop_start_without_public_ip(instance_id, region_name):
         print("Step 2: Stopping instance...")
         ec2.stop_instances(InstanceIds=[instance_id])
 
-        waiter = ec2.get_waiter("instance_stopped")
-        waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+        wait_for_state(ec2, instance_id, "instance_stopped")
         print("  ✅ Instance stopped")
 
         print("Step 3: Starting instance (should get no public IP)...")
         ec2.start_instances(InstanceIds=[instance_id])
 
-        waiter = ec2.get_waiter("instance_running")
-        waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+        wait_for_state(ec2, instance_id, "instance_running")
         print("  ✅ Instance started")
 
         # Verify
-        time.sleep(10)
+        delay(10)
         updated_instance = get_instance_info(instance_id, region_name)
         new_public_ip = updated_instance.get("PublicIpAddress")
 
@@ -209,18 +206,25 @@ def main():
     print("AWS Advanced Public IP Removal")
     print("=" * 80)
 
-    instance_id = "i-00c39b1ba0eba3e2d"
-    region_name = "us-east-2"
+    instance_id, region_name, using_default = basic_remove.parse_args()  # Reuse standard CLI
+    if using_default:
+        print(
+            "⚠️  Using defaults from config/public_ip_defaults.json; "
+            "provide --instance-id/--region to override."
+        )
 
-    print(f"Attempting to remove public IP from {instance_id}")
-    print("Current public IP: 18.191.206.247 (from previous attempt)")
+    aws_utils.setup_aws_credentials()
 
-    # Try the simple method first
     print("\n" + "=" * 80)
-    print("ATTEMPTING SIMPLE METHOD")
+    print("ATTEMPTING STANDARD METHOD")
     print("=" * 80)
+    success = basic_remove.remove_public_ip_from_instance(instance_id, region_name)
 
-    success = simple_stop_start_without_public_ip(instance_id, region_name)
+    if not success:
+        print("\n" + "=" * 80)
+        print("ATTEMPTING SIMPLE STOP/START METHOD")
+        print("=" * 80)
+        success = simple_stop_start_without_public_ip(instance_id, region_name)
 
     if not success:
         print("\n" + "=" * 80)
@@ -245,7 +249,10 @@ def main():
         print("   1. Stop the instance")
         print("   2. Actions -> Networking -> Change subnet (to a private subnet)")
         print("   3. Start the instance")
+        return 1
+
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

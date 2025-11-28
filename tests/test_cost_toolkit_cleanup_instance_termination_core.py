@@ -248,7 +248,7 @@ def test_main_function_user_confirms(capsys, monkeypatch):
             "cost_toolkit.scripts.cleanup.aws_instance_termination.terminate_instance_safely",
             return_value=True,
         ):
-            main()
+            main(["--use-default-target"])
 
     captured = capsys.readouterr()
     assert "Instance termination initiated successfully" in captured.out
@@ -259,7 +259,7 @@ def test_main_function_user_cancels(capsys, monkeypatch):
     monkeypatch.setattr("builtins.input", lambda _: "NO")
 
     with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.setup_aws_credentials"):
-        main()
+        main(["--use-default-target"])
 
     captured = capsys.readouterr()
     assert "Termination cancelled" in captured.out
@@ -274,7 +274,7 @@ def test_main_function_termination_fails(capsys, monkeypatch):
             "cost_toolkit.scripts.cleanup.aws_instance_termination.terminate_instance_safely",
             return_value=False,
         ):
-            main()
+            main(["--use-default-target"])
 
     captured = capsys.readouterr()
     assert "termination failed" in captured.out

@@ -16,6 +16,20 @@ from migrate_v2 import MigrationComponents, S3MigrationV2
 from migration_state_v2 import DatabaseConnection
 
 
+@pytest.fixture(autouse=True)
+def mock_aws_env_file(tmp_path, monkeypatch):
+    """Auto-use fixture that provides a mock .env file for tests requiring AWS credentials.
+
+    This creates a temporary .env file with mock credentials and sets AWS_ENV_FILE
+    to point to it. Tests that mock load_credentials_from_env won't need this,
+    but tests that don't mock it will get valid mock credentials.
+    """
+    env_file = tmp_path / ".env"
+    env_file.write_text("AWS_ACCESS_KEY_ID=test_key\nAWS_SECRET_ACCESS_KEY=test_secret\n")
+    monkeypatch.setenv("AWS_ENV_FILE", str(env_file))
+    yield str(env_file)
+
+
 @pytest.fixture(name="temp_db")
 def fixture_temp_db(tmp_path):
     """Provide a temporary SQLite path for stateful tests."""

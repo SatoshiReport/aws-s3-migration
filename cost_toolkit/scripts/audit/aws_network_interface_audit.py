@@ -5,25 +5,12 @@ Identifies unused network interfaces across all regions for cleanup.
 """
 
 import boto3
-from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import get_resource_tags
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts import aws_ec2_operations
+from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
 # boto3 used for per-region clients in audit_network_interfaces_in_region
-
-
-def get_all_regions():
-    """Get list of all AWS regions for EC2.
-
-    Raises:
-        ClientError: If the AWS API call fails.
-        ValueError: If credentials cannot be loaded.
-    """
-    ec2 = aws_ec2_operations.create_ec2_client(region="us-east-1")
-    regions = ec2.describe_regions()["Regions"]
-    return [r["RegionName"] for r in regions]
 
 
 def _build_interface_info(eni):

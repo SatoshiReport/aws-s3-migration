@@ -22,11 +22,21 @@ if TYPE_CHECKING:
 CACHE_VERSION = 2
 
 
+class CacheConfigError(RuntimeError):
+    """Raised when cache directory cannot be determined."""
+
+
 def _default_cache_dir() -> Path:
+    """Determine the default cache directory.
+
+    Uses XDG_CACHE_HOME if set, otherwise uses ~/.cache as per XDG Base Directory spec.
+    This follows the XDG spec where ~/.cache is the default when XDG_CACHE_HOME is not set.
+    """
     xdg_cache = os.environ.get("XDG_CACHE_HOME")
     if xdg_cache:
         base = Path(xdg_cache).expanduser()
     else:
+        # Per XDG spec, ~/.cache is the standard default location
         base = Path.home() / ".cache"
     return base / "cleanup_temp_artifacts"
 

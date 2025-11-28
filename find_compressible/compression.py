@@ -1,48 +1,30 @@
-"""Compression operations using xz."""
-
-# ruff: noqa: TRY003 - CLI emits user-focused errors with contextual messages
+"""Compression operations using built-in lzma (XZ) support."""
 
 from __future__ import annotations
 
-import subprocess
+import lzma
 from pathlib import Path
 
 
 def compress_with_xz(path: Path) -> Path:
-    """Compress `path` using xz -9e while keeping the original for verification."""
-    cmd = ["xz", "--keep", "-9e", str(path)]
+    """Compress `path` using XZ with a high compression preset."""
+    target = Path(str(path) + ".xz")
     try:
-        subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        with path.open("rb") as src, lzma.open(target, "wb", preset=9) as dst:
+            for chunk in iter(lambda: src.read(1024 * 1024), b""):
+                dst.write(chunk)
     except FileNotFoundError as exc:
-        raise SystemExit("xz binary not found. Install xz-utils to enable compression.") from exc
-    except subprocess.CalledProcessError as exc:
-        raise RuntimeError(
-            f"xz failed for {path} (exit {exc.returncode}). stderr: {exc.stderr.strip()}"
-        ) from exc
-    return Path(str(path) + ".xz")
+        raise SystemExit("Source file not found for compression.") from exc
+    return target
 
 
 def verify_compressed_file(path: Path) -> None:
-    """Run `xz -t` to verify the compressed output."""
-    cmd = ["xz", "-t", str(path)]
+    """Verify the compressed output by attempting to decompress it."""
     try:
-        subprocess.run(
-            cmd,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
-    except FileNotFoundError as exc:  # pragma: no cover - same binary as compress
-        raise SystemExit("xz binary not found. Install xz-utils to enable compression.") from exc
-    except subprocess.CalledProcessError as exc:
-        raise RuntimeError(
-            f"xz verification failed for {path} (exit {exc.returncode}). "
-            f"stderr: {exc.stderr.strip()}"
-        ) from exc
+        with lzma.open(path, "rb") as src:
+            for _ in iter(lambda: src.read(1024 * 1024), b""):
+                continue
+    except FileNotFoundError as exc:  # pragma: no cover - path missing
+        raise SystemExit("Compressed file not found for verification.") from exc
+    except lzma.LZMAError as exc:
+        raise RuntimeError(f"XZ verification failed for {path}: {exc}") from exc

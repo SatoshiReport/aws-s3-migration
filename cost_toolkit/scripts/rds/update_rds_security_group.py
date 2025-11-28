@@ -1,11 +1,31 @@
 #!/usr/bin/env python3
 """Update RDS instance security group settings."""
 
+from urllib import error as urllib_error
+from urllib import request as urllib_request
+
 import boto3
-import requests
 from botocore.exceptions import ClientError
 
 from ..aws_utils import setup_aws_credentials
+
+
+class PublicIPRetrievalError(RuntimeError):
+    """Raised when the current public IP cannot be fetched."""
+
+
+def _fetch_current_ip(timeout: int = 10) -> str:
+    """Retrieve the current public IP address using a simple HTTP GET."""
+    try:
+        with urllib_request.urlopen("https://ipv4.icanhazip.com/", timeout=timeout) as response:
+            ip_text = response.read().decode().strip()
+    except (urllib_error.URLError, TimeoutError) as exc:
+        raise PublicIPRetrievalError("Could not retrieve current IP address") from exc
+
+    if not ip_text:
+        raise PublicIPRetrievalError("Empty response from IP service")
+
+    return ip_text
 
 
 def update_security_group():
@@ -17,10 +37,9 @@ def update_security_group():
     # Get current public IP
     try:
         print("🌐 Getting your current public IP address...")
-        response = requests.get("https://ipv4.icanhazip.com/", timeout=10)
-        current_ip = response.text.strip()
+        current_ip = _fetch_current_ip()
         print(f"   Your IP: {current_ip}")
-    except ClientError as e:
+    except (ClientError, PublicIPRetrievalError) as e:
         print(f"❌ Could not get current IP: {e}")
         print("Please provide your public IP address manually")
         return

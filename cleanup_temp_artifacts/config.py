@@ -32,36 +32,22 @@ def determine_default_base_path() -> Path:
     """
     candidates: list[Path] = []
 
-    # Check config module first
-    local_base = getattr(config_module, "LOCAL_BASE_PATH", None)
-    if local_base:
+    local_base = getattr(config_module, "LOCAL_BASE_PATH", None) if config_module else None
+    if local_base is not None:
         candidates.append(Path(local_base).expanduser())
 
-    # Check environment variables
     for name in ("CLEANUP_TEMP_ROOT", "CLEANUP_ROOT"):
         env_val = os.environ.get(name)
         if env_val:
             candidates.append(Path(env_val).expanduser())
 
-    # Standard paths
-    candidates.extend(
-        [
-            Path("/Volumes/Extreme SSD/s3_backup"),
-            Path("/Volumes/Extreme SSD"),
-        ]
-    )
-
-    seen: set[Path] = set()
-    for candidate in candidates:
-        if candidate in seen:
-            continue
-        seen.add(candidate)
+    for candidate in dict.fromkeys(candidates):
         if candidate.exists():
             return candidate
 
     raise ConfigurationError(
-        "No valid base path found. Set LOCAL_BASE_PATH in config.py "
-        "or CLEANUP_TEMP_ROOT environment variable."
+        "No valid base path found. Set LOCAL_BASE_PATH in config.py or "
+        "CLEANUP_TEMP_ROOT/CLEANUP_ROOT environment variable."
     )
 
 

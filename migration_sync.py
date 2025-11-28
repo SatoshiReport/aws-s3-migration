@@ -1,37 +1,76 @@
-"""Bucket syncing using AWS CLI"""
+"""Bucket syncing using boto3 (no subprocess)."""
 
-import subprocess
+from __future__ import annotations
+
+from dataclasses import dataclass
 import time
 from pathlib import Path
+from typing import Callable, Iterable
+
+from botocore.exceptions import ClientError
 
 from cost_toolkit.common.format_utils import format_bytes
-
-try:
-    from .migration_state_v2 import MigrationStateV2
-    from .migration_utils import ProgressTracker, format_duration
-except ImportError:
-    from migration_state_v2 import MigrationStateV2  # type: ignore[no-redef]
-    from migration_utils import ProgressTracker, format_duration  # type: ignore[no-redef]
+from migration_state_v2 import MigrationStateV2
+from migration_utils import ProgressTracker, format_duration
 
 
-def check_sync_process_errors(process):
-    """Check for sync errors in stderr"""
-    stderr_output = process.stderr.read()
-    if stderr_output:
-        error_lines = [
-            line for line in stderr_output.split("\n") if line.strip() and "Completed" not in line
-        ]
-    else:
-        error_lines = []
-    if process.returncode != 0:
-        error_msg = f"aws s3 sync failed with return code {process.returncode}"
-        if error_lines:
-            error_msg += "\n\nError details:\n" + "\n".join(error_lines)
-        raise RuntimeError(error_msg)
+class SyncInterrupted(RuntimeError):
+    """Raised when a sync is interrupted."""
+
+
+@dataclass
+class _ProgressState:
+    start_time: float
+    files_done: int = 0
+    bytes_done: int = 0
+
+
+def _list_objects(s3_client, bucket: str) -> Iterable[dict]:
+    """Yield objects in a bucket."""
+    paginator = s3_client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=bucket):
+        for obj in page.get("Contents", []):
+            if obj.get("Key", "").endswith("/"):
+                continue
+            yield obj
+
+
+def _download_object(
+    s3_client,
+    bucket: str,
+    key: str,
+    destination: Path,
+    interrupted_check: Callable[[], bool],
+    progress_state: _ProgressState,
+    progress_tracker: ProgressTracker,
+):
+    """Stream an object to disk while checking for interrupts."""
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+    except ClientError as exc:
+        raise RuntimeError(f"Failed to fetch {bucket}/{key}: {exc}") from exc
+
+    body = response["Body"]
+    bytes_downloaded = 0
+    with destination.open("wb") as handle:
+        for chunk in body.iter_chunks():
+            if interrupted_check():
+                raise SyncInterrupted()
+            if not chunk:
+                continue
+            handle.write(chunk)
+            bytes_downloaded += len(chunk)
+            if progress_tracker.should_update():
+                _display_progress(progress_state.start_time, progress_state.files_done, progress_state.bytes_done + bytes_downloaded)
+
+    progress_state.files_done += 1
+    progress_state.bytes_done += bytes_downloaded
+    return bytes_downloaded
 
 
 class BucketSyncer:  # pylint: disable=too-few-public-methods
-    """Handles syncing a bucket using AWS CLI"""
+    """Handles syncing a bucket using boto3 streaming downloads."""
 
     def __init__(self, s3, state: MigrationStateV2, base_path: Path):
         self.s3 = s3
@@ -40,77 +79,41 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
         self.interrupted = False
 
     def sync_bucket(self, bucket: str):
-        """Sync bucket from S3 to local using AWS CLI"""
+        """Sync bucket from S3 to local using boto3 downloads."""
         local_path = self.base_path / bucket
         local_path.mkdir(parents=True, exist_ok=True)
-        s3_url = f"s3://{bucket}/"
-        local_url = str(local_path) + "/"
-        cmd = ["aws", "s3", "sync", s3_url, local_url, "--no-progress"]
-        print(f"  Running: aws s3 sync {s3_url} {local_url}")
+        print(f"  Syncing s3://{bucket} -> {local_path}/")
         print()
-        start_time = time.time()
-        # pylint: disable=consider-using-with
-        process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            bufsize=1,
-            universal_newlines=True,
-        )
-        files_done, bytes_done = _monitor_sync_progress(
-            process,
-            start_time,
-            interrupted_check=lambda: self.interrupted,
-            progress_callback=_display_progress,
-        )
-        check_sync_process_errors(process)
-        _print_sync_summary(start_time, files_done, bytes_done)
 
+        progress_state = _ProgressState(start_time=time.time())
+        tracker = ProgressTracker(update_interval=1.0)
 
-def _monitor_sync_progress(process, start_time, interrupted_check, progress_callback):
-    """Monitor AWS CLI sync progress and return stats"""
-    progress = ProgressTracker(update_interval=1.0)
-    files_done = 0
-    bytes_done = 0
-    while True:
-        if interrupted_check():
-            process.terminate()
-            return files_done, bytes_done
-        line = process.stdout.readline()
-        if not line and process.poll() is not None:
-            break
-        if line and "Completed" in line:
-            file_bytes = _parse_aws_size(line)
-            if file_bytes:
-                bytes_done += file_bytes
-                files_done += 1
-            if progress.should_update():
-                progress_callback(start_time, files_done, bytes_done)
-    return files_done, bytes_done
-
-
-def _parse_aws_size(line: str):
-    """Parse byte size from AWS CLI output line"""
-    try:
-        parts = line.split()
-        size_str = parts[-1]
-        multiplier = 1
-        if size_str.endswith("KiB"):
-            multiplier = 1024
-        elif size_str.endswith("MiB"):
-            multiplier = 1024 * 1024
-        elif size_str.endswith("GiB"):
-            multiplier = 1024 * 1024 * 1024
-        size_val = float(size_str.split()[0])
-        return int(size_val * multiplier)
-    except (ValueError, IndexError, AttributeError):
-        return None
+        try:
+            for obj in _list_objects(self.s3, bucket):
+                if self.interrupted:
+                    raise SyncInterrupted()
+                key = obj["Key"]
+                dest = local_path / key
+                _download_object(
+                    self.s3,
+                    bucket,
+                    key,
+                    dest,
+                    interrupted_check=lambda: self.interrupted,
+                    progress_state=progress_state,
+                    progress_tracker=tracker,
+                )
+            _display_progress(progress_state.start_time, progress_state.files_done, progress_state.bytes_done)
+            _print_sync_summary(progress_state.start_time, progress_state.files_done, progress_state.bytes_done)
+        except SyncInterrupted:
+            print("\n✋ Sync interrupted")
+        except ClientError as exc:
+            raise RuntimeError(f"Sync failed for bucket {bucket}: {exc}") from exc
 
 
 def _display_progress(start_time, files_done, bytes_done):
-    """Display sync progress"""
-    elapsed = time.time() - start_time
+    """Display sync progress."""
+    elapsed = time.time() - start_time if start_time else 0
     if elapsed > 0 and bytes_done > 0:
         throughput = bytes_done / elapsed
         progress = (
@@ -121,12 +124,10 @@ def _display_progress(start_time, files_done, bytes_done):
 
 
 def _print_sync_summary(start_time, files_done, bytes_done):
-    """Print sync completion summary"""
-    elapsed = time.time() - start_time
-    if elapsed > 0:
-        throughput = bytes_done / elapsed
-    else:
-        throughput = 0
+    """Print sync completion summary."""
+    elapsed = time.time() - start_time if start_time else 0
+    elapsed = max(elapsed, 0.0001)
+    throughput = bytes_done / elapsed if elapsed > 0 else 0
     print(f"\n✓ Completed in {format_duration(elapsed)}")
     print(f"  Downloaded: {files_done:,} files, {format_bytes(bytes_done, binary_units=False)}")
     print(f"  Throughput: {format_bytes(throughput, binary_units=False)}/s")

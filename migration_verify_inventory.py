@@ -15,10 +15,7 @@ MAX_ERROR_DISPLAY = _migration_verify_common.MAX_ERROR_DISPLAY
 should_ignore_key = _migration_verify_common.should_ignore_key
 
 if TYPE_CHECKING:
-    try:
-        from .migration_state_v2 import MigrationStateV2
-    except ImportError:  # pragma: no cover
-        from migration_state_v2 import MigrationStateV2
+    from migration_state_v2 import MigrationStateV2
 
 
 def _load_expected_file_map(state: "MigrationStateV2", bucket: str) -> Dict[str, Dict]:

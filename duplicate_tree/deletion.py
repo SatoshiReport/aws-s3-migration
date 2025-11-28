@@ -8,22 +8,13 @@ from typing import List, Sequence
 
 from cost_toolkit.common.cli_utils import confirm_action
 
-try:  # Prefer package-relative imports when packaged
-    from .analysis import (
-        ClusterRow,
-        NodeRow,
-        format_bytes,
-        path_on_disk,
-        sort_node_rows,
-    )
-except ImportError:  # pragma: no cover - execution as standalone script
-    from analysis import (  # type: ignore
-        ClusterRow,
-        NodeRow,
-        format_bytes,
-        path_on_disk,
-        sort_node_rows,
-    )
+from .analysis import (
+    ClusterRow,
+    NodeRow,
+    format_bytes,
+    path_on_disk,
+    sort_node_rows,
+)
 
 
 MIN_DUPLICATE_NODES = 2

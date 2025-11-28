@@ -76,22 +76,22 @@ def test_show_status_glacier_restore_phase_shows_summary(status_reporter, state_
     state_mock.get_completed_buckets_for_phase.return_value = []
 
     bucket_infos = [
-        {
-            "file_count": 500,
-            "total_size": 5368709120,
-            "sync_complete": False,
-            "verify_complete": False,
-            "delete_complete": False,
-        },
-        {
-            "file_count": 500,
-            "total_size": 5368709120,
-            "sync_complete": False,
-            "verify_complete": False,
-            "delete_complete": False,
-        },
+        mock.Mock(
+            file_count=500,
+            total_size=5368709120,
+            sync_complete=False,
+            verify_complete=False,
+            delete_complete=False,
+        ),
+        mock.Mock(
+            file_count=500,
+            total_size=5368709120,
+            sync_complete=False,
+            verify_complete=False,
+            delete_complete=False,
+        ),
     ]
-    state_mock.get_bucket_info.side_effect = bucket_infos
+    state_mock.get_bucket_status.side_effect = bucket_infos
 
     with mock.patch("builtins.print") as mock_print:
         status_reporter.show_status()
@@ -114,29 +114,29 @@ def test_show_status_shows_bucket_progress(status_reporter, state_mock):
     state_mock.get_completed_buckets_for_phase.return_value = ["bucket-1"]
 
     bucket_infos = [
-        {
-            "file_count": 500,
-            "total_size": 5000000000,
-            "sync_complete": True,
-            "verify_complete": True,
-            "delete_complete": True,
-        },
-        {
-            "file_count": 500,
-            "total_size": 5000000000,
-            "sync_complete": False,
-            "verify_complete": False,
-            "delete_complete": False,
-        },
-        {
-            "file_count": 500,
-            "total_size": 5000000000,
-            "sync_complete": False,
-            "verify_complete": False,
-            "delete_complete": False,
-        },
+        mock.Mock(
+            file_count=500,
+            total_size=5000000000,
+            sync_complete=True,
+            verify_complete=True,
+            delete_complete=True,
+        ),
+        mock.Mock(
+            file_count=500,
+            total_size=5000000000,
+            sync_complete=False,
+            verify_complete=False,
+            delete_complete=False,
+        ),
+        mock.Mock(
+            file_count=500,
+            total_size=5000000000,
+            sync_complete=False,
+            verify_complete=False,
+            delete_complete=False,
+        ),
     ]
-    state_mock.get_bucket_info.side_effect = bucket_infos
+    state_mock.get_bucket_status.side_effect = bucket_infos
 
     with mock.patch("builtins.print") as mock_print:
         status_reporter.show_status()
@@ -157,13 +157,13 @@ def test_show_status_displays_bucket_details(status_reporter, state_mock):
     }
     state_mock.get_completed_buckets_for_phase.return_value = []
 
-    state_mock.get_bucket_info.return_value = {
-        "file_count": 100,
-        "total_size": 1000000,
-        "sync_complete": True,
-        "verify_complete": False,
-        "delete_complete": False,
-    }
+    state_mock.get_bucket_status.return_value = mock.Mock(
+        file_count=100,
+        total_size=1000000,
+        sync_complete=True,
+        verify_complete=False,
+        delete_complete=False,
+    )
 
     with mock.patch("builtins.print") as mock_print:
         status_reporter.show_status()
@@ -183,13 +183,13 @@ def test_show_status_complete_phase(status_reporter, state_mock):
         "total_size": 1000000,
     }
     state_mock.get_completed_buckets_for_phase.return_value = ["bucket-1"]
-    state_mock.get_bucket_info.return_value = {
-        "file_count": 100,
-        "total_size": 1000000,
-        "sync_complete": True,
-        "verify_complete": True,
-        "delete_complete": True,
-    }
+    state_mock.get_bucket_status.return_value = mock.Mock(
+        file_count=100,
+        total_size=1000000,
+        sync_complete=True,
+        verify_complete=True,
+        delete_complete=True,
+    )
 
     with mock.patch("builtins.print") as mock_print:
         status_reporter.show_status()

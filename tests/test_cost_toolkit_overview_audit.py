@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import subprocess
 from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
@@ -51,47 +50,40 @@ def test_run_audit_script_not_found(capsys, tmp_path):
 def test_run_audit_script_success(capsys, tmp_path):
     """Test _run_audit_script with successful execution."""
     script_path = tmp_path / "test_script.py"
-    script_path.write_text("print('Total: 10 items')")
+    script_path.write_text(
+        "def main(_argv=None):\n"
+        "    print('Total: 10 items')\n"
+        "    print('Found 5 volumes')\n"
+    )
 
-    with patch("subprocess.run") as mock_run:
-        mock_result = MagicMock()
-        mock_result.returncode = 0
-        mock_result.stdout = "Total: 10 items\nFound 5 volumes"
-        mock_run.return_value = mock_result
+    _run_audit_script("Test Audit", str(script_path))
 
-        _run_audit_script("Test Audit", str(script_path))
-
-        captured = capsys.readouterr()
-        assert "Test Audit" in captured.out
+    captured = capsys.readouterr()
+    assert "Total: 10 items" in captured.out
 
 
 def test_run_audit_script_failure(capsys, tmp_path):
     """Test _run_audit_script when script fails."""
     script_path = tmp_path / "test_script.py"
-    script_path.write_text("import sys; sys.exit(1)")
+    script_path.write_text("raise Exception('boom')")
 
-    with patch("subprocess.run") as mock_run:
-        mock_result = MagicMock()
-        mock_result.returncode = 1
-        mock_result.stderr = "Error occurred"
-        mock_run.return_value = mock_result
+    _run_audit_script("Test Audit", str(script_path))
 
-        _run_audit_script("Test Audit", str(script_path))
-
-        captured = capsys.readouterr()
-        assert "Script failed" in captured.out
+    captured = capsys.readouterr()
+    assert "Unable to load script" in captured.out or "boom" in captured.out
 
 
 def test_run_audit_script_timeout(capsys, tmp_path):
-    """Test _run_audit_script handles timeout."""
+    """Test _run_audit_script handles load failure."""
     script_path = tmp_path / "test_script.py"
     script_path.write_text("print('test')")
 
-    with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 60)):
+    with patch("cost_toolkit.overview.audit.importlib.util.spec_from_file_location") as mock_spec:
+        mock_spec.return_value = None
         _run_audit_script("Test Audit", str(script_path))
 
-        captured = capsys.readouterr()
-        assert "timed out" in captured.out
+    captured = capsys.readouterr()
+    assert "Unable to load script" in captured.out
 
 
 def test_run_audit_script_client_error(capsys, tmp_path):
@@ -99,11 +91,17 @@ def test_run_audit_script_client_error(capsys, tmp_path):
     script_path = tmp_path / "test_script.py"
     script_path.write_text("print('test')")
 
-    with patch("subprocess.run", side_effect=ClientError({"Error": {"Code": "TestError"}}, "test")):
+    with patch(
+        "cost_toolkit.overview.audit.importlib.util.spec_from_file_location"
+    ) as mock_spec, patch("cost_toolkit.overview.audit.importlib.util.module_from_spec") as mock_mod:
+        mock_spec.return_value = MagicMock(loader=MagicMock())
+        mock_module = MagicMock()
+        mock_module.main.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
+        mock_mod.return_value = mock_module
         _run_audit_script("Test Audit", str(script_path))
 
-        captured = capsys.readouterr()
-        assert "Error running audit" in captured.out
+    captured = capsys.readouterr()
+    assert "Error running audit" in captured.out
 
 
 def test_run_quick_audit(capsys, tmp_path):

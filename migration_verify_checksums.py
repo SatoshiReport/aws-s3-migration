@@ -7,23 +7,13 @@ import time
 from pathlib import Path
 from typing import Dict, Tuple
 
-try:  # Prefer package-relative imports for tooling like pylint
-    from cost_toolkit.common.format_utils import format_bytes
-
-    from .migration_utils import (
-        ProgressTracker,
-        calculate_eta_bytes,
-        hash_file_in_chunks,
-    )
-    from .migration_verify_common import check_verification_errors
-except ImportError:  # pragma: no cover - allow running as standalone script
-    from cost_toolkit.common.format_utils import format_bytes
-    from migration_utils import (
-        ProgressTracker,
-        calculate_eta_bytes,
-        hash_file_in_chunks,
-    )
-    from migration_verify_common import check_verification_errors
+from cost_toolkit.common.format_utils import format_bytes
+from migration_utils import (
+    ProgressTracker,
+    calculate_eta_bytes,
+    hash_file_in_chunks,
+)
+from migration_verify_common import check_verification_errors
 
 
 class VerificationProgressTracker:  # pylint: disable=too-few-public-methods

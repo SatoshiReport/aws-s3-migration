@@ -17,7 +17,7 @@ from tests.assertions import assert_equal
 
 
 # Tests for get_all_regions
-@patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client")
+@patch("cost_toolkit.common.aws_common.create_ec2_client")
 def test_get_all_regions_success(mock_create_client):
     """Test get_all_regions returns list of regions from API."""
     mock_ec2 = MagicMock()
@@ -41,7 +41,7 @@ def test_get_all_regions_success(mock_create_client):
     mock_ec2.describe_regions.assert_called_once()
 
 
-@patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client")
+@patch("cost_toolkit.common.aws_common.create_ec2_client")
 def test_get_all_regions_with_credentials(mock_create_client):
     """Test get_all_regions passes credentials to client factory."""
     mock_ec2 = MagicMock()
@@ -58,23 +58,17 @@ def test_get_all_regions_with_credentials(mock_create_client):
     )
 
 
-@patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client")
-def test_get_all_regions_client_error(mock_create_client, capsys):
-    """Test get_all_regions returns default regions on API failure."""
+@patch("cost_toolkit.common.aws_common.create_ec2_client")
+def test_get_all_regions_client_error(mock_create_client):
+    """Test get_all_regions surfaces API failures."""
     mock_ec2 = MagicMock()
     mock_create_client.return_value = mock_ec2
     mock_ec2.describe_regions.side_effect = ClientError(
         {"Error": {"Code": "UnauthorizedOperation", "Message": "Not authorized"}}, "DescribeRegions"
     )
 
-    regions = get_all_regions()
-
-    # Should return default regions when API fails
-    assert len(regions) == 9
-    assert "us-east-1" in regions
-    assert "us-east-2" in regions
-    captured = capsys.readouterr()
-    assert "Error getting regions" in captured.out
+    with pytest.raises(ClientError):
+        get_all_regions()
 
 
 # Tests for describe_instance

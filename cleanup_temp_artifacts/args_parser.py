@@ -10,10 +10,7 @@ import argparse
 import sys
 from pathlib import Path
 
-try:
-    from cost_toolkit.common.cli_utils import create_migration_cli_parser
-except ImportError:  # pragma: no cover
-    from cost_toolkit.common.cli_utils import create_migration_cli_parser  # type: ignore[import]
+from cost_toolkit.common.cli_utils import create_migration_cli_parser
 
 from .cache import _default_cache_dir
 from .categories import build_categories

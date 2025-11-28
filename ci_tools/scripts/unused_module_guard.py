@@ -121,10 +121,18 @@ def _apply_config_overrides(
     duplicate_excludes: Sequence[str],
 ) -> None:
     """Patch the shared guard module with repo-specific behavior."""
-    if allowed_patterns:
+    suspicious_patterns = getattr(guard, "SUSPICIOUS_PATTERNS", None)
+    if allowed_patterns and suspicious_patterns is not None:
         guard.SUSPICIOUS_PATTERNS = tuple(
-            pattern for pattern in guard.SUSPICIOUS_PATTERNS if pattern not in allowed_patterns
+            pattern for pattern in suspicious_patterns if pattern not in allowed_patterns
         )
+    elif allowed_patterns and suspicious_patterns is None:
+        print(
+            "⚠️  Shared unused_module_guard missing SUSPICIOUS_PATTERNS; "
+            "allowed_patterns override skipped.",
+            file=sys.stderr,
+        )
+        guard.SUSPICIOUS_PATTERNS = tuple()
 
     if extra_excludes:
         original_find_unused = guard.find_unused_modules

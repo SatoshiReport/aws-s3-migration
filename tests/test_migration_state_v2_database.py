@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from migration_state_managers import PhaseManager
 from migration_state_v2 import DatabaseConnection
 
 
@@ -169,3 +170,17 @@ def test_migration_metadata_table_columns(tmp_path: Path):
 
         expected_columns = {"key", "value", "updated_at"}
         assert expected_columns.issubset(columns)
+
+
+def test_phase_manager_raises_when_phase_missing(tmp_path: Path):
+    """PhaseManager should fail fast when phase metadata is absent."""
+    db_path = tmp_path / "test.db"
+    db_conn = DatabaseConnection(str(db_path))
+    phase_manager = PhaseManager(db_conn)
+
+    with db_conn.get_connection() as conn:
+        conn.execute("DELETE FROM migration_metadata WHERE key = 'current_phase'")
+        conn.commit()
+
+    with pytest.raises(RuntimeError):
+        phase_manager.get_phase()

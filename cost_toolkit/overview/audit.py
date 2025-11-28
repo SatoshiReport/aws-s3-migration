@@ -3,8 +3,8 @@ AWS Cost Audit Functions
 Runs quick resource audits and generates cost breakdown reports.
 """
 
+import importlib.util
 import os
-import subprocess
 import sys
 from datetime import datetime, timezone
 
@@ -33,18 +33,28 @@ def _run_audit_script(name, script_path):
 
     print(f"\n📊 {name}:")
     try:
-        result = subprocess.run(
-            [sys.executable, script_path], capture_output=True, text=True, timeout=60, check=False
-        )
-        if result.returncode == 0:
-            summary_lines = _extract_summary_lines(result.stdout)
+        spec = importlib.util.spec_from_file_location("audit_script", script_path)
+        if spec is None or spec.loader is None:
+            print(f"  ⚠️ Unable to load script: {script_path}")
+            return
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        if hasattr(module, "main"):
+            original_stdout = sys.stdout
+            from io import StringIO
+
+            buffer = StringIO()
+            sys.stdout = buffer
+            try:
+                module.main([])  # type: ignore[arg-type]
+            finally:
+                sys.stdout = original_stdout
+            summary_lines = _extract_summary_lines(buffer.getvalue())
             for line in summary_lines:
                 if line:
                     print(f"  {line}")
         else:
-            print(f"  ⚠️ Script failed: {result.stderr.strip()}")
-    except subprocess.TimeoutExpired:
-        print(f"  ⚠️ Audit timed out - try running manually: python3 {script_path}")
+            print(f"  ⚠️ Script {script_path} has no main()")
     except ClientError as e:
         print(f"  ⚠️ Error running audit: {str(e)}")
 

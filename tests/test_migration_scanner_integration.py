@@ -203,6 +203,6 @@ def test_glacier_waiter_raises_on_head_object_error():
 
     waiter = GlacierWaiter(mock_s3, mock_state)
 
-    with mock.patch("migration_scanner.time.sleep"):
+    with mock.patch.object(waiter, "_wait_with_interrupt"):
         with pytest.raises(ClientError):
             waiter.wait_for_restores()

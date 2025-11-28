@@ -335,7 +335,12 @@ class PhaseManager:
                 "SELECT value FROM migration_metadata WHERE key = 'current_phase'"
             )
             row = cursor.fetchone()
-            return Phase(row["value"]) if row else Phase.SCANNING
+            if not row:
+                raise RuntimeError(
+                    "Migration phase metadata is missing. "
+                    "Reset the state DB to avoid resuming from an unknown phase."
+                )
+            return Phase(row["value"])
 
     def set_phase(self, phase: "Phase"):
         """Set current migration phase"""

@@ -6,7 +6,9 @@ import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
+from cost_toolkit.common.aws_common import extract_tag_value
 from cost_toolkit.scripts import aws_utils
+from cost_toolkit.scripts.aws_utils import wait_for_instance_state
 
 
 def _stop_instance(ec2, instance_id):
@@ -17,26 +19,20 @@ def _stop_instance(ec2, instance_id):
         print("   ✅ Instance stop initiated")
 
         print("   Waiting for instance to stop...")
-        waiter = ec2.get_waiter("instance_stopped")
-        waiter.wait(InstanceIds=[instance_id])
+        wait_for_instance_state(ec2, instance_id, "instance_stopped")
         print("   ✅ Instance successfully stopped")
 
     except ClientError as e:
         print(f"   ❌ Error stopping instance: {str(e)}")
+        raise
 
     print()
 
 
 def _extract_volume_name(volume):
     """Extract volume name from tags."""
-    if "Tags" not in volume:
-        return "No name"
-
-    for tag in volume["Tags"]:
-        if tag["Key"] == "Name":
-            return tag["Value"]
-
-    return "No name"
+    name = extract_tag_value(volume, "Name")
+    return name or "No name"
 
 
 def _build_volume_info(volume):

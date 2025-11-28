@@ -10,10 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterator, Union
 
-try:  # Support both package and script execution styles.
-    from .migration_state_v2 import MigrationStateV2
-except ImportError:  # pragma: no cover - direct script execution
-    from migration_state_v2 import MigrationStateV2  # type: ignore
+from migration_state_v2 import MigrationStateV2
 
 Pathish = Union[str, Path]
 BATCH_INSERT_SIZE = 1000

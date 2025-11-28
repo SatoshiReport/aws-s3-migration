@@ -51,6 +51,7 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
         """Process a single bucket through sync → verify → delete pipeline"""
         bucket_info = self.state.get_bucket_info(bucket)
         if not bucket_info.get("sync_complete", False):
+            self.state.set_current_phase(Phase.SYNCING)
             print("→ Step 1/3: Syncing from S3...")
             print()
             self.syncer.sync_bucket(bucket)
@@ -66,6 +67,7 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
             or bucket_info.get("verified_file_count") is None
         )
         if needs_verification:
+            self.state.set_current_phase(Phase.VERIFYING)
             if bucket_info.get("verify_complete", False):
                 print("→ Step 2/3: Re-verifying to compute detailed stats...")
             else:
@@ -88,6 +90,7 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
             print()
         if not bucket_info.get("delete_complete", False):
             bucket_info = self.state.get_bucket_info(bucket)
+            self.state.set_current_phase(Phase.DELETING)
             print("→ Step 3/3: Delete from S3")
             print()
             self.delete_with_confirmation(bucket, bucket_info)
@@ -185,13 +188,13 @@ class StatusReporter:  # pylint: disable=too-few-public-methods
             print()
             print("Bucket Details:")
             for bucket in all_buckets:
-                info = self.state.get_bucket_info(bucket)
-                sync = "✓" if info.get("sync_complete") else "○"
-                verify = "✓" if info.get("verify_complete") else "○"
-                delete = "✓" if info.get("delete_complete") else "○"
+                status = self.state.get_bucket_status(bucket)
+                sync = "✓" if status.sync_complete else "○"
+                verify = "✓" if status.verify_complete else "○"
+                delete = "✓" if status.delete_complete else "○"
                 print(f"  {bucket}")
-                file_size = format_bytes(info["total_size"], binary_units=False)
-                file_info = f"{info['file_count']:,} files, {file_size}"
+                file_size = format_bytes(status.total_size, binary_units=False)
+                file_info = f"{status.file_count:,} files, {file_size}"
                 print(f"    Sync:{sync} Verify:{verify} Delete:{delete}  ({file_info})")
         print("=" * 70)
 
