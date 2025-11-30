@@ -131,7 +131,9 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
 
 def _display_progress(start_time, files_done, bytes_done):
     """Display sync progress."""
-    elapsed = time.time() - start_time if start_time else 0
+    elapsed = 0
+    if start_time:
+        elapsed = time.time() - start_time
     if elapsed > 0 and bytes_done > 0:
         throughput = bytes_done / elapsed
         progress = (
@@ -143,9 +145,13 @@ def _display_progress(start_time, files_done, bytes_done):
 
 def _print_sync_summary(start_time, files_done, bytes_done):
     """Print sync completion summary."""
-    elapsed = time.time() - start_time if start_time else 0
+    elapsed = 0
+    if start_time:
+        elapsed = time.time() - start_time
     elapsed = max(elapsed, 0.0001)
-    throughput = bytes_done / elapsed if elapsed > 0 else 0
+    throughput = 0
+    if elapsed > 0:
+        throughput = bytes_done / elapsed
     print(f"\n✓ Completed in {format_duration(elapsed)}")
     print(f"  Downloaded: {files_done:,} files, {format_bytes(bytes_done, binary_units=False)}")
     print(f"  Throughput: {format_bytes(throughput, binary_units=False)}/s")

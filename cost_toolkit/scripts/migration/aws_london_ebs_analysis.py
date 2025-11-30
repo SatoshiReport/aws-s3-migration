@@ -15,11 +15,14 @@ def _print_volume_details(ec2, vol):
         vol_response = ec2.describe_volumes(VolumeIds=[vol["id"]])
         volume = vol_response["Volumes"][0]
 
-        attachments = volume.get("Attachments", [])
-        device = attachments[0]["Device"] if attachments else "Unknown"
+        device = None
+        if "Attachments" in volume and volume["Attachments"]:
+            device = volume["Attachments"][0]["Device"]
+        else:
+            device = None
         create_time = volume["CreateTime"]
         tags = get_resource_tags(volume)
-        name_tag = tags.get("Name", "No name")
+        name_tag = tags.get("Name") if "Name" in tags else None
 
         print(f"  Volume: {vol['id']}")
         print(f"    Size: {vol['size']}")
@@ -42,7 +45,7 @@ def _check_unattached_volume(ec2, unattached_volume):
 
         create_time = volume["CreateTime"]
         tags = get_resource_tags(volume)
-        name_tag = tags.get("Name", "No name")
+        name_tag = tags.get("Name") if "Name" in tags else None
 
         print(f"  Volume: {unattached_volume['id']}")
         print(f"    Size: {unattached_volume['size']}")
@@ -66,8 +69,8 @@ def _start_stopped_instance(ec2, instance_id):
 
         response = ec2.describe_instances(InstanceIds=[instance_id])
         instance = response["Reservations"][0]["Instances"][0]
-        public_ip = instance.get("PublicIpAddress", "No public IP")
-        private_ip = instance.get("PrivateIpAddress", "No private IP")
+        public_ip = instance.get("PublicIpAddress") if "PublicIpAddress" in instance else None
+        private_ip = instance.get("PrivateIpAddress") if "PrivateIpAddress" in instance else None
 
         print(f"  Public IP: {public_ip}")
         print(f"  Private IP: {private_ip}")
@@ -82,11 +85,14 @@ def _analyze_snapshots(ec2, instance_id, attached_volumes):
     print("📸 Related Snapshots Analysis:")
     try:
         snapshots_response = ec2.describe_snapshots(OwnerIds=["sel"])
-        snapshots = snapshots_response.get("Snapshots", [])
+        if "Snapshots" not in snapshots_response:
+            snapshots = []
+        else:
+            snapshots = snapshots_response["Snapshots"]
 
         related_snapshots = []
         for snap in snapshots:
-            description = snap.get("Description", "")
+            description = snap.get("Description") if "Description" in snap else ""
             if instance_id in description or any(
                 vol["id"] in description for vol in attached_volumes
             ):
@@ -96,9 +102,9 @@ def _analyze_snapshots(ec2, instance_id, attached_volumes):
             print(f"  Found {len(related_snapshots)} snapshots related to this instance:")
             for snap in related_snapshots:
                 snap_id = snap["SnapshotId"]
-                size = snap.get("VolumeSize", 0)
+                size = snap.get("VolumeSize") if "VolumeSize" in snap else 0
                 start_time = snap["StartTime"]
-                description = snap.get("Description", "No description")
+                description = snap.get("Description") if "Description" in snap else None
 
                 print(f"    {snap_id}: {size} GB, created {start_time}")
                 print(f"      Description: {description}")
@@ -189,8 +195,8 @@ def analyze_london_ebs():
             _start_stopped_instance(ec2, instance_id)
         elif current_state == "running":
             print("✅ Instance is already running!")
-            public_ip = instance.get("PublicIpAddress", "No public IP")
-            private_ip = instance.get("PrivateIpAddress", "No private IP")
+            public_ip = instance.get("PublicIpAddress") if "PublicIpAddress" in instance else None
+            private_ip = instance.get("PrivateIpAddress") if "PrivateIpAddress" in instance else None
             print(f"  Public IP: {public_ip}")
             print(f"  Private IP: {private_ip}")
             print()

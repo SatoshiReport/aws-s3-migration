@@ -8,7 +8,10 @@ from dataclasses import dataclass
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, List
 
-_PACKAGE_PREFIX = f"{__package__}." if __package__ else ""
+if __package__:
+    _PACKAGE_PREFIX = f"{__package__}."
+else:
+    _PACKAGE_PREFIX = ""
 _migration_utils = import_module(f"{_PACKAGE_PREFIX}migration_utils")
 _migration_verify_common = import_module(f"{_PACKAGE_PREFIX}migration_verify_common")
 
@@ -91,7 +94,10 @@ def _abort_multipart_uploads(s3, bucket: str) -> None:
     paginator = s3.get_paginator("list_multipart_uploads")
     aborted = 0
     for page in paginator.paginate(Bucket=bucket):
-        uploads = page.get("Uploads", [])
+        if "Uploads" not in page:
+            uploads = []
+        else:
+            uploads = page["Uploads"]
         for upload in uploads:
             s3.abort_multipart_upload(
                 Bucket=bucket,
@@ -107,8 +113,10 @@ def _bucket_has_contents(s3, bucket: str) -> bool:
     """Return True if any versions/delete markers remain in the bucket."""
     paginator = s3.get_paginator("list_object_versions")
     for page in paginator.paginate(Bucket=bucket, PaginationConfig={"MaxItems": 1}):
-        versions = _ensure_list(page.get("Versions", []))
-        delete_markers = _ensure_list(page.get("DeleteMarkers", []))
+        versions_raw = page.get("Versions") if "Versions" in page else None
+        delete_markers_raw = page.get("DeleteMarkers") if "DeleteMarkers" in page else None
+        versions = _ensure_list(versions_raw) if versions_raw else []
+        delete_markers = _ensure_list(delete_markers_raw) if delete_markers_raw else []
         if versions or delete_markers:
             return True
     return False
