@@ -50,7 +50,7 @@ def audit_elastic_ips_in_region(region, aws_access_key_id, aws_secret_access_key
                 "association_id": address.get("AssociationId"),
                 "network_interface_id": address.get("NetworkInterfaceId"),
                 "private_ip": address.get("PrivateIpAddress"),
-                "tags": address.get("Tags", []),
+                "tags": address.get("Tags") if "Tags" in address else [],
             }
 
             # Check if EIP is associated
