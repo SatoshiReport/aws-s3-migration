@@ -15,7 +15,6 @@ from cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup import (
     _process_regions,
     _remove_cross_references,
     cleanup_circular_security_groups,
-    delete_security_group,
     get_security_group_rules_referencing_group,
     remove_security_group_rule,
 )

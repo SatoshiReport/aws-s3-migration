@@ -11,7 +11,6 @@ from cost_toolkit.scripts.audit.aws_ec2_usage_audit import (  # pyright: ignore[
     _calculate_cpu_metrics,
     _determine_usage_level,
     _estimate_monthly_cost,
-    _get_instance_name,
     _get_network_metrics,
     _print_cpu_metrics,
     _process_instance_details,
