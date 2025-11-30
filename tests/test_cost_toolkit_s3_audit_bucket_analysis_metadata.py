@@ -7,9 +7,9 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.s3_utils import get_bucket_region
 from cost_toolkit.scripts.audit.s3_audit.bucket_analysis import (
     _get_bucket_metadata,
-    get_bucket_region,
 )
 from tests.assertions import assert_equal
 
