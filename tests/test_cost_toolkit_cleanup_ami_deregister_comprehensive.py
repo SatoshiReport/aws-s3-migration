@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.confirmation_prompts import confirm_deregistration
 from cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk import (
     bulk_deregister_unused_amis,
-    confirm_deregistration,
     deregister_ami,
     get_amis_to_deregister,
     main,

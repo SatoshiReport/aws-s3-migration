@@ -17,7 +17,6 @@ from cost_toolkit.common.aws_client_factory import create_ec2_client, load_crede
 from cost_toolkit.scripts.aws_ec2_operations import (
     describe_addresses,
     get_all_regions,
-    get_common_regions,
     get_instance_name,
 )
 
@@ -47,10 +46,10 @@ def audit_elastic_ips_in_region(region, aws_access_key_id, aws_secret_access_key
                 "allocation_id": address.get("AllocationId", "N/A"),
                 "public_ip": address.get("PublicIp", "N/A"),
                 "domain": address.get("Domain", "N/A"),
-                "instance_id": address.get("InstanceId", None),
-                "association_id": address.get("AssociationId", None),
-                "network_interface_id": address.get("NetworkInterfaceId", None),
-                "private_ip": address.get("PrivateIpAddress", None),
+                "instance_id": address.get("InstanceId"),
+                "association_id": address.get("AssociationId"),
+                "network_interface_id": address.get("NetworkInterfaceId"),
+                "private_ip": address.get("PrivateIpAddress"),
                 "tags": address.get("Tags", []),
             }
 
@@ -174,11 +173,7 @@ def audit_all_elastic_ips():
     print("⚠️  Note: Unassociated Elastic IPs cost $0.005/hour ($3.65/month each)")
     print()
 
-    try:
-        regions = get_all_regions(aws_access_key_id, aws_secret_access_key)
-    except ClientError as e:
-        print(f"⚠️  Could not get all regions, using common ones: {e}")
-        regions = get_common_regions()
+    regions = get_all_regions(aws_access_key_id, aws_secret_access_key)
     regions_with_eips, total_eips, total_unassociated, total_monthly_cost = _scan_all_regions(
         regions, aws_access_key_id, aws_secret_access_key
     )

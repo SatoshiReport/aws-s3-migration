@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Explore Aurora database data."""
 
-
 import os
 
 try:
@@ -22,24 +21,36 @@ from cost_toolkit.scripts.rds.db_inspection_common import (
     print_database_version_info,
 )
 
+
 # Constants
 MAX_SAMPLE_COLUMNS = 5
-DEFAULT_AURORA_HOST = os.environ.get("AURORA_HOST", "aurora-serverless.example.com")
-DEFAULT_AURORA_PORT = int(os.environ.get("AURORA_PORT", "5432"))
-DEFAULT_AURORA_DATABASE = os.environ.get("AURORA_DATABASE", "postgres")
-DEFAULT_AURORA_USERNAME = os.environ.get("AURORA_USERNAME", "postgres")
-DEFAULT_AURORA_PASSWORD = os.environ.get("AURORA_PASSWORD")
+
+
+def _require_env_var(name: str) -> str:
+    """Return a required environment variable or raise."""
+    value = os.environ.get(name)
+    if value is None or not value.strip():
+        raise RuntimeError(f"{name} is required to explore the Aurora cluster")
+    return value.strip()
+
+
+def _parse_required_port(name: str) -> int:
+    """Parse a required port environment variable."""
+    raw_value = _require_env_var(name)
+    try:
+        return int(raw_value)
+    except ValueError:
+        raise RuntimeError(f"{name} must be a valid integer, got {raw_value!r}")
 
 
 def _load_aurora_settings():
     """Load Aurora connection settings from environment variables."""
-    return (
-        os.environ.get("AURORA_HOST", DEFAULT_AURORA_HOST),
-        int(os.environ.get("AURORA_PORT", DEFAULT_AURORA_PORT)),
-        os.environ.get("AURORA_DATABASE", DEFAULT_AURORA_DATABASE),
-        os.environ.get("AURORA_USERNAME", DEFAULT_AURORA_USERNAME),
-        os.environ.get("AURORA_PASSWORD", DEFAULT_AURORA_PASSWORD),
-    )
+    host = _require_env_var("AURORA_HOST")
+    port = _parse_required_port("AURORA_PORT")
+    database = _require_env_var("AURORA_DATABASE")
+    username = _require_env_var("AURORA_USERNAME")
+    password = _require_env_var("AURORA_PASSWORD")
+    return host, port, database, username, password
 
 
 def explore_aurora_database():

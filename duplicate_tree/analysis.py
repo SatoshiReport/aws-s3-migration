@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Sequence
 
 from cost_toolkit.common.format_utils import format_bytes
-from duplicate_tree_core import (
+from duplicate_tree.core import (
     DirectoryIndex,
     DuplicateCluster,
     find_exact_duplicates,
@@ -66,7 +66,7 @@ def build_directory_index_from_db(  # pylint: disable=too-many-locals
         hasher = hashlib.sha256()
         try:
             for processed, row in enumerate(cursor, start=1):
-                checksum = row["checksum"] or ""
+                checksum = row["checksum"] if row["checksum"] else ""
                 bucket = row["bucket"]
                 key = row["key"]
                 size = row["size"]

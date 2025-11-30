@@ -31,7 +31,8 @@ def _build_volume_detail(volume):
     """Build volume detail dictionary from volume data."""
     size_gb = volume["Size"]
     monthly_cost = size_gb * 0.08
-    attachment_info = _build_attachment_info(volume.get("Attachments", []))
+    attachments = volume.get("Attachments", [])
+    attachment_info = _build_attachment_info(attachments)
     tags = get_resource_tags(volume)
     name = tags.get("Name", "Unnamed")
 

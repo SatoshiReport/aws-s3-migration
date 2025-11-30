@@ -27,15 +27,20 @@ def _get_nameserver_records(route53, zone_id, domain_name):
     records = records_response["ResourceRecordSets"]
 
     for record in records:
-        if record.get("Type") == "NS" and record.get("Name") == f"{domain_name}.":
-            return [rr.get("Value") for rr in record.get("ResourceRecords", [])]
+        record_type = record.get("Type")
+        record_name = record.get("Name")
+        if record_type == "NS" and record_name == f"{domain_name}.":
+            resource_records = record.get("ResourceRecords", [])
+            return [rr.get("Value") for rr in resource_records]
 
     raise NSRecordsNotFoundError(domain_name)
 
 
 def _check_root_a_record(record, domain_name):
     """Check if record is root domain A record and return IP."""
-    if record.get("Type") != "A" or record.get("Name") != f"{domain_name}.":
+    record_type = record.get("Type")
+    record_name = record.get("Name")
+    if record_type != "A" or record_name != f"{domain_name}.":
         return False, None
 
     canva_ip = None
@@ -48,7 +53,9 @@ def _check_root_a_record(record, domain_name):
 
 def _check_www_a_record(record, domain_name):
     """Check if record is www subdomain A record."""
-    if record.get("Type") != "A" or record.get("Name") != f"www.{domain_name}.":
+    record_type = record.get("Type")
+    record_name = record.get("Name")
+    if record_type != "A" or record_name != f"www.{domain_name}.":
         return False
 
     if "ResourceRecords" in record:
@@ -60,7 +67,9 @@ def _check_www_a_record(record, domain_name):
 
 def _check_canva_txt_record(record):
     """Check if record is Canva verification TXT record."""
-    if record.get("Type") != "TXT" or "_canva-domain-verify" not in record.get("Name", ""):
+    record_type = record.get("Type")
+    record_name = record.get("Name", "")
+    if record_type != "TXT" or "_canva-domain-verify" not in record_name:
         return False
 
     if "ResourceRecords" in record:
@@ -110,7 +119,9 @@ def _build_existing_records_map(records):
     """Build a map of existing DNS records for quick lookup"""
     existing_records = {}
     for record in records:
-        key = f"{record.get('Name', '')}-{record.get('Type', '')}"
+        record_name = record.get("Name", "")
+        record_type = record.get("Type", "")
+        key = f"{record_name}-{record_type}"
         existing_records[key] = record
     return existing_records
 

@@ -5,13 +5,15 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 
 
 def _check_log_group_size(logs_client, log_group_name):
     """Check CloudWatch log group size and calculate cost."""
     try:
         log_group_response = logs_client.describe_log_groups(logGroupNamePrefix=log_group_name)
-        for log_group in log_group_response.get("logGroups", []):
+        log_groups = log_group_response.get("logGroups", [])
+        for log_group in log_groups:
             if log_group["logGroupName"] == log_group_name:
                 stored_bytes = log_group.get("storedBytes", 0)
                 stored_gb = stored_bytes / (1024**3)
@@ -46,13 +48,13 @@ def audit_flow_logs_in_region(region_name):
         for flow_log in flow_logs:
             flow_info = {
                 "region": region_name,
-                "flow_log_id": flow_log.get("FlowLogId"),
-                "flow_log_status": flow_log.get("FlowLogStatus"),
-                "resource_type": flow_log.get("ResourceType"),
+                "flow_log_id": flow_log.get("FlowLogId", None),
+                "flow_log_status": flow_log.get("FlowLogStatus", None),
+                "resource_type": flow_log.get("ResourceType", None),
                 "resource_id": flow_log.get("ResourceIds", []),
-                "log_destination_type": flow_log.get("LogDestinationType"),
-                "log_destination": flow_log.get("LogDestination"),
-                "creation_time": flow_log.get("CreationTime"),
+                "log_destination_type": flow_log.get("LogDestinationType", None),
+                "log_destination": flow_log.get("LogDestination", None),
+                "creation_time": flow_log.get("CreationTime", None),
                 "tags": flow_log.get("Tags", []),
             }
 
@@ -87,31 +89,38 @@ def audit_flow_logs_in_region(region_name):
 
 def _check_vpc_peering_connections(ec2):
     """Check VPC peering connections."""
-    peering_connections = ec2.describe_vpc_peering_connections().get("VpcPeeringConnections", [])
+    response = ec2.describe_vpc_peering_connections()
+    peering_connections = response.get("VpcPeeringConnections", [])
     print(f"VPC Peering Connections: {len(peering_connections)}")
     for peering in peering_connections:
-        status = peering.get("Status", {}).get("Code", "Unknown")
+        status_obj = peering.get("Status", {})
+        status = status_obj.get("Code", "Unknown")
         print(f"  Peering: {peering['VpcPeeringConnectionId']} - {status}")
 
 
 def _check_vpc_endpoints(ec2):
     """Check VPC endpoints."""
-    endpoints = ec2.describe_vpc_endpoints().get("VpcEndpoints", [])
+    response = ec2.describe_vpc_endpoints()
+    endpoints = response.get("VpcEndpoints", [])
     print(f"VPC Endpoints: {len(endpoints)}")
     for endpoint in endpoints:
         endpoint_type = endpoint.get("VpcEndpointType", "Unknown")
         print(f"  Endpoint: {endpoint['VpcEndpointId']} ({endpoint_type})")
-        print(f"    Service: {endpoint.get('ServiceName', 'Unknown')}")
-        print(f"    State: {endpoint.get('State', 'Unknown')}")
-        print(f"    Created: {endpoint.get('CreationTimestamp')}")
+        print(f"    Service: {endpoint.get('ServiceName', 'Unknown'}"))
+        print(f"    State: {endpoint.get('State', 'Unknown'}"))
+        print(f"    Created: {endpoint.get('CreationTimestamp', 'N/A'}"))
 
 
 def _check_vpc_resource_counts(ec2):
     """Check counts of various VPC resources."""
-    print(f"Security Groups: {len(ec2.describe_security_groups().get('SecurityGroups', []))}")
-    print(f"Network ACLs: {len(ec2.describe_network_acls().get('NetworkAcls', []))}")
-    print(f"Route Tables: {len(ec2.describe_route_tables().get('RouteTables', []))}")
-    print(f"Subnets: {len(ec2.describe_subnets().get('Subnets', []))}")
+    sg_response = ec2.describe_security_groups()
+    nacl_response = ec2.describe_network_acls()
+    rt_response = ec2.describe_route_tables()
+    subnet_response = ec2.describe_subnets()
+    print(f"Security Groups: {len(sg_response.get('SecurityGroups', []))}")
+    print(f"Network ACLs: {len(nacl_response.get('NetworkAcls', []))}")
+    print(f"Route Tables: {len(rt_response.get('RouteTables', []))}")
+    print(f"Subnets: {len(subnet_response.get('Subnets', []))}")
 
 
 def audit_additional_vpc_costs_in_region(region_name):
@@ -179,12 +188,12 @@ def main():
     print("=" * 80)
     print("Analyzing VPC Flow Logs and other potential cost sources...")
 
-    target_regions = ["us-east-1", "eu-west-2", "us-west-2", "us-east-2"]
+    regions = get_all_aws_regions()
 
     all_flow_logs = []
     total_flow_log_cost = 0
 
-    for region in target_regions:
+    for region in regions:
         flow_logs = audit_flow_logs_in_region(region)
         audit_additional_vpc_costs_in_region(region)
 

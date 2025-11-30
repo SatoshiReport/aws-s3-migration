@@ -13,8 +13,8 @@ from tests.assertions import assert_equal
 
 @patch("os.getenv")
 @patch("cost_toolkit.common.aws_client_factory.load_dotenv")
-@patch("builtins.print")
-def test_setup_aws_credentials_success(mock_print, mock_load_dotenv, mock_getenv):
+@patch("cost_toolkit.common.aws_client_factory.logging.info")
+def test_setup_aws_credentials_success(mock_log_info, mock_load_dotenv, mock_getenv):
     """Test setup_aws_credentials with valid credentials."""
 
     def getenv_side_effect(key):
@@ -27,7 +27,7 @@ def test_setup_aws_credentials_success(mock_print, mock_load_dotenv, mock_getenv
     assert_equal(key_id, "test_key")
     assert_equal(secret, "test_secret")
     mock_load_dotenv.assert_called_once()
-    mock_print.assert_called_once()
+    mock_log_info.assert_called_once()
 
 
 @patch("os.getenv")
@@ -63,8 +63,8 @@ def test_check_aws_credentials_success(mock_load_dotenv, mock_getenv):
 
 @patch("os.getenv")
 @patch("cost_toolkit.common.aws_client_factory.load_dotenv")
-@patch("builtins.print")
-def test_check_aws_credentials_missing(mock_print, mock_load_dotenv, mock_getenv):
+@patch("cost_toolkit.common.credential_utils.logging.warning")
+def test_check_aws_credentials_missing(mock_log_warning, mock_load_dotenv, mock_getenv):
     """Test check_aws_credentials with missing credentials."""
     mock_getenv.return_value = None
 
@@ -72,5 +72,5 @@ def test_check_aws_credentials_missing(mock_print, mock_load_dotenv, mock_getenv
 
     assert_equal(result, False)
     mock_load_dotenv.assert_called_once()
-    # Should print helpful error message
-    assert mock_print.call_count >= 1
+    # Should log helpful error messages
+    assert mock_log_warning.call_count >= 1

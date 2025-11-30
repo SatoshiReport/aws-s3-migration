@@ -4,6 +4,7 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
 
@@ -14,15 +15,15 @@ def _build_instance_info(instance, region_name, hourly_cost, monthly_cost):
         "instance_id": instance["InstanceId"],
         "instance_type": instance["InstanceType"],
         "state": instance["State"]["Name"],
-        "launch_time": instance.get("LaunchTime"),
+        "launch_time": instance.get("LaunchTime", None),
         "region": region_name,
         "hourly_cost": hourly_cost,
         "monthly_cost": monthly_cost,
         "platform": instance.get("Platform", "Linux/UNIX"),
-        "vpc_id": instance.get("VpcId"),
-        "subnet_id": instance.get("SubnetId"),
-        "public_ip": instance.get("PublicIpAddress"),
-        "private_ip": instance.get("PrivateIpAddress"),
+        "vpc_id": instance.get("VpcId", None),
+        "subnet_id": instance.get("SubnetId", None),
+        "public_ip": instance.get("PublicIpAddress", None),
+        "private_ip": instance.get("PrivateIpAddress", None),
         "tags": instance.get("Tags", []),
     }
 
@@ -215,7 +216,7 @@ def _process_single_volume(volume):
     monthly_cost = calculate_ebs_monthly_cost(volume_type, size_gb, iops, throughput)
 
     attachments = volume.get("Attachments", [])
-    attached_to = attachments[0].get("InstanceId") if attachments else None
+    attached_to = attachments[0]["InstanceId"] if attachments and "InstanceId" in attachments[0] else None
 
     print(f"Volume: {volume_id}")
     print(f"  Type: {volume_type}")
@@ -245,7 +246,8 @@ def analyze_ebs_volumes_in_region(region_name):
 
     try:
         ec2 = create_client("ec2", region=region_name)
-        volumes = ec2.describe_volumes().get("Volumes", [])
+        volumes_response = ec2.describe_volumes()
+        volumes = volumes_response.get("Volumes", [])
 
         if not volumes:
             print(f"✅ No EBS volumes found in {region_name}")
@@ -377,9 +379,9 @@ def main():
     print("Analyzing 'Amazon Elastic Compute Cloud - Compute' costs...")
 
     get_all_regions()
-    target_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "eu-west-2"]
+    regions = get_all_aws_regions()
 
-    data = _collect_regional_data(target_regions)
+    data = _collect_regional_data(regions)
     all_instances = data["all_instances"]
     all_volumes = data["all_volumes"]
     total_compute_cost = data["total_compute_cost"]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 import sys
-from types import SimpleNamespace
+from types import ModuleType
 
 import duplicate_tree_report as dtr
 from tests.assertions import assert_equal
@@ -22,8 +22,17 @@ def test_reexported_symbols_are_accessible():
 
 def test_main_delegates_to_cli(monkeypatch):
     """Ensure duplicate_tree_report.main routes to duplicate_tree_cli."""
-    dummy_cli = SimpleNamespace(main=lambda argv=None: 42)
+    class DummyCliModule(ModuleType):
+        """Minimal module stub that exposes a main entry point."""
+
+        def __init__(self) -> None:
+            super().__init__("duplicate_tree_cli")
+
+        def main(self, _argv=None):  # pragma: no cover - stubbed for tests
+            """Return the stubbed exit code."""
+            return 42
+
+    dummy_cli = DummyCliModule()
     monkeypatch.setitem(sys.modules, "duplicate_tree_cli", dummy_cli)
-    monkeypatch.setitem(sys.modules, "aws.duplicate_tree_cli", dummy_cli)
     module = importlib.reload(dtr)
     assert_equal(module.main([]), 42)

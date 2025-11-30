@@ -3,6 +3,7 @@
 import argparse
 
 import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 from ...aws_utils import setup_aws_credentials
 from .cluster_ops import (
@@ -46,9 +47,8 @@ def _select_instance_for_migration(instances, instance_identifier, region):
             choice = int(input("\nSelect instance to migrate (number): ")) - 1
             _validate_choice(choice, len(instances))
             return instances[choice]
-        except (InvalidSelectionError, ValueError, IndexError):
-            print("❌ Invalid selection. Exiting.")
-            return None
+        except (InvalidSelectionError, ValueError, IndexError) as e:
+            raise InvalidSelectionError() from e
 
     for instance in instances:
         if instance["identifier"] == instance_identifier and (
@@ -143,8 +143,8 @@ def migrate_rds_to_aurora_serverless(instance_identifier=None, region=None):
             selected_instance, endpoint_info, current_monthly_cost - estimated_serverless_cost
         )
 
-    except Exception as e:
-        print(f"❌ Migration failed: {e}")
+    except (BotoCoreError, ClientError) as exc:
+        print(f"❌ Migration failed: {exc}")
         print("Please check AWS console for any resources that may need cleanup.")
         raise
 

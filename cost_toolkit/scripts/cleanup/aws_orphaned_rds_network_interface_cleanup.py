@@ -60,8 +60,9 @@ def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_
 
             # Check if it has any attachments
             attachment = eni.get("Attachment", {})
-            if attachment and attachment.get("InstanceId"):
-                print(f"   ⚠️  Interface is now attached to {attachment['InstanceId']} - skipping")
+            attachment_instance_id = attachment.get("InstanceId", None)
+            if attachment and attachment_instance_id:
+                print(f"   ⚠️  Interface is now attached to {attachment_instance_id} - skipping")
                 continue
 
             # Delete the network interface

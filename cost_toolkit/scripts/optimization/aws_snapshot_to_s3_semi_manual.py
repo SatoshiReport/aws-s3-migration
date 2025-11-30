@@ -18,6 +18,8 @@ This approach gives you control over the problematic AWS export service.
 
 from datetime import datetime
 
+from botocore.exceptions import BotoCoreError, ClientError
+
 from cost_toolkit.common.aws_client_factory import load_credentials_from_env
 from cost_toolkit.common.aws_common import create_ec2_and_s3_clients
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
@@ -207,8 +209,8 @@ def _prepare_all_snapshots(snapshots, aws_access_key_id, aws_secret_access_key):
                 snapshot, aws_access_key_id, aws_secret_access_key
             )
             prepared_snapshots.append(prepared)
-        except Exception as e:
-            print(f"   ❌ Failed to prepare {snapshot['snapshot_id']}: {e}")
+        except (BotoCoreError, ClientError) as exc:
+            print(f"   ❌ Failed to prepare {snapshot['snapshot_id']}: {exc}")
             raise
     return prepared_snapshots
 

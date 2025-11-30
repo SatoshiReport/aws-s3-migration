@@ -20,22 +20,22 @@ def _print_network_info(instance):
     """Print network information for an instance."""
     print("\n📡 NETWORK INFORMATION:")
 
-    public_ip = instance.get("PublicIpAddress")
+    public_ip = instance.get("PublicIpAddress", None)
     print(f"  Public IP: {public_ip if public_ip else 'None'}")
 
-    public_dns = instance.get("PublicDnsName")
+    public_dns = instance.get("PublicDnsName", None)
     print(f"  Public DNS: {public_dns if public_dns else 'None'}")
 
-    private_ip = instance.get("PrivateIpAddress")
+    private_ip = instance.get("PrivateIpAddress", None)
     if private_ip:
         print(f"  Private IP: {private_ip}")
 
-    private_dns = instance.get("PrivateDnsName")
+    private_dns = instance.get("PrivateDnsName", None)
     if private_dns:
         print(f"  Private DNS: {private_dns}")
 
-    vpc_id = instance.get("VpcId")
-    subnet_id = instance.get("SubnetId")
+    vpc_id = instance.get("VpcId", None)
+    subnet_id = instance.get("SubnetId", None)
     print(f"  VPC ID: {vpc_id}")
     print(f"  Subnet ID: {subnet_id}")
 
@@ -48,8 +48,10 @@ def _print_network_info(instance):
 def _check_internet_gateway(route_tables):
     """Check if route tables have an internet gateway."""
     for route_table in route_tables:
-        for route in route_table.get("Routes", []):
-            if route.get("DestinationCidrBlock") == "0.0.0.0/0":
+        routes = route_table.get("Routes", [])
+        for route in routes:
+            dest_cidr = route.get("DestinationCidrBlock", None)
+            if dest_cidr == "0.0.0.0/0":
                 gateway_id = route.get("GatewayId", "")
                 if gateway_id.startswith("igw-"):
                     return True, gateway_id
@@ -138,11 +140,11 @@ def get_instance_connection_info(instance_id, region_name):
         _print_instance_basic_info(instance)
         _print_network_info(instance)
 
-        subnet_id = instance.get("SubnetId")
+        subnet_id = instance.get("SubnetId", None)
         has_internet_route = _check_subnet_configuration(ec2, subnet_id)
 
-        public_ip = instance.get("PublicIpAddress")
-        public_dns = instance.get("PublicDnsName")
+        public_ip = instance.get("PublicIpAddress", None)
+        public_dns = instance.get("PublicDnsName", None)
         _print_connection_options(instance_id, region_name, public_ip, public_dns)
         _check_ssm_availability(instance_id, region_name)
 
@@ -156,8 +158,8 @@ def get_instance_connection_info(instance_id, region_name):
             "instance_id": instance_id,
             "public_ip": public_ip,
             "public_dns": public_dns,
-            "private_ip": instance.get("PrivateIpAddress"),
-            "private_dns": instance.get("PrivateDnsName"),
+            "private_ip": instance.get("PrivateIpAddress", None),
+            "private_dns": instance.get("PrivateDnsName", None),
             "has_internet_access": has_internet_route,
             "state": instance["State"]["Name"],
         }

@@ -86,10 +86,11 @@ def match_category(path: Path, is_dir: bool, categories: list[Category]) -> Cate
     """
     for category in categories:
         try:
-            if category.matcher(path, is_dir):
-                return category
-        except Exception as exc:
+            matched = category.matcher(path, is_dir)
+        except (OSError, ValueError) as exc:
             raise MatcherError(f"Matcher {category.name} failed on {path}: {exc}") from exc
+        if matched:
+            return category
     return None
 
 
@@ -114,7 +115,7 @@ def _process_parent_directory(
         logging.warning("Cannot resolve directory %s during scan: %s", parent, exc)
         return
 
-    entry = candidates.get(canonical)
+    entry = candidates[canonical] if canonical in candidates else None
     if entry:
         if entry.size_bytes is None:
             entry.size_bytes = file_size

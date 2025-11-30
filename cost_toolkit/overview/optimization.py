@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 
 import boto3
 
-from cost_toolkit.common.aws_common import get_default_regions
+from cost_toolkit.common.aws_common import get_all_aws_regions
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost, calculate_snapshot_cost
 
 
@@ -24,7 +24,8 @@ def _scan_region_for_unattached_volumes(region):
     total_cost = 0.0
 
     for volume in volumes:
-        if not volume.get("Attachments"):
+        attachments = volume.get("Attachments", [])
+        if not attachments:
             count += 1
             size_gb = volume["Size"]
             volume_type = volume["VolumeType"]
@@ -38,7 +39,7 @@ def _check_unattached_ebs_volumes():
     Raises:
         ClientError: If API call fails
     """
-    regions = get_default_regions()
+    regions = get_all_aws_regions()
     unattached_volumes = 0
     unattached_cost = 0.0
 
@@ -65,19 +66,13 @@ def _check_unused_elastic_ips():
         ClientError: If API call fails
     """
     elastic_ips = 0
-    for region in [
-        "us-east-1",
-        "us-east-2",
-        "us-west-1",
-        "us-west-2",
-        "eu-west-1",
-        "eu-west-2",
-    ]:
+    regions = get_all_aws_regions()
+    for region in regions:
         ec2 = boto3.client("ec2", region_name=region)
         addresses = ec2.describe_addresses()["Addresses"]
 
         for address in addresses:
-            if not address.get("InstanceId"):
+            if "InstanceId" not in address:
                 elastic_ips += 1
 
     if elastic_ips > 0:
@@ -101,14 +96,16 @@ def _check_old_snapshots():
     snapshot_cost = 0.0
     cutoff_date = datetime.now() - timedelta(days=90)
 
-    for region in get_default_regions():
+    for region in get_all_aws_regions():
         ec2 = boto3.client("ec2", region_name=region)
         snapshots = ec2.describe_snapshots(OwnerIds=["self"])["Snapshots"]
 
         for snapshot in snapshots:
             if snapshot["StartTime"].replace(tzinfo=None) < cutoff_date:
                 old_snapshots += 1
-                size_gb = snapshot.get("VolumeSize", 0)
+                if "VolumeSize" not in snapshot:
+                    raise KeyError(f"Snapshot {snapshot['SnapshotId']} missing VolumeSize")
+                size_gb = snapshot["VolumeSize"]
                 snapshot_cost += calculate_snapshot_cost(size_gb)
 
     if old_snapshots > 0:

@@ -351,6 +351,7 @@ class TestMain:
 
     def test_main_execution(self, capsys):
         """Test main function execution."""
+        regions = ["eu-west-2", "us-east-2", "us-east-1"]
         with patch("cost_toolkit.scripts.audit.aws_backup_audit.setup_aws_credentials"):
             with patch("cost_toolkit.scripts.audit.aws_backup_audit.check_aws_backup_plans"):
                 with patch(
@@ -362,7 +363,11 @@ class TestMain:
                         with patch(
                             "cost_toolkit.scripts.audit.aws_backup_audit.analyze_recent_snapshots"
                         ):
-                            main()
+                            with patch(
+                                "cost_toolkit.scripts.audit.aws_backup_audit.get_all_aws_regions",
+                                return_value=regions,
+                            ):
+                                main()
 
         captured = capsys.readouterr()
         assert "AWS Backup and Automated Snapshot Audit" in captured.out
@@ -386,10 +391,14 @@ class TestMain:
                         with patch(
                             "cost_toolkit.scripts.audit.aws_backup_audit.analyze_recent_snapshots"
                         ):
-                            try:
-                                main()
-                            except ClientError:
-                                pass
+                            with patch(
+                                "cost_toolkit.scripts.audit.aws_backup_audit.get_all_aws_regions",
+                                return_value=["eu-west-2", "us-east-2", "us-east-1"],
+                            ):
+                                try:
+                                    main()
+                                except ClientError:
+                                    pass
 
         captured = capsys.readouterr()
         assert "AWS Backup and Automated Snapshot Audit" in captured.out

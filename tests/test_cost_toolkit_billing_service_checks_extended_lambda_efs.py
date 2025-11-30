@@ -8,6 +8,7 @@ import botocore.exceptions
 import pytest
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_test_constants import DEFAULT_TEST_REGIONS
 from cost_toolkit.scripts.billing.billing_report.service_checks_extended import (
     ServiceCheckError,
     check_efs_status,
@@ -44,7 +45,9 @@ class TestCheckLambdaStatus:
             is_resolved, message = check_lambda_status()
             assert is_resolved is False
             assert "ACTIVE" in message
-            assert "9 Lambda functions still exist" in message
+            functions_per_region = len(mock_lambda.list_functions.return_value["Functions"])
+            expected_total = len(DEFAULT_TEST_REGIONS) * functions_per_region
+            assert f"{expected_total} Lambda functions still exist" in message
 
     def test_lambda_mixed_regions(self):
         """Test Lambda status across multiple regions."""
@@ -137,7 +140,9 @@ class TestCheckEFSStatusSuccess:
             is_resolved, message = check_efs_status()
             assert is_resolved is False
             assert "ACTIVE" in message
-            assert "4 EFS file systems still exist" in message
+            files_per_region = len(mock_efs.describe_file_systems.return_value["FileSystems"])
+            expected_file_count = len(DEFAULT_TEST_REGIONS) * files_per_region
+            assert f"{expected_file_count} EFS file systems still exist" in message
 
     def test_efs_mixed_regions(self):
         """Test EFS status across multiple regions."""
@@ -167,7 +172,9 @@ class TestCheckEFSStatusSuccess:
             mock_client.return_value = mock_efs
             is_resolved, message = check_efs_status()
             assert is_resolved is False
-            assert "2 EFS file systems still exist" in message
+            files_per_region = len(mock_efs.describe_file_systems.return_value["FileSystems"])
+            expected_file_count = len(DEFAULT_TEST_REGIONS) * files_per_region
+            assert f"{expected_file_count} EFS file systems still exist" in message
 
 
 class TestCheckEFSStatusErrors:

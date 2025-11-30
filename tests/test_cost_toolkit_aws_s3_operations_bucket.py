@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.aws_s3_operations import (
@@ -183,8 +184,6 @@ def test_list_buckets_success(mock_create_client):
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
 def test_list_buckets_empty(mock_create_client):
     """Test list_buckets raises KeyError when Buckets key is missing."""
-    import pytest
-
     mock_s3 = MagicMock()
     mock_create_client.return_value = mock_s3
     mock_s3.list_buckets.return_value = {}
@@ -297,8 +296,6 @@ def test_get_bucket_tagging_no_such_tag_set(mock_create_client):
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
 def test_get_bucket_tagging_empty_tag_set(mock_create_client):
     """Test get_bucket_tagging raises KeyError when TagSet not present."""
-    import pytest
-
     mock_s3 = MagicMock()
     mock_create_client.return_value = mock_s3
     mock_s3.get_bucket_tagging.return_value = {}

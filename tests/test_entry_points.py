@@ -1,8 +1,6 @@
 """Tests for CLI entry point modules."""
 
-import duplicate_tree_cli
 import duplicate_tree_cli_exports
-import find_compressible_files
 from cost_toolkit import cost_overview
 from cost_toolkit.scripts import config
 from cost_toolkit.scripts.audit import (
@@ -15,7 +13,10 @@ from cost_toolkit.scripts.audit import (
     aws_s3_audit,
     aws_security_group_dependencies,
 )
-from cost_toolkit.scripts.billing import aws_billing_report
+from cost_toolkit.scripts.billing import (
+    aws_hourly_billing_report,
+    aws_today_billing_report,
+)
 from cost_toolkit.scripts.management import (
     aws_ebs_volume_manager,
     aws_s3_standardization,
@@ -49,22 +50,11 @@ def test_config_imports():
     assert config is not None
 
 
-def test_duplicate_tree_cli_imports():
-    """Test that duplicate_tree_cli module can be imported."""
-    assert duplicate_tree_cli is not None
-    assert hasattr(duplicate_tree_cli, "main")
-
-
 def test_duplicate_tree_cli_exports_imports():
     """Test that duplicate_tree_cli_exports module can be imported."""
     assert duplicate_tree_cli_exports is not None
     assert hasattr(duplicate_tree_cli_exports, "__all__")
     assert "main" in duplicate_tree_cli_exports.__all__
-
-
-def test_find_compressible_files_imports():
-    """Test that find_compressible_files module can be imported."""
-    assert find_compressible_files is not None
 
 
 def test_aws_vmimport_role_setup_imports():
@@ -91,7 +81,8 @@ def test_audit_scripts_import():
 
 def test_billing_scripts_import():
     """Test that billing CLI scripts can be imported."""
-    assert aws_billing_report is not None
+    assert aws_hourly_billing_report is not None
+    assert aws_today_billing_report is not None
 
 
 def test_management_scripts_import():

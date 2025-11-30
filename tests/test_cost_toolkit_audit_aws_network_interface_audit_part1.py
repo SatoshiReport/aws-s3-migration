@@ -15,8 +15,9 @@ class TestGetAllRegions:
     """Tests for get_all_regions function."""
 
     @patch("cost_toolkit.common.aws_common.create_ec2_client")
-    def test_get_all_regions_success(self, mock_create_client):
+    def test_get_all_regions_success(self, mock_create_client, monkeypatch):
         """Test successfully retrieving all AWS regions."""
+        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
         mock_ec2_client = MagicMock()
         mock_create_client.return_value = mock_ec2_client
         mock_ec2_client.describe_regions.return_value = {
@@ -34,8 +35,9 @@ class TestGetAllRegions:
         mock_ec2_client.describe_regions.assert_called_once()
 
     @patch("cost_toolkit.common.aws_common.create_ec2_client")
-    def test_get_all_regions_uses_us_east_1(self, mock_create_ec2):
+    def test_get_all_regions_uses_us_east_1(self, mock_create_ec2, monkeypatch):
         """Test that get_all_regions uses us-east-1 as region."""
+        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
         mock_ec2_client = MagicMock()
         mock_ec2_client.describe_regions.return_value = {"Regions": []}
         mock_create_ec2.return_value = mock_ec2_client
@@ -47,8 +49,9 @@ class TestGetAllRegions:
         assert call_args[1]["region"] == "us-east-1" or call_args[0][0] == "us-east-1"
 
     @patch("cost_toolkit.common.aws_common.create_ec2_client")
-    def test_get_all_regions_single_region(self, mock_create_ec2):
+    def test_get_all_regions_single_region(self, mock_create_ec2, monkeypatch):
         """Test retrieving single region."""
+        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
         mock_ec2_client = MagicMock()
         mock_ec2_client.describe_regions.return_value = {"Regions": [{"RegionName": "ap-south-1"}]}
         mock_create_ec2.return_value = mock_ec2_client

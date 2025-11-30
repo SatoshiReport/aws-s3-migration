@@ -25,14 +25,10 @@ REPO_ROOT = get_repo_root()
 
 
 def determine_default_base_path() -> Path:
-    """Return the local base path for migrated objects.
-
-    Raises:
-        ConfigurationError: If no valid base path can be determined.
-    """
+    """Return the local base path for migrated objects."""
     candidates: list[Path] = []
 
-    local_base = getattr(config_module, "LOCAL_BASE_PATH", None) if config_module else None
+    local_base = getattr(config_module, "LOCAL_BASE_PATH", None)
     if local_base is not None:
         candidates.append(Path(local_base).expanduser())
 
@@ -76,57 +72,5 @@ def _get_default_db_path() -> Path:
     return determine_default_db_path()
 
 
-# For backwards compatibility, these can be imported but will raise on access
-# if configuration is missing. Tests that don't need these paths won't trigger errors.
-class _LazyPath:
-    """Lazy path accessor that defers configuration checks until first access."""
-
-    def __init__(self, getter):
-        self._getter = getter
-        self._value: Path | None = None
-        self._resolved = False
-
-    def __fspath__(self):
-        return str(self._resolve())
-
-    def __str__(self):
-        return str(self._resolve())
-
-    def __repr__(self):
-        if self._resolved:
-            return repr(self._value)
-        return f"<LazyPath: {self._getter.__name__}>"
-
-    def _resolve(self) -> Path:
-        if not self._resolved:
-            self._value = self._getter()
-            self._resolved = True
-        # At this point _value is always a Path (getter returns Path)
-        assert self._value is not None
-        return self._value
-
-    def __truediv__(self, other):
-        return self._resolve() / other
-
-    def __eq__(self, other):
-        return self._resolve() == other
-
-    def __hash__(self):
-        return hash(self._resolve())
-
-    @property
-    def parent(self):
-        """Return the parent directory of the resolved path."""
-        return self._resolve().parent
-
-    def exists(self):
-        """Check if the resolved path exists on disk."""
-        return self._resolve().exists()
-
-    def resolve(self):
-        """Return the absolute resolved path."""
-        return self._resolve().resolve()
-
-
-DEFAULT_BASE_PATH = _LazyPath(_get_default_base_path)
-DEFAULT_DB_PATH = _LazyPath(_get_default_db_path)
+DEFAULT_BASE_PATH = _get_default_base_path()
+DEFAULT_DB_PATH = _get_default_db_path()

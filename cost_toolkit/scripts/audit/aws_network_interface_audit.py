@@ -5,6 +5,7 @@ Identifies unused network interfaces across all regions for cleanup.
 """
 
 import boto3
+from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_common import get_resource_tags
 from cost_toolkit.common.credential_utils import setup_aws_credentials
@@ -23,6 +24,7 @@ def _build_interface_info(eni):
     tags = get_resource_tags(eni)
     name = tags.get("Name", "No Name")
 
+    association = eni.get("Association", {})
     return {
         "interface_id": interface_id,
         "name": name,
@@ -31,7 +33,7 @@ def _build_interface_info(eni):
         "vpc_id": eni.get("VpcId", "N/A"),
         "subnet_id": eni.get("SubnetId", "N/A"),
         "private_ip": eni.get("PrivateIpAddress", "N/A"),
-        "public_ip": eni.get("Association", {}).get("PublicIp", "None"),
+        "public_ip": association.get("PublicIp", "None"),
         "attached_to": attachment.get("InstanceId", "Not attached"),
         "attachment_status": attachment.get("Status", "detached"),
         "description": eni.get("Description", "No description"),
@@ -76,7 +78,8 @@ def audit_network_interfaces_in_region(region_name, aws_access_key_id, aws_secre
             region_data["interface_details"].append(interface_info)
 
             # Categorize interfaces
-            category = _categorize_interface(eni["Status"], eni.get("Attachment", {}))
+            attachment = eni.get("Attachment", {})
+            category = _categorize_interface(eni["Status"], attachment)
             if category == "unused":
                 region_data["unused_interfaces"].append(interface_info)
             else:

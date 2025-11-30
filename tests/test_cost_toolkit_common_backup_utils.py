@@ -10,7 +10,57 @@ from cost_toolkit.common.backup_utils import (
     check_aws_backup_plans,
     check_dlm_lifecycle_policies,
     check_eventbridge_scheduled_rules,
+    is_backup_related_rule,
 )
+
+
+class TestIsBackupRelatedRule:
+    """Tests for is_backup_related_rule function."""
+
+    def test_snapshot_in_name(self):
+        """Test rule with snapshot in name."""
+        rule = {
+            "Name": "daily-snapshot-rule",
+            "Description": "Creates daily snapshots",
+        }
+
+        assert is_backup_related_rule(rule) is True
+
+    def test_ami_in_description(self):
+        """Test rule with AMI in description."""
+        rule = {
+            "Name": "nightly-rule",
+            "Description": "Create AMI backup nightly",
+        }
+
+        assert is_backup_related_rule(rule) is True
+
+    def test_backup_in_name(self):
+        """Test rule with backup in name."""
+        rule = {
+            "Name": "backup-rule",
+            "Description": "Regular backup",
+        }
+
+        assert is_backup_related_rule(rule) is True
+
+    def test_createimage_in_name(self):
+        """Test rule with createimage in name (consolidated keyword)."""
+        rule = {
+            "Name": "auto-createimage-rule",
+            "Description": "Automated image creation",
+        }
+
+        assert is_backup_related_rule(rule) is True
+
+    def test_not_snapshot_related(self):
+        """Test rule not related to snapshots."""
+        rule = {
+            "Name": "monitoring-rule",
+            "Description": "Monitoring alerts",
+        }
+
+        assert is_backup_related_rule(rule) is False
 
 
 def test_check_dlm_lifecycle_policies_success():

@@ -4,6 +4,8 @@
 from collections import defaultdict
 from datetime import datetime, timezone
 
+from botocore.exceptions import ClientError
+
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost, calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
@@ -53,7 +55,9 @@ def _process_volume(volume, region):
 def _process_snapshot(snapshot, region):
     """Process a single snapshot and return its details"""
     snapshot_id = snapshot["SnapshotId"]
-    size_gb = snapshot.get("VolumeSize", 0)
+    if "VolumeSize" not in snapshot:
+        raise KeyError(f"Snapshot {snapshot_id} missing VolumeSize")
+    size_gb = snapshot["VolumeSize"]
     state = snapshot["State"]
     start_time = snapshot["StartTime"]
     description = snapshot.get("Description", "No description")

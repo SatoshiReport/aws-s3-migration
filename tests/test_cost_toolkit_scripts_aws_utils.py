@@ -10,6 +10,7 @@ import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.aws_utils import (
+    CredentialLoadError,
     get_aws_regions,
     get_instance_info,
     load_aws_credentials,
@@ -39,54 +40,47 @@ class TestLoadAwsCredentialsSuccess:
             # Should not raise (function returns None)
             load_aws_credentials(env_path=None)
 
+    class TestLoadAwsCredentialsFailure:
+        """Test suite for load_aws_credentials failure handling - fail fast behavior."""
 
-class TestLoadAwsCredentialsFailure:
-    """Test suite for load_aws_credentials failure handling - fail fast behavior."""
+        def test_load_aws_credentials_failure_raises_exception(self):
+            """Test load_aws_credentials raises CredentialLoadError when credentials not found."""
+            with (
+                patch(
+                    "cost_toolkit.scripts.aws_utils.load_aws_credentials_from_env",
+                    side_effect=ValueError("Credentials not found"),
+                ),
+                patch("cost_toolkit.scripts.aws_utils._resolve_env_path", return_value="~/.env"),
+                pytest.raises(CredentialLoadError) as exc_info,
+            ):
+                load_aws_credentials()
 
-    def test_load_aws_credentials_failure_raises_exception(self):
-        """Test load_aws_credentials raises CredentialLoadError when credentials not found."""
-        from cost_toolkit.scripts.aws_utils import CredentialLoadError
+            assert "AWS credentials not found" in str(exc_info.value)
 
-        with (
-            patch(
-                "cost_toolkit.scripts.aws_utils.load_aws_credentials_from_env",
-                side_effect=ValueError("Credentials not found"),
-            ),
-            patch("cost_toolkit.scripts.aws_utils._resolve_env_path", return_value="~/.env"),
-            pytest.raises(CredentialLoadError) as exc_info,
-        ):
-            load_aws_credentials()
+        def test_load_aws_credentials_failure_includes_path_in_error(self):
+            """Test load_aws_credentials includes path in error message."""
+            with (
+                patch(
+                    "cost_toolkit.scripts.aws_utils.load_aws_credentials_from_env",
+                    side_effect=ValueError("Credentials not found"),
+                ),
+                patch(
+                    "cost_toolkit.scripts.aws_utils._resolve_env_path",
+                    return_value="/test/path/.env",
+                ),
+                pytest.raises(CredentialLoadError) as exc_info,
+            ):
+                load_aws_credentials()
 
-        assert "AWS credentials not found" in str(exc_info.value)
-
-    def test_load_aws_credentials_failure_includes_path_in_error(self):
-        """Test load_aws_credentials includes path in error message."""
-        from cost_toolkit.scripts.aws_utils import CredentialLoadError
-
-        with (
-            patch(
-                "cost_toolkit.scripts.aws_utils.load_aws_credentials_from_env",
-                side_effect=ValueError("Credentials not found"),
-            ),
-            patch(
-                "cost_toolkit.scripts.aws_utils._resolve_env_path",
-                return_value="/test/path/.env",
-            ),
-            pytest.raises(CredentialLoadError) as exc_info,
-        ):
-            load_aws_credentials()
-
-        error_msg = str(exc_info.value)
-        assert "AWS credentials not found" in error_msg
-        assert "/test/path/.env" in error_msg
-        assert "AWS_ACCESS_KEY_ID" in error_msg
-        assert "AWS_SECRET_ACCESS_KEY" in error_msg
-        assert "AWS_DEFAULT_REGION" in error_msg
+            error_msg = str(exc_info.value)
+            assert "AWS credentials not found" in error_msg
+            assert "/test/path/.env" in error_msg
+            assert "AWS_ACCESS_KEY_ID" in error_msg
+            assert "AWS_SECRET_ACCESS_KEY" in error_msg
+            assert "AWS_DEFAULT_REGION" in error_msg
 
     def test_load_aws_credentials_with_different_error_raises(self):
         """Test load_aws_credentials raises on different ValueError messages."""
-        from cost_toolkit.scripts.aws_utils import CredentialLoadError
-
         with (
             patch(
                 "cost_toolkit.scripts.aws_utils.load_aws_credentials_from_env",
@@ -107,14 +101,14 @@ class TestSetupAwsCredentials:
             setup_aws_credentials()  # Should not raise
 
     def test_setup_aws_credentials_failure(self):
-        """Test setup_aws_credentials exits when credentials not found."""
+        """Test setup_aws_credentials raises CredentialLoadError when credentials not found."""
         with (
             patch("cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=False),
-            pytest.raises(SystemExit) as exc_info,
+            pytest.raises(CredentialLoadError) as exc_info,
         ):
             setup_aws_credentials()
 
-        assert_equal(exc_info.value.code, 1)
+        assert "Failed to setup AWS credentials" in str(exc_info.value)
 
     def test_setup_aws_credentials_with_env_path(self):
         """Test setup_aws_credentials with custom env path."""
@@ -132,15 +126,18 @@ class TestSetupAwsCredentials:
             setup_aws_credentials(env_path=None)
             mock_load.assert_called_once_with(env_path=None)
 
-    def test_setup_aws_credentials_failure_exits_with_code_1(self):
-        """Test setup_aws_credentials exits with specific code."""
+    def test_setup_aws_credentials_failure_from_value_error(self):
+        """Test setup_aws_credentials raises CredentialLoadError on ValueError."""
         with (
-            patch("cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=False),
-            pytest.raises(SystemExit) as exc_info,
+            patch(
+                "cost_toolkit.common.credential_utils.setup_aws_credentials",
+                side_effect=ValueError("Env file missing"),
+            ),
+            pytest.raises(CredentialLoadError) as exc_info,
         ):
             setup_aws_credentials()
 
-        assert exc_info.value.code == 1
+        assert "Failed to setup AWS credentials: Env file missing" in str(exc_info.value)
 
 
 class TestGetAwsRegions:
@@ -149,26 +146,26 @@ class TestGetAwsRegions:
     def test_get_aws_regions(self):
         """Test get_aws_regions returns region list."""
         mock_regions = ["us-east-1", "us-west-2", "eu-west-1"]
-        with patch("cost_toolkit.scripts.aws_utils.get_default_regions", return_value=mock_regions):
+        with patch("cost_toolkit.scripts.aws_utils.get_all_aws_regions", return_value=mock_regions):
             result = get_aws_regions()
             assert_equal(result, mock_regions)
 
     def test_get_aws_regions_returns_list(self):
         """Test get_aws_regions returns list type."""
-        with patch("cost_toolkit.scripts.aws_utils.get_default_regions", return_value=[]):
+        with patch("cost_toolkit.scripts.aws_utils.get_all_aws_regions", return_value=[]):
             result = get_aws_regions()
             assert isinstance(result, list)
 
     def test_get_aws_regions_empty_list(self):
         """Test get_aws_regions handles empty list."""
-        with patch("cost_toolkit.scripts.aws_utils.get_default_regions", return_value=[]):
+        with patch("cost_toolkit.scripts.aws_utils.get_all_aws_regions", return_value=[]):
             result = get_aws_regions()
             assert_equal(result, [])
 
     def test_get_aws_regions_multiple_regions(self):
         """Test get_aws_regions with multiple regions."""
         expected = ["us-east-1", "us-west-1", "us-west-2", "eu-central-1", "ap-southeast-1"]
-        with patch("cost_toolkit.scripts.aws_utils.get_default_regions", return_value=expected):
+        with patch("cost_toolkit.scripts.aws_utils.get_all_aws_regions", return_value=expected):
             result = get_aws_regions()
             assert_equal(result, expected)
             assert_equal(len(result), 5)

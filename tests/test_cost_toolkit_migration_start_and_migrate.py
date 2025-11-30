@@ -55,7 +55,7 @@ class TestStartEc2Instance:
         mock_waiter = MagicMock()
         mock_ec2.get_waiter.return_value = mock_waiter
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
             _start_ec2_instance(mock_ec2, "i-123456")
 
         mock_ec2.start_instances.assert_called_once_with(InstanceIds=["i-123456"])
@@ -74,7 +74,7 @@ class TestStartEc2Instance:
         mock_waiter = MagicMock()
         mock_ec2.get_waiter.return_value = mock_waiter
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
             _start_ec2_instance(mock_ec2, "i-test")
 
         captured = capsys.readouterr()
@@ -227,7 +227,7 @@ class TestMonitorMigrationProgress:
             "StandardErrorContent": "",
         }
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
             with patch(
                 "cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"
             ) as mock_print:
@@ -247,7 +247,7 @@ class TestMonitorMigrationProgress:
             "StandardErrorContent": "Error occurred",
         }
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
             with patch(
                 "cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"
             ) as mock_print:
@@ -263,7 +263,7 @@ class TestMonitorMigrationProgress:
             {"Status": "Success", "StandardOutputContent": "Done", "StandardErrorContent": ""},
         ]
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
             with patch(
                 "cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"
             ):
@@ -276,7 +276,7 @@ class TestMonitorMigrationProgress:
         mock_ssm = MagicMock()
         mock_ssm.get_command_invocation.return_value = {"Status": "InProgress"}
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
             with patch(
                 "cost_toolkit.scripts.migration.aws_start_and_migrate.MAX_SSM_MONITOR_SECONDS", 60
             ):
@@ -293,7 +293,7 @@ class TestMonitorMigrationProgress:
             {"Status": "Success", "StandardOutputContent": "", "StandardErrorContent": ""},
         ]
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
             with patch(
                 "cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"
             ):
@@ -375,7 +375,7 @@ class TestStartInstanceAndMigrate:
             }
             mock_client.side_effect = [mock_ec2, mock_ssm]
 
-            with patch("time.sleep"):
+            with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
                 start_instance_and_migrate()
 
         captured = capsys.readouterr()

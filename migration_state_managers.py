@@ -9,10 +9,12 @@ _PACKAGE_PREFIX = f"{__package__}." if __package__ else ""
 get_utc_now = import_module(f"{_PACKAGE_PREFIX}migration_utils").get_utc_now
 
 if TYPE_CHECKING:
-    try:
-        from .migration_state_v2 import DatabaseConnection, Phase
-    except ImportError:
-        from migration_state_v2 import DatabaseConnection, Phase  # type: ignore[no-redef]
+    from .migration_state_v2 import DatabaseConnection, Phase
+
+try:
+    from .migration_state_v2 import Phase as _PhaseRuntime
+except ImportError:
+    from migration_state_v2 import Phase as _PhaseRuntime  # type: ignore[import-not-found]
 
 
 @dataclass
@@ -170,8 +172,10 @@ class FileStateManager:
                     (bucket, key, size, etag, storage_class, last_modified, now, now),
                 )
                 conn.commit()
-            except sqlite3.IntegrityError:
-                pass  # File already exists
+            except sqlite3.IntegrityError as e:
+                if "UNIQUE constraint failed" not in str(e):
+                    raise
+                # File already exists - expected for duplicate entries
 
     def mark_glacier_restore_requested(self, bucket: str, key: str):
         """Mark that Glacier restore has been requested"""
@@ -301,35 +305,15 @@ class PhaseManager:
 
     def _init_phase(self):
         """Initialize phase if not set"""
-        try:
-            from .migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
-        except ImportError:
-            # isort: off
-            from migration_state_v2 import (  # pylint: disable=import-outside-toplevel
-                Phase,  # type: ignore[no-redef]
-            )
-
-            # isort: on
-
         with self.db_conn.get_connection() as conn:
             cursor = conn.execute(
                 "SELECT value FROM migration_metadata WHERE key = 'current_phase'"
             )
             if not cursor.fetchone():
-                self.set_phase(Phase.SCANNING)
+                self.set_phase(_PhaseRuntime.SCANNING)
 
     def get_phase(self) -> "Phase":
         """Get current migration phase"""
-        try:
-            from .migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
-        except ImportError:
-            # isort: off
-            from migration_state_v2 import (  # pylint: disable=import-outside-toplevel
-                Phase,  # type: ignore[no-redef]
-            )
-
-            # isort: on
-
         with self.db_conn.get_connection() as conn:
             cursor = conn.execute(
                 "SELECT value FROM migration_metadata WHERE key = 'current_phase'"

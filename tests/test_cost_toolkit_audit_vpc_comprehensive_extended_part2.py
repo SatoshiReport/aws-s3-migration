@@ -7,6 +7,7 @@ from unittest.mock import patch
 import pytest
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_test_constants import DEFAULT_TEST_REGIONS
 from cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit import (
     _has_region_resources,
     _print_cleanup_recommendations,
@@ -174,8 +175,14 @@ class TestAuditComprehensiveVpc:
         captured = capsys.readouterr()
         assert "AWS Comprehensive VPC Audit" in captured.out
         assert "COMPREHENSIVE VPC AUDIT RESULTS" in captured.out
-        assert "Total VPCs found: 4" in captured.out
-        assert "Total unused resources: 4" in captured.out
+        vpcs_per_region = len(mock_audit.return_value["vpcs"])
+        unused_per_region = len(mock_audit.return_value["unused_security_groups"]) + len(
+            mock_audit.return_value["unused_network_interfaces"]
+        )
+        expected_vpcs = len(DEFAULT_TEST_REGIONS) * vpcs_per_region
+        expected_unused = len(DEFAULT_TEST_REGIONS) * unused_per_region
+        assert f"Total VPCs found: {expected_vpcs}" in captured.out
+        assert f"Total unused resources: {expected_unused}" in captured.out
 
     def test_audit_no_resources(self, capsys):
         """Test comprehensive VPC audit with no resources."""

@@ -5,11 +5,9 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.lightsail_utils import UnknownBundleError
-
 from cost_toolkit.scripts.cleanup.aws_cleanup_script import (
     _stop_instance,
     disable_global_accelerators,
@@ -92,16 +90,30 @@ def test_disable_global_accelerators_handles_deployed(capsys):
         "AcceleratorArn": "arn:aws:globalaccelerator::123:accelerator/abc",
         "Name": "test-accelerator",
         "Status": "DEPLOYED",
+        "Enabled": True,
     }
     with patch("cost_toolkit.scripts.cleanup.aws_cleanup_script.aws_utils.setup_aws_credentials"):
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
             mock_ga.list_accelerators.return_value = {"Accelerators": [mock_accelerator]}
+            # Mock describe_accelerator to simulate state transition or stability
+            mock_ga.describe_accelerator.side_effect = [
+                {"Accelerator": {"Status": "DEPLOYED", "Enabled": True}},  # Initial check
+                {"Accelerator": {"Status": "IN_PROGRESS", "Enabled": False}},  # After update
+                {"Accelerator": {"Status": "DEPLOYED", "Enabled": False}},  # Final stable state
+            ]
             mock_client.return_value = mock_ga
-            disable_global_accelerators()
+
+            # Patch the wait event to avoid sleeping
+            with patch(
+                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT"
+            ) as mock_event:
+                disable_global_accelerators()
+                assert mock_event.wait.call_count > 0
+
     mock_ga.update_accelerator.assert_called_once()
     captured = capsys.readouterr()
-    assert "Successfully disabled accelerator" in captured.out
+    assert "Accelerator is disabled" in captured.out
 
 
 def test_disable_global_accelerators_skips_in_progress(capsys):
@@ -110,16 +122,25 @@ def test_disable_global_accelerators_skips_in_progress(capsys):
         "AcceleratorArn": "arn:aws:globalaccelerator::123:accelerator/abc",
         "Name": "test-accelerator",
         "Status": "IN_PROGRESS",
+        "Enabled": False,
     }
     with patch("cost_toolkit.scripts.cleanup.aws_cleanup_script.aws_utils.setup_aws_credentials"):
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
             mock_ga.list_accelerators.return_value = {"Accelerators": [mock_accelerator]}
+            # Return DEPLOYED/False so disable_accelerator loop exits immediately
+            mock_ga.describe_accelerator.return_value = {
+                "Accelerator": {"Status": "DEPLOYED", "Enabled": False}
+            }
             mock_client.return_value = mock_ga
-            disable_global_accelerators()
+
+            # Patch wait event just in case
+            with patch("cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT"):
+                disable_global_accelerators()
+
     mock_ga.update_accelerator.assert_not_called()
     captured = capsys.readouterr()
-    assert "already being modified" in captured.out
+    assert "Accelerator is disabled" in captured.out
 
 
 def test_disable_global_accelerators_skips_disabled(capsys):
@@ -127,14 +148,22 @@ def test_disable_global_accelerators_skips_disabled(capsys):
     mock_accelerator = {
         "AcceleratorArn": "arn:aws:globalaccelerator::123:accelerator/abc",
         "Name": "test-accelerator",
-        "Status": "DISABLED",
+        "Status": "DEPLOYED",
+        "Enabled": False,
     }
     with patch("cost_toolkit.scripts.cleanup.aws_cleanup_script.aws_utils.setup_aws_credentials"):
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
             mock_ga.list_accelerators.return_value = {"Accelerators": [mock_accelerator]}
+            # Describe call returns stable state
+            mock_ga.describe_accelerator.return_value = {
+                "Accelerator": {"Status": "DEPLOYED", "Enabled": False}
+            }
             mock_client.return_value = mock_ga
-            disable_global_accelerators()
+
+            with patch("cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT"):
+                disable_global_accelerators()
+
     mock_ga.update_accelerator.assert_not_called()
     captured = capsys.readouterr()
     assert "already disabled" in captured.out
@@ -171,7 +200,7 @@ def test_disable_global_accelerators_handles_client_error(capsys):
             mock_client.return_value = mock_ga
             disable_global_accelerators()
     captured = capsys.readouterr()
-    assert "Error accessing Global Accelerator service" in captured.out
+    assert "Error listing accelerators" in captured.out
 
 
 class TestStopInstance:

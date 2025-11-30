@@ -20,7 +20,6 @@ class Category:
     name: str
     description: str
     matcher: Matcher
-    prune: bool = True
 
 
 def _match_python_bytecode(path: Path, is_dir: bool) -> bool:

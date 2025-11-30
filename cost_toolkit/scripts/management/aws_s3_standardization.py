@@ -40,37 +40,6 @@ def get_bucket_region(bucket_name):
     return get_bucket_location(bucket_name)
 
 
-def _delete_versioned_objects(s3_client, bucket_name):
-    """Delete all versions and delete markers from a versioned bucket."""
-    versions = s3_client.list_object_versions(Bucket=bucket_name)
-
-    if "Versions" in versions:
-        for version in versions["Versions"]:
-            print(f"    Deleting version: {version['Key']} (version: {version['VersionId']})")
-            s3_client.delete_object(
-                Bucket=bucket_name, Key=version["Key"], VersionId=version["VersionId"]
-            )
-
-    if "DeleteMarkers" in versions:
-        for marker in versions["DeleteMarkers"]:
-            print(f"    Deleting delete marker: {marker['Key']} (version: {marker['VersionId']})")
-            s3_client.delete_object(
-                Bucket=bucket_name, Key=marker["Key"], VersionId=marker["VersionId"]
-            )
-
-
-def _delete_regular_objects(s3_client, bucket_name):
-    """Delete all objects from a non-versioned bucket."""
-    paginator = s3_client.get_paginator("list_objects_v2")
-    pages = paginator.paginate(Bucket=bucket_name)
-
-    for page in pages:
-        if "Contents" in page:
-            for obj in page["Contents"]:
-                print(f"    Deleting object: {obj['Key']}")
-                s3_client.delete_object(Bucket=bucket_name, Key=obj["Key"])
-
-
 def ensure_bucket_private(bucket_name, region):
     """Ensure a bucket has private access configuration"""
     try:

@@ -27,8 +27,10 @@ class TestGetAllRegions:
     """Tests for get_all_regions function."""
 
     @patch("cost_toolkit.common.aws_common.create_ec2_client")
-    def test_get_regions_success(self, mock_create_client):
+    def test_get_regions_success(self, mock_create_client, monkeypatch):
         """Test successful retrieval of regions."""
+        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
+        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
         mock_ec2 = MagicMock()
         mock_create_client.return_value = mock_ec2
         mock_ec2.describe_regions.return_value = {
@@ -44,8 +46,10 @@ class TestGetAllRegions:
         assert "us-west-2" in regions
 
     @patch("cost_toolkit.common.aws_common.create_ec2_client")
-    def test_get_regions_error(self, mock_create_client):
+    def test_get_regions_error(self, mock_create_client, monkeypatch):
         """Test error when retrieving regions."""
+        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
+        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
         mock_ec2 = MagicMock()
         mock_ec2.describe_regions.side_effect = ClientError(
             {"Error": {"Code": "AccessDenied"}}, "describe_regions"

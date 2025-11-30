@@ -100,7 +100,7 @@ class TestProcessExportRestore:
 
         assert result is None
         captured = capsys.readouterr()
-        assert "Failed to import AMI from S3" in captured.out
+        assert "Restore failed" in captured.out
 
 
 class TestPrintRestoreSummary:

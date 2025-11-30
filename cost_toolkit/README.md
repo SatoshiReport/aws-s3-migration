@@ -25,7 +25,6 @@ cost_toolkit/
 │   ├── optimization/         # Snapshot → S3 workflows
 │   ├── setup/                # Route53 + VM Import helper scripts
 │   └── rds/                  # One-off RDS remediation scripts
-└── scripts/.../deprecated    # Historical attempts, kept for context
 ```
 
 Every module still keeps its original relative imports, so running a script from the repository root works exactly like it did in `~/aws_cost` (e.g., `python cost_toolkit/scripts/audit/aws_s3_audit.py`).

@@ -6,6 +6,9 @@ from threading import Event
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.scripts.aws_utils import wait_for_route53_change
+
+_WAIT_EVENT = Event()
 
 
 def delete_health_check(health_check_id):
@@ -103,8 +106,7 @@ def delete_hosted_zone(zone_name, zone_id):
 
                 # Wait for changes to propagate
                 print("    Waiting for DNS changes to propagate...")
-                waiter = route53.get_waiter("resource_record_sets_changed")
-                waiter.wait(Id=change_id, WaiterConfig={"Delay": 10, "MaxAttempts": 30})
+                wait_for_route53_change(route53, change_id)
                 print("    ✅ DNS records deleted successfully")
 
             except ClientError as e:
@@ -161,7 +163,7 @@ def _delete_zones(zones_to_delete):
         zone_success = delete_hosted_zone(zone_name, zone_id)
         results.append((zone_name, zone_success))
         if zone_success:
-            time.sleep(5)
+            _WAIT_EVENT.wait(5)
 
     return results
 

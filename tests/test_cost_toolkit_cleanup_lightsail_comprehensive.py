@@ -221,7 +221,7 @@ def test_delete_lightsail_instances_delete_lightsail_instances_success(capsys):
     """Test full Lightsail deletion workflow."""
     with patch("cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.setup_aws_credentials"):
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.get_default_regions",
+            "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.get_all_aws_regions",
             return_value=["us-east-1"],
         ):
             with patch(
@@ -338,11 +338,9 @@ def test_process_region_other_client_error(capsys):
         )
         mock_client.return_value = mock_ls
 
-        instances, databases, savings = _process_region("us-west-2")
+        with pytest.raises(ClientError):
+            _process_region("us-west-2")
 
-    assert instances == 0
-    assert databases == 0
-    assert savings == 0.0
     captured = capsys.readouterr()
     assert "Error accessing Lightsail" in captured.out
 

@@ -11,8 +11,9 @@ from cost_toolkit.scripts.audit.aws_rds_network_interface_audit import (
 )
 
 
-def test_get_regions_success():
+def test_get_regions_success(monkeypatch):
     """Test successful retrieval of regions."""
+    monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
         mock_ec2.describe_regions.return_value = {

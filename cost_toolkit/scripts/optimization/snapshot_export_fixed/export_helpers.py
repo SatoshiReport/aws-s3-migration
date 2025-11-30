@@ -1,10 +1,10 @@
 """Helper functions for fixed export operations"""
 
 import time
-from threading import Event
 from dataclasses import dataclass
+from threading import Event
 
-from botocore.exceptions import ClientError
+from botocore.exceptions import BotoCoreError, ClientError
 
 from ..snapshot_export_common import print_export_status, start_ami_export_task
 from . import constants
@@ -53,12 +53,11 @@ def _handle_task_deletion_recovery(s3_client, bucket_name, s3_key, snapshot_size
             "Export completed successfully despite task deletion"
         )
         print(f"   📏 Final file size: {s3_result['size_gb']:.2f} GB")
-    except Exception as s3_error:
+    except (BotoCoreError, ClientError, constants.S3FileValidationException) as s3_error:
         print("   ❌ Cannot retrieve export results - task no longer exists")
         raise ExportTaskDeletedException(  # noqa: TRY003
             f"Export task deleted and no valid S3 file found: {s3_error}"
         ) from s3_error
-
     return True, s3_key
 
 
@@ -75,7 +74,7 @@ def _check_terminal_state_fixed(task, status, elapsed_hours):
         return True, "completed"
 
     if status == "failed":
-        error_msg = task.get("StatusMessage", "Unknown error")
+        error_msg = task.get("StatusMessage") or "Unknown error"
         raise ExportTaskFailedException(  # noqa: TRY003
             f"AWS export failed after {elapsed_hours:.1f} hours: {error_msg}"
         )
@@ -144,14 +143,16 @@ def monitor_export_with_recovery(
             _WAIT_EVENT.wait(constants.EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
             continue
 
+        task_progress = task.get("Progress") or "N/A"
+        task_status_msg = task.get("StatusMessage", "")
         _print_export_status(
             task["Status"],
-            task.get("Progress", "N/A"),
-            task.get("StatusMessage", ""),
+            task_progress,
+            task_status_msg,
             elapsed_hours,
         )
 
-        current_progress = int(task.get("Progress", "N/A")) if task.get("Progress") != "N/A" else 0
+        current_progress = int(task_progress) if task_progress != "N/A" else 0
         _track_progress_change(state, current_progress, current_time)
 
         is_terminal, terminal_type = _check_terminal_state_fixed(
@@ -190,6 +191,3 @@ def export_ami_to_s3_with_recovery(
 
     return None, None
 
-
-if __name__ == "__main__":
-    pass

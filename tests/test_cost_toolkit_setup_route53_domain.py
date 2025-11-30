@@ -312,18 +312,13 @@ class TestCreateMissingDnsRecords:
 class TestTestDnsResolution:
     """Tests for test_dns_resolution function."""
 
-    @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.subprocess.run")
-    def test_dns_resolution_both_succeed(self, mock_run, capsys):
+    @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.socket.getaddrinfo")
+    def test_dns_resolution_both_succeed(self, mock_getaddrinfo, capsys):
         """Test DNS resolution when both root and www resolve."""
-        root_result = MagicMock()
-        root_result.returncode = 0
-        root_result.stdout = "192.168.1.1"
-
-        www_result = MagicMock()
-        www_result.returncode = 0
-        www_result.stdout = "192.168.1.2"
-
-        mock_run.side_effect = [root_result, www_result]
+        mock_getaddrinfo.side_effect = [
+            [(None, None, None, None, ("192.168.1.1", 0))],
+            [(None, None, None, None, ("192.168.1.2", 0))],
+        ]
 
         verify_dns_resolution("example.com")
 
@@ -331,36 +326,26 @@ class TestTestDnsResolution:
         assert "example.com resolves to: 192.168.1.1" in captured.out
         assert "www.example.com resolves to: 192.168.1.2" in captured.out
 
-    @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.subprocess.run")
-    def test_dns_resolution_root_fails(self, mock_run, capsys):
+    @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.socket.getaddrinfo")
+    def test_dns_resolution_root_fails(self, mock_getaddrinfo, capsys):
         """Test DNS resolution when root domain fails."""
-        root_result = MagicMock()
-        root_result.returncode = 0
-        root_result.stdout = ""
-
-        www_result = MagicMock()
-        www_result.returncode = 0
-        www_result.stdout = "192.168.1.2"
-
-        mock_run.side_effect = [root_result, www_result]
+        mock_getaddrinfo.side_effect = [
+            [],
+            [(None, None, None, None, ("192.168.1.2", 0))],
+        ]
 
         verify_dns_resolution("example.com")
 
         captured = capsys.readouterr()
         assert "example.com does not resolve" in captured.out
 
-    @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.subprocess.run")
-    def test_dns_resolution_www_fails(self, mock_run, capsys):
+    @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.socket.getaddrinfo")
+    def test_dns_resolution_www_fails(self, mock_getaddrinfo, capsys):
         """Test DNS resolution when www subdomain fails."""
-        root_result = MagicMock()
-        root_result.returncode = 0
-        root_result.stdout = "192.168.1.1"
-
-        www_result = MagicMock()
-        www_result.returncode = 1
-        www_result.stdout = ""
-
-        mock_run.side_effect = [root_result, www_result]
+        mock_getaddrinfo.side_effect = [
+            [(None, None, None, None, ("192.168.1.1", 0))],
+            [],
+        ]
 
         verify_dns_resolution("example.com")
 
@@ -368,13 +353,15 @@ class TestTestDnsResolution:
         assert "example.com resolves to: 192.168.1.1" in captured.out
         assert "www.example.com does not resolve" in captured.out
 
-    @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.subprocess.run")
-    def test_dns_resolution_client_error(self, mock_run, capsys):
-        """Test DNS resolution with ClientError."""
-        error = ClientError({"Error": {"Code": "Error", "Message": "DNS error"}}, "subprocess")
-        mock_run.side_effect = error
+    @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.socket.getaddrinfo")
+    def test_dns_resolution_socket_error(self, mock_getaddrinfo, capsys):
+        """Test DNS resolution with socket error."""
+        mock_getaddrinfo.side_effect = [
+            OSError("lookup failed"),
+            [(None, None, None, None, ("192.168.1.2", 0))],
+        ]
 
         verify_dns_resolution("example.com")
 
         captured = capsys.readouterr()
-        assert "Could not test example.com" in captured.out
+        assert "DNS lookup failed for example.com" in captured.out

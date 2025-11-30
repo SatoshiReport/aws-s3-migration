@@ -162,8 +162,8 @@ class TestAuditAllElasticIpsPrintFunctions:
 class TestAuditAllElasticIpsRegionHandling:
     """Tests for audit_all_elastic_ips function - region handling and output."""
 
-    def test_audit_all_fallback_to_common_regions(self, capsys):
-        """Test fallback to common regions when get_all_regions fails."""
+    def test_audit_all_raises_client_error(self):
+        """Test that audit_all_elastic_ips raises ClientError when get_all_regions fails."""
         with patch(
             "cost_toolkit.scripts.audit.aws_elastic_ip_audit.load_credentials_from_env",
             return_value=("test-key", "test-secret"),
@@ -174,18 +174,11 @@ class TestAuditAllElasticIpsRegionHandling:
                     {"Error": {"Code": "UnauthorizedOperation"}}, "DescribeRegions"
                 ),
             ):
-                with patch(
-                    "cost_toolkit.scripts.audit.aws_elastic_ip_audit.get_common_regions",
-                    return_value=["us-east-1", "us-west-2"],
-                ):
-                    with patch(
-                        "cost_toolkit.scripts.audit.aws_elastic_ip_audit._scan_all_regions",
-                        return_value=([], 0, 0, 0),
-                    ):
-                        audit_all_elastic_ips()
-
-        captured = capsys.readouterr()
-        assert "Could not get all regions, using common ones" in captured.out
+                try:
+                    audit_all_elastic_ips()
+                    assert False, "Expected ClientError to be raised"
+                except ClientError:
+                    pass
 
     def test_audit_all_region_details_printed(self, capsys):
         """Test that region details are printed for each region."""

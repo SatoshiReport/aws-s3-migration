@@ -1,5 +1,6 @@
 """Phase 1-3: Scanning buckets and handling Glacier restores"""
 
+from dataclasses import dataclass, field
 from threading import Event
 
 from botocore.exceptions import ClientError
@@ -15,6 +16,20 @@ GLACIER_RESTORE_TIER = config_module.GLACIER_RESTORE_TIER
 # pylint: enable=no-member
 
 
+@dataclass
+class _BucketStats:
+    file_count: int = 0
+    total_size: int = 0
+    storage_classes: dict[str, int] = field(default_factory=dict)
+
+    def record(self, size: int, storage_class: str):
+        """Track a processed object size and storage class count."""
+        self.file_count += 1
+        self.total_size += size
+        current_count = self.storage_classes.get(storage_class, 0)
+        self.storage_classes[storage_class] = current_count + 1
+
+
 class BucketScanner:  # pylint: disable=too-few-public-methods
     """Handles Phase 1: Scanning S3 buckets"""
 
@@ -22,6 +37,49 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
         self.s3 = s3
         self.state = state
         self.interrupted = False
+
+    def _get_page_contents(self, bucket: str, page: dict) -> list[dict]:
+        """Extract object listings from a paginator page, validating key counts."""
+        contents = page.get("Contents")
+        key_count = page.get("KeyCount")
+        if contents is None:
+            if key_count not in (None, 0):
+                raise RuntimeError(
+                    f"list_objects_v2 missing Contents while reporting {key_count} keys"
+                    f" for bucket {bucket}"
+                )
+            return []
+        return contents
+
+    def _print_progress(self, stats: _BucketStats):
+        size_str = format_bytes(stats.total_size, binary_units=False)
+        print(
+            f"  Found {stats.file_count:,} files, {size_str}...",
+            end="\r",
+            flush=True,
+        )
+
+    def _process_object(self, bucket: str, obj: dict, stats: _BucketStats):
+        key = obj["Key"]
+        if key.endswith("/"):
+            return
+        size = obj["Size"]
+        etag = obj["ETag"].strip('"')
+        storage_class = obj.get("StorageClass", "STANDARD")
+        last_modified = obj["LastModified"].isoformat()
+        self.state.add_file(bucket, key, size, etag, storage_class, last_modified)
+        stats.record(size, storage_class)
+        if stats.file_count % 10000 == 0:
+            self._print_progress(stats)
+
+    def _save_bucket_stats(self, bucket: str, stats: _BucketStats):
+        self.state.save_bucket_status(
+            bucket, stats.file_count, stats.total_size, stats.storage_classes, scan_complete=True
+        )
+        print(
+            f"  Found {stats.file_count:,} files, "
+            f"{format_bytes(stats.total_size, binary_units=False)}" + " " * 20
+        )
 
     def scan_all_buckets(self):
         """Scan all S3 buckets and track in database"""
@@ -51,44 +109,14 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
 
     def scan_bucket(self, bucket: str):
         """Scan a single bucket"""
-        file_count = 0
-        total_size = 0
-        storage_classes = {}
+        stats = _BucketStats()
         paginator = self.s3.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=bucket):
             if self.interrupted:
                 return
-            if "Contents" not in page:
-                continue
-            for obj in page["Contents"]:
-                key = obj["Key"]
-                # Skip S3 directory markers (empty objects with keys ending in '/')
-                if key.endswith("/"):
-                    continue
-                size = obj["Size"]
-                # ETag is always present for S3 objects
-                etag = obj["ETag"].strip('"')
-                # StorageClass is omitted for STANDARD - documented AWS behavior
-                storage_class = obj.get("StorageClass", "STANDARD")
-                last_modified = obj["LastModified"].isoformat()
-                self.state.add_file(bucket, key, size, etag, storage_class, last_modified)
-                file_count += 1
-                total_size += size
-                storage_classes[storage_class] = storage_classes.get(storage_class, 0) + 1
-                if file_count % 10000 == 0:
-                    size_str = format_bytes(total_size, binary_units=False)
-                    print(
-                        f"  Found {file_count:,} files, {size_str}...",
-                        end="\r",
-                        flush=True,
-                    )
-        self.state.save_bucket_status(
-            bucket, file_count, total_size, storage_classes, scan_complete=True
-        )
-        print(
-            f"  Found {file_count:,} files, {format_bytes(total_size, binary_units=False)}"
-            + " " * 20
-        )
+            for obj in self._get_page_contents(bucket, page):
+                self._process_object(bucket, obj, stats)
+        self._save_bucket_stats(bucket, stats)
 
 
 class GlacierRestorer:  # pylint: disable=too-few-public-methods

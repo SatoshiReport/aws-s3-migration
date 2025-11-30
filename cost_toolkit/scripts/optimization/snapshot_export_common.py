@@ -45,22 +45,17 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region, enable_versio
 
         except ClientError as e:
             print(f"   ❌ Error creating bucket {bucket_name}: {e}")
-            return False
+            raise
 
         return True
 
 
 def setup_s3_bucket_versioning(s3_client, bucket_name):
     """Enable S3 bucket versioning for data protection"""
-    try:
-        s3_client.put_bucket_versioning(
-            Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
-        )
-        print(f"   ✅ Enabled versioning for {bucket_name}")
-    except ClientError as e:
-        print(f"   ❌ Error enabling versioning: {e}")
-        return False
-
+    s3_client.put_bucket_versioning(
+        Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
+    )
+    print(f"   ✅ Enabled versioning for {bucket_name}")
     return True
 
 
@@ -103,7 +98,7 @@ def create_ami_from_snapshot(
         print(f"   ✅ AMI {ami_id} is now available")
     except ClientError as e:
         print(f"   ❌ Error creating AMI from snapshot {snapshot_id}: {e}")
-        return None
+        raise
     return ami_id
 
 
@@ -199,5 +194,6 @@ def print_export_status(status, progress, status_msg, elapsed_hours):
 
 if __name__ == "__main__":
     raise SystemExit(
-        "This module is library-only. Import functions from cost_toolkit.scripts.optimization.snapshot_export_common."
+        "This module is library-only. "
+        "Import functions from cost_toolkit.scripts.optimization.snapshot_export_common."
     )

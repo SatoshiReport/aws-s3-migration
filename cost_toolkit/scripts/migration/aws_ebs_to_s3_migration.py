@@ -44,6 +44,7 @@ def _create_s3_bucket(s3, bucket_name):
             print(f"❌ Error creating bucket: {str(e)}")
             raise
 
+    print(f"✅ Created S3 bucket: {bucket_name}")
     print()
 
 

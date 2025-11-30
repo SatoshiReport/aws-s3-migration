@@ -61,6 +61,7 @@ def _http_get(url: str, *, allow_redirects: bool, timeout: int) -> HttpResult:
     except urllib_error.URLError as exc:
         raise HttpRequestError(str(exc)) from exc
 
+
 # Certificate tuple structure indices
 CERT_TUPLE_MIN_LENGTH = 2
 
@@ -98,9 +99,10 @@ def verify_http_connectivity(domain):
         http_url = f"http://{domain}"
         response = _http_get(http_url, allow_redirects=False, timeout=10)
 
+        location_header = response.headers.get("Location", "")
         if (
             response.status_code == HTTP_STATUS_MOVED_PERMANENTLY
-            and "https://" in response.headers.get("Location", "")
+            and "https://" in location_header
         ):
             print(
                 f"  ✅ HTTP redirects to HTTPS ({HTTP_STATUS_MOVED_PERMANENTLY}): "
@@ -127,7 +129,8 @@ def verify_https_connectivity(domain):
 
         if response.status_code == HTTP_STATUS_OK:
             print(f"  ✅ HTTPS connection successful ({HTTP_STATUS_OK})")
-            print(f"  ✅ Content-Type: {response.headers.get('Content-Type', 'Unknown')}")
+            content_type = response.headers.get("Content-Type", "Unknown")
+            print(f"  ✅ Content-Type: {content_type}")
 
             # Check if it's served by Cloudflare (Canva uses Cloudflare)
             server = response.headers.get("Server", "")
@@ -166,8 +169,10 @@ def _parse_cert_dates(cert):
 
 def _print_cert_info(subject_dict, issuer_dict, not_before, not_after):
     """Print certificate information"""
-    print(f"  ✅ Certificate Subject: {subject_dict.get('commonName', 'Unknown')}")
-    print(f"  ✅ Certificate Issuer: {issuer_dict.get('organizationName', 'Unknown')}")
+    common_name = subject_dict.get("commonName", "Unknown")
+    org_name = issuer_dict.get("organizationName", "Unknown")
+    print(f"  ✅ Certificate Subject: {common_name}")
+    print(f"  ✅ Certificate Issuer: {org_name}")
     print(f"  ✅ Valid From: {not_before.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     print(f"  ✅ Valid Until: {not_after.strftime('%Y-%m-%d %H:%M:%S UTC')}")
 
@@ -197,8 +202,10 @@ def check_ssl_certificate(domain):
                     print("  ❌ No certificate received")
                     return False
 
-                subject_dict = _extract_cert_dict(cert.get("subject"))
-                issuer_dict = _extract_cert_dict(cert.get("issuer"))
+                cert_subject = cert.get("subject")
+                cert_issuer = cert.get("issuer")
+                subject_dict = _extract_cert_dict(cert_subject)
+                issuer_dict = _extract_cert_dict(cert_issuer)
                 not_before, not_after = _parse_cert_dates(cert)
 
                 _print_cert_info(subject_dict, issuer_dict, not_before, not_after)
@@ -230,14 +237,20 @@ def verify_canva_verification(domain):
             StartRecordName=f"_canva-domain-verify.{domain}.",
             StartRecordType="TXT",
             MaxItems="5",
-        ).get("ResourceRecordSets", [])
+        )
+        txt_record_sets = txt_records.get("ResourceRecordSets", [])
 
-        for record in txt_records:
-            if record.get("Type") != "TXT":
+        for record in txt_record_sets:
+            record_type = record.get("Type")
+            if record_type != "TXT":
                 continue
-            if not record.get("Name", "").startswith(f"_canva-domain-verify.{domain}."):
+            record_name = record.get("Name", "")
+            if not record_name.startswith(f"_canva-domain-verify.{domain}."):
                 continue
-            values = [rr.get("Value", "").replace('"', "") for rr in record.get("ResourceRecords", [])]
+            resource_records = record.get("ResourceRecords", [])
+            values = [
+                rr.get("Value", "").replace('"', "") for rr in resource_records
+            ]
             if values:
                 print(f"  ✅ Canva verification TXT record found: {', '.join(values)}")
                 return True
@@ -267,8 +280,11 @@ def _print_nameservers(route53, zone_id, domain):
     records = records_response.get("ResourceRecordSets", [])
 
     for record in records:
-        if record.get("Type") == "NS" and record.get("Name") == f"{domain}.":
-            nameservers = [rr.get("Value") for rr in record.get("ResourceRecords", [])]
+        record_type = record.get("Type")
+        record_name = record.get("Name")
+        if record_type == "NS" and record_name == f"{domain}.":
+            resource_records = record.get("ResourceRecords", [])
+            nameservers = [rr.get("Value") for rr in resource_records]
             print("  ✅ Nameservers configured:")
             for ns in nameservers:
                 print(f"    - {ns}")

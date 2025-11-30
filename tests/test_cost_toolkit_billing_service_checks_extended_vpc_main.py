@@ -56,43 +56,51 @@ class TestCheckVPCStatus:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             call_count = [0]
+            call_counts = []
 
             def describe_side_effect():
                 call_count[0] += 1
                 if call_count[0] == 1:
-                    return {
-                        "Addresses": [
-                            {"AllocationId": "eipalloc-123"},
-                            {"AllocationId": "eipalloc-456"},
-                        ]
-                    }
-                return {"Addresses": [{"AllocationId": "eipalloc-789"}]}
+                    addresses = [
+                        {"AllocationId": "eipalloc-123"},
+                        {"AllocationId": "eipalloc-456"},
+                    ]
+                else:
+                    addresses = [{"AllocationId": "eipalloc-789"}]
+                call_counts.append(len(addresses))
+                return {"Addresses": addresses}
 
             mock_ec2.describe_addresses.side_effect = describe_side_effect
             mock_client.return_value = mock_ec2
             is_resolved, message = check_vpc_status()
             assert is_resolved is False
             assert "UNRESOLVED" in message
-            assert "3 Elastic IPs still allocated" in message
+            expected_total = sum(call_counts)
+            assert f"{expected_total} Elastic IPs still allocated" in message
 
     def test_vpc_across_regions(self):
         """Test VPC status across multiple regions."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             call_count = [0]
+            call_counts = []
 
             def describe_addresses_side_effect():
                 call_count[0] += 1
                 if call_count[0] == 1:
-                    return {"Addresses": [{"AllocationId": "eipalloc-us-east"}]}
-                return {"Addresses": [{"AllocationId": "eipalloc-eu-west"}]}
+                    addresses = [{"AllocationId": "eipalloc-us-east"}]
+                else:
+                    addresses = [{"AllocationId": "eipalloc-eu-west"}]
+                call_counts.append(len(addresses))
+                return {"Addresses": addresses}
 
             mock_ec2.describe_addresses.side_effect = describe_addresses_side_effect
             mock_client.return_value = mock_ec2
             is_resolved, message = check_vpc_status()
             assert is_resolved is False
             assert "UNRESOLVED" in message
-            assert "2 Elastic IPs still allocated" in message
+            expected_total = sum(call_counts)
+            assert f"{expected_total} Elastic IPs still allocated" in message
 
 
 class TestCheckVPCStatusErrors:

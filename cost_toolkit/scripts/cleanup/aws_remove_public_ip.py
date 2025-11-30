@@ -160,8 +160,8 @@ def remove_public_ip_from_instance(instance_id, region_name):
     try:
         ec2 = create_client("ec2", region=region_name)
 
-        _instance, current_state, current_public_ip, network_interface_id = get_instance_network_info(
-            instance_id, region_name
+        _instance, current_state, current_public_ip, network_interface_id = (
+            get_instance_network_info(instance_id, region_name)
         )
 
         if not current_public_ip:
@@ -177,6 +177,54 @@ def remove_public_ip_from_instance(instance_id, region_name):
     except ClientError as e:
         print(f"❌ Error removing public IP: {e}")
         return False
+
+
+def _resolve_default_target(
+    args: argparse.Namespace,
+    config_instance_id: str | None,
+    config_region: str | None,
+    testing: bool,
+) -> tuple[str, str]:
+    # Priority: CLI args > environment variables > config file
+    instance_id = args.instance_id
+    if not instance_id:
+        instance_id = ENV_DEFAULT_INSTANCE_ID
+    if not instance_id:
+        instance_id = config_instance_id
+
+    region_name = args.region
+    if not region_name:
+        region_name = ENV_DEFAULT_REGION
+    if not region_name:
+        region_name = config_region
+
+    if instance_id and region_name:
+        return instance_id, region_name
+    if testing:
+        raise ValueError(
+            "Test mode requires explicit instance_id and region_name via args, "
+            "environment variables, or config file"
+        )
+    raise SystemExit(
+        "Populate default_instance_id/default_region in config/public_ip_defaults.json "
+        "or provide --instance-id/--region."
+    )
+
+
+def _resolve_target(
+    args: argparse.Namespace,
+    config_instance_id: str | None,
+    config_region: str | None,
+    testing: bool,
+) -> tuple[str, str, bool]:
+    if args.use_default_target:
+        resolved_instance_id, resolved_region = _resolve_default_target(
+            args, config_instance_id, config_region, testing
+        )
+        return resolved_instance_id, resolved_region, True
+    if args.instance_id and args.region:
+        return args.instance_id, args.region, False
+    raise SystemExit("Specify --instance-id and --region or use --use-default-target.")
 
 
 def parse_args(argv=None):
@@ -201,25 +249,7 @@ def parse_args(argv=None):
 
     config_instance_id, config_region = _load_default_target()
 
-    if args.use_default_target:
-        instance_id = args.instance_id or ENV_DEFAULT_INSTANCE_ID or config_instance_id
-        region_name = args.region or ENV_DEFAULT_REGION or config_region
-        if not instance_id or not region_name:
-            if testing:
-                instance_id = instance_id or "test-instance-id"
-                region_name = region_name or "us-east-1"
-            else:
-                parser.error(
-                    "Populate default_instance_id/default_region in config/public_ip_defaults.json "
-                    "or provide --instance-id/--region."
-                )
-    else:
-        if not args.instance_id or not args.region:
-            parser.error("Specify --instance-id and --region or use --use-default-target.")
-        instance_id = args.instance_id
-        region_name = args.region
-
-    return instance_id, region_name, args.use_default_target
+    return _resolve_target(args, config_instance_id, config_region, testing)
 
 
 def main(argv=None):

@@ -6,13 +6,13 @@ Completely removes all Lightsail instances and databases to eliminate charges.
 
 import json
 import os
-from threading import Event
 from datetime import datetime
+from threading import Event
 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
-from cost_toolkit.common.aws_common import get_default_regions
+from cost_toolkit.common.aws_common import get_all_aws_regions
 from cost_toolkit.common.lightsail_utils import (
     UnknownBundleError,
     estimate_database_cost,
@@ -28,7 +28,7 @@ def _delete_instance(lightsail_client, instance):
     """Delete a single Lightsail instance."""
     instance_name = instance["name"]
     instance_state = instance["state"]["name"]
-    bundle_id = instance.get("bundleId")
+    bundle_id = instance.get("bundleId", None)
 
     print(f"\n📦 Found instance: {instance_name}")
     print(f"   State: {instance_state}")
@@ -57,7 +57,7 @@ def _delete_database(lightsail_client, database):
     """Delete a single Lightsail database."""
     db_name = database["name"]
     db_state = database["state"]
-    db_bundle = database.get("relationalDatabaseBundleId")
+    db_bundle = database.get("relationalDatabaseBundleId", None)
 
     print(f"\n🗄️  Found database: {db_name}")
     print(f"   State: {db_state}")
@@ -150,7 +150,7 @@ def delete_lightsail_instances():
     print("This action cannot be undone. All data will be lost.")
     print("=" * 80)
 
-    lightsail_regions = get_default_regions() + ["ap-south-1"]
+    lightsail_regions = get_all_aws_regions()
 
     total_instances_deleted = 0
     total_databases_deleted = 0

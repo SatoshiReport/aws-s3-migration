@@ -8,6 +8,7 @@ Removes canary runs and reduces CloudWatch monitoring to eliminate API requests 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 from cost_toolkit.scripts import aws_utils
 
 
@@ -65,7 +66,7 @@ def delete_cloudwatch_canaries():
     print("🔍 Checking CloudWatch Synthetics canaries...")
     print("=" * 70)
 
-    regions = ["us-east-1", "us-east-2", "us-west-2"]
+    regions = get_all_aws_regions()
 
     for region in regions:
         try:
@@ -131,7 +132,7 @@ def disable_cloudwatch_alarms():
     print("\n🔍 Checking CloudWatch alarms...")
     print("=" * 70)
 
-    regions = ["us-east-1", "us-east-2", "us-west-2"]
+    regions = get_all_aws_regions()
 
     for region in regions:
         try:
@@ -199,7 +200,7 @@ def reduce_log_retention():
     print("\n📝 Checking CloudWatch log groups...")
     print("=" * 70)
 
-    regions = ["us-east-1", "us-east-2", "us-west-2"]
+    regions = get_all_aws_regions()
 
     for region in regions:
         try:

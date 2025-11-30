@@ -4,6 +4,7 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 
 
 def release_elastic_ips_in_region(region_name):
@@ -87,7 +88,7 @@ def main():
         return
 
     # Target regions where we found Elastic IPs
-    target_regions = ["us-east-1", "eu-west-2"]
+    target_regions = get_all_aws_regions()
 
     total_savings = 0
 

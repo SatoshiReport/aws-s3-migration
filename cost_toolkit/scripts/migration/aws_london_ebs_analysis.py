@@ -61,10 +61,7 @@ def _start_stopped_instance(ec2, instance_id):
     try:
         ec2.start_instances(InstanceIds=[instance_id])
         print("  Instance start initiated. Waiting for running state...")
-
-        waiter = ec2.get_waiter("instance_running")
-        waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 20})
-
+        aws_utils.wait_for_instance_running(ec2, instance_id)
         print("  ✅ Instance is now running!")
 
         response = ec2.describe_instances(InstanceIds=[instance_id])

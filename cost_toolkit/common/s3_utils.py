@@ -4,6 +4,8 @@ Shared S3 utilities to reduce code duplication.
 Common S3 operations used across multiple scripts.
 """
 
+import logging
+
 from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
 
 
@@ -22,8 +24,12 @@ def get_bucket_region(bucket_name, verbose=False, location_getter=None):
         str: AWS region name
 
     Raises:
+        ValueError: If bucket_name is None or empty
         ClientError: If bucket not found or API call fails
     """
+    if not bucket_name:
+        raise ValueError("bucket_name is required")
+
     if location_getter is not None:
         resolver = location_getter
     else:
@@ -32,7 +38,7 @@ def get_bucket_region(bucket_name, verbose=False, location_getter=None):
     region = resolver(bucket_name)
 
     if verbose:
-        print(f"    Region: {region}")
+        logging.info("    Region: %s", region)
     return region
 
 
@@ -54,4 +60,4 @@ def create_s3_bucket_with_region(s3_client, bucket_name, region):
         s3_client.create_bucket(
             Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
         )
-    print(f"   ✅ Created S3 bucket: {bucket_name}")
+    logging.info("   ✅ Created S3 bucket: %s", bucket_name)

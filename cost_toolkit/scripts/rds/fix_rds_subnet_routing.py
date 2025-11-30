@@ -5,7 +5,7 @@
 import boto3
 from botocore.exceptions import ClientError
 
-from ..aws_utils import setup_aws_credentials
+from ..aws_utils import setup_aws_credentials, wait_for_db_instance_available
 from .constants import create_public_subnet_group
 
 
@@ -38,10 +38,7 @@ def fix_rds_subnet_routing():
         print("   This may take 5-10 minutes...")
 
         # Wait for the modification to complete
-        waiter = rds.get_waiter("db_instance_available")
-        waiter.wait(
-            DBInstanceIdentifier="simba-db-restored", WaiterConfig={"Delay": 30, "MaxAttempts": 20}
-        )
+        wait_for_db_instance_available(rds, "simba-db-restored")
 
         print("✅ RDS instance is now in public subnets!")
         print("🔍 You should now be able to connect from the internet")

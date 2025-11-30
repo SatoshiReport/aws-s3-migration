@@ -45,7 +45,7 @@ def _is_file_stable(last_modified):
 def _process_stuck_export(task, s3_client):
     """Process a potentially stuck export task"""
     export_task_id = task["ExportImageTaskId"]
-    ami_id = task.get("ImageId", "unknown")
+    ami_id = task.get("ImageId") or "unknown"
 
     print("      ⚠️  Classic 80% stuck scenario detected!")
 
@@ -111,8 +111,8 @@ def check_active_exports(region, aws_access_key_id, aws_secret_access_key):
 
     for task in active_exports:
         export_task_id = task["ExportImageTaskId"]
-        ami_id = task.get("ImageId", "unknown")
-        progress = task.get("Progress", "N/A")
+        ami_id = task.get("ImageId") or "unknown"
+        progress = task.get("Progress") or "N/A"
         status_msg = task.get("StatusMessage", "")
 
         print(f"\n   🔍 Checking export {export_task_id}:")

@@ -42,7 +42,7 @@ def calculate_ebs_volume_cost(
         "io2": 0.125,  # Provisioned IOPS SSD (io2)
         "st1": 0.045,  # Throughput Optimized HDD
         "sc1": 0.025,  # Cold HDD
-        "standard": 0.05,  # Magnetic (legacy)
+        "standard": 0.05,  # Magnetic
     }
 
     # Calculate base storage cost

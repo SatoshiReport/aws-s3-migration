@@ -4,16 +4,17 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+from cost_toolkit.common.aws_test_constants import DEFAULT_TEST_REGIONS
 from cost_toolkit.scripts.cleanup.aws_vpc_cleanup import main
 
 
-def _assert_summary_section(captured_output):
+def _assert_summary_section(captured_output, expected_savings):
     """Helper to assert summary section of output."""
     assert "CLEANUP SUMMARY" in captured_output
-    assert "Total monthly savings: $14.40" in captured_output
+    assert f"Total monthly savings: ${expected_savings:.2f}" in captured_output
     assert "SUCCESS: Elastic IP cleanup completed!" in captured_output
-    assert "You will save approximately $14.40 per month" in captured_output
-    assert "Annual savings: $172.80" in captured_output
+    assert f"You will save approximately ${expected_savings:.2f} per month" in captured_output
+    assert f"Annual savings: ${expected_savings * 12:.2f}" in captured_output
 
 
 def _assert_next_steps_section(captured_output):
@@ -29,9 +30,9 @@ def _assert_reminders_section(captured_output):
     assert "Released IP addresses cannot be recovered" in captured_output
 
 
-def _assert_main_success_output(captured_output):
+def _assert_main_success_output(captured_output, expected_savings):
     """Helper to assert main success output."""
-    _assert_summary_section(captured_output)
+    _assert_summary_section(captured_output, expected_savings)
     _assert_next_steps_section(captured_output)
     _assert_reminders_section(captured_output)
 
@@ -58,7 +59,9 @@ def test_main_user_confirms_with_ips(capsys):
             main()
 
     captured = capsys.readouterr()
-    _assert_main_success_output(captured.out)
+    addresses_per_region = len(mock_ec2.describe_addresses.return_value["Addresses"])
+    expected_savings = len(DEFAULT_TEST_REGIONS) * addresses_per_region * 3.60
+    _assert_main_success_output(captured.out, expected_savings)
 
 
 class TestMainSuccess:
@@ -171,7 +174,8 @@ class TestMainCancellation:
                 main()
 
         captured = capsys.readouterr()
-        assert "Total monthly savings: $7.20" in captured.out
+        expected_savings = len(DEFAULT_TEST_REGIONS) * 1 * 3.60
+        assert f"Total monthly savings: ${expected_savings:.2f}" in captured.out
         assert "SUCCESS: Elastic IP cleanup completed!" in captured.out
 
 

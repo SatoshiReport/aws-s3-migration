@@ -9,14 +9,20 @@ from cost_toolkit.common.aws_client_factory import create_client
 def _process_rds_instance(instance):
     """Process and print a single RDS instance."""
     print(f"  Instance ID: {instance['DBInstanceIdentifier']}")
-    print(f"  Engine: {instance['Engine']} {instance.get('EngineVersion', 'Unknown')}")
+    engine_version = instance.get("EngineVersion", "Unknown")
+    print(f"  Engine: {instance['Engine']} {engine_version}")
     print(f"  Instance Class: {instance['DBInstanceClass']}")
     print(f"  Status: {instance['DBInstanceStatus']}")
-    print(f"  Storage: {instance.get('AllocatedStorage', 'Unknown')} GB")
-    print(f"  Storage Type: {instance.get('StorageType', 'Unknown')}")
-    print(f"  Multi-AZ: {instance.get('MultiAZ', False)}")
-    print(f"  Publicly Accessible: {instance.get('PubliclyAccessible', False)}")
-    print(f"  Creation Time: {instance.get('InstanceCreateTime', 'Unknown')}")
+    allocated_storage = instance.get("AllocatedStorage", "Unknown")
+    print(f"  Storage: {allocated_storage} GB")
+    storage_type = instance.get("StorageType", "Unknown")
+    print(f"  Storage Type: {storage_type}")
+    multi_az = instance.get("MultiAZ", False)
+    print(f"  Multi-AZ: {multi_az}")
+    publicly_accessible = instance.get("PubliclyAccessible", False)
+    print(f"  Publicly Accessible: {publicly_accessible}")
+    creation_time = instance.get("InstanceCreateTime", "Unknown")
+    print(f"  Creation Time: {creation_time}")
 
     instance_class = instance["DBInstanceClass"]
     estimated_cost = 0.0
@@ -24,7 +30,7 @@ def _process_rds_instance(instance):
         estimated_cost = 20.0
         print(f"  Estimated Cost: ~${estimated_cost:.2f}/month")
 
-    if instance.get("DBClusterIdentifier"):
+    if "DBClusterIdentifier" in instance:
         print(f"  Part of Cluster: {instance['DBClusterIdentifier']}")
 
     print()
@@ -34,28 +40,35 @@ def _process_rds_instance(instance):
 def _process_aurora_cluster(cluster):
     """Process and print a single Aurora cluster."""
     print(f"  Cluster ID: {cluster['DBClusterIdentifier']}")
-    print(f"  Engine: {cluster['Engine']} {cluster.get('EngineVersion', 'Unknown')}")
+    engine_version = cluster.get("EngineVersion", "Unknown")
+    print(f"  Engine: {cluster['Engine']} {engine_version}")
     print(f"  Status: {cluster['Status']}")
-    print(f"  Database Name: {cluster.get('DatabaseName', 'None')}")
-    print(f"  Master Username: {cluster.get('MasterUsername', 'Unknown')}")
-    print(f"  Multi-AZ: {cluster.get('MultiAZ', False)}")
-    print(f"  Storage Encrypted: {cluster.get('StorageEncrypted', False)}")
-    print(f"  Creation Time: {cluster.get('ClusterCreateTime', 'Unknown')}")
+    database_name = cluster.get("DatabaseName", "None")
+    print(f"  Database Name: {database_name}")
+    master_username = cluster.get("MasterUsername", "Unknown")
+    print(f"  Master Username: {master_username}")
+    multi_az = cluster.get("MultiAZ", False)
+    print(f"  Multi-AZ: {multi_az}")
+    storage_encrypted = cluster.get("StorageEncrypted", False)
+    print(f"  Storage Encrypted: {storage_encrypted}")
+    creation_time = cluster.get("ClusterCreateTime", "Unknown")
+    print(f"  Creation Time: {creation_time}")
 
-    if cluster.get("DBClusterMembers"):
+    if "DBClusterMembers" in cluster:
         print(f"  Cluster Members: {len(cluster['DBClusterMembers'])}")
         for member in cluster["DBClusterMembers"]:
             role = "Writer" if member["IsClusterWriter"] else "Reader"
             print(f"    - {member['DBInstanceIdentifier']} ({role})")
 
-    if cluster.get("EngineMode") == "serverless":
+    engine_mode = cluster.get("EngineMode")
+    if engine_mode == "serverless":
         print("  Engine Mode: Serverless")
-        if cluster.get("ScalingConfigurationInfo"):
+        if "ScalingConfigurationInfo" in cluster:
             scaling = cluster["ScalingConfigurationInfo"]
             min_cap = scaling.get("MinCapacity", "Unknown")
             max_cap = scaling.get("MaxCapacity", "Unknown")
             print(f"  Scaling: {min_cap}-{max_cap} ACU")
-    elif cluster.get("ServerlessV2ScalingConfiguration"):
+    elif "ServerlessV2ScalingConfiguration" in cluster:
         print("  Engine Mode: Serverless V2")
         scaling = cluster["ServerlessV2ScalingConfiguration"]
         min_cap = scaling.get("MinCapacity", "Unknown")

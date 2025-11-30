@@ -40,11 +40,13 @@ def _print_zone_records(_route53, zone_id):
 
             resource_records = record.get("ResourceRecords", [])
             for rr in resource_records:
-                print(f"      -> {rr.get('Value', '')}")
+                rr_value = rr.get("Value", "")
+                print(f"      -> {rr_value}")
 
             alias_target = record.get("AliasTarget")
             if alias_target:
-                print(f"      -> ALIAS: {alias_target.get('DNSName', '')}")
+                dns_name = alias_target.get("DNSName", "")
+                print(f"      -> ALIAS: {dns_name}")
 
     except ClientError as e:
         print(f"  ❌ Error getting records: {e}")

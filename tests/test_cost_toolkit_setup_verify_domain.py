@@ -7,6 +7,7 @@ import socket
 from unittest.mock import MagicMock, patch
 
 import pytest
+
 from cost_toolkit.scripts.setup.exceptions import CertificateInfoError
 from cost_toolkit.scripts.setup.verify_iwannabenewyork_domain import (
     HTTP_STATUS_MOVED_PERMANENTLY,

@@ -9,6 +9,7 @@ import botocore.exceptions
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 
 PENDING_DELETION_TARGET = 4
 
@@ -77,7 +78,8 @@ def _check_lightsail_databases_in_region(lightsail_client):
     for database in databases_response["relationalDatabases"]:
         total_count += 1
         if database["relationalDatabaseBlueprintId"] and database["masterDatabaseName"]:
-            if "stopped" in database.get("state", "").lower():
+            state = database.get("state", "")
+            if "stopped" in state.lower():
                 stopped_count += 1
 
     return stopped_count, total_count
@@ -112,7 +114,7 @@ def check_lightsail_status():
     Raises:
         ServiceCheckError: If all regions fail to respond
     """
-    regions = ["eu-central-1", "us-east-1", "us-west-2"]
+    regions = get_all_aws_regions()
     stopped_instances = 0
     total_instances = 0
     stopped_databases = 0
@@ -213,7 +215,7 @@ def check_cloudwatch_status():
     Raises:
         ServiceCheckError: If all regions fail to respond
     """
-    regions = ["us-east-1", "us-east-2", "us-west-2"]
+    regions = get_all_aws_regions()
     stopped_canaries = 0
     total_canaries = 0
     disabled_alarms = 0

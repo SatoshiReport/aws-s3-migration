@@ -26,7 +26,8 @@ def _collect_network_interface_deps(ec2_client, group_id):
         Filters=[{"Name": "group-id", "Values": [group_id]}]
     )
     network_interfaces = []
-    for eni in eni_response.get("NetworkInterfaces", []):
+    eni_list = eni_response.get("NetworkInterfaces", [])
+    for eni in eni_list:
         network_interfaces.append(
             {
                 "interface_id": eni["NetworkInterfaceId"],
@@ -63,16 +64,21 @@ def _collect_instance_deps(ec2_client, group_id):
 def _check_inbound_rules(sg, group_id):
     """Check inbound rules for references to target group."""
     rules = []
-    for rule in sg.get("IpPermissions", []):
-        for group_pair in rule.get("UserIdGroupPairs", []):
-            if group_pair.get("GroupId") == group_id:
+    ip_permissions = sg.get("IpPermissions", [])
+    for rule in ip_permissions:
+        group_pairs = rule.get("UserIdGroupPairs", [])
+        for group_pair in group_pairs:
+            pair_group_id = group_pair.get("GroupId")
+            if pair_group_id == group_id:
+                from_port = rule.get("FromPort", "N/A")
+                to_port = rule.get("ToPort", "N/A")
                 rules.append(
                     {
                         "referencing_sg": sg["GroupId"],
                         "referencing_sg_name": sg["GroupName"],
                         "rule_type": "inbound",
                         "protocol": rule.get("IpProtocol"),
-                        "port_range": f"{rule.get('FromPort', 'N/A')}-{rule.get('ToPort', 'N/A')}",
+                        "port_range": f"{from_port}-{to_port}",
                     }
                 )
     return rules
@@ -81,16 +87,21 @@ def _check_inbound_rules(sg, group_id):
 def _check_outbound_rules(sg, group_id):
     """Check outbound rules for references to target group."""
     rules = []
-    for rule in sg.get("IpPermissionsEgress", []):
-        for group_pair in rule.get("UserIdGroupPairs", []):
-            if group_pair.get("GroupId") == group_id:
+    ip_permissions_egress = sg.get("IpPermissionsEgress", [])
+    for rule in ip_permissions_egress:
+        group_pairs = rule.get("UserIdGroupPairs", [])
+        for group_pair in group_pairs:
+            pair_group_id = group_pair.get("GroupId")
+            if pair_group_id == group_id:
+                from_port = rule.get("FromPort", "N/A")
+                to_port = rule.get("ToPort", "N/A")
                 rules.append(
                     {
                         "referencing_sg": sg["GroupId"],
                         "referencing_sg_name": sg["GroupName"],
                         "rule_type": "outbound",
                         "protocol": rule.get("IpProtocol"),
-                        "port_range": f"{rule.get('FromPort', 'N/A')}-{rule.get('ToPort', 'N/A')}",
+                        "port_range": f"{from_port}-{to_port}",
                     }
                 )
     return rules
@@ -100,7 +111,8 @@ def _collect_sg_rule_refs(ec2_client, group_id):
     """Collect security group rules referencing this group."""
     all_sgs_response = ec2_client.describe_security_groups()
     rules = []
-    for sg in all_sgs_response.get("SecurityGroups", []):
+    security_groups = all_sgs_response.get("SecurityGroups", [])
+    for sg in security_groups:
         if sg["GroupId"] == group_id:
             continue
 
@@ -121,15 +133,18 @@ def _collect_rds_deps(group_id, region, aws_access_key_id, aws_secret_access_key
 
         rds_response = rds_client.describe_db_instances()
         rds_instances = []
-        for db in rds_response.get("DBInstances", []):
-            for sg in db.get("VpcSecurityGroups", []):
+        db_instances = rds_response.get("DBInstances", [])
+        for db in db_instances:
+            vpc_security_groups = db.get("VpcSecurityGroups", [])
+            for sg in vpc_security_groups:
                 if sg["VpcSecurityGroupId"] == group_id:
+                    db_subnet_group = db.get("DbSubnetGroup", {})
                     rds_instances.append(
                         {
                             "db_instance_id": db["DBInstanceIdentifier"],
                             "db_instance_status": db["DBInstanceStatus"],
                             "engine": db["Engine"],
-                            "vpc_id": db.get("DbSubnetGroup", {}).get("VpcId"),
+                            "vpc_id": db_subnet_group.get("VpcId"),
                         }
                     )
     except ClientError as e:
@@ -172,7 +187,8 @@ def _print_network_interfaces(network_interfaces):
     for eni in network_interfaces:
         attachment_info = "Unattached"
         if eni["attachment"]:
-            attachment_info = f"Attached to {eni['attachment'].get('InstanceId', 'Unknown')}"
+            instance_id = eni["attachment"].get("InstanceId", "Unknown")
+            attachment_info = f"Attached to {instance_id}"
         print(f"   • {eni['interface_id']} - {eni['status']} - {attachment_info}")
         print(f"     Description: {eni['description']}")
 

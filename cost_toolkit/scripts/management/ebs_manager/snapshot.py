@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Dict, Optional
 
 import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 from .exceptions import VolumeNotFoundError
 from .utils import find_volume_region, get_volume_tags
@@ -83,8 +84,8 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
         if not description:
             description = _generate_snapshot_description(volume_name, volume_id, volume_size)
 
-    except Exception as e:
-        raise VolumeRetrievalError(volume_id, e) from e
+    except (BotoCoreError, ClientError, KeyError, IndexError) as exc:
+        raise VolumeRetrievalError(volume_id, exc) from exc
 
     # Create the snapshot
     try:
@@ -107,8 +108,8 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
             "volume_name": volume_name,
         }
 
-    except Exception as e:
-        raise SnapshotCreationError(volume_id, e) from e
+    except (BotoCoreError, ClientError) as exc:
+        raise SnapshotCreationError(volume_id, exc) from exc
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point

@@ -7,6 +7,7 @@ import importlib.util
 import os
 import sys
 from datetime import datetime, timezone
+from io import StringIO
 
 import boto3
 from botocore.exceptions import ClientError
@@ -41,8 +42,6 @@ def _run_audit_script(name, script_path):
         spec.loader.exec_module(module)
         if hasattr(module, "main"):
             original_stdout = sys.stdout
-            from io import StringIO
-
             buffer = StringIO()
             sys.stdout = buffer
             try:
@@ -56,7 +55,18 @@ def _run_audit_script(name, script_path):
         else:
             print(f"  ⚠️ Script {script_path} has no main()")
     except ClientError as e:
-        print(f"  ⚠️ Error running audit: {str(e)}")
+        raise RuntimeError(f"AWS API error while running audit script {script_path}: {str(e)}") from e
+    except (
+        AttributeError,
+        ImportError,
+        OSError,
+        RuntimeError,
+        SyntaxError,
+        TypeError,
+        ValueError,
+    ) as e:  # pragma: no cover
+        print(f"  ⚠️ Unexpected error running audit: {e}")
+        raise
 
 
 def run_quick_audit(scripts_dir):
@@ -90,8 +100,10 @@ def report_lightsail_cost_breakdown():
         )
         rows = []
         total = 0.0
-        for result in response.get("ResultsByTime", []):
-            for group in result.get("Groups", []):
+        results_by_time = response.get("ResultsByTime", [])
+        for result in results_by_time:
+            groups = result.get("Groups", [])
+            for group in groups:
                 amount = float(group["Metrics"]["UnblendedCost"]["Amount"])
                 if amount <= 0:
                     continue

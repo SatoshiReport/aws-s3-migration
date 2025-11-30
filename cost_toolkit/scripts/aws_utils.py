@@ -4,7 +4,6 @@ AWS Utilities Module
 Shared utilities for AWS credential management and common functions.
 """
 
-import sys
 from typing import Optional
 
 import boto3
@@ -17,7 +16,7 @@ from cost_toolkit.common.aws_client_factory import (
 from cost_toolkit.common.aws_client_factory import (
     load_credentials_from_env as load_aws_credentials_from_env,
 )
-from cost_toolkit.common.aws_common import describe_instance_raw, get_default_regions
+from cost_toolkit.common.aws_common import describe_instance_raw, get_all_aws_regions
 
 
 class CredentialLoadError(Exception):
@@ -39,9 +38,8 @@ def load_aws_credentials(env_path: Optional[str] = None) -> None:
     except ValueError as exc:
         resolved_path = _resolve_env_path(env_path)
         msg = (
-            "AWS credentials not found. "
-            f"Ensure {resolved_path} contains AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_DEFAULT_REGION, "
-            "or configure credentials via the default AWS provider chain (env vars, config/SSO, or IAM role)."
+            f"AWS credentials not found in {resolved_path}. "
+            "Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_DEFAULT_REGION."
         )
         raise CredentialLoadError(msg) from exc
 
@@ -60,20 +58,19 @@ def setup_aws_credentials(env_path: Optional[str] = None):
     try:
         result = credential_utils.setup_aws_credentials(env_path=env_path)
     except ValueError as exc:
-        print(exc)
-        sys.exit(1)
+        raise CredentialLoadError(f"Failed to setup AWS credentials: {exc}") from exc
     if not result:
-        sys.exit(1)
+        raise CredentialLoadError("Failed to setup AWS credentials")
 
 
 def get_aws_regions():
     """
-    Get list of common AWS regions for cost optimization.
+    Get list of all AWS regions.
 
     Returns:
         list: List of AWS region names
     """
-    return get_default_regions()
+    return get_all_aws_regions()
 
 
 def get_instance_info(instance_id: str, region_name: str) -> dict:
@@ -127,6 +124,16 @@ def wait_for_instance_state(
     )
 
 
+def wait_for_instance_running(
+    ec2_client,
+    instance_id: str,
+    delay: int = 15,
+    max_attempts: int = 40,
+):
+    """Wait for an EC2 instance to reach the running state using shared defaults."""
+    wait_for_instance_state(ec2_client, instance_id, "instance_running", delay, max_attempts)
+
+
 def wait_for_db_snapshot_completion(
     rds_client,
     snapshot_identifier: str,
@@ -145,6 +152,34 @@ def wait_for_db_snapshot_completion(
     waiter = rds_client.get_waiter("db_snapshot_completed")
     waiter.wait(
         DBSnapshotIdentifier=snapshot_identifier,
+        WaiterConfig={"Delay": delay, "MaxAttempts": max_attempts},
+    )
+
+
+def wait_for_db_instance_deleted(
+    rds_client,
+    instance_id: str,
+    delay: int = 30,
+    max_attempts: int = 20,
+):
+    """Wait for an RDS instance to reach the deleted state."""
+    waiter = rds_client.get_waiter("db_instance_deleted")
+    waiter.wait(
+        DBInstanceIdentifier=instance_id,
+        WaiterConfig={"Delay": delay, "MaxAttempts": max_attempts},
+    )
+
+
+def wait_for_db_instance_available(
+    rds_client,
+    instance_id: str,
+    delay: int = 30,
+    max_attempts: int = 20,
+):
+    """Wait for an RDS instance to reach the available state."""
+    waiter = rds_client.get_waiter("db_instance_available")
+    waiter.wait(
+        DBInstanceIdentifier=instance_id,
         WaiterConfig={"Delay": delay, "MaxAttempts": max_attempts},
     )
 

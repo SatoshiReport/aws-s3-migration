@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import pytest
 
+from cost_toolkit.common.aws_test_constants import format_static_regions
 from migrate_v2 import MigrationComponents, S3MigrationV2
 from migration_state_v2 import DatabaseConnection
 
@@ -28,6 +29,12 @@ def mock_aws_env_file(tmp_path, monkeypatch):
     env_file.write_text("AWS_ACCESS_KEY_ID=test_key\nAWS_SECRET_ACCESS_KEY=test_secret\n")
     monkeypatch.setenv("AWS_ENV_FILE", str(env_file))
     yield str(env_file)
+
+
+@pytest.fixture(autouse=True)
+def static_aws_regions(monkeypatch):
+    """Ensure tests use a short, deterministic region list."""
+    monkeypatch.setenv("COST_TOOLKIT_STATIC_AWS_REGIONS", format_static_regions())
 
 
 @pytest.fixture(name="temp_db")

@@ -121,7 +121,9 @@ class TestCanvaVerification:
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.BOTO3_AVAILABLE", True)
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._find_hosted_zone_for_domain")
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.boto3.client")
-    def test_verify_canva_verification_not_found_no_output(self, mock_client, mock_find_zone, capsys):
+    def test_verify_canva_verification_not_found_no_output(
+        self, mock_client, mock_find_zone, capsys
+    ):
         """Test Canva verification TXT record not found."""
         mock_find_zone.return_value = {"Id": "/hostedzone/Z123", "Name": "example.com."}
         mock_client.return_value.list_resource_record_sets.return_value = {"ResourceRecordSets": []}

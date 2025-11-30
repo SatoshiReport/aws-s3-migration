@@ -10,7 +10,6 @@ from cost_toolkit.common.aws_client_factory import (
 )
 from cost_toolkit.common.aws_common import (
     create_ec2_and_s3_clients,
-    get_default_regions,
     get_instance_name,
 )
 from cost_toolkit.scripts.aws_ec2_operations import terminate_instance
@@ -126,15 +125,3 @@ def test_get_instance_name_no_tags():
     result = get_instance_name(mock_ec2, "i-1234567890abcdef0")
 
     assert_equal(result, None)
-
-
-def test_get_default_regions():
-    """Test get_default_regions returns expected region list."""
-    regions = get_default_regions()
-
-    # Should return a list of regions
-    assert isinstance(regions, list)
-    assert len(regions) > 0
-    # Should include common regions
-    assert "us-east-1" in regions
-    assert "us-west-2" in regions

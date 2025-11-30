@@ -98,7 +98,7 @@ def _display_current_hour_section(current_hour_costs, current_hour, now, daily_s
 
         for service, cost in sorted_current:
             current_hour_total += cost
-            daily_cost = daily_service_costs.get(service, 0)
+            daily_cost = daily_service_costs[service] if service in daily_service_costs else 0
 
             hourly_rate = ""
             if daily_cost > 0:

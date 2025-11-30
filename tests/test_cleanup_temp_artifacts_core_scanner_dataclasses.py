@@ -12,6 +12,8 @@ from cleanup_temp_artifacts.core_scanner import (  # pylint: disable=no-name-in-
     Candidate,
     CandidateLoadError,
     CandidateLoadResult,
+    MissingSizeError,
+    PathOutsideBaseError,
     _filter_candidates_by_size,
     iter_relevant_dirs,
 )
@@ -112,7 +114,6 @@ def test_iter_relevant_dirs_excludes_base(tmp_path):
 
 def test_iter_relevant_dirs_outside_base(tmp_path):
     """Test iter_relevant_dirs raises PathOutsideBaseError for file outside base_path."""
-    from cleanup_temp_artifacts.core_scanner import PathOutsideBaseError
 
     base = tmp_path / "base"
     base.mkdir()
@@ -186,9 +187,6 @@ def test_filter_candidates_by_size_no_minimum():
 
 def test_filter_candidates_by_size_raises_on_none_sizes():
     """Test _filter_candidates_by_size raises MissingSizeError for None size values."""
-    from cleanup_temp_artifacts.core_scanner import (
-        MissingSizeError,  # pylint: disable=no-name-in-module
-    )
 
     category = Category("cat", "Category", _dummy_matcher)
 

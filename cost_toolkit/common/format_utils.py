@@ -13,6 +13,7 @@ BYTES_PER_KIB = 1024
 BYTES_PER_MIB = 1024**2
 BYTES_PER_GIB = 1024**3
 BYTES_PER_TIB = 1024**4
+MIN_PARTS_WITH_UNIT = 2
 
 
 def format_bytes(
@@ -67,7 +68,6 @@ def format_bytes(
             return f"{value:.{decimal_places}f} {unit}"
         value /= divisor
 
-    # Fallback (should never reach here due to units[-1] check)
     if use_comma_separators:
         return f"{value:,.{decimal_places}f} PiB"
     return f"{value:.{decimal_places}f} PiB"
@@ -143,6 +143,30 @@ def parse_size(value: str, *, for_argparse: bool = False) -> int:
         raise ValueError(error_msg) from exc
 
 
+def _to_float(value: str, original: str) -> float:
+    try:
+        return float(value)
+    except ValueError as exc:
+        raise ValueError(f"Cannot parse size: {original}") from exc
+
+
+def _parse_compact_size(raw: str, multipliers: dict[str, int]) -> tuple[str, str]:
+    lower_raw = raw.lower()
+    for suffix in multipliers:
+        if lower_raw.endswith(suffix):
+            return raw[: -len(suffix)], suffix
+    return raw, "bytes"
+
+
+def _split_size_components(raw: str, multipliers: dict[str, int]) -> tuple[str, str]:
+    parts = raw.split()
+    if len(parts) >= MIN_PARTS_WITH_UNIT:
+        return parts[0], parts[-1].lower()
+    if len(parts) == 1:
+        return _parse_compact_size(raw, multipliers)
+    raise ValueError(f"Cannot parse size: {raw}")
+
+
 def parse_aws_cli_size(size_str: str) -> int:
     """
     Parse byte size from AWS CLI output format (e.g., "1.5 GiB", "512 MiB").
@@ -178,34 +202,17 @@ def parse_aws_cli_size(size_str: str) -> int:
         "tib": BYTES_PER_TIB,
     }
 
-    # Try to parse as "<number> <unit>" format
-    parts = raw.split()
-    if len(parts) >= 2:
-        number_part = parts[0]
-        unit_part = parts[-1].lower()
-    elif len(parts) == 1:
-        # Try formats like "1.5GiB" without space
-        for suffix in multipliers:
-            if raw.lower().endswith(suffix):
-                number_part = raw[: -len(suffix)]
-                unit_part = suffix
-                break
-        else:
-            # No recognized unit, assume bytes
-            try:
-                return int(float(raw))
-            except ValueError as exc:
-                raise ValueError(f"Cannot parse size: {size_str}") from exc
-    else:
-        raise ValueError(f"Cannot parse size: {size_str}")
-
     try:
-        size_val = float(number_part)
+        number_part, unit_part = _split_size_components(raw, multipliers)
     except ValueError as exc:
         raise ValueError(f"Cannot parse size: {size_str}") from exc
+
+    size_val = _to_float(number_part, size_str)
 
     if unit_part in multipliers:
         return int(size_val * multipliers[unit_part])
 
-    # Unknown unit
+    if unit_part == "bytes":
+        return int(size_val)
+
     raise ValueError(f"Unknown size unit in: {size_str}")

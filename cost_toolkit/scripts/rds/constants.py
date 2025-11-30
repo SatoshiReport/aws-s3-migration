@@ -14,13 +14,16 @@ PUBLIC_SUBNETS = [
 ]
 
 
-def create_public_subnet_group(rds, subnet_group_name, description=None):
+DEFAULT_SUBNET_GROUP_DESCRIPTION = "Public subnets only for RDS internet access"
+
+
+def create_public_subnet_group(rds, subnet_group_name, description: str = DEFAULT_SUBNET_GROUP_DESCRIPTION):
     """Create a new DB subnet group with public subnets.
 
     Args:
         rds: boto3 RDS client
         subnet_group_name: Name for the subnet group
-        description: Optional description (defaults to standard message)
+        description: Description for the subnet group
 
     Returns:
         None
@@ -28,8 +31,6 @@ def create_public_subnet_group(rds, subnet_group_name, description=None):
     Raises:
         ClientError: If creation fails for reasons other than already existing
     """
-    if description is None:
-        description = "Public subnets only for RDS internet access"
 
     print(f"🌐 Creating public subnet group: {subnet_group_name}")
 

@@ -13,15 +13,10 @@ from . import (  # pylint: disable=no-name-in-module
     core_scanner,
     db_loader,
     reports,
-    scanner,
 )
 from .categories import Category, build_categories
-from .scanner import (
-    Candidate,
-    CandidateLoadError,
-    CandidateLoadResult,
-    load_candidates_from_db,
-)
+from .core_scanner import Candidate, CandidateLoadError, CandidateLoadResult
+from .db_loader import load_candidates_from_db
 
 __all__ = [
     "Category",
@@ -38,5 +33,4 @@ __all__ = [
     "db_loader",
     "load_candidates_from_db",
     "reports",
-    "scanner",
 ]

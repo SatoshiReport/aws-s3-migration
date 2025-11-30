@@ -5,29 +5,15 @@ Contains helper functions for region discovery and tag management.
 
 from typing import Dict, Optional
 
-import boto3
-
+from cost_toolkit.common.aws_client_factory import create_ec2_client
 from cost_toolkit.common.aws_common import (
     find_resource_region,
-)
-from cost_toolkit.common.aws_common import get_all_aws_regions as _get_all_aws_regions
-from cost_toolkit.common.aws_common import get_instance_name as _get_instance_name_with_client
-from cost_toolkit.common.aws_common import (
+    get_all_aws_regions,
+    get_instance_name,
     get_resource_tags,
 )
 
 __all__ = ["get_all_aws_regions", "find_volume_region", "get_volume_tags", "get_instance_name"]
-
-
-def get_all_aws_regions():
-    """Get all AWS regions using EC2 describe_regions.
-
-    Delegates to canonical implementation in aws_common.
-
-    Raises:
-        ClientError: If the AWS API call fails.
-    """
-    return _get_all_aws_regions()
 
 
 def find_volume_region(volume_id: str) -> Optional[str]:
@@ -45,9 +31,9 @@ def find_volume_region(volume_id: str) -> Optional[str]:
     return find_resource_region("volume", volume_id)
 
 
-def get_instance_name(instance_id: str, region: str) -> Optional[str]:
+def get_instance_name_by_region(instance_id: str, region: str) -> Optional[str]:
     """
-    Get the Name tag value for an EC2 instance.
+    Get the Name tag value for an EC2 instance in a specific region.
 
     Args:
         instance_id: The EC2 instance ID
@@ -56,8 +42,8 @@ def get_instance_name(instance_id: str, region: str) -> Optional[str]:
     Returns:
         Instance name from Name tag, or None if not found
     """
-    ec2_client = boto3.client("ec2", region_name=region)
-    return _get_instance_name_with_client(ec2_client, instance_id)
+    ec2_client = create_ec2_client(region)
+    return get_instance_name(ec2_client, instance_id)
 
 
 def get_volume_tags(volume: Dict) -> Dict[str, str]:
@@ -73,6 +59,3 @@ def get_volume_tags(volume: Dict) -> Dict[str, str]:
     """
     return get_resource_tags(volume)
 
-
-if __name__ == "__main__":  # pragma: no cover - script entry point
-    pass

@@ -5,7 +5,11 @@
 import boto3
 from botocore.exceptions import ClientError
 
-from ..aws_utils import setup_aws_credentials
+from ..aws_utils import (
+    setup_aws_credentials,
+    wait_for_db_instance_available,
+    wait_for_db_snapshot_completion,
+)
 from .constants import create_public_subnet_group
 
 
@@ -19,8 +23,7 @@ def _create_migration_snapshot(rds, snapshot_id):
 
         # Wait for snapshot to complete
         print("⏳ Waiting for snapshot to complete...")
-        waiter = rds.get_waiter("db_snapshot_completed")
-        waiter.wait(DBSnapshotIdentifier=snapshot_id, WaiterConfig={"Delay": 30, "MaxAttempts": 20})
+        wait_for_db_snapshot_completion(rds, snapshot_id, max_attempts=20)
         print("✅ Snapshot completed!")
     except ClientError as e:
         if "already exists" in str(e).lower():
@@ -46,8 +49,7 @@ def _restore_instance_to_public_subnet(rds, snapshot_id, new_instance_id, subnet
     print("⏳ Waiting for new instance to be available...")
 
     # Wait for new instance to be available
-    waiter = rds.get_waiter("db_instance_available")
-    waiter.wait(DBInstanceIdentifier=new_instance_id, WaiterConfig={"Delay": 30, "MaxAttempts": 20})
+    wait_for_db_instance_available(rds, new_instance_id)
 
     print("✅ New instance is available in public subnets!")
     print(f"🔍 You can now connect to: {new_instance_id}")
@@ -78,7 +80,7 @@ def fix_default_subnet_group():
         _restore_instance_to_public_subnet(rds, snapshot_id, new_instance_id, subnet_group_name)
 
     except ClientError as e:
-        raise RuntimeError(f"Failed to update default subnet group: {e}") from e
+        print(f"Error: {e}")
 
 
 def main():

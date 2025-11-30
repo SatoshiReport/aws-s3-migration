@@ -19,11 +19,16 @@ def get_completed_cleanups():
         if os.path.exists(cleanup_log_path):
             with open(cleanup_log_path, "r", encoding="utf-8") as f:
                 log_data = json.load(f)
-                for action in log_data.get("cleanup_actions", []):
-                    if action.get("status") == "completed":
-                        completed_services.add(action.get("service", "").lower())
-    except (OSError, json.JSONDecodeError) as e:
-        print(f"⚠️  Could not read cleanup log: {e}")
+                cleanup_actions = log_data.get("cleanup_actions", [])
+                for action in cleanup_actions:
+                    status = action.get("status", None)
+                    if status == "completed":
+                        service = action.get("service", "")
+                        completed_services.add(service.lower())
+    except OSError as e:
+        raise RuntimeError(f"Failed to read cleanup log at {cleanup_log_path}: {e}") from e
+    except json.JSONDecodeError as e:
+        raise RuntimeError(f"Cleanup log is not valid JSON at {cleanup_log_path}: {e}") from e
 
     return completed_services
 

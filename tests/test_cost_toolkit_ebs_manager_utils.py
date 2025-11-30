@@ -16,8 +16,9 @@ from tests.assertions import assert_equal
 
 
 @patch("cost_toolkit.common.aws_common.create_ec2_client")
-def test_get_all_aws_regions(mock_create_client):
+def test_get_all_aws_regions(mock_create_client, monkeypatch):
     """Test get_all_aws_regions returns list of regions."""
+    monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
     mock_ec2 = MagicMock()
     mock_create_client.return_value = mock_ec2
     mock_ec2.describe_regions.return_value = {

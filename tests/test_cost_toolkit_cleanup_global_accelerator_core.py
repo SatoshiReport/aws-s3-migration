@@ -107,7 +107,9 @@ class TestDisableAccelerator:
     def test_disable_timeout_waiting(self, capsys):
         """Test timeout when waiting for stable state."""
         with patch("boto3.client") as mock_client:
-            with patch("time.sleep"):
+            with patch(
+                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT.wait"
+            ):
                 mock_ga = MagicMock()
                 mock_ga.describe_accelerator.return_value = {
                     "Accelerator": {"Status": "IN_PROGRESS", "Enabled": False}
@@ -151,7 +153,9 @@ class TestDeleteListeners:
     def test_delete_listeners_with_endpoint_groups(self):
         """Test deleting listeners with endpoint groups."""
         with patch("boto3.client") as mock_client:
-            with patch("time.sleep"):
+            with patch(
+                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT.wait"
+            ):
                 mock_ga = MagicMock()
                 mock_ga.list_listeners.return_value = {
                     "Listeners": [{"ListenerArn": "arn:aws:listener/123"}]

@@ -12,6 +12,7 @@ import pytest
 
 from migration_orchestrator import (
     BucketMigrationOrchestrator,
+    MigrationFatalError,
     handle_drive_error,
     handle_migration_error,
 )
@@ -175,10 +176,10 @@ class TestSingleBucketDriveErrors:
         )
 
         with mock.patch("builtins.print"):
-            with pytest.raises(SystemExit) as exc_info:
+            with pytest.raises(MigrationFatalError) as exc_info:
                 orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
-        assert exc_info.value.code == 1
+        assert "Drive error" in str(exc_info.value)
 
     def test_migrate_single_bucket_handles_permission_error(
         self, orchestrator, mock_dependencies
@@ -189,10 +190,10 @@ class TestSingleBucketDriveErrors:
         )
 
         with mock.patch("builtins.print"):
-            with pytest.raises(SystemExit) as exc_info:
+            with pytest.raises(MigrationFatalError) as exc_info:
                 orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
-        assert exc_info.value.code == 1
+        assert "Drive error" in str(exc_info.value)
 
     def test_migrate_single_bucket_handles_oserror(
         self, orchestrator, mock_dependencies
@@ -203,10 +204,10 @@ class TestSingleBucketDriveErrors:
         )
 
         with mock.patch("builtins.print"):
-            with pytest.raises(SystemExit) as exc_info:
+            with pytest.raises(MigrationFatalError) as exc_info:
                 orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
-        assert exc_info.value.code == 1
+        assert "Drive error" in str(exc_info.value)
 
 
 class TestSingleBucketMigrationErrors:
@@ -221,10 +222,10 @@ class TestSingleBucketMigrationErrors:
         )
 
         with mock.patch("builtins.print"):
-            with pytest.raises(SystemExit) as exc_info:
+            with pytest.raises(MigrationFatalError) as exc_info:
                 orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
-        assert exc_info.value.code == 1
+        assert "Migration error" in str(exc_info.value)
 
     def test_migrate_single_bucket_handles_value_error(
         self, orchestrator, mock_dependencies
@@ -235,10 +236,10 @@ class TestSingleBucketMigrationErrors:
         )
 
         with mock.patch("builtins.print"):
-            with pytest.raises(SystemExit) as exc_info:
+            with pytest.raises(MigrationFatalError) as exc_info:
                 orchestrator.migrate_single_bucket(1, "bucket-1", 1)
 
-        assert exc_info.value.code == 1
+        assert "Migration error" in str(exc_info.value)
 
 
 class TestErrorHandlers:
@@ -249,10 +250,10 @@ class TestErrorHandlers:
         error = FileNotFoundError("Drive not found")
 
         with mock.patch("builtins.print") as mock_print:
-            with pytest.raises(SystemExit) as exc_info:
+            with pytest.raises(MigrationFatalError) as exc_info:
                 handle_drive_error(error)
 
-        assert exc_info.value.code == 1
+        assert "Drive error" in str(exc_info.value)
         printed_text = " ".join([str(call) for call in mock_print.call_args_list])
         assert "Drive error" in printed_text
         assert "MIGRATION INTERRUPTED" in printed_text
@@ -263,10 +264,10 @@ class TestErrorHandlers:
         bucket = "test-bucket"
 
         with mock.patch("builtins.print") as mock_print:
-            with pytest.raises(SystemExit) as exc_info:
+            with pytest.raises(MigrationFatalError) as exc_info:
                 handle_migration_error(bucket, error)
 
-        assert exc_info.value.code == 1
+        assert "Migration error" in str(exc_info.value)
         printed_text = " ".join([str(call) for call in mock_print.call_args_list])
         assert "MIGRATION STOPPED" in printed_text
         assert "test-bucket" in printed_text

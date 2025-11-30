@@ -24,28 +24,42 @@ from cost_toolkit.scripts.rds.db_inspection_common import (
 
 # Constants
 MAX_SAMPLE_COLUMNS = 5
-DEFAULT_RESTORED_HOST = os.environ.get("RESTORED_DB_HOST", "restored-db.example.com")
-DEFAULT_RESTORED_PORT = int(os.environ.get("RESTORED_DB_PORT", "5432"))
-DEFAULT_RESTORED_USERNAME = os.environ.get("RESTORED_DB_USERNAME", "postgres")
-DEFAULT_DB_NAMES = (
-    os.environ.get("RESTORED_DB_NAMES", "postgres,template1").split(",")
-)
-DEFAULT_PASSWORDS = os.environ.get("RESTORED_DB_PASSWORDS", "postgres,password,admin").split(",")
+
+
+def _require_env_var(name: str) -> str:
+    """Return a required environment variable or raise."""
+    value = os.environ.get(name)
+    if value is None or not value.strip():
+        raise RuntimeError(f"{name} is required to explore restored RDS data")
+    return value.strip()
+
+
+def _parse_required_port(name: str) -> int:
+    """Parse a required port environment variable."""
+    raw_value = _require_env_var(name)
+    try:
+        return int(raw_value)
+    except ValueError:
+        raise RuntimeError(f"{name} must be a valid integer, got {raw_value!r}")
+
+
+def _split_required_list(name: str) -> list[str]:
+    """Split a required comma-separated environment variable into values."""
+    raw_value = _require_env_var(name)
+    values = [value.strip() for value in raw_value.split(",") if value.strip()]
+    if not values:
+        raise RuntimeError(f"{name} must contain at least one value")
+    return values
 
 
 def _load_restored_db_settings():
     """Load restored DB connection settings from environment variables."""
-    host = os.environ.get("RESTORED_DB_HOST", DEFAULT_RESTORED_HOST)
-    port = int(os.environ.get("RESTORED_DB_PORT", DEFAULT_RESTORED_PORT))
-    username = os.environ.get("RESTORED_DB_USERNAME", DEFAULT_RESTORED_USERNAME)
-    databases = [
-        db.strip() for db in os.environ.get("RESTORED_DB_NAMES", ",".join(DEFAULT_DB_NAMES)).split(",") if db.strip()
-    ]
-    passwords = [
-        pw.strip()
-        for pw in os.environ.get("RESTORED_DB_PASSWORDS", ",".join(DEFAULT_PASSWORDS)).split(",")
-        if pw.strip()
-    ]
+    host = _require_env_var("RESTORED_DB_HOST")
+    port = _parse_required_port("RESTORED_DB_PORT")
+    username = _require_env_var("RESTORED_DB_USERNAME")
+    databases = _split_required_list("RESTORED_DB_NAMES")
+    passwords = _split_required_list("RESTORED_DB_PASSWORDS")
+
     return host, port, databases, username, passwords
 
 

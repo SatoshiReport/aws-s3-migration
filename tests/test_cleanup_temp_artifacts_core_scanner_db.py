@@ -10,6 +10,7 @@ import pytest
 
 # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts import categories, core_scanner
+from cleanup_temp_artifacts.core_scanner import CandidateLoadError
 from tests.assertions import assert_equal
 
 Category = categories.Category
@@ -265,10 +266,6 @@ def test_scan_candidates_from_db_multiple_categories(tmp_path):
 
 def test_scan_candidates_from_db_raises_on_null_sizes(tmp_path):
     """Test scan_candidates_from_db raises CandidateLoadError for NULL sizes."""
-    from cleanup_temp_artifacts.core_scanner import (
-        CandidateLoadError,  # pylint: disable=no-name-in-module
-    )
-
     db_path = tmp_path / "test.db"
     conn = sqlite3.connect(str(db_path))
     conn.row_factory = sqlite3.Row

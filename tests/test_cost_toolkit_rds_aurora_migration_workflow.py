@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import mock_open, patch
 
+import pytest
+
 from cost_toolkit.scripts.migration.rds_aurora_migration.migration_workflow import (
     estimate_aurora_serverless_cost,
     estimate_rds_monthly_cost,
@@ -210,8 +212,6 @@ def test_record_migration_action_existing_file(_mock_print, mock_file, mock_date
 @patch("builtins.open", new_callable=mock_open)
 def test_record_migration_action_write_error(mock_file, mock_datetime):
     """Test recording migration action with write error."""
-    import pytest
-
     mock_datetime.now.return_value.isoformat.return_value = "2025-01-14T12:00:00"
     mock_file.side_effect = IOError("Permission denied")
 

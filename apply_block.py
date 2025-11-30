@@ -8,7 +8,6 @@ Usage:
 """
 import argparse
 import os
-import sys
 
 from aws_utils import (
     apply_bucket_policy,
@@ -43,7 +42,7 @@ def determine_buckets(args):
     if args.buckets:
         return args.buckets
     show_interactive_help()
-    raise SystemExit(1)
+    raise SystemExit(0)
 
 
 def show_interactive_help():
@@ -52,12 +51,24 @@ def show_interactive_help():
     print_interactive_help("apply_block.py", available, "policy files")
 
 
+class PolicyFileNotFoundError(FileNotFoundError):
+    """Raised when a policy file for a bucket cannot be found."""
+
+
+class PolicyApplicationError(RuntimeError):
+    """Raised when applying a policy to a bucket fails."""
+
+
 def apply_policy_to_bucket(bucket, dry_run):
-    """Apply policy to a single bucket"""
+    """Apply policy to a single bucket.
+
+    Raises:
+        PolicyFileNotFoundError: If the policy file for the bucket does not exist.
+        PolicyApplicationError: If applying the policy fails.
+    """
     policy_file = os.path.join("policies", f"{bucket}_policy.json")
     if not os.path.exists(policy_file):
-        print(f"✗ Policy file not found: {policy_file}")
-        return False
+        raise PolicyFileNotFoundError(f"Policy file not found: {policy_file}")
     try:
         policy_json = load_policy_from_file(policy_file)
         if dry_run:
@@ -66,13 +77,11 @@ def apply_policy_to_bucket(bucket, dry_run):
             apply_bucket_policy(bucket, policy_json)
             print(f"✓ Applied policy to {bucket}")
     except (OSError, IOError, ValueError) as e:
-        print(f"✗ Failed to apply policy to {bucket}: {str(e)}")
-        return False
-    return True
+        raise PolicyApplicationError(f"Failed to apply policy to {bucket}: {e}") from e
 
 
 def main():
-    """Main entry point for applying bucket policies"""
+    """Main entry point for applying bucket policies."""
     parser = argparse.ArgumentParser(description="Apply S3 bucket policies to specified buckets")
     parser.add_argument("buckets", nargs="*", help="Bucket names to apply policies to")
     parser.add_argument("--all", action="store_true", help="Apply all available policy files")
@@ -83,16 +92,13 @@ def main():
     )
     args = parser.parse_args()
     buckets = determine_buckets(args)
-    failures = 0
     for bucket in buckets:
-        if not apply_policy_to_bucket(bucket, args.dry_run):
-            failures += 1
+        apply_policy_to_bucket(bucket, args.dry_run)
     if args.dry_run:
         print("\nDry run completed. No changes were made.")
     else:
         print(f"\nCompleted applying policies to {len(buckets)} bucket(s)")
-    if failures:
-        raise SystemExit(1)
+    return 0
 
 
 if __name__ == "__main__":

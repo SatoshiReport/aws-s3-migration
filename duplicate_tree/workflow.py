@@ -14,7 +14,7 @@ from duplicate_tree.analysis import (
     render_report_rows,
 )
 from duplicate_tree.cache import load_cached_report, store_cached_report
-from duplicate_tree_core import (
+from duplicate_tree.core import (
     DirectoryIndex,
     find_exact_duplicates,
 )

@@ -20,7 +20,7 @@ from duplicate_tree.analysis import (
     render_report_rows,
     sort_node_rows,
 )
-from duplicate_tree_core import DirectoryIndex, DuplicateCluster
+from duplicate_tree.core import DirectoryIndex, DuplicateCluster
 from duplicate_tree_models import DirectoryNode, FilesTableReadError
 
 

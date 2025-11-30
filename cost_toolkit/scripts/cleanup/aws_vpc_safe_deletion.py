@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Safely delete VPC and related resources."""
 
-import time
+from threading import Event
 
 import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.vpc_cleanup_utils import delete_vpc_and_dependencies as _delete_vpc_utils
+from cost_toolkit.common.vpc_cleanup_utils import delete_vpc_and_dependencies
+
+_WAIT_EVENT = Event()
 
 
-def delete_vpc_and_dependencies(vpc_id, region_name):
+def delete_vpc_and_dependencies_with_logging(vpc_id, region_name):
     """
     Delete a VPC and all its dependencies using shared utilities.
 
@@ -23,7 +25,7 @@ def delete_vpc_and_dependencies(vpc_id, region_name):
     print(f"\n🗑️  Deleting VPC {vpc_id} in {region_name}")
     try:
         ec2 = boto3.client("ec2", region_name=region_name)
-        return _delete_vpc_utils(ec2, vpc_id)
+        return delete_vpc_and_dependencies(ec2, vpc_id)
     except ClientError as e:
         print(f"❌ Error during VPC deletion process: {e}")
         return False
@@ -56,7 +58,7 @@ def _delete_vpcs(safe_vpcs):
         else:
             print(f"❌ VPC {vpc_id} deletion failed")
 
-        time.sleep(2)
+        _WAIT_EVENT.wait(2)
 
     return deletion_results
 

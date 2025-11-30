@@ -6,6 +6,7 @@ Contains additional AWS service check functions.
 import botocore.exceptions
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 
 from .service_checks import (
     PENDING_DELETION_TARGET,
@@ -22,7 +23,7 @@ def check_lambda_status():
     Raises:
         ServiceCheckError: If the API call fails.
     """
-    regions = ["us-east-1", "us-east-2", "us-west-2"]
+    regions = get_all_aws_regions()
     total_functions = 0
     failed_regions = []
 
@@ -49,7 +50,7 @@ def check_efs_status():
     Raises:
         ServiceCheckError: If the API call fails.
     """
-    regions = ["us-east-1", "us-east-2"]
+    regions = get_all_aws_regions()
     total_filesystems = 0
     failed_regions = []
 
@@ -136,7 +137,7 @@ def check_kms_status():
     Raises:
         ServiceCheckError: If the API call fails.
     """
-    regions_to_check = ["us-west-1", "eu-west-1", "us-east-1"]
+    regions_to_check = get_all_aws_regions()
 
     target_keys = [
         "09e32e6e-12cf-4dd1-ad49-b651bf81e152",
@@ -170,7 +171,7 @@ def check_vpc_status():
     Raises:
         ServiceCheckError: If the API call fails.
     """
-    regions_to_check = ["us-east-1", "eu-west-2"]
+    regions_to_check = get_all_aws_regions()
 
     total_elastic_ips = 0
     failed_regions = []
@@ -205,7 +206,7 @@ def _add_service_status(resolved_services, service_name, check_func):
     Raises:
         ServiceCheckError: If the service check fails.
     """
-    resolved, status = check_func()
+    _resolved, status = check_func()
     resolved_services[service_name] = status
 
 

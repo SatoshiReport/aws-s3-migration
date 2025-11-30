@@ -6,6 +6,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.optimization.snapshot_export_fixed import constants
 from cost_toolkit.scripts.optimization.snapshot_export_fixed.constants import (
@@ -142,7 +143,9 @@ def test_check_s3_file_completion_success_fast_check(s3, capsys):
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
-    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
+    with patch(
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring._WAIT_EVENT.wait"
+    ):
         result = check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
     # Fast check requires 2 stable checks (2 minutes / 1 minute interval)
@@ -161,7 +164,9 @@ def test_check_s3_file_completion_success_normal_check(s3):
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
-    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
+    with patch(
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring._WAIT_EVENT.wait"
+    ):
         result = check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=False)
 
     # Normal check requires 2 stable checks (10 minutes / 5 minute interval)
@@ -188,7 +193,9 @@ def test_check_s3_file_completion_file_growing(s3, capsys):
 
     s3.head_object.side_effect = mock_head_object
 
-    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
+    with patch(
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring._WAIT_EVENT.wait"
+    ):
         # Should fail because file is still growing
         with pytest.raises(S3FileValidationException, match="File not stable"):
             check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
@@ -215,7 +222,9 @@ def test_check_s3_file_completion_file_not_found_first_check(s3, capsys):
 
     s3.head_object.side_effect = mock_head_object
 
-    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
+    with patch(
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring._WAIT_EVENT.wait"
+    ):
         # Should fail because only 1 successful check out of 2 required
         with pytest.raises(S3FileValidationException, match="File not stable"):
             check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
@@ -237,16 +246,20 @@ def test_check_s3_file_completion_file_disappeared(s3):
 
     s3.head_object.side_effect = mock_head_object
 
-    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
+    with patch(
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring._WAIT_EVENT.wait"
+    ):
         with pytest.raises(S3FileValidationException, match="S3 file disappeared"):
             check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
 
 def test_check_s3_file_completion_api_error(s3):
     """Test check_s3_file_completion handles API errors."""
-    s3.head_object.side_effect = Exception("API Error")
+    s3.head_object.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "HeadObject")
 
-    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
+    with patch(
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring._WAIT_EVENT.wait"
+    ):
         with pytest.raises(S3FileValidationException, match="Failed to check S3 file"):
             check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
@@ -264,7 +277,9 @@ def test_check_s3_file_completion_insufficient_stable_checks(s3):
 
     s3.head_object.side_effect = mock_head_object
 
-    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
+    with patch(
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring._WAIT_EVENT.wait"
+    ):
         with pytest.raises(S3FileValidationException, match="File not stable"):
             check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
@@ -278,7 +293,9 @@ def test_check_s3_file_completion_size_variance_warning(s3, capsys):
         "LastModified": datetime(2024, 1, 1, 12, 0, 0),
     }
 
-    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"):
+    with patch(
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring._WAIT_EVENT.wait"
+    ):
         result = check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 
     # Should succeed since 50 GB is within the valid compression range
@@ -316,7 +333,7 @@ def test_check_s3_file_completion_waits_between_checks(s3):
     }
 
     with patch(
-        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring.time.sleep"
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.monitoring._WAIT_EVENT.wait"
     ) as mock_sleep:
         check_s3_file_completion(s3, "test-bucket", "test-key.vmdk", 100, fast_check=True)
 

@@ -10,10 +10,8 @@ from unittest import mock
 
 import pytest
 
-from migration_verify import (
-    FileInventoryChecker,
-    VerificationProgressTracker,
-)
+from migration_verify_checksums import VerificationProgressTracker
+from migration_verify_inventory import FileInventoryChecker
 from tests.assertions import assert_equal
 
 
@@ -87,7 +85,7 @@ def test_scan_local_files_handles_missing_directory(tmp_path):
 
     local_files = checker.scan_local_files("test-bucket", 0)
 
-    assert local_files == {}
+    assert not local_files
 
 
 def test_scan_local_files_normalizes_windows_paths(tmp_path):
@@ -117,7 +115,7 @@ def test_check_inventory_success_when_files_match():
 
     errors = checker.check_inventory(expected_keys, local_keys)
 
-    assert errors == []
+    assert not errors
 
 
 def test_check_inventory_fails_on_missing_files():

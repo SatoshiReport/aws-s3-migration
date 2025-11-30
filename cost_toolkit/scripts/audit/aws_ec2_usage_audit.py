@@ -7,7 +7,10 @@ from datetime import datetime, timedelta, timezone
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
-from cost_toolkit.common.aws_common import extract_tag_value, get_instance_details
+from cost_toolkit.common.aws_common import (
+    get_all_aws_regions,
+    get_instance_details,
+)
 
 # Constants
 CPU_USAGE_VERY_LOW_THRESHOLD = 5
@@ -38,8 +41,7 @@ def _calculate_cpu_metrics(cloudwatch, instance_id):
             return avg_cpu, max_cpu, latest_datapoint
 
     except ClientError as e:
-        print(f"  ❌ Error getting metrics: {e}")
-        return None, None, None
+        raise RuntimeError(f"Failed to retrieve CPU metrics for instance {instance_id}: {e}") from e
 
     return None, None, None
 
@@ -90,12 +92,7 @@ def _get_network_metrics(cloudwatch, instance_id, start_time, end_time):
         else:
             print("  Network In: No data")
     except ClientError as e:
-        print(f"  Network metrics error: {e}")
-
-
-def _get_instance_name(instance):
-    """Extract instance name from tags. Delegates to canonical implementation."""
-    return extract_tag_value(instance, "Name")
+        raise RuntimeError(f"Failed to retrieve network metrics for instance {instance_id}: {e}") from e
 
 
 def _estimate_monthly_cost(instance_type, state):
@@ -115,7 +112,12 @@ def _estimate_monthly_cost(instance_type, state):
         "c5.xlarge": 123.12,
     }
 
-    estimated_monthly_cost = cost_estimates.get(instance_type, 50.0)
+    if instance_type not in cost_estimates:
+        raise KeyError(
+            f"Unknown instance type: {instance_type}. "
+            f"Supported types: {', '.join(sorted(cost_estimates.keys()))}"
+        )
+    estimated_monthly_cost = cost_estimates[instance_type]
     return estimated_monthly_cost if state == "running" else 0
 
 
@@ -124,8 +126,8 @@ def _process_instance_details(cloudwatch, instance_details, region_name, start_t
     instance_id = instance_details["instance_id"]
     instance_type = instance_details["instance_type"]
     state = instance_details["state"]
-    launch_time = instance_details.get("launch_time")
-    name = instance_details.get("name")
+    launch_time = instance_details.get("launch_time", None)
+    name = instance_details.get("name", None)
 
     print(f"Instance: {instance_id} ({name})")
     print(f"  Type: {instance_type}")
@@ -211,11 +213,11 @@ def _print_summary_header(all_instances, total_estimated_cost):
 
 def _print_low_usage_recommendations(all_instances):
     """Print recommendations for low usage instances."""
-    low_usage_instances = [
-        inst
-        for inst in all_instances
-        if "LOW" in inst.get("usage_level", "") or "VERY LOW" in inst.get("usage_level", "")
-    ]
+    low_usage_instances = []
+    for inst in all_instances:
+        usage_level = inst.get("usage_level", "")
+        if "LOW" in usage_level or "VERY LOW" in usage_level:
+            low_usage_instances.append(inst)
 
     if low_usage_instances:
         print(f"  🔴 {len(low_usage_instances)} instances with low CPU usage:")
@@ -247,12 +249,12 @@ def main():
     print("=" * 80)
     print("Analyzing EC2 instances and their recent usage patterns...")
 
-    target_regions = ["us-east-1", "eu-west-2"]
+    regions = get_all_aws_regions()
 
     all_instances = []
     total_estimated_cost = 0
 
-    for region in target_regions:
+    for region in regions:
         instances = get_instance_details_in_region(region)
         all_instances.extend(instances)
 

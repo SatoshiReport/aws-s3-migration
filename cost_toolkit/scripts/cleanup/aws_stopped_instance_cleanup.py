@@ -58,8 +58,10 @@ def get_instance_cleanup_details(
 
     name = extract_tag_value(instance, "Name")
     if name is None:
-        name = "No Name"
+        raise ValueError(f"Instance {instance_id} is missing required 'Name' tag")
 
+    security_groups = instance.get("SecurityGroups", [])
+    network_interfaces = instance.get("NetworkInterfaces", [])
     instance_info = {
         "instance_id": instance_id,
         "name": name,
@@ -72,9 +74,9 @@ def get_instance_cleanup_details(
         "launch_time": instance.get("LaunchTime", "Unknown"),
         "volumes": volumes,
         "tags": tags,
-        "security_groups": [sg["GroupId"] for sg in instance.get("SecurityGroups", [])],
+        "security_groups": [sg["GroupId"] for sg in security_groups],
         "network_interfaces": [
-            eni["NetworkInterfaceId"] for eni in instance.get("NetworkInterfaces", [])
+            eni["NetworkInterfaceId"] for eni in network_interfaces
         ],
     }
 

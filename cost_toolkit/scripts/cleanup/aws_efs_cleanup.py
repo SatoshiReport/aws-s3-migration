@@ -8,10 +8,11 @@ from threading import Event
 
 from botocore.exceptions import ClientError
 
-_WAIT_EVENT = Event()
-
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 from cost_toolkit.scripts import aws_utils
+
+_WAIT_EVENT = Event()
 
 
 def _delete_mount_targets(efs_client, file_system_id):
@@ -94,7 +95,7 @@ def delete_efs_resources():
     """Delete all EFS file systems and mount targets across regions"""
     aws_utils.setup_aws_credentials()
 
-    regions = ["us-east-1", "us-east-2"]
+    regions = get_all_aws_regions()
 
     total_deleted_filesystems = 0
     total_deleted_mount_targets = 0

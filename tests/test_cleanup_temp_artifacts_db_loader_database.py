@@ -69,8 +69,8 @@ def test_get_db_file_stats_missing_table(tmp_path):
     conn.close()
 
 
-def test_get_db_file_stats_no_rowid_fallback(tmp_path):
-    """Test _get_db_file_stats falls back to total_files when rowid query fails."""
+def test_get_db_file_stats_requires_rowid(tmp_path):
+    """Test _get_db_file_stats fails when MAX(rowid) cannot be read."""
     db_path = tmp_path / "test.db"
     conn = sqlite3.connect(db_path)
     conn.execute(
@@ -83,11 +83,8 @@ def test_get_db_file_stats_no_rowid_fallback(tmp_path):
     conn.execute("INSERT INTO files VALUES ('b5', 'k5', 500)")
     conn.commit()
 
-    # For WITHOUT ROWID tables, MAX(rowid) will fail, should fallback to total_files
-    total_files, max_rowid = _get_db_file_stats(conn)
-
-    assert_equal(total_files, 5)
-    assert_equal(max_rowid, 5)
+    with pytest.raises(CandidateLoadError, match="rowid"):
+        _get_db_file_stats(conn)
 
     conn.close()
 

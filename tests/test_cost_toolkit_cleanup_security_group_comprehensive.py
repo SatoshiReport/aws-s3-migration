@@ -180,7 +180,7 @@ class TestDeleteSecurityGroup:
         assert result is True
         mock_client.delete_security_group.assert_called_once_with(GroupId="sg-123")
         captured = capsys.readouterr()
-        assert "Successfully deleted" in captured.out
+        assert "Deleted security group" in captured.out
 
     def test_delete_group_error(self, capsys):
         """Test error when deleting security group."""
@@ -191,7 +191,7 @@ class TestDeleteSecurityGroup:
         result = delete_security_group(mock_client, "sg-123", "test-sg")
         assert result is False
         captured = capsys.readouterr()
-        assert "Error deleting" in captured.out
+        assert "Failed to delete security group" in captured.out
 
 
 def test_get_circular_security_groups_returns_list():

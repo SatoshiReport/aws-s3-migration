@@ -16,7 +16,6 @@ from boto3.session import Session
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.s3_utils import create_s3_bucket_with_region
-
 from migrate_v2_smoke_shared import (
     SmokeTestDeps,
     create_sample_objects_in_s3,
@@ -32,11 +31,6 @@ def run_real_smoke_test(deps: SmokeTestDeps):
         stats = seed_real_bucket(ctx)
         run_real_workflow(ctx, stats)
         print_real_report(ctx, stats)
-    except Exception:  # pragma: no cover - diagnostic helper
-        ctx.should_cleanup = False
-        print("\nSmoke test failed!")
-        print(f"Temporary files retained at: {ctx.temp_dir}")
-        raise
     finally:
         ctx.restore()
 
@@ -54,15 +48,18 @@ def _delete_bucket_and_contents(s3_client, bucket: str):
         paginator = s3_client.get_paginator("list_object_versions")
         for page in paginator.paginate(Bucket=bucket):
             objects = []
-            for version in page.get("Versions", []):
+            versions = page.get("Versions", [])
+            for version in versions:
                 objects.append({"Key": version["Key"], "VersionId": version["VersionId"]})
-            for marker in page.get("DeleteMarkers", []):
+            delete_markers = page.get("DeleteMarkers", [])
+            for marker in delete_markers:
                 objects.append({"Key": marker["Key"], "VersionId": marker["VersionId"]})
             if objects:
                 s3_client.delete_objects(Bucket=bucket, Delete={"Objects": objects})
         s3_client.delete_bucket(Bucket=bucket)
     except ClientError as exc:  # pragma: no cover - cleanup best effort
-        error_code = exc.response.get("Error", {}).get("Code")
+        error_dict = exc.response["Error"] if "Error" in exc.response else {}
+        error_code = error_dict.get("Code", None)
         if error_code not in {"NoSuchBucket", "404"}:
             raise
 
@@ -155,7 +152,9 @@ def seed_real_bucket(ctx: RealSmokeContext) -> RealSmokeStats:
         ctx.s3, ctx.bucket_name
     )
     print(f"  Uploaded {files_created} files to s3://{ctx.bucket_name}")
-    existing_buckets = [b["Name"] for b in ctx.s3.list_buckets().get("Buckets", [])]
+    buckets_response = ctx.s3.list_buckets()
+    buckets_list = buckets_response.get("Buckets", [])
+    existing_buckets = [b["Name"] for b in buckets_list]
     ctx.deps.config.EXCLUDED_BUCKETS = [b for b in existing_buckets if b != ctx.bucket_name]
     ctx.deps.config.STATE_DB_PATH = str(ctx.state_db_path)
     builtins.input = lambda _prompt="": "yes"

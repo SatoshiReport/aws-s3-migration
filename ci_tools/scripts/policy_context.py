@@ -9,19 +9,29 @@ from pathlib import Path
 from types import ModuleType
 from typing import Dict, Protocol, Sequence, cast
 
+
+class CISharedRootNotConfiguredError(RuntimeError):
+    """Raised when CI_SHARED_ROOT is not set."""
+
+
 _LOCAL_PATH = Path(__file__).resolve()
 _REPO_ROOT = _LOCAL_PATH.parents[2]
-_DEFAULT_SHARED_ROOT = Path.home() / "ci_shared"
-_ENV_SHARED_ROOT = Path(os.environ.get("CI_SHARED_ROOT", _DEFAULT_SHARED_ROOT))
+
+_CI_SHARED_ROOT_ENV = os.environ.get("CI_SHARED_ROOT")
+if not _CI_SHARED_ROOT_ENV:
+    raise CISharedRootNotConfiguredError(
+        "CI_SHARED_ROOT environment variable is required. "
+        "Set it to the path of your ci_shared repository clone."
+    )
+
+_ENV_SHARED_ROOT = Path(_CI_SHARED_ROOT_ENV)
 
 
 def _candidate_context_paths() -> tuple[Path, ...]:
-    roots = []
-    for root in (_ENV_SHARED_ROOT, _DEFAULT_SHARED_ROOT):
-        resolved = Path(root).expanduser().resolve()
-        candidate = resolved / "ci_tools" / "scripts" / "policy_context.py"
-        roots.append(candidate)
-    return tuple(dict.fromkeys(roots))
+    """Return candidate paths for the shared policy_context module."""
+    resolved = _ENV_SHARED_ROOT.expanduser().resolve()
+    candidate = resolved / "ci_tools" / "scripts" / "policy_context.py"
+    return (candidate,)
 
 
 class _PolicyContextModule(Protocol):  # pylint: disable=too-few-public-methods

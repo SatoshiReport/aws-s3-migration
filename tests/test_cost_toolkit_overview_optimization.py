@@ -101,7 +101,7 @@ def test_scan_region_for_unattached_volumes_error():
 
 def test_check_unattached_ebs_volumes_with_volumes():
     """Test _check_unattached_ebs_volumes returns recommendation."""
-    with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
         with patch(
             "cost_toolkit.overview.optimization._scan_region_for_unattached_volumes"
         ) as mock_scan:
@@ -117,7 +117,7 @@ def test_check_unattached_ebs_volumes_with_volumes():
 
 def test_check_unattached_ebs_volumes_none_found():
     """Test _check_unattached_ebs_volumes when no unattached volumes exist."""
-    with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
         with patch(
             "cost_toolkit.overview.optimization._scan_region_for_unattached_volumes"
         ) as mock_scan:
@@ -131,56 +131,65 @@ def test_check_unattached_ebs_volumes_none_found():
 
 def test_check_unused_elastic_ips_with_unused():
     """Test _check_unused_elastic_ips finds unused IPs."""
-    with patch("boto3.client") as mock_client:
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_addresses.return_value = {
-            "Addresses": [
-                {"PublicIp": "1.2.3.4"},  # No InstanceId
-                {"PublicIp": "5.6.7.8", "InstanceId": "i-123"},  # Attached
-            ]
-        }
-        mock_client.return_value = mock_ec2
+    with patch(
+        "cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]
+    ):
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            mock_ec2.describe_addresses.return_value = {
+                "Addresses": [
+                    {"PublicIp": "1.2.3.4"},  # No InstanceId
+                    {"PublicIp": "5.6.7.8", "InstanceId": "i-123"},  # Attached
+                ]
+            }
+            mock_client.return_value = mock_ec2
 
-        result = _check_unused_elastic_ips()
+            result = _check_unused_elastic_ips()
 
-        assert result is not None
-        assert result["category"] == "VPC Optimization"
-        assert "Elastic IPs" in result["description"]
+            assert result is not None
+            assert result["category"] == "VPC Optimization"
+            assert "Elastic IPs" in result["description"]
 
 
 def test_check_unused_elastic_ips_all_used():
     """Test _check_unused_elastic_ips when all IPs are in use."""
-    with patch("boto3.client") as mock_client:
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_addresses.return_value = {
-            "Addresses": [
-                {"PublicIp": "1.2.3.4", "InstanceId": "i-123"},
-                {"PublicIp": "5.6.7.8", "InstanceId": "i-456"},
-            ]
-        }
-        mock_client.return_value = mock_ec2
+    with patch(
+        "cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]
+    ):
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            mock_ec2.describe_addresses.return_value = {
+                "Addresses": [
+                    {"PublicIp": "1.2.3.4", "InstanceId": "i-123"},
+                    {"PublicIp": "5.6.7.8", "InstanceId": "i-456"},
+                ]
+            }
+            mock_client.return_value = mock_ec2
 
-        result = _check_unused_elastic_ips()
+            result = _check_unused_elastic_ips()
 
-        assert result is None
+            assert result is None
 
 
 def test_check_unused_elastic_ips_error():
     """Test _check_unused_elastic_ips raises errors."""
-    with patch("boto3.client") as mock_client:
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_addresses.side_effect = ClientError(
-            {"Error": {"Code": "TestError"}}, "test"
-        )
-        mock_client.return_value = mock_ec2
+    with patch(
+        "cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]
+    ):
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            mock_ec2.describe_addresses.side_effect = ClientError(
+                {"Error": {"Code": "TestError"}}, "test"
+            )
+            mock_client.return_value = mock_ec2
 
-        with pytest.raises(ClientError):
-            _check_unused_elastic_ips()
+            with pytest.raises(ClientError):
+                _check_unused_elastic_ips()
 
 
 def test_check_unattached_ebs_volumes_client_error():
     """Test _check_unattached_ebs_volumes raises ClientError."""
-    with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
         mock_regions.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
 
         with pytest.raises(ClientError):
@@ -189,21 +198,24 @@ def test_check_unattached_ebs_volumes_client_error():
 
 def test_check_unused_elastic_ips_regional_error():
     """Test _check_unused_elastic_ips raises on first regional error."""
-    with patch("boto3.client") as mock_client:
-        mock_ec2 = MagicMock()
-        # First region fails
-        mock_ec2.describe_addresses.side_effect = ClientError(
-            {"Error": {"Code": "TestError"}}, "test"
-        )
-        mock_client.return_value = mock_ec2
+    with patch(
+        "cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]
+    ):
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            # First region fails
+            mock_ec2.describe_addresses.side_effect = ClientError(
+                {"Error": {"Code": "TestError"}}, "test"
+            )
+            mock_client.return_value = mock_ec2
 
-        with pytest.raises(ClientError):
-            _check_unused_elastic_ips()
+            with pytest.raises(ClientError):
+                _check_unused_elastic_ips()
 
 
 def test_check_old_snapshots_with_old_snapshots():
     """Test _check_old_snapshots finds old snapshots."""
-    with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             old_date = datetime.now() - timedelta(days=100)
@@ -229,7 +241,7 @@ def test_check_old_snapshots_with_old_snapshots():
 
 def test_check_old_snapshots_no_old_snapshots():
     """Test _check_old_snapshots when no old snapshots exist."""
-    with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             recent_date = datetime.now() - timedelta(days=10)
@@ -249,7 +261,7 @@ def test_check_old_snapshots_no_old_snapshots():
 
 def test_check_old_snapshots_regional_error():
     """Test _check_old_snapshots raises on regional errors."""
-    with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_ec2.describe_snapshots.side_effect = ClientError(
@@ -264,7 +276,7 @@ def test_check_old_snapshots_regional_error():
 
 def test_check_old_snapshots_client_error():
     """Test _check_old_snapshots raises on top-level ClientError."""
-    with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
         mock_regions.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
 
         with pytest.raises(ClientError):
@@ -273,7 +285,7 @@ def test_check_old_snapshots_client_error():
 
 def test_check_old_snapshots_missing_volume_size():
     """Test _check_old_snapshots handles snapshots without VolumeSize."""
-    with patch("cost_toolkit.overview.optimization.get_default_regions") as mock_regions:
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             old_date = datetime.now() - timedelta(days=100)

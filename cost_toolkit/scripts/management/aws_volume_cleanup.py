@@ -9,12 +9,8 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.cost_utils import calculate_snapshot_cost
+from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
 from cost_toolkit.scripts.aws_s3_operations import list_buckets
-from cost_toolkit.scripts.aws_ec2_operations import (
-    delete_snapshot as delete_snapshot_canonical,
-    describe_snapshots,
-)
 
 from ..aws_utils import setup_aws_credentials
 
@@ -48,7 +44,7 @@ def tag_volume_with_name(volume_id, name, region):
 
 def delete_snapshot(snapshot_id, region):
     """
-    Delete an EBS snapshot.
+    Delete an EBS snapshot via the canonical helper.
 
     Args:
         snapshot_id: The snapshot ID to delete
@@ -57,33 +53,8 @@ def delete_snapshot(snapshot_id, region):
     Returns:
         True if successful, False otherwise
     """
-    try:
-        ec2_client = boto3.client("ec2", region_name=region)
-        snapshots = describe_snapshots(region, snapshot_ids=[snapshot_id])
-        if not snapshots:
-            print(f"   ❌ Snapshot {snapshot_id} not found in {region}")
-            return False
-
-        snapshot = snapshots[0]
-
-        size_gb = snapshot.get("VolumeSize", 0)
-        description = snapshot.get("Description", "No description")
-        start_time = snapshot.get("StartTime")
-        monthly_cost = calculate_snapshot_cost(size_gb)
-
-        print(f"🔍 Snapshot to delete: {snapshot_id}")
-        print(f"   Size: {size_gb} GB")
-        print(f"   Created: {start_time}")
-        print(f"   Description: {description}")
-        print(f"   Est. monthly cost: ${monthly_cost:.2f}")
-
-        result = delete_snapshot_canonical(snapshot_id, region, ec2_client=ec2_client)
-        if result:
-            print(f"Successfully deleted snapshot {snapshot_id} in {region}")
-        return result
-    except ClientError as e:
-        print(f"   ❌ Error deleting snapshot {snapshot_id}: {e}")
-        return False
+    print(f"🗑️  Deleting snapshot {snapshot_id} in {region}")
+    return delete_snapshot_canonical(snapshot_id, region, verbose=True)
 
 
 def get_bucket_region(bucket_name):

@@ -89,7 +89,8 @@ def test_wait_for_restores_loops_until_complete(waiter, state_mock):
         [],  # All done
     ]
 
-    waiter.wait_for_restores()
+    with mock.patch.object(waiter, "_wait_with_interrupt"):
+        waiter.wait_for_restores()
 
     # Should call get_files_restoring 3 times
     assert_equal(state_mock.get_files_restoring.call_count, 3)

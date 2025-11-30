@@ -4,6 +4,7 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 
 
 def _process_elastic_ip_address(addr, region_name):
@@ -19,7 +20,7 @@ def _process_elastic_ip_address(addr, region_name):
         "tags": addr.get("Tags", []),
     }
 
-    if addr.get("AssociationId"):
+    if "AssociationId" in addr:
         status = "🟢 IN USE"
         cost_per_hour = 0.005
     else:
@@ -38,7 +39,12 @@ def _print_elastic_ip_details(ip_info):
     print(f"Public IP: {ip_info['public_ip']}")
     print(f"  Status: {ip_info['status']}")
     print(f"  Allocation ID: {ip_info['allocation_id']}")
-    associated_with = ip_info["instance_id"] or ip_info["network_interface_id"] or "Nothing"
+    if ip_info["instance_id"]:
+        associated_with = ip_info["instance_id"]
+    elif ip_info["network_interface_id"]:
+        associated_with = ip_info["network_interface_id"]
+    else:
+        associated_with = "(unassociated)"
     print(f"  Associated with: {associated_with}")
     print(f"  Domain: {ip_info['domain']}")
     print(f"  Estimated monthly cost: ${ip_info['monthly_cost_estimate']:.2f}")
@@ -150,13 +156,13 @@ def main():
     print("Analyzing Public IPv4 addresses and other VPC resources that incur costs...")
 
     # Focus on regions where we saw VPC costs
-    target_regions = ["us-east-1", "eu-west-2", "us-west-2", "us-east-2"]
+    regions = get_all_aws_regions()
 
     all_elastic_ips = []
     all_nat_gateways = []
     total_estimated_cost = 0
 
-    for region in target_regions:
+    for region in regions:
         elastic_ips = audit_elastic_ips_in_region(region)
         nat_gateways = audit_nat_gateways_in_region(region)
 

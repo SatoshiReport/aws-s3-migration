@@ -12,7 +12,9 @@ def test_fetch_instance_network_details():
     instance = {
         "State": {"Name": "running"},
         "PublicIpAddress": "1.2.3.4",
-        "NetworkInterfaces": [{"NetworkInterfaceId": "eni-123", "Attachment": {"AttachmentId": "a-1"}}],
+        "NetworkInterfaces": [
+            {"NetworkInterfaceId": "eni-123", "Attachment": {"AttachmentId": "a-1"}}
+        ],
         "VpcId": "vpc-1",
         "SubnetId": "subnet-1",
         "SecurityGroups": [{"GroupId": "sg-1"}, {"GroupId": "sg-2"}],

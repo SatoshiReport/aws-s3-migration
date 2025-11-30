@@ -148,7 +148,6 @@ def test_bucket_status_table_columns(tmp_path: Path):
             "verify_complete",
             "delete_complete",
             "local_file_count",
-            "local_total_size",
             "verified_file_count",
             "size_verified_count",
             "checksum_verified_count",

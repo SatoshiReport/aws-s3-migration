@@ -8,30 +8,15 @@ Deletes multiple EBS snapshots across regions.
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
-from cost_toolkit.common.cli_utils import confirm_action
+from cost_toolkit.common.aws_common import get_common_regions_extended
+from cost_toolkit.common.confirmation_prompts import confirm_bulk_deletion
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot, find_resource_region
 
 from ..aws_utils import setup_aws_credentials
 
 
-def find_snapshot_region(snapshot_id):
-    """
-    Find which region contains the specified snapshot.
-    Delegates to canonical implementation in aws_ec2_operations.
-
-    Args:
-        snapshot_id: The EBS snapshot ID to locate
-
-    Returns:
-        Region name if found, None otherwise
-    """
-    # Search common regions first for performance
-    common_regions = ["eu-west-2", "us-east-1", "us-east-2", "us-west-1", "us-west-2"]
-    region = find_resource_region("snapshot", snapshot_id, regions=common_regions)
-    if region is not None:
-        return region
-    return find_resource_region("snapshot", snapshot_id)
+COMMON_REGIONS = get_common_regions_extended()
 
 
 def get_snapshot_details(snapshot_id, region):
@@ -45,27 +30,34 @@ def get_snapshot_details(snapshot_id, region):
     Returns:
         Dictionary containing snapshot information
     """
-    try:
-        ec2_client = create_client("ec2", region=region)
-        response = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
+    ec2_client = create_client("ec2", region=region)
+    response = ec2_client.describe_snapshots(SnapshotIds=[snapshot_id])
+    if "Snapshots" not in response or not response["Snapshots"]:
+        raise ValueError(f"Snapshot {snapshot_id} not found in {region}")
+    snapshots = response["Snapshots"]
+    if not snapshots:
+        raise ValueError(f"Snapshot {snapshot_id} not found in {region}")
 
-        if response["Snapshots"]:
-            snapshot = response["Snapshots"][0]
-            return {
-                "snapshot_id": snapshot_id,
-                "region": region,
-                "size_gb": snapshot.get("VolumeSize", 0),
-                "state": snapshot["State"],
-                "start_time": snapshot["StartTime"],
-                "description": snapshot.get("Description", "No description"),
-                "encrypted": snapshot.get("Encrypted", False),
-            }
-    except ClientError as e:
-        print(f"❌ Error getting details for {snapshot_id}: {str(e)}")
-    return None
+    snapshot = snapshots[0]
+    required_fields = ["VolumeSize", "State", "StartTime", "Encrypted"]
+    missing_fields = [field for field in required_fields if field not in snapshot]
+    if missing_fields:
+        raise KeyError(
+            f"Snapshot {snapshot_id} missing required fields: {', '.join(missing_fields)}"
+        )
+
+    return {
+        "snapshot_id": snapshot.get("SnapshotId", snapshot_id),
+        "region": region,
+        "size_gb": snapshot["VolumeSize"],
+        "state": snapshot["State"],
+        "start_time": snapshot["StartTime"],
+        "description": snapshot.get("Description"),
+        "encrypted": snapshot["Encrypted"],
+    }
 
 
-def delete_snapshot_safely(snapshot_id, region):
+def delete_snapshot_safely(snapshot_id, region, *, snapshot_info=None):
     """
     Safely delete an EBS snapshot with proper checks.
 
@@ -80,15 +72,19 @@ def delete_snapshot_safely(snapshot_id, region):
         ec2_client = create_client("ec2", region=region)
 
         # Get snapshot details first
-        snapshot_info = get_snapshot_details(snapshot_id, region)
-        if not snapshot_info:
-            return False
+        if snapshot_info is None:
+            snapshot_info = get_snapshot_details(snapshot_id, region)
 
         print(f"🗑️  Deleting snapshot: {snapshot_id}")
         print(f"   Region: {region}")
         print(f"   Size: {snapshot_info['size_gb']} GB")
         print(f"   Created: {snapshot_info['start_time']}")
-        print(f"   Description: {snapshot_info['description'][:80]}...")
+        description = snapshot_info["description"]
+        if description:
+            description_preview = description[:80]
+        else:
+            description_preview = "<missing description>"
+        print(f"   Description: {description_preview}")
 
         # Calculate cost savings
         monthly_savings = calculate_snapshot_cost(snapshot_info["size_gb"])
@@ -147,13 +143,6 @@ def print_bulk_deletion_warning(snapshots_to_delete):
     print()
 
 
-def confirm_bulk_deletion():
-    """Prompt user for bulk deletion confirmation. Delegates to canonical implementation."""
-    return confirm_action(
-        "Type 'DELETE ALL SNAPSHOTS' to confirm bulk deletion: ", exact_match="DELETE ALL SNAPSHOTS"
-    )
-
-
 def process_bulk_deletions(snapshots_to_delete):
     """Process deletion for all snapshots"""
     successful_deletions = 0
@@ -163,7 +152,9 @@ def process_bulk_deletions(snapshots_to_delete):
     for snapshot_id in snapshots_to_delete:
         print(f"🔍 Processing {snapshot_id}...")
 
-        region = find_snapshot_region(snapshot_id)
+        region = find_resource_region("snapshot", snapshot_id, regions=COMMON_REGIONS)
+        if region is None:
+            region = find_resource_region("snapshot", snapshot_id)
 
         if not region:
             print(f"   ❌ Snapshot {snapshot_id} not found in any region")
@@ -171,12 +162,18 @@ def process_bulk_deletions(snapshots_to_delete):
             print()
             continue
 
-        snapshot_info = get_snapshot_details(snapshot_id, region)
-        if snapshot_info:
-            monthly_savings = calculate_snapshot_cost(snapshot_info["size_gb"])
-            total_savings += monthly_savings
+        try:
+            snapshot_info = get_snapshot_details(snapshot_id, region)
+        except (ClientError, ValueError) as exc:
+            print(f"   ❌ Unable to retrieve details for {snapshot_id}: {exc}")
+            failed_deletions += 1
+            print()
+            continue
 
-        if delete_snapshot_safely(snapshot_id, region):
+        monthly_savings = calculate_snapshot_cost(snapshot_info["size_gb"])
+        total_savings += monthly_savings
+
+        if delete_snapshot_safely(snapshot_id, region, snapshot_info=snapshot_info):
             successful_deletions += 1
         else:
             failed_deletions += 1

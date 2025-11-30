@@ -5,7 +5,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.migration.aws_london_final_analysis_summary import (

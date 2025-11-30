@@ -16,7 +16,7 @@ class TestMainSuccess:
         """Test main function when all DNS records present."""
         mod = "cost_toolkit.scripts.setup.aws_route53_domain_setup"
         with (
-            patch(f"{mod}.time.sleep"),
+            patch(f"{mod}._WAIT_EVENT.wait"),
             patch(f"{mod}.get_current_hosted_zone_nameservers") as mock_get_ns,
             patch(f"{mod}.verify_canva_dns_setup") as mock_verify_dns,
             patch(f"{mod}.create_missing_dns_records") as mock_create_records,
@@ -45,7 +45,7 @@ class TestMainSuccess:
         """Test main function when DNS records need to be created."""
         mod = "cost_toolkit.scripts.setup.aws_route53_domain_setup"
         with (
-            patch(f"{mod}.time.sleep"),
+            patch(f"{mod}._WAIT_EVENT.wait"),
             patch(f"{mod}.get_current_hosted_zone_nameservers") as mock_get_ns,
             patch(f"{mod}.verify_canva_dns_setup") as mock_verify_dns,
             patch(f"{mod}.create_missing_dns_records") as mock_create_records,
@@ -77,7 +77,7 @@ class TestMainDNSRecordHandling:
         """Test main function when DNS records missing and no Canva IP."""
         mod = "cost_toolkit.scripts.setup.aws_route53_domain_setup"
         with (
-            patch(f"{mod}.time.sleep"),
+            patch(f"{mod}._WAIT_EVENT.wait"),
             patch(f"{mod}.get_current_hosted_zone_nameservers") as mock_get_ns,
             patch(f"{mod}.verify_canva_dns_setup") as mock_verify_dns,
             patch(f"{mod}.create_missing_dns_records") as mock_create_records,
@@ -102,7 +102,7 @@ class TestMainDNSRecordHandling:
         """Test main function when nameserver update not needed."""
         mod = "cost_toolkit.scripts.setup.aws_route53_domain_setup"
         with (
-            patch(f"{mod}.time.sleep") as mock_sleep,
+            patch(f"{mod}._WAIT_EVENT.wait") as mock_sleep,
             patch(f"{mod}.get_current_hosted_zone_nameservers") as mock_get_ns,
             patch(f"{mod}.verify_canva_dns_setup") as mock_verify_dns,
             patch(f"{mod}.update_domain_nameservers_at_registrar") as mock_update_ns,
@@ -148,7 +148,7 @@ class TestMainSummaryOutput:
         """Test main function prints complete summary."""
         mod = "cost_toolkit.scripts.setup.aws_route53_domain_setup"
         with (
-            patch(f"{mod}.time.sleep"),
+            patch(f"{mod}._WAIT_EVENT.wait"),
             patch(f"{mod}.get_current_hosted_zone_nameservers") as mock_get_ns,
             patch(f"{mod}.verify_canva_dns_setup") as mock_verify_dns,
             patch(f"{mod}.update_domain_nameservers_at_registrar") as mock_update_ns,
@@ -175,7 +175,7 @@ class TestMainSummaryOutput:
         """Test main function waits for DNS propagation after nameserver update."""
         mod = "cost_toolkit.scripts.setup.aws_route53_domain_setup"
         with (
-            patch(f"{mod}.time.sleep") as mock_sleep,
+            patch(f"{mod}._WAIT_EVENT.wait") as mock_sleep,
             patch(f"{mod}.get_current_hosted_zone_nameservers") as mock_get_ns,
             patch(f"{mod}.verify_canva_dns_setup") as mock_verify_dns,
             patch(f"{mod}.create_missing_dns_records"),

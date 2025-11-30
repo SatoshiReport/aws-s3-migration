@@ -155,7 +155,9 @@ class TestUpdateSecurityGroupConfiguration:
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group._fetch_current_ip")
-    def test_update_security_group_timeout_parameter(self, mock_fetch_ip, _mock_setup_creds, mock_boto_client):
+    def test_update_security_group_timeout_parameter(
+        self, mock_fetch_ip, _mock_setup_creds, mock_boto_client
+    ):
         """Test that IP request uses correct timeout."""
         mock_boto_client.return_value = MagicMock()
         mock_fetch_ip.return_value = "203.0.113.42"

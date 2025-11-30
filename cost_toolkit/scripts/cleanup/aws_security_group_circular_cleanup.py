@@ -13,7 +13,9 @@ from botocore.exceptions import ClientError
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_GROUPS
-from cost_toolkit.scripts.aws_ec2_operations import delete_security_group as delete_security_group_canonical
+from cost_toolkit.scripts.aws_ec2_operations import (
+    delete_security_group as delete_security_group_canonical,
+)
 
 
 def remove_security_group_rule(ec2_client, group_id, rule_type, rule_data):
@@ -33,9 +35,12 @@ def remove_security_group_rule(ec2_client, group_id, rule_type, rule_data):
 def _check_inbound_rules(sg, target_group_id):
     """Check inbound rules for references to target group."""
     rules = []
-    for rule in sg.get("IpPermissions", []):
-        for group_pair in rule.get("UserIdGroupPairs", []):
-            if group_pair.get("GroupId") == target_group_id:
+    ip_permissions = sg.get("IpPermissions", [])
+    for rule in ip_permissions:
+        user_id_group_pairs = rule.get("UserIdGroupPairs", [])
+        for group_pair in user_id_group_pairs:
+            pair_group_id = group_pair.get("GroupId")
+            if pair_group_id == target_group_id:
                 rules.append(
                     {
                         "source_sg_id": sg["GroupId"],
@@ -51,9 +56,12 @@ def _check_inbound_rules(sg, target_group_id):
 def _check_outbound_rules(sg, target_group_id):
     """Check outbound rules for references to target group."""
     rules = []
-    for rule in sg.get("IpPermissionsEgress", []):
-        for group_pair in rule.get("UserIdGroupPairs", []):
-            if group_pair.get("GroupId") == target_group_id:
+    ip_permissions_egress = sg.get("IpPermissionsEgress", [])
+    for rule in ip_permissions_egress:
+        user_id_group_pairs = rule.get("UserIdGroupPairs", [])
+        for group_pair in user_id_group_pairs:
+            pair_group_id = group_pair.get("GroupId")
+            if pair_group_id == target_group_id:
                 rules.append(
                     {
                         "source_sg_id": sg["GroupId"],
@@ -68,31 +76,20 @@ def _check_outbound_rules(sg, target_group_id):
 
 def get_security_group_rules_referencing_group(ec2_client, target_group_id):
     """Get all rules that reference a specific security group"""
-    rules_to_remove = []
-
     try:
         response = ec2_client.describe_security_groups()
-        for sg in response.get("SecurityGroups", []):
-            rules_to_remove.extend(_check_inbound_rules(sg, target_group_id))
-            rules_to_remove.extend(_check_outbound_rules(sg, target_group_id))
-
     except ClientError as e:
         print(f"❌ Error getting security group rules: {e}")
-        return []
+        raise
+
+    rules_to_remove = []
+    security_groups = response.get("SecurityGroups", [])
+    for sg in security_groups:
+        rules_to_remove.extend(_check_inbound_rules(sg, target_group_id))
+        rules_to_remove.extend(_check_outbound_rules(sg, target_group_id))
 
     return rules_to_remove
 
-
-def delete_security_group(ec2_client, group_id, group_name):
-    """
-    Delete a security group.
-    """
-    return delete_security_group_canonical(
-        region=ec2_client.meta.region_name,
-        group_id=group_id,
-        group_name=group_name,
-        ec2_client=ec2_client,
-    )
 
 
 def _get_circular_security_groups():
@@ -135,7 +132,12 @@ def _delete_security_groups(ec2_client, sgs):
     for sg in sgs:
         group_id = sg["group_id"]
         group_name = sg["name"]
-        if delete_security_group(ec2_client, group_id, group_name):
+        if delete_security_group_canonical(
+            region=ec2_client.meta.region_name,
+            group_id=group_id,
+            group_name=group_name,
+            ec2_client=ec2_client,
+        ):
             total_groups_deleted += 1
     return total_groups_deleted
 

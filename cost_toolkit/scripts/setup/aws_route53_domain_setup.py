@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Setup Route53 domain records for DNS configuration."""
 
-import subprocess
+import socket
 import sys
-import time
+from threading import Event
 
 import boto3
 from botocore.exceptions import ClientError
@@ -23,6 +23,8 @@ from cost_toolkit.scripts.setup.route53_helpers import (
     _get_nameserver_records,
     _print_dns_status,
 )
+
+_WAIT_EVENT = Event()
 
 
 def get_current_hosted_zone_nameservers(domain_name):
@@ -70,7 +72,7 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
                 DomainName=domain_name, Nameservers=nameserver_list
             )
 
-            operation_id = response.get("OperationId")
+            operation_id = response.get("OperationId", None)
             print(f"  ✅ Nameserver update initiated (Operation ID: {operation_id})")
             print("  ⏳ Changes may take up to 48 hours to propagate globally")
         except ClientError as e:
@@ -154,39 +156,27 @@ def verify_dns_resolution(domain_name):
     """Verify DNS resolution for the domain"""
     print(f"\n🧪 Testing DNS resolution for {domain_name}")
 
-    # Test root domain
-    try:
-        result = subprocess.run(
-            ["dig", "+short", domain_name, "A"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            ip = result.stdout.strip()
-            print(f"  ✅ {domain_name} resolves to: {ip}")
-        else:
-            print(f"  ❌ {domain_name} does not resolve")
-    except ClientError as e:
-        print(f"  ⚠️  Could not test {domain_name}: {e}")
+    def _resolve(host: str):
+        try:
+            results = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
+            addresses = [info[4][0] for info in results if info[4]]
+            return addresses[0] if addresses else None
+        except socket.gaierror as exc:
+            raise RuntimeError(f"DNS lookup failed for {host}: {exc}") from exc
+        except OSError as exc:
+            raise RuntimeError(f"Network error during DNS lookup for {host}: {exc}") from exc
 
-    # Test www subdomain
-    try:
-        result = subprocess.run(
-            ["dig", "+short", f"www.{domain_name}", "A"],
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            ip = result.stdout.strip()
-            print(f"  ✅ www.{domain_name} resolves to: {ip}")
-        else:
-            print(f"  ❌ www.{domain_name} does not resolve")
-    except ClientError as e:
-        print(f"  ⚠️  Could not test www.{domain_name}: {e}")
+    root_ip = _resolve(domain_name)
+    if root_ip:
+        print(f"  ✅ {domain_name} resolves to: {root_ip}")
+    else:
+        print(f"  ❌ {domain_name} does not resolve")
+
+    www_ip = _resolve(f"www.{domain_name}")
+    if www_ip:
+        print(f"  ✅ www.{domain_name} resolves to: {www_ip}")
+    else:
+        print(f"  ❌ www.{domain_name} does not resolve")
 
 
 def main():
@@ -224,7 +214,7 @@ def main():
         # Step 5: Test DNS resolution
         if ns_updated:
             print("\n⏳ Waiting 30 seconds for initial DNS propagation...")
-            time.sleep(30)
+            _WAIT_EVENT.wait(30)
 
         verify_dns_resolution(domain_name)
 

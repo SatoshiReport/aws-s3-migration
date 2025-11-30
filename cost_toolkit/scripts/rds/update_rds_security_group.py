@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Update RDS instance security group settings."""
 
-from urllib import error as urllib_error
-from urllib import request as urllib_request
+import http.client
 
 import boto3
 from botocore.exceptions import ClientError
 
 from ..aws_utils import setup_aws_credentials
+
+HTTP_OK = 200
 
 
 class PublicIPRetrievalError(RuntimeError):
@@ -15,12 +16,20 @@ class PublicIPRetrievalError(RuntimeError):
 
 
 def _fetch_current_ip(timeout: int = 10) -> str:
-    """Retrieve the current public IP address using a simple HTTP GET."""
+    """Retrieve the current public IP address using a direct HTTPS request."""
     try:
-        with urllib_request.urlopen("https://ipv4.icanhazip.com/", timeout=timeout) as response:
-            ip_text = response.read().decode().strip()
-    except (urllib_error.URLError, TimeoutError) as exc:
+        connection = http.client.HTTPSConnection("ipv4.icanhazip.com", timeout=timeout)
+        connection.request("GET", "/")
+        response = connection.getresponse()
+    except (OSError, http.client.HTTPException, TimeoutError) as exc:
         raise PublicIPRetrievalError("Could not retrieve current IP address") from exc
+
+    try:
+        if response.status != HTTP_OK:
+            raise PublicIPRetrievalError(f"Unexpected status code {response.status}")
+        ip_text = response.read().decode().strip()
+    finally:
+        connection.close()
 
     if not ip_text:
         raise PublicIPRetrievalError("Empty response from IP service")
@@ -35,14 +44,9 @@ def update_security_group():
     ec2 = boto3.client("ec2", region_name="us-east-1")
 
     # Get current public IP
-    try:
-        print("🌐 Getting your current public IP address...")
-        current_ip = _fetch_current_ip()
-        print(f"   Your IP: {current_ip}")
-    except (ClientError, PublicIPRetrievalError) as e:
-        print(f"❌ Could not get current IP: {e}")
-        print("Please provide your public IP address manually")
-        return
+    print("🌐 Getting your current public IP address...")
+    current_ip = _fetch_current_ip()
+    print(f"   Your IP: {current_ip}")
 
     security_group_id = "sg-265aa043"  # From the previous analysis
 

@@ -4,12 +4,15 @@ AWS Lambda Cleanup Script
 Deletes all Lambda functions across regions to eliminate costs.
 """
 
-import time
+from threading import Event
 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 from cost_toolkit.scripts import aws_utils
+
+_WAIT_EVENT = Event()
 
 
 def delete_lambda_functions():
@@ -17,7 +20,7 @@ def delete_lambda_functions():
     aws_utils.setup_aws_credentials()
 
     # Regions where Lambda functions were detected
-    regions = ["us-east-1", "us-east-2", "us-west-2"]
+    regions = get_all_aws_regions()
 
     total_deleted = 0
 
@@ -45,7 +48,7 @@ def delete_lambda_functions():
                     lambda_client.delete_function(FunctionName=function_name)
                     print(f"✅ Successfully deleted: {function_name}")
                     total_deleted += 1
-                    time.sleep(1)  # Small delay to avoid rate limiting
+                    _WAIT_EVENT.wait(1)
 
                 except ClientError as e:
                     print(f"❌ Failed to delete {function_name}: {str(e)}")

@@ -4,6 +4,7 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.scripts.aws_utils import wait_for_db_instance_deleted
 
 
 def _delete_aurora_instance(rds_client, instance_id):
@@ -33,8 +34,7 @@ def _wait_for_instance_deletion(rds_client, instance_id):
     """Wait for an RDS instance to be deleted."""
     print("  ⏳ Waiting for instance deletion...")
     try:
-        waiter = rds_client.get_waiter("db_instance_deleted")
-        waiter.wait(DBInstanceIdentifier=instance_id, WaiterConfig={"Delay": 30, "MaxAttempts": 20})
+        wait_for_db_instance_deleted(rds_client, instance_id)
         print("  ✅ Aurora instance deleted successfully")
     except ClientError as e:
         print(f"  ⚠️  Proceeding with cluster deletion: {e}")

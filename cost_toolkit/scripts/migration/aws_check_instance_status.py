@@ -15,7 +15,8 @@ def _print_instance_info(instance, instance_id):
     print("🖥️  INSTANCE STATUS:")
     print(f"  Instance ID: {instance_id}")
     print(f"  State: {instance['State']['Name']}")
-    print(f"  Launch Time: {instance.get('LaunchTime', 'N/A')}")
+    launch_time = instance.get("LaunchTime", "N/A")
+    print(f"  Launch Time: {launch_time}")
     print(f"  Instance Type: {instance['InstanceType']}")
     print()
 

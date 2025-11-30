@@ -1,11 +1,16 @@
 """Monitoring and S3 file validation"""
 
 import time
+from threading import Event
+
+from botocore.exceptions import BotoCoreError, ClientError
 
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 
 from . import constants
 from .constants import S3FileValidationException
+
+_WAIT_EVENT = Event()
 
 
 def _perform_s3_stability_check_fixed(s3_client, bucket_name, s3_key, check_num):
@@ -116,13 +121,15 @@ def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, f
 
         except s3_client.exceptions.NoSuchKey:
             stability_checks = _handle_file_not_found(check_num)
-        except Exception as e:
-            print(f"   ❌ Error checking S3 file: {e}")
-            raise S3FileValidationException(f"Failed to check S3 file: {e}") from e  # noqa: TRY003
+        except (BotoCoreError, ClientError) as exc:
+            print(f"   ❌ Error checking S3 file: {exc}")
+            raise S3FileValidationException(
+                f"Failed to check S3 file: {exc}"
+            ) from exc  # noqa: TRY003
 
         if check_num < required_stable_checks - 1:
             print(f"   ⏳ Waiting {check_interval_minutes} minutes for next stability check...")
-            time.sleep(check_interval_minutes * 60)
+            _WAIT_EVENT.wait(check_interval_minutes * 60)
 
     if len(stability_checks) < required_stable_checks:
         raise S3FileValidationException(  # noqa: TRY003

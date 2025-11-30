@@ -19,7 +19,7 @@ import sys
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
-from cost_toolkit.common.aws_common import extract_tag_value
+from cost_toolkit.common.aws_common import extract_tag_value, get_all_aws_regions
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
@@ -55,16 +55,17 @@ def _collect_vpc_subnets(ec2_client, vpc_id):
     """Collect all subnets for a VPC."""
     subnets_response = ec2_client.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
     subnets = []
-    for subnet in subnets_response.get("Subnets", []):
-        subnets.append(
-            {
-                "subnet_id": subnet["SubnetId"],
-                "name": get_resource_name(subnet.get("Tags", [])),
-                "cidr": subnet["CidrBlock"],
-                "availability_zone": subnet["AvailabilityZone"],
-                "available_ips": subnet["AvailableIpAddressCount"],
-            }
-        )
+    if "Subnets" in subnets_response:
+        for subnet in subnets_response["Subnets"]:
+            subnets.append(
+                {
+                    "subnet_id": subnet["SubnetId"],
+                    "name": get_resource_name(subnet.get("Tags", [])),
+                    "cidr": subnet["CidrBlock"],
+                    "availability_zone": subnet["AvailabilityZone"],
+                    "available_ips": subnet["AvailableIpAddressCount"],
+                }
+            )
     return subnets
 
 
@@ -74,15 +75,16 @@ def _collect_vpc_security_groups(ec2_client, vpc_id):
         Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
     )
     security_groups = []
-    for sg in sg_response.get("SecurityGroups", []):
-        security_groups.append(
-            {
-                "group_id": sg["GroupId"],
-                "name": sg["GroupName"],
-                "description": sg["Description"],
-                "is_default": sg["GroupName"] == "default",
-            }
-        )
+    if "SecurityGroups" in sg_response:
+        for sg in sg_response["SecurityGroups"]:
+            security_groups.append(
+                {
+                    "group_id": sg["GroupId"],
+                    "name": sg["GroupName"],
+                    "description": sg["Description"],
+                    "is_default": sg["GroupName"] == "default",
+                }
+            )
     return security_groups
 
 
@@ -90,16 +92,19 @@ def _collect_vpc_route_tables(ec2_client, vpc_id):
     """Collect all route tables for a VPC."""
     rt_response = ec2_client.describe_route_tables(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
     route_tables = []
-    for rt in rt_response.get("RouteTables", []):
-        route_tables.append(
-            {
-                "route_table_id": rt["RouteTableId"],
-                "name": get_resource_name(rt.get("Tags", [])),
-                "is_main": any(assoc.get("Main", False) for assoc in rt.get("Associations", [])),
-                "associations": len(rt.get("Associations", [])),
-                "routes": len(rt.get("Routes", [])),
-            }
-        )
+    if "RouteTables" in rt_response:
+        for rt in rt_response["RouteTables"]:
+            associations = rt.get("Associations", [])
+            routes = rt.get("Routes", [])
+            route_tables.append(
+                {
+                    "route_table_id": rt["RouteTableId"],
+                    "name": get_resource_name(rt.get("Tags", [])),
+                    "is_main": any(assoc.get("Main", False) for assoc in associations),
+                    "associations": len(associations),
+                    "routes": len(routes),
+                }
+            )
     return route_tables
 
 
@@ -109,14 +114,16 @@ def _collect_vpc_internet_gateways(ec2_client, vpc_id):
         Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
     )
     internet_gateways = []
-    for igw in igw_response.get("InternetGateways", []):
-        internet_gateways.append(
-            {
-                "gateway_id": igw["InternetGatewayId"],
-                "name": get_resource_name(igw.get("Tags", [])),
-                "state": igw["Attachments"][0]["State"] if igw.get("Attachments") else "detached",
-            }
-        )
+    if "InternetGateways" in igw_response:
+        for igw in igw_response["InternetGateways"]:
+            attachments = igw.get("Attachments", [])
+            internet_gateways.append(
+                {
+                    "gateway_id": igw["InternetGatewayId"],
+                    "name": get_resource_name(igw.get("Tags", [])),
+                    "state": attachments[0]["State"] if attachments else "detached",
+                }
+            )
     return internet_gateways
 
 
@@ -126,15 +133,16 @@ def _collect_vpc_nat_gateways(ec2_client, vpc_id):
         Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
     )
     nat_gateways = []
-    for nat in nat_response.get("NatGateways", []):
-        nat_gateways.append(
-            {
-                "nat_gateway_id": nat["NatGatewayId"],
-                "name": get_resource_name(nat.get("Tags", [])),
-                "state": nat["State"],
-                "subnet_id": nat["SubnetId"],
-            }
-        )
+    if "NatGateways" in nat_response:
+        for nat in nat_response["NatGateways"]:
+            nat_gateways.append(
+                {
+                    "nat_gateway_id": nat["NatGatewayId"],
+                    "name": get_resource_name(nat.get("Tags", [])),
+                    "state": nat["State"],
+                    "subnet_id": nat["SubnetId"],
+                }
+            )
     return nat_gateways
 
 
@@ -142,20 +150,21 @@ def _collect_unused_security_groups(ec2_client):
     """Collect security groups not attached to any instances."""
     unused_security_groups = []
     all_sgs_response = ec2_client.describe_security_groups()
-    for sg in all_sgs_response.get("SecurityGroups", []):
-        if sg["GroupName"] != "default":
-            sg_instances = ec2_client.describe_instances(
-                Filters=[{"Name": "instance.group-id", "Values": [sg["GroupId"]]}]
-            )
-            if not sg_instances["Reservations"]:
-                unused_security_groups.append(
-                    {
-                        "group_id": sg["GroupId"],
-                        "name": sg["GroupName"],
-                        "description": sg["Description"],
-                        "vpc_id": sg["VpcId"],
-                    }
+    if "SecurityGroups" in all_sgs_response:
+        for sg in all_sgs_response["SecurityGroups"]:
+            if sg["GroupName"] != "default":
+                sg_instances = ec2_client.describe_instances(
+                    Filters=[{"Name": "instance.group-id", "Values": [sg["GroupId"]]}]
                 )
+                if not sg_instances["Reservations"]:
+                    unused_security_groups.append(
+                        {
+                            "group_id": sg["GroupId"],
+                            "name": sg["GroupName"],
+                            "description": sg["Description"],
+                            "vpc_id": sg["VpcId"],
+                        }
+                    )
     return unused_security_groups
 
 
@@ -165,17 +174,18 @@ def _collect_unused_network_interfaces(ec2_client):
     eni_response = ec2_client.describe_network_interfaces(
         Filters=[{"Name": "status", "Values": ["available"]}]
     )
-    for eni in eni_response.get("NetworkInterfaces", []):
-        if not eni.get("Attachment"):
-            unused_interfaces.append(
-                {
-                    "interface_id": eni["NetworkInterfaceId"],
-                    "name": get_resource_name(eni.get("TagSet", [])),
-                    "vpc_id": eni["VpcId"],
-                    "subnet_id": eni["SubnetId"],
-                    "private_ip": eni["PrivateIpAddress"],
-                }
-            )
+    if "NetworkInterfaces" in eni_response:
+        for eni in eni_response["NetworkInterfaces"]:
+            if "Attachment" not in eni:
+                unused_interfaces.append(
+                    {
+                        "interface_id": eni["NetworkInterfaceId"],
+                        "name": get_resource_name(eni.get("TagSet", [])),
+                        "vpc_id": eni["VpcId"],
+                        "subnet_id": eni["SubnetId"],
+                        "private_ip": eni["PrivateIpAddress"],
+                    }
+                )
     return unused_interfaces
 
 
@@ -183,16 +193,17 @@ def _collect_vpc_endpoints(ec2_client):
     """Collect all VPC endpoints."""
     vpc_endpoints = []
     vpce_response = ec2_client.describe_vpc_endpoints()
-    for vpce in vpce_response.get("VpcEndpoints", []):
-        vpc_endpoints.append(
-            {
-                "endpoint_id": vpce["VpcEndpointId"],
-                "service_name": vpce["ServiceName"],
-                "vpc_id": vpce["VpcId"],
-                "state": vpce["State"],
-                "endpoint_type": vpce["VpcEndpointType"],
-            }
-        )
+    if "VpcEndpoints" in vpce_response:
+        for vpce in vpce_response["VpcEndpoints"]:
+            vpc_endpoints.append(
+                {
+                    "endpoint_id": vpce["VpcEndpointId"],
+                    "service_name": vpce["ServiceName"],
+                    "vpc_id": vpce["VpcId"],
+                    "state": vpce["State"],
+                    "endpoint_type": vpce["VpcEndpointType"],
+                }
+            )
     return vpc_endpoints
 
 
@@ -358,7 +369,7 @@ def audit_comprehensive_vpc():
     print("Analyzing VPC resources and identifying cleanup opportunities...")
     print()
 
-    regions = ["us-east-1", "us-east-2", "eu-west-2", "us-west-2"]
+    regions = get_all_aws_regions()
 
     total_vpcs = 0
     total_unused_resources = 0

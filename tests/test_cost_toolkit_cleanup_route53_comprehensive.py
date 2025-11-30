@@ -257,7 +257,7 @@ class TestDeleteZones:
         with patch(
             "cost_toolkit.scripts.cleanup.aws_route53_cleanup.delete_hosted_zone", return_value=True
         ):
-            with patch("time.sleep"):
+            with patch("cost_toolkit.scripts.cleanup.aws_route53_cleanup._WAIT_EVENT.wait"):
                 results = _delete_zones(zones)
 
         assert len(results) == 2
@@ -273,7 +273,7 @@ class TestDeleteZones:
             "cost_toolkit.scripts.cleanup.aws_route53_cleanup.delete_hosted_zone",
             side_effect=[True, False],
         ):
-            with patch("time.sleep"):
+            with patch("cost_toolkit.scripts.cleanup.aws_route53_cleanup._WAIT_EVENT.wait"):
                 results = _delete_zones(zones)
 
         assert len(results) == 2

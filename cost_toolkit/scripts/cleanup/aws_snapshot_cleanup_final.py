@@ -11,19 +11,12 @@ from threading import Event
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
-from cost_toolkit.common.cli_utils import confirm_action
+from cost_toolkit.common.confirmation_prompts import confirm_snapshot_deletion
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
 
 _WAIT_EVENT = Event()
-
-
-def delete_snapshot(_ec2_client, snapshot_id, region):
-    """
-    Delete a specific snapshot via canonical helper.
-    """
-    return delete_snapshot_canonical(snapshot_id, region, ec2_client=_ec2_client)
 
 
 def get_snapshots_to_delete():
@@ -95,13 +88,6 @@ def print_deletion_warning(snapshots_to_delete):
     print()
 
 
-def confirm_snapshot_deletion():
-    """Prompt user for snapshot deletion confirmation. Delegates to canonical implementation."""
-    return confirm_action(
-        "Type 'DELETE FREED SNAPSHOTS' to confirm deletion: ", exact_match="DELETE FREED SNAPSHOTS"
-    )
-
-
 def process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secret_access_key):
     """Process deletion for all snapshots"""
     successful_deletions = 0
@@ -128,7 +114,9 @@ def process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secre
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        if delete_snapshot(ec2_client, snapshot_id, region):
+        if delete_snapshot_canonical(
+            snapshot_id, region, ec2_client=ec2_client
+        ):
             successful_deletions += 1
             total_savings += monthly_cost
         else:

@@ -4,16 +4,13 @@ AWS Client Factory Module
 Provides standardized boto3 client creation for AWS services.
 """
 
+import logging
 import os
 from pathlib import Path
 from typing import Optional
 
 import boto3
 from dotenv import load_dotenv
-
-
-class MissingEnvPathError(ValueError):
-    """Raised when no .env file path is configured."""
 
 
 def _resolve_env_path(env_path: Optional[str] = None) -> str:
@@ -33,9 +30,7 @@ def _resolve_env_path(env_path: Optional[str] = None) -> str:
     return str(Path.home() / ".env")
 
 
-def load_credentials_from_env(
-    env_path: Optional[str] = None,
-) -> tuple[str, str] | tuple[str, str, Optional[str]]:
+def load_credentials_from_env(env_path: Optional[str] = None) -> tuple[str, str]:
     """
     Load AWS credentials from .env file and return them as a tuple.
 
@@ -55,21 +50,12 @@ def load_credentials_from_env(
     aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
     aws_session_token = os.getenv("AWS_SESSION_TOKEN")
     if aws_access_key_id and aws_secret_access_key:
-        print(f"✅ AWS credentials loaded from {resolved_path}")
+        logging.info("✅ AWS credentials loaded from %s", resolved_path)
         if aws_session_token:
-            return aws_access_key_id, aws_secret_access_key, aws_session_token
+            logging.info("✅ AWS session token loaded from %s", resolved_path)
         return aws_access_key_id, aws_secret_access_key
 
-    # Fall back to the default boto3 credential provider chain (env, config/SSO, IAM role, etc.)
-    session = boto3.Session()
-    credentials = session.get_credentials()
-    if credentials:
-        frozen = credentials.get_frozen_credentials()
-        if frozen.token:
-            return frozen.access_key, frozen.secret_key, frozen.token
-        return frozen.access_key, frozen.secret_key
-
-    raise ValueError(f"AWS credentials not found in {resolved_path} or default provider chain")
+    raise ValueError(f"AWS credentials not found in {resolved_path}")
 
 
 def create_client(
@@ -94,10 +80,13 @@ def create_client(
         boto3.client: Configured AWS service client
     """
     if aws_access_key_id is None or aws_secret_access_key is None:
-        loaded = load_credentials_from_env()
-        aws_access_key_id, aws_secret_access_key = loaded[0], loaded[1]
-        if len(loaded) > 2:
-            aws_session_token = loaded[2]
+        aws_access_key_id, aws_secret_access_key = load_credentials_from_env()
+    # Session token is optional - loaded from env during load_credentials_from_env
+    # Only check environment if not explicitly provided and credentials were loaded
+    if aws_session_token is None:
+        env_session_token = os.getenv("AWS_SESSION_TOKEN")
+        if env_session_token:
+            aws_session_token = env_session_token
 
     client_kwargs = {
         "aws_access_key_id": aws_access_key_id,

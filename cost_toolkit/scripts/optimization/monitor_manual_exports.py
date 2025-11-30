@@ -42,9 +42,8 @@ def check_export_status(region, ami_id=None):
             message = task.get("StatusMessage", "")
             ami = task["ImageId"]
 
-            status_emoji = {"active": "🔄", "completed": "✅", "failed": "❌", "deleted": "🗑️"}.get(
-                status, "❓"
-            )
+            status_emoji_map = {"active": "🔄", "completed": "✅", "failed": "❌", "deleted": "🗑️"}
+            status_emoji = status_emoji_map[status] if status in status_emoji_map else "❓"
 
             print(f"      {status_emoji} {task_id}")
             print(f"         AMI: {ami}")
@@ -222,7 +221,7 @@ def main():
             while True:
                 monitor_all_regions()
                 print("\n⏳ Waiting 2 minutes for next check...")
-                time.sleep(120)
+                _WAIT_EVENT.wait(120)
         else:
             monitor_all_regions()
 

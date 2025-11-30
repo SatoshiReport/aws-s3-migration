@@ -257,11 +257,11 @@ class TestProcessInstanceDetails:
             {"Datapoints": [{"Sum": 1024 * 1024 * 100}]},
         ]
         instance = {
-            "InstanceId": "i-123",
-            "InstanceType": "t2.micro",
-            "State": {"Name": "running"},
-            "LaunchTime": datetime(2024, 1, 1, tzinfo=timezone.utc),
-            "Tags": [{"Key": "Name", "Value": "test-instance"}],
+            "instance_id": "i-123",
+            "instance_type": "t2.micro",
+            "state": "running",
+            "launch_time": datetime(2024, 1, 1, tzinfo=timezone.utc),
+            "name": "test-instance",
         }
         start_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end_time = datetime(2024, 1, 8, tzinfo=timezone.utc)
@@ -285,11 +285,11 @@ class TestProcessInstanceDetails:
             {"Datapoints": []},
         ]
         instance = {
-            "InstanceId": "i-456",
-            "InstanceType": "t2.small",
-            "State": {"Name": "stopped"},
-            "LaunchTime": datetime(2024, 1, 1, tzinfo=timezone.utc),
-            "Tags": [],
+            "instance_id": "i-456",
+            "instance_type": "t2.small",
+            "state": "stopped",
+            "launch_time": datetime(2024, 1, 1, tzinfo=timezone.utc),
+            "name": None,
         }
         start_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end_time = datetime(2024, 1, 8, tzinfo=timezone.utc)

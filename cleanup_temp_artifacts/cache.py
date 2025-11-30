@@ -22,10 +22,6 @@ if TYPE_CHECKING:
 CACHE_VERSION = 2
 
 
-class CacheConfigError(RuntimeError):
-    """Raised when cache directory cannot be determined."""
-
-
 def _default_cache_dir() -> Path:
     """Determine the default cache directory.
 
@@ -88,11 +84,13 @@ def load_cache(
         payload = json.loads(cache_path.read_text())
     except (OSError, json.JSONDecodeError) as exc:
         raise CacheReadError(f"Failed to read cache {cache_path}: {exc}") from exc
-    if payload.get("version") != CACHE_VERSION:
+    payload_version = payload.get("version")
+    if payload_version != CACHE_VERSION:
         raise CacheValidationError(
-            f"Cache version mismatch: expected {CACHE_VERSION}, got {payload.get('version')}"
+            f"Cache version mismatch: expected {CACHE_VERSION}, got {payload_version}"
         )
-    if payload.get("scan_params") != scan_params:
+    payload_scan_params = payload.get("scan_params")
+    if payload_scan_params != scan_params:
         raise CacheValidationError("Cache scan parameters don't match current parameters")
     metadata = {
         "generated_at": payload.get("generated_at"),
@@ -167,10 +165,13 @@ def cache_is_valid(
 ) -> bool:
     """Check if cached metadata is still valid based on TTL and database state."""
     # Check database state consistency
+    meta_rowcount = metadata.get("rowcount")
+    meta_max_rowid = metadata.get("max_rowid")
+    meta_db_mtime_ns = metadata.get("db_mtime_ns")
     if (
-        metadata.get("rowcount") != rowcount
-        or metadata.get("max_rowid") != max_rowid
-        or metadata.get("db_mtime_ns") != db_mtime_ns
+        meta_rowcount != rowcount
+        or meta_max_rowid != max_rowid
+        or meta_db_mtime_ns != db_mtime_ns
     ):
         return False
 

@@ -1,13 +1,13 @@
 .PHONY: format lint type check
 
 CI_SHARED_ROOT ?= $(HOME)/ci_shared
-export PYTHONPATH := $(CI_SHARED_ROOT)$(if $(PYTHONPATH),:$(PYTHONPATH))
+# This repo uses a flat structure (source at root, not in src/)
+SHARED_SOURCE_ROOT := .
+export PYTHONPATH := $(SHARED_SOURCE_ROOT):$(CI_SHARED_ROOT)$(if $(PYTHONPATH),:$(PYTHONPATH))
 
 # ============================================================================
 # AWS REPOSITORY CONFIGURATION
 # ============================================================================
-# This repo uses a flat structure (source at root, not in src/)
-SHARED_SOURCE_ROOT := .
 SHARED_TEST_ROOT := tests
 SHARED_DOC_ROOT := .
 
@@ -35,7 +35,7 @@ SHARED_DOC_ROOT := .
 include ci_shared.mk
 
 # Exclude standalone CLI scripts from unused module check
-UNUSED_MODULE_GUARD_ARGS := --root $(SHARED_SOURCE_ROOT) --exclude tests conftest.py __init__.py cost_toolkit/scripts/rds
+UNUSED_MODULE_GUARD_ARGS := --root $(SHARED_SOURCE_ROOT) --exclude tests conftest.py __init__.py cost_toolkit/scripts/rds migration_verify.py
 
 format:
 	black $(FORMAT_TARGETS)

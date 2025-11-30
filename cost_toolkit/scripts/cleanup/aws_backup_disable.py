@@ -12,6 +12,7 @@ from cost_toolkit.common.backup_utils import check_aws_backup_plans as get_backu
 from cost_toolkit.common.backup_utils import (
     check_dlm_lifecycle_policies,
     check_eventbridge_scheduled_rules,
+    is_backup_related_rule,
 )
 
 from ..aws_utils import setup_aws_credentials
@@ -131,15 +132,8 @@ def disable_eventbridge_backup_rules(region):
 
         backup_rules = []
         for rule in rules:
-            rule_name = rule["Name"]
-            description = rule.get("Description", "")
-            state = rule["State"]
-
             # Look for rules that might be related to snapshots/AMIs/backups
-            if any(
-                keyword in rule_name.lower() or keyword in description.lower()
-                for keyword in ["snapshot", "ami", "backup", "image", "createimage"]
-            ):
+            if is_backup_related_rule(rule):
                 backup_rules.append(rule)
 
         if backup_rules:
@@ -199,7 +193,8 @@ def check_backup_vault_policies(region):
                         BackupVaultName=vault_name, MaxResults=1
                     )
 
-                    point_count = len(recovery_points.get("RecoveryPoints", []))
+                    recovery_points_list = recovery_points.get("RecoveryPoints", [])
+                    point_count = len(recovery_points_list)
                     if point_count > 0:
                         print("    ℹ️  Vault contains recovery points - keeping vault")
                     else:

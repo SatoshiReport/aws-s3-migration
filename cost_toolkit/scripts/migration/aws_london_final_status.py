@@ -5,8 +5,8 @@
 import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.common.aws_common import extract_tag_value
+from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.scripts import aws_utils
 from cost_toolkit.scripts.aws_utils import wait_for_instance_state
 
@@ -32,7 +32,9 @@ def _stop_instance(ec2, instance_id):
 def _extract_volume_name(volume):
     """Extract volume name from tags."""
     name = extract_tag_value(volume, "Name")
-    return name or "No name"
+    if name is None:
+        raise ValueError(f"Volume {volume['VolumeId']} is missing required 'Name' tag")
+    return name
 
 
 def _build_volume_info(volume):

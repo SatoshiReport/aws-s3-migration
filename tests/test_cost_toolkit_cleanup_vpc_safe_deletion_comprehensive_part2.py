@@ -95,7 +95,7 @@ class TestDeleteVpcs:
         with patch(
             "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpc_and_dependencies"
         ) as mock_delete:
-            with patch("time.sleep"):
+            with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion._WAIT_EVENT.wait"):
                 mock_delete.return_value = True
 
                 result = _delete_vpcs(safe_vpcs)
@@ -112,7 +112,7 @@ class TestDeleteVpcs:
         with patch(
             "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpc_and_dependencies"
         ) as mock_delete:
-            with patch("time.sleep"):
+            with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion._WAIT_EVENT.wait"):
                 mock_delete.side_effect = [True, False]
 
                 result = _delete_vpcs(safe_vpcs)

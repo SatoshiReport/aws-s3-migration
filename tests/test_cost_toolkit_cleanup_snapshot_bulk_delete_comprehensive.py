@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.confirmation_prompts import confirm_bulk_deletion
 from cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete import (
-    confirm_bulk_deletion,
     delete_snapshot_safely,
-    find_snapshot_region,
     get_bulk_deletion_snapshots,
     get_snapshot_details,
     main,
@@ -17,88 +18,6 @@ from cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete import (
     print_bulk_deletion_warning,
     process_bulk_deletions,
 )
-
-
-class TestFindSnapshotRegion:
-    """Tests for find_snapshot_region function."""
-
-    def test_find_snapshot_in_first_region(self):
-        """Test finding snapshot in first region checked."""
-        with patch("boto3.client") as mock_client:
-            mock_ec2 = MagicMock()
-            mock_ec2.describe_snapshots.return_value = {"Snapshots": [{"SnapshotId": "snap-123"}]}
-            mock_client.return_value = mock_ec2
-
-            region = find_snapshot_region("snap-123")
-
-            assert region == "eu-west-2"
-
-    def test_find_snapshot_in_later_region(self):
-        """Test finding snapshot after checking multiple regions."""
-        with patch("boto3.client") as mock_client:
-            mock_ec2 = MagicMock()
-
-            # Simulate not found in first region, found in second
-            def describe_side_effect(**_):
-                nonlocal call_count
-                call_count += 1
-                if call_count == 1:
-                    error = ClientError(
-                        {"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots"
-                    )
-                    error.response = {"Error": {"Code": "InvalidSnapshot.NotFound"}}
-                    raise error
-                return {"Snapshots": [{"SnapshotId": "snap-123"}]}
-
-            call_count = 0
-            mock_ec2.describe_snapshots.side_effect = describe_side_effect
-            mock_ec2.exceptions.ClientError = ClientError
-            mock_client.return_value = mock_ec2
-
-            region = find_snapshot_region("snap-123")
-
-            assert region == "us-east-1"
-
-    def test_snapshot_not_found_any_region(self):
-        """Test when snapshot not found in any region."""
-        with patch("boto3.client") as mock_client:
-            mock_ec2 = MagicMock()
-            error = ClientError(
-                {"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots"
-            )
-            error.response = {"Error": {"Code": "InvalidSnapshot.NotFound"}}
-            mock_ec2.describe_snapshots.side_effect = error
-            mock_ec2.exceptions.ClientError = ClientError
-            mock_client.return_value = mock_ec2
-
-            region = find_snapshot_region("snap-notfound")
-
-            assert region is None
-
-    def test_other_error_continues_search(self, capsys):
-        """Test that other errors don't stop the search."""
-        with patch("boto3.client") as mock_client:
-            mock_ec2 = MagicMock()
-
-            def describe_side_effect(**_):
-                nonlocal call_count
-                call_count += 1
-                if call_count == 1:
-                    raise ClientError({"Error": {"Code": "ServiceError"}}, "describe_snapshots")
-                return {"Snapshots": [{"SnapshotId": "snap-123"}]}
-
-            call_count = 0
-            mock_ec2.describe_snapshots.side_effect = describe_side_effect
-            mock_ec2.exceptions.ClientError = ClientError
-            mock_client.return_value = mock_ec2
-
-            region = find_snapshot_region("snap-123")
-
-            assert region == "us-east-1"
-            captured = capsys.readouterr()
-            assert "Error checking" in captured.out
-
-
 class TestGetSnapshotDetails:
     """Tests for get_snapshot_details function."""
 
@@ -122,13 +41,13 @@ class TestGetSnapshotDetails:
 
             result = get_snapshot_details("snap-123", "us-east-1")
 
-            assert result is not None
             assert result["snapshot_id"] == "snap-123"
             assert result["size_gb"] == 100
             assert result["state"] == "completed"
             assert result["encrypted"] is True
+            assert result["description"] == "Test snapshot"
 
-    def test_get_snapshot_details_no_description(self):
+    def test_get_snapshot_details_missing_description(self):
         """Test snapshot without description."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
@@ -147,9 +66,9 @@ class TestGetSnapshotDetails:
 
             result = get_snapshot_details("snap-123", "us-east-1")
 
-            assert result["description"] == "No description"
+            assert result["description"] is None
 
-    def test_get_snapshot_details_error(self, capsys):
+    def test_get_snapshot_details_error(self):
         """Test error when retrieving snapshot details."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
@@ -158,11 +77,8 @@ class TestGetSnapshotDetails:
             )
             mock_client.return_value = mock_ec2
 
-            result = get_snapshot_details("snap-notfound", "us-east-1")
-
-            assert result is None
-            captured = capsys.readouterr()
-            assert "Error getting details" in captured.out
+            with pytest.raises(ClientError):
+                get_snapshot_details("snap-notfound", "us-east-1")
 
     def test_get_snapshot_details_no_snapshots(self):
         """Test when no snapshots returned."""
@@ -171,9 +87,27 @@ class TestGetSnapshotDetails:
             mock_ec2.describe_snapshots.return_value = {"Snapshots": []}
             mock_client.return_value = mock_ec2
 
-            result = get_snapshot_details("snap-123", "us-east-1")
+            with pytest.raises(ValueError):
+                get_snapshot_details("snap-123", "us-east-1")
 
-            assert result is None
+    def test_get_snapshot_details_missing_required_field(self):
+        """Test that a missing required field raises KeyError."""
+        with patch("boto3.client") as mock_client:
+            mock_ec2 = MagicMock()
+            mock_ec2.describe_snapshots.return_value = {
+                "Snapshots": [
+                    {
+                        "SnapshotId": "snap-123",
+                        "State": "completed",
+                        "StartTime": "2024-01-01",
+                        "Encrypted": True,
+                    }
+                ]
+            }
+            mock_client.return_value = mock_ec2
+
+            with pytest.raises(KeyError):
+                get_snapshot_details("snap-123", "us-east-1")
 
 
 class TestDeleteSnapshotSafely:
@@ -204,17 +138,6 @@ class TestDeleteSnapshotSafely:
                 assert "Successfully deleted" in captured.out
                 assert "Monthly savings: $5.00" in captured.out
 
-    def test_delete_snapshot_no_details(self):
-        """Test deletion when snapshot details not available."""
-        with patch("boto3.client"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details",
-                return_value=None,
-            ):
-                result = delete_snapshot_safely("snap-123", "us-east-1")
-
-                assert result is False
-
     def test_delete_snapshot_error(self, capsys):
         """Test error during snapshot deletion."""
         with patch("boto3.client") as mock_client:
@@ -239,8 +162,26 @@ class TestDeleteSnapshotSafely:
 
                 assert result is False
                 captured = capsys.readouterr()
-                assert "Error deleting snapshot" in captured.out
+                assert "Error deleting snap-123" in captured.out
 
+    def test_delete_snapshot_details_failure(self, capsys):
+        """Test failure when snapshot details cannot be retrieved."""
+        with patch("boto3.client") as mock_client:
+            with patch(
+                "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details"
+            ) as mock_get:
+                mock_ec2 = MagicMock()
+                mock_client.return_value = mock_ec2
+
+                mock_get.side_effect = ClientError(
+                    {"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots"
+                )
+
+                result = delete_snapshot_safely("snap-123", "us-east-1")
+
+                assert result is False
+                captured = capsys.readouterr()
+                assert "Error deleting snapshot snap-123" in captured.out
 
 def test_get_bulk_deletion_snapshots_returns_list_of_snapshots():
     """Test that function returns expected list."""
@@ -289,7 +230,7 @@ class TestProcessBulkDeletions:
         snapshots = ["snap-1", "snap-2"]
 
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.find_snapshot_region",
+            "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.find_resource_region",
             return_value="us-east-1",
         ):
             with patch(
@@ -312,7 +253,7 @@ class TestProcessBulkDeletions:
         snapshots = ["snap-notfound"]
 
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.find_snapshot_region",
+            "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.find_resource_region",
             return_value=None,
         ):
             successful, failed, savings = process_bulk_deletions(snapshots)
@@ -328,7 +269,7 @@ class TestProcessBulkDeletions:
         snapshots = ["snap-1", "snap-2", "snap-3"]
 
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.find_snapshot_region",
+            "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.find_resource_region",
             return_value="us-east-1",
         ):
             with patch(

@@ -74,9 +74,9 @@ class TestGetInstanceDetailsInRegion:
 
             result = get_instance_details_in_region("us-east-1")
 
-            assert result == []
-            captured = capsys.readouterr()
-            assert "No EC2 instances found" in captured.out
+        assert not result
+        captured = capsys.readouterr()
+        assert "No EC2 instances found" in captured.out
 
     def test_get_instance_details_error(self, capsys):
         """Test error handling."""
@@ -89,9 +89,9 @@ class TestGetInstanceDetailsInRegion:
 
             result = get_instance_details_in_region("us-east-1")
 
-            assert result == []
-            captured = capsys.readouterr()
-            assert "Error auditing instances" in captured.out
+        assert not result
+        captured = capsys.readouterr()
+        assert "Error auditing instances" in captured.out
 
 
 class TestPrintSummaryHeader:
@@ -234,10 +234,13 @@ class TestMain:
 
     def test_main_multiple_regions(self, capsys):
         """Test main function with multiple regions."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_ec2_usage_audit.get_instance_details_in_region",
-            side_effect=[
-                [
+        call_count = {"count": 0}
+
+        def side_effect(*_args, **_kwargs):
+            current = call_count["count"]
+            call_count["count"] += 1
+            if current == 0:
+                return [
                     {
                         "instance_id": "i-1",
                         "name": "test-1",
@@ -246,8 +249,9 @@ class TestMain:
                         "usage_level": "MODERATE",
                         "estimated_monthly_cost": 10.0,
                     }
-                ],
-                [
+                ]
+            if current == 1:
+                return [
                     {
                         "instance_id": "i-2",
                         "name": "test-2",
@@ -256,8 +260,12 @@ class TestMain:
                         "usage_level": "NO DATA",
                         "estimated_monthly_cost": 0,
                     }
-                ],
-            ],
+                ]
+            return []
+
+        with patch(
+            "cost_toolkit.scripts.audit.aws_ec2_usage_audit.get_instance_details_in_region",
+            side_effect=side_effect,
         ):
             main()
 

@@ -5,8 +5,16 @@ import os
 from datetime import datetime
 
 
+class UnknownInstanceClassError(KeyError):
+    """Raised when an RDS instance class is not in the cost mapping."""
+
+
 def estimate_rds_monthly_cost(instance_class):
-    """Estimate monthly cost for RDS instance class"""
+    """Estimate monthly cost for RDS instance class.
+
+    Raises:
+        UnknownInstanceClassError: If the instance class is not in the cost mapping.
+    """
     cost_mapping = {
         "db.t3.micro": 15.0,
         "db.t3.small": 30.0,
@@ -20,7 +28,12 @@ def estimate_rds_monthly_cost(instance_class):
         "db.r5.xlarge": 440.0,
     }
 
-    return cost_mapping.get(instance_class, 100.0)
+    if instance_class not in cost_mapping:
+        raise UnknownInstanceClassError(
+            f"Unknown instance class: {instance_class}. "
+            f"Supported classes: {', '.join(sorted(cost_mapping.keys()))}"
+        )
+    return cost_mapping[instance_class]
 
 
 def estimate_aurora_serverless_cost():

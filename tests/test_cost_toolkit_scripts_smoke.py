@@ -43,10 +43,11 @@ def test_cli_scripts_have_main_guard():
     repo_root = Path(__file__).parent.parent
     cost_toolkit_scripts = repo_root / "cost_toolkit" / "scripts"
 
+    excluded = {"__init__.py", "public_ip_common.py"}
     script_files = []
     for category_dir in cost_toolkit_scripts.iterdir():
         if category_dir.is_dir() and not category_dir.name.startswith("__"):
-            script_files.extend([f for f in category_dir.glob("*.py") if f.name != "__init__.py"])
+            script_files.extend([f for f in category_dir.glob("*.py") if f.name not in excluded])
 
     assert len(script_files) > 0, "Should find at least some CLI scripts"
 

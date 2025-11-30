@@ -4,6 +4,7 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 from cost_toolkit.scripts.aws_utils import get_instance_info
 
 
@@ -24,12 +25,11 @@ def release_public_ip_from_instance(instance_id, region_name):
         print(f"Current public IP: {current_public_ip}")
 
         # Check if it's an Elastic IP or auto-assigned
-        association_id = (
-            instance.get("NetworkInterfaces", [{}])[0].get("Association", {}).get("AssociationId")
-        )
-        allocation_id = (
-            instance.get("NetworkInterfaces", [{}])[0].get("Association", {}).get("AllocationId")
-        )
+        network_interfaces = instance.get("NetworkInterfaces", [])
+        first_interface = network_interfaces[0] if network_interfaces else {}
+        association = first_interface.get("Association", {})
+        association_id = association.get("AssociationId")
+        allocation_id = association.get("AllocationId")
 
         if allocation_id:
             print(f"This is an Elastic IP (allocation: {allocation_id})")
@@ -128,7 +128,8 @@ def _check_vpc_network_resources(ec2, vpc_id, analysis):
 
     # Check for NAT Gateways
     nat_response = ec2.describe_nat_gateways(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
-    nats = [nat for nat in nat_response.get("NatGateways", []) if nat["State"] != "deleted"]
+    nat_gateways = nat_response.get("NatGateways", [])
+    nats = [nat for nat in nat_gateways if nat["State"] != "deleted"]
     if nats:
         analysis["blocking_resources"].append(f"{len(nats)} NAT Gateways")
         analysis["can_delete"] = False
@@ -137,9 +138,8 @@ def _check_vpc_network_resources(ec2, vpc_id, analysis):
     endpoints_response = ec2.describe_vpc_endpoints(
         Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
     )
-    endpoints = [
-        ep for ep in endpoints_response.get("VpcEndpoints", []) if ep["State"] != "deleted"
-    ]
+    vpc_endpoints = endpoints_response.get("VpcEndpoints", [])
+    endpoints = [ep for ep in vpc_endpoints if ep["State"] != "deleted"]
     if endpoints:
         analysis["blocking_resources"].append(f"{len(endpoints)} VPC Endpoints")
         analysis["can_delete"] = False
@@ -150,7 +150,8 @@ def _check_vpc_load_balancers(region_name, vpc_id, analysis):
     try:
         elbv2 = create_client("elbv2", region=region_name)
         lb_response = elbv2.describe_load_balancers()
-        vpc_lbs = [lb for lb in lb_response.get("LoadBalancers", []) if lb.get("VpcId") == vpc_id]
+        load_balancers = lb_response.get("LoadBalancers", [])
+        vpc_lbs = [lb for lb in load_balancers if "VpcId" in lb and lb["VpcId"] == vpc_id]
         if vpc_lbs:
             analysis["blocking_resources"].append(f"{len(vpc_lbs)} Load Balancers")
             analysis["can_delete"] = False
@@ -163,11 +164,12 @@ def _check_vpc_rds_instances(region_name, vpc_id, analysis):
     try:
         rds = create_client("rds", region=region_name)
         db_response = rds.describe_db_instances()
-        vpc_dbs = [
-            db
-            for db in db_response.get("DBInstances", [])
-            if db.get("DBSubnetGroup", {}).get("VpcId") == vpc_id
-        ]
+        db_instances = db_response.get("DBInstances", [])
+        vpc_dbs = []
+        for db in db_instances:
+            db_subnet_group = db.get("DBSubnetGroup")
+            if db_subnet_group and "VpcId" in db_subnet_group and db_subnet_group["VpcId"] == vpc_id:
+                vpc_dbs.append(db)
         if vpc_dbs:
             analysis["blocking_resources"].append(f"{len(vpc_dbs)} RDS instances")
             analysis["can_delete"] = False
@@ -299,7 +301,7 @@ def main():
     print("=" * 80)
 
     all_vpc_analysis = {}
-    target_regions = ["us-east-1", "eu-west-2", "us-west-2", "us-east-2"]
+    target_regions = get_all_aws_regions()
 
     for region in target_regions:
         region_analysis = analyze_vpc_dependencies(region)

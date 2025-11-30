@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -26,11 +26,18 @@ class _ProgressState:
 
 
 def _list_objects(s3_client, bucket: str) -> Iterable[dict]:
-    """Yield objects in a bucket."""
+    """Yield objects in a bucket, failing fast on malformed responses."""
     paginator = s3_client.get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=bucket):
-        for obj in page.get("Contents", []):
-            if obj.get("Key", "").endswith("/"):
+        contents = page.get("Contents")
+        key_count = page.get("KeyCount")
+        if contents is None:
+            if key_count not in (None, 0):
+                raise RuntimeError("list_objects_v2 returned KeyCount without Contents payload")
+            continue
+        for obj in contents:
+            key = obj["Key"]
+            if key.endswith("/"):
                 continue
             yield obj
 
@@ -62,7 +69,11 @@ def _download_object(
             handle.write(chunk)
             bytes_downloaded += len(chunk)
             if progress_tracker.should_update():
-                _display_progress(progress_state.start_time, progress_state.files_done, progress_state.bytes_done + bytes_downloaded)
+                _display_progress(
+                    progress_state.start_time,
+                    progress_state.files_done,
+                    progress_state.bytes_done + bytes_downloaded,
+                )
 
     progress_state.files_done += 1
     progress_state.bytes_done += bytes_downloaded
@@ -88,10 +99,12 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
         progress_state = _ProgressState(start_time=time.time())
         tracker = ProgressTracker(update_interval=1.0)
 
+        interrupted = False
         try:
             for obj in _list_objects(self.s3, bucket):
                 if self.interrupted:
-                    raise SyncInterrupted()
+                    interrupted = True
+                    break
                 key = obj["Key"]
                 dest = local_path / key
                 _download_object(
@@ -103,12 +116,17 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
                     progress_state=progress_state,
                     progress_tracker=tracker,
                 )
-            _display_progress(progress_state.start_time, progress_state.files_done, progress_state.bytes_done)
-            _print_sync_summary(progress_state.start_time, progress_state.files_done, progress_state.bytes_done)
-        except SyncInterrupted:
-            print("\n✋ Sync interrupted")
+            if not interrupted:
+                _display_progress(
+                    progress_state.start_time, progress_state.files_done, progress_state.bytes_done
+                )
+                _print_sync_summary(
+                    progress_state.start_time, progress_state.files_done, progress_state.bytes_done
+                )
         except ClientError as exc:
             raise RuntimeError(f"Sync failed for bucket {bucket}: {exc}") from exc
+        if interrupted:
+            print("\n✋ Sync interrupted")
 
 
 def _display_progress(start_time, files_done, bytes_done):

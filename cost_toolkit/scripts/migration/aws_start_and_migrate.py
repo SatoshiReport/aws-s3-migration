@@ -25,8 +25,7 @@ def _start_ec2_instance(ec2, instance_id):
     print("✅ Start command sent")
     print("⏳ Waiting for instance to be running...")
 
-    waiter = ec2.get_waiter("instance_running")
-    waiter.wait(InstanceIds=[instance_id], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
+    aws_utils.wait_for_instance_running(ec2, instance_id)
 
     print("✅ Instance is now running")
     print("⏳ Waiting additional 60 seconds for SSM agent to be ready...")
@@ -274,12 +273,12 @@ def _monitor_migration_progress(ssm, instance_id, command_id):
                 _print_migration_output(command_status, status)
                 break
 
-            time.sleep(wait_interval)
+            _WAIT_EVENT.wait(wait_interval)
             elapsed_time += wait_interval
 
         except ClientError as e:
             print(f"Error checking status: {str(e)}")
-            time.sleep(wait_interval)
+            _WAIT_EVENT.wait(wait_interval)
             elapsed_time += wait_interval
 
     if elapsed_time >= max_wait_time:

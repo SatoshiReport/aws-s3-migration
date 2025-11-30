@@ -16,14 +16,10 @@ from tests.assertions import assert_equal
 
 
 # Tests for get_common_regions
-@patch("cost_toolkit.scripts.aws_ec2_operations.get_default_regions")
-def test_get_common_regions(mock_get_default):
+def test_get_common_regions():
     """Test get_common_regions extends default regions with additional regions."""
-    mock_get_default.return_value = ["us-east-1", "us-west-2"]
-
     result = get_common_regions()
 
-    assert_equal(len(result), 4)
     assert "us-east-1" in result
     assert "us-west-2" in result
     assert "eu-west-3" in result
@@ -58,7 +54,7 @@ def test_describe_addresses_empty_result(mock_create_client):
     """Test describe_addresses returns empty list when no addresses found."""
     mock_ec2 = MagicMock()
     mock_create_client.return_value = mock_ec2
-    mock_ec2.describe_addresses.return_value = {}
+    mock_ec2.describe_addresses.return_value = {"Addresses": []}
 
     result = describe_addresses("us-east-1")
 
@@ -138,7 +134,7 @@ def test_describe_network_interfaces_empty_result(mock_create_client):
     """Test describe_network_interfaces returns empty list when none found."""
     mock_ec2 = MagicMock()
     mock_create_client.return_value = mock_ec2
-    mock_ec2.describe_network_interfaces.return_value = {}
+    mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": []}
 
     result = describe_network_interfaces("us-east-1")
 

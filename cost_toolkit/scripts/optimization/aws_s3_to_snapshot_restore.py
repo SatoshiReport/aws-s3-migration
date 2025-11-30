@@ -6,13 +6,15 @@ This script handles the reverse process of importing AMIs from S3 and creating s
 """
 
 import sys
-import time
 from datetime import datetime
+from threading import Event
 
 import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.credential_utils import setup_aws_credentials
+
+_WAIT_EVENT = Event()
 
 
 class S3ExportError(Exception):
@@ -36,6 +38,7 @@ def list_s3_exports(s3_client, bucket_name):
     try:
         response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix="ebs-snapshots/")
     except ClientError as e:
+        print(f"   ❌ Error listing S3 exports: {e}")
         raise S3ExportError(f"Failed to list S3 exports in {bucket_name}: {e}") from e
 
     exports = []
@@ -73,7 +76,9 @@ def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
             ],
         )
     except ClientError as e:
-        raise AMIImportError(f"Failed to start AMI import from s3://{s3_bucket}/{s3_key}: {e}") from e
+        raise AMIImportError(
+            f"Failed to start AMI import from s3://{s3_bucket}/{s3_key}: {e}"
+        ) from e
 
     import_task_id = response["ImportTaskId"]
     print(f"   ✅ Started import task: {import_task_id}")
@@ -82,18 +87,18 @@ def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
     print("   ⏳ Monitoring import progress...")
     while True:
         try:
-            status_response = ec2_client.describe_import_image_tasks(
-                ImportTaskIds=[import_task_id]
-            )
+            status_response = ec2_client.describe_import_image_tasks(ImportTaskIds=[import_task_id])
         except ClientError as e:
-            raise AMIImportError(f"Failed to check import status for task {import_task_id}: {e}") from e
+            raise AMIImportError(
+                f"Failed to check import status for task {import_task_id}: {e}"
+            ) from e
 
         if not status_response["ImportImageTasks"]:
             raise AMIImportError(f"Import task {import_task_id} not found")
 
         task = status_response["ImportImageTasks"][0]
         status = task["Status"]
-        progress = task.get("Progress", "N/A")
+        progress = task.get("Progress") or "N/A"
 
         print(f"   📊 Import status: {status}, Progress: {progress}")
 
@@ -103,11 +108,11 @@ def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
             return ami_id
 
         if status == "deleted" or "failed" in status.lower():
-            error_msg = task.get("StatusMessage", "Unknown error")
+            error_msg = task.get("StatusMessage") or "Unknown error"
             raise AMIImportError(f"Import task {import_task_id} failed: {error_msg}")
 
         # Wait before checking again
-        time.sleep(60)  # Check every minute
+        _WAIT_EVENT.wait(60)
 
 
 def create_snapshot_from_ami(ec2_client, ami_id, description):
@@ -350,7 +355,14 @@ def main():
     """Main function."""
     try:
         restore_snapshots_from_s3()
-    except (ClientError, ValueError, KeyboardInterrupt, S3ExportError, AMIImportError, SnapshotCreationError) as e:
+    except (
+        ClientError,
+        ValueError,
+        KeyboardInterrupt,
+        S3ExportError,
+        AMIImportError,
+        SnapshotCreationError,
+    ) as e:
         print(f"❌ Script failed: {e}")
         sys.exit(1)
 

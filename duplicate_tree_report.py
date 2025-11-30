@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from duplicate_tree_core import (
+from duplicate_tree.core import (
     DirectoryIndex,
     DuplicateCluster,
     find_exact_duplicates,
@@ -19,7 +19,7 @@ __all__ = [
 
 def main(argv=None) -> int:
     """Route to the CLI implementation."""
-    import duplicate_tree_cli as cli  # pylint: disable=import-outside-toplevel
+    from duplicate_tree import cli  # pylint: disable=import-outside-toplevel
 
     return cli.main(argv)
 

@@ -5,6 +5,8 @@ This module provides common credential loading patterns
 to eliminate duplicate credential setup code across scripts.
 """
 
+import logging
+
 from cost_toolkit.common.aws_client_factory import (
     _resolve_env_path,
     load_credentials_from_env,
@@ -40,10 +42,10 @@ def check_aws_credentials():
         load_credentials_from_env()
     except ValueError:
         resolved_path = _resolve_env_path()
-        print(f"⚠️  AWS credentials not found in {resolved_path}.")
-        print(f"Please ensure {resolved_path} contains:")
-        print("  AWS_ACCESS_KEY_ID=your-access-key")
-        print("  AWS_SECRET_ACCESS_KEY=your-secret-key")
-        print("  AWS_DEFAULT_REGION=us-east-1")
+        logging.warning("⚠️  AWS credentials not found in %s.", resolved_path)
+        logging.warning("Please ensure %s contains:", resolved_path)
+        logging.warning("  AWS_ACCESS_KEY_ID=your-access-key")
+        logging.warning("  AWS_SECRET_ACCESS_KEY=your-secret-key")
+        logging.warning("  AWS_DEFAULT_REGION=us-east-1")
         return False
     return True

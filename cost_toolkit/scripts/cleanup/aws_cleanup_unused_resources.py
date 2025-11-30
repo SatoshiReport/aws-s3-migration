@@ -4,6 +4,8 @@
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_common import get_all_aws_regions
+
 
 def _collect_used_sgs_from_instances(ec2):
     """Collect security group IDs from EC2 instances."""
@@ -13,8 +15,9 @@ def _collect_used_sgs_from_instances(ec2):
     for reservation in instances_response["Reservations"]:
         for instance in reservation["Instances"]:
             if instance["State"]["Name"] != "terminated":
-                for sg in instance.get("SecurityGroups", []):
-                    used_sgs.add(sg["GroupId"])
+                if "SecurityGroups" in instance:
+                    for sg in instance["SecurityGroups"]:
+                        used_sgs.add(sg["GroupId"])
 
     return used_sgs
 
@@ -24,9 +27,11 @@ def _collect_used_sgs_from_enis(ec2):
     eni_response = ec2.describe_network_interfaces()
     used_sgs = set()
 
-    for eni in eni_response.get("NetworkInterfaces", []):
-        for sg in eni.get("Groups", []):
-            used_sgs.add(sg["GroupId"])
+    if "NetworkInterfaces" in eni_response:
+        for eni in eni_response["NetworkInterfaces"]:
+            if "Groups" in eni:
+                for sg in eni["Groups"]:
+                    used_sgs.add(sg["GroupId"])
 
     return used_sgs
 
@@ -37,9 +42,11 @@ def _collect_used_sgs_from_rds(region_name):
     try:
         rds = boto3.client("rds", region_name=region_name)
         db_response = rds.describe_db_instances()
-        for db in db_response.get("DBInstances", []):
-            for sg in db.get("VpcSecurityGroups", []):
-                used_sgs.add(sg["VpcSecurityGroupId"])
+        if "DBInstances" in db_response:
+            for db in db_response["DBInstances"]:
+                if "VpcSecurityGroups" in db:
+                    for sg in db["VpcSecurityGroups"]:
+                        used_sgs.add(sg["VpcSecurityGroupId"])
     except ClientError as e:
         print(f"  Warning: Could not check RDS security groups: {e}")
 
@@ -52,9 +59,11 @@ def _collect_used_sgs_from_elb(region_name):
     try:
         elbv2 = boto3.client("elbv2", region_name=region_name)
         lb_response = elbv2.describe_load_balancers()
-        for lb in lb_response.get("LoadBalancers", []):
-            for sg_id in lb.get("SecurityGroups", []):
-                used_sgs.add(sg_id)
+        if "LoadBalancers" in lb_response:
+            for lb in lb_response["LoadBalancers"]:
+                if "SecurityGroups" in lb:
+                    for sg_id in lb["SecurityGroups"]:
+                        used_sgs.add(sg_id)
     except ClientError as e:
         print(f"  Warning: Could not check ELB security groups: {e}")
 
@@ -108,9 +117,8 @@ def analyze_security_groups_usage(region_name):
         if unused_sgs:
             print("\nUnused Security Groups:")
             for sg in unused_sgs:
-                print(
-                    f"  {sg['GroupId']} - {sg['GroupName']} (VPC: {sg.get('VpcId', 'EC2-Classic')})"
-                )
+                vpc_id = sg.get("VpcId", "EC2-Classic")
+                print(f"  {sg['GroupId']} - {sg['GroupName']} (VPC: {vpc_id})")
 
     except ClientError as e:
         print(f"❌ Error analyzing security groups: {e}")
@@ -126,7 +134,8 @@ def _collect_used_subnets_from_instances(ec2):
     for reservation in instances_response["Reservations"]:
         for instance in reservation["Instances"]:
             if instance["State"]["Name"] != "terminated":
-                used_subnets.add(instance.get("SubnetId"))
+                if "SubnetId" in instance:
+                    used_subnets.add(instance["SubnetId"])
 
     return used_subnets
 
@@ -136,8 +145,10 @@ def _collect_used_subnets_from_enis(ec2):
     eni_response = ec2.describe_network_interfaces()
     used_subnets = set()
 
-    for eni in eni_response.get("NetworkInterfaces", []):
-        used_subnets.add(eni.get("SubnetId"))
+    if "NetworkInterfaces" in eni_response:
+        for eni in eni_response["NetworkInterfaces"]:
+            if "SubnetId" in eni:
+                used_subnets.add(eni["SubnetId"])
 
     return used_subnets
 
@@ -147,9 +158,11 @@ def _collect_used_subnets_from_nat_gateways(ec2):
     nat_response = ec2.describe_nat_gateways()
     used_subnets = set()
 
-    for nat in nat_response.get("NatGateways", []):
-        if nat["State"] != "deleted":
-            used_subnets.add(nat.get("SubnetId"))
+    if "NatGateways" in nat_response:
+        for nat in nat_response["NatGateways"]:
+            if nat["State"] != "deleted":
+                if "SubnetId" in nat:
+                    used_subnets.add(nat["SubnetId"])
 
     return used_subnets
 
@@ -160,9 +173,11 @@ def _collect_used_subnets_from_rds(region_name):
     try:
         rds = boto3.client("rds", region_name=region_name)
         subnet_groups_response = rds.describe_db_subnet_groups()
-        for sg in subnet_groups_response.get("DBSubnetGroups", []):
-            for subnet in sg.get("Subnets", []):
-                used_subnets.add(subnet["SubnetIdentifier"])
+        if "DBSubnetGroups" in subnet_groups_response:
+            for sg in subnet_groups_response["DBSubnetGroups"]:
+                if "Subnets" in sg:
+                    for subnet in sg["Subnets"]:
+                        used_subnets.add(subnet["SubnetIdentifier"])
     except ClientError as e:
         print(f"  Warning: Could not check RDS subnets: {e}")
 
@@ -175,9 +190,12 @@ def _collect_used_subnets_from_elb(region_name):
     try:
         elbv2 = boto3.client("elbv2", region_name=region_name)
         lb_response = elbv2.describe_load_balancers()
-        for lb in lb_response.get("LoadBalancers", []):
-            for az in lb.get("AvailabilityZones", []):
-                used_subnets.add(az.get("SubnetId"))
+        if "LoadBalancers" in lb_response:
+            for lb in lb_response["LoadBalancers"]:
+                if "AvailabilityZones" in lb:
+                    for az in lb["AvailabilityZones"]:
+                        if "SubnetId" in az:
+                            used_subnets.add(az["SubnetId"])
     except ClientError as e:
         print(f"  Warning: Could not check ELB subnets: {e}")
 
@@ -227,9 +245,9 @@ def analyze_subnet_usage(region_name):
             print("\nUnused Subnets:")
             for subnet in unused_subnets:
                 subnet_id = subnet["SubnetId"]
-                vpc_id = subnet.get("VpcId")
-                az = subnet.get("AvailabilityZone")
-                cidr = subnet.get("CidrBlock")
+                vpc_id = subnet.get("VpcId", "N/A")
+                az = subnet.get("AvailabilityZone", "N/A")
+                cidr = subnet.get("CidrBlock", "N/A")
                 print(f"  {subnet_id} - {cidr} (VPC: {vpc_id}, AZ: {az})")
 
     except ClientError as e:
@@ -293,7 +311,7 @@ def delete_unused_subnets(unused_subnets, region_name):
 
         for subnet in unused_subnets:
             subnet_id = subnet["SubnetId"]
-            cidr = subnet.get("CidrBlock")
+            cidr = subnet.get("CidrBlock", "N/A")
 
             try:
                 ec2.delete_subnet(SubnetId=subnet_id)
@@ -368,7 +386,7 @@ def main():
     print("=" * 80)
     print("Analyzing and cleaning up unused security groups and subnets...")
 
-    target_regions = ["us-east-1", "eu-west-2", "us-west-2", "us-east-2"]
+    target_regions = get_all_aws_regions()
 
     all_unused_sgs, all_unused_subnets = _analyze_all_regions(target_regions)
 

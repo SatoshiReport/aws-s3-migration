@@ -15,6 +15,7 @@ import pytest
 from migration_orchestrator import (
     BucketMigrationOrchestrator,
     BucketMigrator,
+    MigrationFatalError,
 )
 
 
@@ -103,10 +104,10 @@ def test_multi_bucket_orchestration_with_one_error(mock_deps):
     mock_bucket_migrator.process_bucket.side_effect = RuntimeError("Sync failed")
 
     with mock.patch("builtins.print"):
-        with pytest.raises(SystemExit) as exc_info:
+        with pytest.raises(MigrationFatalError) as exc_info:
             orchestrator.migrate_all_buckets()
 
-    assert exc_info.value.code == 1
+    assert "Migration error" in str(exc_info.value)
 
 
 def test_resumable_migration_state_preserved(mock_deps):

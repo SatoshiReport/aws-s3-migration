@@ -16,7 +16,6 @@ from .analysis import (
     sort_node_rows,
 )
 
-
 MIN_DUPLICATE_NODES = 2
 
 

@@ -13,25 +13,24 @@ import sys
 import time
 from pathlib import Path
 
-from state_db_admin import reseed_state_db_from_local_drive
-
 from cost_toolkit.common.cli_utils import handle_state_db_reset
+from state_db_admin import reseed_state_db_from_local_drive
 
 from .args_parser import parse_args
 from .cache import build_scan_params
 from .config import REPO_ROOT
-from .reports import (
-    delete_paths,
-    order_candidates,
-    print_candidates_report,
-    write_reports,
-)
-from .scanner import (
+from .db_loader import (
     CacheConfig,
     CandidateLoadError,
     DatabaseInfo,
     load_candidates_from_db,
     write_cache_if_needed,
+)
+from .reports import (
+    delete_paths,
+    order_candidates,
+    print_candidates_report,
+    write_reports,
 )
 
 

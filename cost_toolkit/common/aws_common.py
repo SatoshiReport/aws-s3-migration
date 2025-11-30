@@ -1,14 +1,16 @@
-"""
-Shared AWS client creation utilities.
+"""Shared AWS client creation utilities."""
 
-This module provides common AWS client initialization patterns
-to eliminate duplicate client creation code across scripts.
-"""
+from __future__ import annotations
 
+import logging
+import os
 from typing import Optional
+
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_ec2_client, create_s3_client
+
+_STATIC_REGIONS_ENV = "COST_TOOLKIT_STATIC_AWS_REGIONS"
 
 # Map resource types to their describe methods and response keys
 _RESOURCE_CONFIG = {
@@ -27,6 +29,19 @@ _RESOURCE_CONFIG = {
         "InvalidInstanceID.NotFound",
     ),
 }
+
+
+def _parse_static_regions_env() -> list[str]:
+    """Return configured AWS regions when tests set the override env var."""
+    raw = os.getenv(_STATIC_REGIONS_ENV)
+    if not raw:
+        return []
+    regions = [region.strip() for region in raw.split(",") if region.strip()]
+    if not regions:
+        logging.warning("%s is set but no valid region values were provided", _STATIC_REGIONS_ENV)
+        return []
+    logging.debug("Using static AWS regions override: %s", ", ".join(regions))
+    return regions
 
 
 def create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key):
@@ -71,7 +86,8 @@ def get_instance_name(ec2_client, instance_id: str) -> Optional[str]:
     response = ec2_client.describe_instances(InstanceIds=[instance_id])
     for reservation in response["Reservations"]:
         for instance in reservation["Instances"]:
-            for tag in instance.get("Tags", []):
+            tags = instance.get("Tags", [])
+            for tag in tags:
                 if tag["Key"] == "Name":
                     return tag["Value"]
     return None
@@ -96,8 +112,13 @@ def get_all_aws_regions(
 
     Note:
         This makes an API call to AWS. For a static list of common regions,
-        use get_default_regions() instead.
+        use get_default_regions() instead or set the static override env var.
     """
+
+    static_regions = _parse_static_regions_env()
+    if static_regions:
+        return static_regions
+
     ec2_client = create_ec2_client(
         region="us-east-1",
         aws_access_key_id=aws_access_key_id,
@@ -155,7 +176,8 @@ def extract_tag_value(resource, key):
     Returns:
         str: Tag value if found, None otherwise
     """
-    for tag in resource.get("Tags", []):
+    tags = resource.get("Tags", [])
+    for tag in tags:
         if tag["Key"] == key:
             return tag["Value"]
     return None
@@ -171,7 +193,8 @@ def get_resource_tags(resource):
     Returns:
         dict: Dictionary of tag key-value pairs
     """
-    return {tag["Key"]: tag["Value"] for tag in resource.get("Tags", [])}
+    tags = resource.get("Tags", [])
+    return {tag["Key"]: tag["Value"] for tag in tags}
 
 
 def extract_volumes_from_instance(instance):
@@ -185,7 +208,8 @@ def extract_volumes_from_instance(instance):
         list: List of dicts with volume_id, device, and delete_on_termination
     """
     volumes = []
-    for bdm in instance.get("BlockDeviceMappings", []):
+    block_device_mappings = instance.get("BlockDeviceMappings", [])
+    for bdm in block_device_mappings:
         if "Ebs" in bdm:
             volumes.append(
                 {
@@ -232,8 +256,8 @@ def get_instance_details(ec2_client, instance_id):
     if instance is None:
         return None
 
-    placement = instance.get("Placement")
-    availability_zone = placement.get("AvailabilityZone") if placement else None
+    placement = instance.get("Placement", {})
+    availability_zone = placement.get("AvailabilityZone")
 
     return {
         "instance_id": instance_id,

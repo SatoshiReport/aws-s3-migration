@@ -5,9 +5,13 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
+import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore import (
+    AMIImportError,
+    S3ExportError,
+    SnapshotCreationError,
     _create_aws_clients,
     _validate_user_inputs,
     create_snapshot_from_ami,
@@ -65,11 +69,12 @@ class TestListS3Exports:
             {"Error": {"Code": "NoSuchBucket"}}, "list_objects_v2"
         )
 
-        exports = list_s3_exports(mock_s3, "nonexistent-bucket")
+        with pytest.raises(S3ExportError) as exc_info:
+            list_s3_exports(mock_s3, "nonexistent-bucket")
 
-        assert not exports
         captured = capsys.readouterr()
         assert "Error listing S3 exports" in captured.out
+        assert "Failed to list S3 exports" in str(exc_info.value)
 
 
 class TestImportAmiFromS3:
@@ -112,11 +117,12 @@ class TestImportAmiFromS3:
             ]
         }
 
-        ami_id = import_ami_from_s3(mock_ec2, "test-bucket", "exports/bad.vmdk", "Bad snapshot")
+        with pytest.raises(AMIImportError) as exc_info:
+            import_ami_from_s3(mock_ec2, "test-bucket", "exports/bad.vmdk", "Bad snapshot")
 
-        assert ami_id is None
         captured = capsys.readouterr()
-        assert "Import failed: Invalid image format" in captured.out
+        assert "Import status: failed" in captured.out
+        assert "Invalid image format" in str(exc_info.value)
 
     def test_import_ami_deleted(self, capsys):
         """Test AMI import deleted status."""
@@ -126,36 +132,35 @@ class TestImportAmiFromS3:
             "ImportImageTasks": [{"ImportTaskId": "import-789", "Status": "deleted"}]
         }
 
-        ami_id = import_ami_from_s3(mock_ec2, "test-bucket", "exports/test.vmdk", "Test")
+        with pytest.raises(AMIImportError) as exc_info:
+            import_ami_from_s3(mock_ec2, "test-bucket", "exports/test.vmdk", "Test")
 
-        assert ami_id is None
         captured = capsys.readouterr()
-        assert "Import failed" in captured.out
+        assert "Import status: deleted" in captured.out
+        assert "Import task import-789 failed" in str(exc_info.value)
 
-    def test_import_ami_task_not_found(self, capsys):
+    def test_import_ami_task_not_found(self):
         """Test when import task is not found."""
         mock_ec2 = MagicMock()
         mock_ec2.import_image.return_value = {"ImportTaskId": "import-999"}
         mock_ec2.describe_import_image_tasks.return_value = {"ImportImageTasks": []}
 
-        ami_id = import_ami_from_s3(mock_ec2, "test-bucket", "exports/test.vmdk", "Test")
+        with pytest.raises(AMIImportError) as exc_info:
+            import_ami_from_s3(mock_ec2, "test-bucket", "exports/test.vmdk", "Test")
 
-        assert ami_id is None
-        captured = capsys.readouterr()
-        assert "Import task not found" in captured.out
+        assert "import-999 not found" in str(exc_info.value)
 
-    def test_import_ami_client_error(self, capsys):
+    def test_import_ami_client_error(self):
         """Test handling client errors during import."""
         mock_ec2 = MagicMock()
         mock_ec2.import_image.side_effect = ClientError(
             {"Error": {"Code": "InvalidParameter"}}, "import_image"
         )
 
-        ami_id = import_ami_from_s3(mock_ec2, "test-bucket", "exports/test.vmdk", "Test")
+        with pytest.raises(AMIImportError) as exc_info:
+            import_ami_from_s3(mock_ec2, "test-bucket", "exports/test.vmdk", "Test")
 
-        assert ami_id is None
-        captured = capsys.readouterr()
-        assert "Error importing from S3" in captured.out
+        assert "Failed to start AMI import" in str(exc_info.value)
 
 
 class TestCreateSnapshotFromAmi:
@@ -183,29 +188,27 @@ class TestCreateSnapshotFromAmi:
         assert "Found root snapshot: snap-12345" in captured.out
         assert "Tagged snapshot snap-12345" in captured.out
 
-    def test_create_snapshot_ami_not_found(self, capsys):
+    def test_create_snapshot_ami_not_found(self):
         """Test when AMI is not found."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_images.return_value = {"Images": []}
 
-        snapshot_id = create_snapshot_from_ami(mock_ec2, "ami-notfound", "Test")
+        with pytest.raises(SnapshotCreationError) as exc_info:
+            create_snapshot_from_ami(mock_ec2, "ami-notfound", "Test")
 
-        assert snapshot_id is None
-        captured = capsys.readouterr()
-        assert "AMI ami-notfound not found" in captured.out
+        assert "AMI ami-notfound not found" in str(exc_info.value)
 
-    def test_create_snapshot_no_root_device(self, capsys):
+    def test_create_snapshot_no_root_device(self):
         """Test when AMI has no root device mapping."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_images.return_value = {
             "Images": [{"RootDeviceName": "/dev/sda1", "BlockDeviceMappings": []}]
         }
 
-        snapshot_id = create_snapshot_from_ami(mock_ec2, "ami-12345", "Test")
+        with pytest.raises(SnapshotCreationError) as exc_info:
+            create_snapshot_from_ami(mock_ec2, "ami-12345", "Test")
 
-        assert snapshot_id is None
-        captured = capsys.readouterr()
-        assert "No root snapshot found in AMI" in captured.out
+        assert "No root snapshot found in AMI" in str(exc_info.value)
 
     def test_create_snapshot_tagging_failure(self, capsys):
         """Test when tagging fails but snapshot is found."""

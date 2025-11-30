@@ -5,11 +5,13 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 
 
 def _print_key_info(key_info):
     """Print details for a single KMS key"""
-    print(f"  Description: {key_info.get('Description', 'No description')}")
+    description = key_info.get("Description", "No description")
+    print(f"  Description: {description}")
     print(f"  Key Manager: {key_info['KeyManager']}")
     print(f"  Key State: {key_info['KeyState']}")
     print(f"  Creation Date: {key_info['CreationDate']}")
@@ -46,8 +48,10 @@ def _print_key_grants(kms, key_id):
         if grants["Grants"]:
             print(f"  Active Grants: {len(grants['Grants'])}")
             for grant in grants["Grants"][:3]:  # Show first 3 grants
-                print(f"    - Grantee: {grant.get('GranteePrincipal', 'Unknown')}")
-                print(f"      Operations: {grant.get('Operations', [])}")
+                grantee = grant.get("GranteePrincipal", "Unknown")
+                operations = grant.get("Operations", [])
+                print(f"    - Grantee: {grantee}")
+                print(f"      Operations: {operations}")
     except ClientError as e:
         print(f"  Grants: (unable to retrieve: {e.response['Error']['Code']})")
 
@@ -178,7 +182,7 @@ def audit_kms_keys():
     print("CHECKING FOR VPN-RELATED KMS USAGE:")
     print("-" * 40)
 
-    for region in ["us-east-1", "us-west-1", "eu-west-1"]:  # Regions with KMS costs
+    for region in get_all_aws_regions():  # Regions with KMS costs
         _check_vpn_resources(region)
 
 

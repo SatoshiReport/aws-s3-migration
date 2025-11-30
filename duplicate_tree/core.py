@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Duplicate tree helpers focused on exact duplicate detection."""
 
 from __future__ import annotations
@@ -17,7 +16,6 @@ from duplicate_tree_models import (
     ProgressPrinter,
 )
 from migration_verify_common import should_ignore_key
-
 
 MIN_DUPLICATE_CLUSTER = 2
 
@@ -92,7 +90,9 @@ def find_exact_duplicates(index: DirectoryIndex) -> List[DuplicateCluster]:
         for processed, node in enumerate(nodes, start=1):
             if node.signature is None:
                 continue
-            groups.setdefault(node.signature, []).append(node)
+            if node.signature not in groups:
+                groups[node.signature] = []
+            groups[node.signature].append(node)
             progress.update(processed)
     except KeyboardInterrupt:
         print("\n\n✗ Duplicate grouping interrupted by user.")

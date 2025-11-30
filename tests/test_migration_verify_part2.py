@@ -4,7 +4,7 @@ import hashlib
 
 import pytest
 
-from migration_verify import FileChecksumVerifier
+from migration_verify_checksums import FileChecksumVerifier
 from tests.assertions import assert_equal
 
 

@@ -29,33 +29,34 @@ def discover_rds_instances():
             response = rds_client.describe_db_instances()
 
             for instance in response["DBInstances"]:
-                if instance.get("DBClusterIdentifier"):
+                if "DBClusterIdentifier" in instance and instance["DBClusterIdentifier"]:
                     continue
 
+                vpc_security_groups = instance.get("VpcSecurityGroups", [])
+                db_subnet_group = instance.get("DBSubnetGroup", None)
+                db_param_groups = instance.get("DBParameterGroups", [{}])
                 instance_info = {
                     "region": region,
                     "identifier": instance["DBInstanceIdentifier"],
                     "engine": instance["Engine"],
-                    "engine_version": instance.get("EngineVersion", "Unknown"),
+                    "engine_version": instance["EngineVersion"],
                     "instance_class": instance["DBInstanceClass"],
                     "status": instance["DBInstanceStatus"],
-                    "allocated_storage": instance.get("AllocatedStorage", 0),
-                    "storage_type": instance.get("StorageType", "gp2"),
-                    "multi_az": instance.get("MultiAZ", False),
-                    "publicly_accessible": instance.get("PubliclyAccessible", False),
+                    "allocated_storage": instance["AllocatedStorage"],
+                    "storage_type": instance["StorageType"],
+                    "multi_az": instance["MultiAZ"],
+                    "publicly_accessible": instance["PubliclyAccessible"],
                     "vpc_security_groups": [
-                        sg["VpcSecurityGroupId"] for sg in instance.get("VpcSecurityGroups", [])
+                        sg["VpcSecurityGroupId"] for sg in vpc_security_groups
                     ],
-                    "db_subnet_group": instance.get("DBSubnetGroup", {}).get("DBSubnetGroupName"),
-                    "parameter_group": instance.get("DBParameterGroups", [{}])[0].get(
-                        "DBParameterGroupName"
-                    ),
+                    "db_subnet_group": db_subnet_group["DBSubnetGroupName"] if db_subnet_group and "DBSubnetGroupName" in db_subnet_group else None,
+                    "parameter_group": db_param_groups[0]["DBParameterGroupName"] if db_param_groups and "DBParameterGroupName" in db_param_groups[0] else None,
                     "backup_retention": instance.get("BackupRetentionPeriod", 0),
-                    "preferred_backup_window": instance.get("PreferredBackupWindow"),
-                    "preferred_maintenance_window": instance.get("PreferredMaintenanceWindow"),
-                    "storage_encrypted": instance.get("StorageEncrypted", False),
-                    "kms_key_id": instance.get("KmsKeyId"),
-                    "deletion_protection": instance.get("DeletionProtection", False),
+                    "preferred_backup_window": instance.get("PreferredBackupWindow", None),
+                    "preferred_maintenance_window": instance.get("PreferredMaintenanceWindow", None),
+                    "storage_encrypted": instance["StorageEncrypted"],
+                    "kms_key_id": instance.get("KmsKeyId", None),
+                    "deletion_protection": instance["DeletionProtection"],
                 }
 
                 discovered_instances.append(instance_info)
@@ -192,7 +193,7 @@ def _get_cluster_endpoint_info(rds_client, cluster_identifier):
     return {
         "cluster_identifier": cluster_identifier,
         "writer_endpoint": cluster["Endpoint"],
-        "reader_endpoint": cluster.get("ReaderEndpoint"),
+        "reader_endpoint": cluster.get("ReaderEndpoint", None),
         "port": cluster["Port"],
         "engine": cluster["Engine"],
         "status": cluster["Status"],

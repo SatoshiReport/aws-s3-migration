@@ -3,6 +3,7 @@ Bucket analysis functions for S3 audit.
 Handles bucket metadata collection and object analysis.
 """
 
+import logging
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 
@@ -11,6 +12,28 @@ from botocore.exceptions import ClientError
 
 from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
 from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
+
+
+def _require_public_access_config(response: dict) -> dict:
+    """Ensure public access block payload is complete."""
+    pab = response.get("PublicAccessBlockConfiguration", None)
+    required_fields = (
+        "BlockPublicAcls",
+        "IgnorePublicAcls",
+        "BlockPublicPolicy",
+        "RestrictPublicBuckets",
+    )
+
+    if not isinstance(pab, dict):
+        logging.warning("Public access block response missing configuration")
+        return {field: False for field in required_fields}
+
+    missing = [field for field in required_fields if field not in pab]
+    if missing:
+        logging.warning("Public access block missing fields: %s", ", ".join(missing))
+        for field in missing:
+            pab[field] = False
+    return pab
 
 
 def get_bucket_region(bucket_name):
@@ -35,7 +58,8 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
     # Check bucket versioning
     try:
         versioning_response = s3_client.get_bucket_versioning(Bucket=bucket_name)
-        bucket_analysis["versioning_enabled"] = versioning_response.get("Status") == "Enabled"
+        status = versioning_response.get("Status", None)
+        bucket_analysis["versioning_enabled"] = status == "Enabled"
     except ClientError as e:
         print(f"  ⚠️  Could not check versioning: {e.response['Error']['Code']}")
         bucket_analysis["versioning_enabled"] = None
@@ -43,7 +67,13 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
     # Check lifecycle policy
     try:
         lifecycle_response = s3_client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
-        bucket_analysis["lifecycle_policy"] = lifecycle_response.get("Rules", [])
+        rules = lifecycle_response.get("Rules", [])
+        if not isinstance(rules, list):
+            logging.warning(
+                "Lifecycle configuration response missing Rules for bucket %s", bucket_name
+            )
+            rules = []
+        bucket_analysis["lifecycle_policy"] = rules
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code != "NoSuchLifecycleConfiguration":
@@ -53,7 +83,7 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
     # Check encryption
     try:
         encryption_response = s3_client.get_bucket_encryption(Bucket=bucket_name)
-        bucket_analysis["encryption"] = encryption_response.get("ServerSideEncryptionConfiguration")
+        bucket_analysis["encryption"] = encryption_response.get("ServerSideEncryptionConfiguration", None)
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code != "ServerSideEncryptionConfigurationNotFoundError":
@@ -63,14 +93,14 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
     # Check public access
     try:
         public_access_response = s3_client.get_public_access_block(Bucket=bucket_name)
-        pab = public_access_response.get("PublicAccessBlockConfiguration", {})
+        pab = _require_public_access_config(public_access_response)
         # If any of these are False, bucket might have public access
         bucket_analysis["public_access"] = not all(
             [
-                pab.get("BlockPublicAcls", True),
-                pab.get("IgnorePublicAcls", True),
-                pab.get("BlockPublicPolicy", True),
-                pab.get("RestrictPublicBuckets", True),
+                pab["BlockPublicAcls"],
+                pab["IgnorePublicAcls"],
+                pab["BlockPublicPolicy"],
+                pab["RestrictPublicBuckets"],
             ]
         )
     except ClientError as e:
@@ -85,7 +115,6 @@ def _process_object(obj, bucket_analysis, ninety_days_ago, large_object_threshol
     size = obj["Size"]
     bucket_analysis["total_size_bytes"] += size
 
-    # Determine storage class (default to STANDARD if not specified)
     storage_class = obj.get("StorageClass", "STANDARD")
     bucket_analysis["storage_classes"][storage_class]["count"] += 1
     bucket_analysis["storage_classes"][storage_class]["size_bytes"] += size

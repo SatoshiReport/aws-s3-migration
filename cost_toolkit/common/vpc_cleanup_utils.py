@@ -1,9 +1,4 @@
-"""
-Shared VPC cleanup utilities.
-
-This module provides reusable functions for VPC and related resource cleanup
-to eliminate duplicate cleanup code across scripts.
-"""
+"""Shared VPC cleanup utilities."""
 
 
 def delete_internet_gateways(ec2_client, vpc_id):
@@ -23,7 +18,8 @@ def delete_internet_gateways(ec2_client, vpc_id):
     )
 
     deleted_count = 0
-    for igw in igw_response.get("InternetGateways", []):
+    internet_gateways = igw_response["InternetGateways"]
+    for igw in internet_gateways:
         igw_id = igw["InternetGatewayId"]
         print(f"  Detaching IGW {igw_id} from VPC {vpc_id}")
         ec2_client.detach_internet_gateway(InternetGatewayId=igw_id, VpcId=vpc_id)
@@ -54,7 +50,8 @@ def delete_vpc_endpoints(ec2_client, vpc_id):
     )
 
     deleted_count = 0
-    for endpoint in endpoints_response.get("VpcEndpoints", []):
+    vpc_endpoints = endpoints_response["VpcEndpoints"]
+    for endpoint in vpc_endpoints:
         if endpoint["State"] != "deleted":
             endpoint_id = endpoint["VpcEndpointId"]
             print(f"  Deleting VPC Endpoint {endpoint_id}")
@@ -82,7 +79,8 @@ def delete_nat_gateways(ec2_client, vpc_id):
     )
 
     deleted_count = 0
-    for nat in nat_response.get("NatGateways", []):
+    nat_gateways = nat_response["NatGateways"]
+    for nat in nat_gateways:
         if nat["State"] not in ["deleted", "deleting"]:
             nat_id = nat["NatGatewayId"]
             print(f"  Deleting NAT Gateway {nat_id}")
@@ -111,7 +109,8 @@ def delete_security_groups(ec2_client, vpc_id, skip_default=True):
     )
 
     deleted_count = 0
-    for sg in sg_response.get("SecurityGroups", []):
+    security_groups = sg_response["SecurityGroups"]
+    for sg in security_groups:
         if skip_default and sg["GroupName"] == "default":
             continue
 
@@ -142,7 +141,8 @@ def delete_network_acls(ec2_client, vpc_id, skip_default=True):
     )
 
     deleted_count = 0
-    for nacl in nacl_response.get("NetworkAcls", []):
+    network_acls = nacl_response["NetworkAcls"]
+    for nacl in network_acls:
         if skip_default and nacl["IsDefault"]:
             continue
 
@@ -171,9 +171,11 @@ def delete_route_tables(ec2_client, vpc_id, skip_main=True):
     rt_response = ec2_client.describe_route_tables(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
 
     deleted_count = 0
-    for rt in rt_response.get("RouteTables", []):
+    route_tables = rt_response["RouteTables"]
+    for rt in route_tables:
         if skip_main:
-            is_main = any(assoc.get("Main", False) for assoc in rt.get("Associations", []))
+            associations = rt.get("Associations", [])
+            is_main = any(("Main" in assoc and assoc["Main"]) for assoc in associations)
             if is_main:
                 continue
 
@@ -201,7 +203,8 @@ def delete_subnets(ec2_client, vpc_id):
     subnet_response = ec2_client.describe_subnets(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
 
     deleted_count = 0
-    for subnet in subnet_response.get("Subnets", []):
+    subnets = subnet_response["Subnets"]
+    for subnet in subnets:
         subnet_id = subnet["SubnetId"]
         print(f"  Deleting Subnet {subnet_id}")
         ec2_client.delete_subnet(SubnetId=subnet_id)
@@ -228,7 +231,8 @@ def delete_network_interfaces(ec2_client, vpc_id):
     )
 
     deleted_count = 0
-    for eni in eni_response.get("NetworkInterfaces", []):
+    network_interfaces = eni_response["NetworkInterfaces"]
+    for eni in network_interfaces:
         # Only delete ENIs that are available (not attached)
         if eni["Status"] == "available":
             eni_id = eni["NetworkInterfaceId"]

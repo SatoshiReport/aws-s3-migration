@@ -6,12 +6,10 @@ from unittest import mock
 
 import pytest
 
-from migration_verify import (
-    BucketDeleter,
-    BucketVerifier,
-    FileChecksumVerifier,
-    FileInventoryChecker,
-)
+from migration_verify_bucket import BucketVerifier
+from migration_verify_checksums import FileChecksumVerifier
+from migration_verify_delete import BucketDeleter
+from migration_verify_inventory import FileInventoryChecker
 from tests.assertions import assert_equal
 
 

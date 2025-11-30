@@ -35,12 +35,12 @@ class TestGetInstanceDetails:
         ):
             mock_ec2 = MagicMock()
             details = _get_instance_details(mock_ec2, "i-123", "us-east-1")
-            assert details["state"] == "running"
-            assert details["public_ip"] == "1.2.3.4"
-            assert details["vpc_id"] == "vpc-123"
-            assert details["subnet_id"] == "subnet-123"
-            assert details["security_groups"] == ["sg-123", "sg-456"]
-            assert details["current_eni_id"] == "eni-123"
+            assert details.state == "running"
+            assert details.public_ip == "1.2.3.4"
+            assert details.vpc_id == "vpc-123"
+            assert details.subnet_id == "subnet-123"
+            assert details.security_groups == ["sg-123", "sg-456"]
+            assert details.current_eni_id == "eni-123"
         captured = capsys.readouterr()
         assert "Getting instance details" in captured.out
 
@@ -58,8 +58,8 @@ class TestGetInstanceDetails:
             return_value=mock_instance,
         ):
             details = _get_instance_details(MagicMock(), "i-123", "us-east-1")
-            assert details["state"] == "stopped"
-            assert details["public_ip"] is None
+            assert details.state == "stopped"
+            assert details.public_ip is None
         captured = capsys.readouterr()
         assert "stopped" in captured.out
 
@@ -77,7 +77,7 @@ class TestGetInstanceDetails:
             return_value=mock_instance,
         ):
             details = _get_instance_details(MagicMock(), "i-123", "us-east-1")
-            assert details["public_ip"] is None
+            assert details.public_ip is None
 
 
 class TestStopInstance:

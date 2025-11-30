@@ -14,7 +14,7 @@ from duplicate_tree.analysis import (
     cache_key,
     clusters_to_rows,
 )
-from duplicate_tree_core import DuplicateCluster
+from duplicate_tree.core import DuplicateCluster
 
 CACHE_TABLE_SQL = """
 CREATE TABLE IF NOT EXISTS duplicate_tree_cache (
@@ -70,12 +70,11 @@ def load_cached_report(
                 "rows": rows,
                 "total_files": str(row["total_files"]),
             }
-        except json.JSONDecodeError:
-            return {
-                "generated_at": row["generated_at"],
-                "report": payload,
-                "total_files": str(row["total_files"]),
-            }
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(
+                f"Cached report has corrupted JSON payload. "
+                f"Clear cache and rescan. Generated at: {row['generated_at']}"
+            ) from exc
     finally:
         conn.close()
 

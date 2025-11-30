@@ -33,6 +33,7 @@ import migrate_v2_smoke as smoke_tests
 from migration_orchestrator import (
     BucketMigrationOrchestrator,
     BucketMigrator,
+    MigrationFatalError,
     StatusReporter,
 )
 from migration_scanner import BucketScanner, GlacierRestorer, GlacierWaiter
@@ -171,7 +172,10 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         print()
         if shutil.which("aws") is None:
             print("✗ AWS CLI not found on PATH. Install AWS CLI v2 and retry.")
-            print("Download: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html")
+            print(
+                "Download: https://docs.aws.amazon.com/cli/latest/userguide/"
+                "getting-started-install.html"
+            )
             sys.exit(1)
         self.drive_checker.check_available()
         current_phase = self.state.get_current_phase()
@@ -191,7 +195,10 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
             self.glacier_waiter.wait_for_restores()
             current_phase = Phase.SYNCING
         if current_phase in {Phase.SYNCING, Phase.VERIFYING, Phase.DELETING}:
-            self.migration_orchestrator.migrate_all_buckets()
+            try:
+                self.migration_orchestrator.migrate_all_buckets()
+            except MigrationFatalError:
+                sys.exit(1)
             current_phase = self.state.get_current_phase()
         if current_phase == Phase.COMPLETE:
             self._print_completion_message()

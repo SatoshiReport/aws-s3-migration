@@ -136,14 +136,14 @@ def _process_delete_page(
 def _delete_page_objects(s3, bucket: str, objects_to_delete: List[dict]) -> List[dict]:
     """Issue a bulk delete for the provided objects and return any errors."""
     response = s3.delete_objects(Bucket=bucket, Delete={"Objects": objects_to_delete})
-    response_errors = response.get("Errors", []) if hasattr(response, "get") else []
+    response_errors = response.get("Errors", [])
     errors = _ensure_list(response_errors)
     if errors:
         print("\n  Encountered delete errors:")
         for error in errors:
             print(
-                f"    Key={error.get('Key')} VersionId={error.get('VersionId')} "
-                f"Code={error.get('Code')} Message={error.get('Message')}"
+                f"    Key={error['Key']} VersionId={error['VersionId']} "
+                f"Code={error['Code']} Message={error['Message']}"
             )
     return errors
 

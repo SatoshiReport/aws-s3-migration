@@ -51,9 +51,14 @@ def test_run_audit_script_success(capsys, tmp_path):
     """Test _run_audit_script with successful execution."""
     script_path = tmp_path / "test_script.py"
     script_path.write_text(
-        "def main(_argv=None):\n"
-        "    print('Total: 10 items')\n"
-        "    print('Found 5 volumes')\n"
+        "\n".join(
+            [
+                "def main(_argv=None):",
+                "    print('Total: 10 items')",
+                "    print('Found 5 volumes')",
+                "",
+            ]
+        )
     )
 
     _run_audit_script("Test Audit", str(script_path))
@@ -91,9 +96,10 @@ def test_run_audit_script_client_error(capsys, tmp_path):
     script_path = tmp_path / "test_script.py"
     script_path.write_text("print('test')")
 
-    with patch(
-        "cost_toolkit.overview.audit.importlib.util.spec_from_file_location"
-    ) as mock_spec, patch("cost_toolkit.overview.audit.importlib.util.module_from_spec") as mock_mod:
+    with (
+        patch("cost_toolkit.overview.audit.importlib.util.spec_from_file_location") as mock_spec,
+        patch("cost_toolkit.overview.audit.importlib.util.module_from_spec") as mock_mod,
+    ):
         mock_spec.return_value = MagicMock(loader=MagicMock())
         mock_module = MagicMock()
         mock_module.main.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")

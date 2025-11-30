@@ -12,7 +12,7 @@ from duplicate_tree.cache import (
     load_cached_report,
     store_cached_report,
 )
-from duplicate_tree_core import DuplicateCluster
+from duplicate_tree.core import DuplicateCluster
 from duplicate_tree_models import DirectoryNode
 
 

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.aws_test_constants import DEFAULT_TEST_REGIONS
 from cost_toolkit.scripts.cleanup.aws_lambda_cleanup import delete_lambda_functions
 
 
@@ -36,7 +37,9 @@ def test_delete_lambda_functions_removes_all(capsys):
             delete_lambda_functions()
     assert mock_lambda.delete_function.call_count == 9
     captured = capsys.readouterr()
-    assert "Total Lambda functions deleted: 9" in captured.out
+    functions_per_region = len(mock_lambda.list_functions.return_value["Functions"])
+    expected_total = len(DEFAULT_TEST_REGIONS) * functions_per_region
+    assert f"Total Lambda functions deleted: {expected_total}" in captured.out
 
 
 def test_delete_lambda_functions_handles_empty_account(capsys):

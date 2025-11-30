@@ -167,7 +167,9 @@ def _calculate_ebs_savings(name):
         "Model": 5.12,
         "mufasa": 0.64,
     }
-    return savings_map.get(name, 0)
+    if name not in savings_map:
+        return 0
+    return savings_map[name]
 
 
 def _terminate_instances(instances_to_terminate):

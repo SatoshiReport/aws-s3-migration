@@ -18,8 +18,9 @@ from tests.assertions import assert_equal
 
 # Tests for get_all_regions
 @patch("cost_toolkit.common.aws_common.create_ec2_client")
-def test_get_all_regions_success(mock_create_client):
+def test_get_all_regions_success(mock_create_client, monkeypatch):
     """Test get_all_regions returns list of regions from API."""
+    monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
     mock_ec2 = MagicMock()
     mock_create_client.return_value = mock_ec2
     mock_ec2.describe_regions.return_value = {
@@ -42,8 +43,9 @@ def test_get_all_regions_success(mock_create_client):
 
 
 @patch("cost_toolkit.common.aws_common.create_ec2_client")
-def test_get_all_regions_with_credentials(mock_create_client):
+def test_get_all_regions_with_credentials(mock_create_client, monkeypatch):
     """Test get_all_regions passes credentials to client factory."""
+    monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
     mock_ec2 = MagicMock()
     mock_create_client.return_value = mock_ec2
     mock_ec2.describe_regions.return_value = {"Regions": [{"RegionName": "us-east-1"}]}
@@ -59,8 +61,9 @@ def test_get_all_regions_with_credentials(mock_create_client):
 
 
 @patch("cost_toolkit.common.aws_common.create_ec2_client")
-def test_get_all_regions_client_error(mock_create_client):
+def test_get_all_regions_client_error(mock_create_client, monkeypatch):
     """Test get_all_regions surfaces API failures."""
+    monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
     mock_ec2 = MagicMock()
     mock_create_client.return_value = mock_ec2
     mock_ec2.describe_regions.side_effect = ClientError(

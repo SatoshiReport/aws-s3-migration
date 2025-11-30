@@ -17,12 +17,12 @@ from cost_toolkit.scripts.audit.aws_backup_audit import (
     _display_single_job,
     _display_single_schedule,
     _display_snapshot_pattern,
-    _is_snapshot_related_rule,
 )
 
 
-def test_get_all_aws_regions_get_regions_success():
+def test_get_all_aws_regions_get_regions_success(monkeypatch):
     """Test successful retrieval of all regions."""
+    monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
         mock_ec2.describe_regions.return_value = {
@@ -159,46 +159,6 @@ def test_display_single_schedule_display_schedule(capsys):
     assert "Schedule: daily-schedule" in captured.out
     assert "Frequency: Every 1 days" in captured.out
     assert "Retention: 7 snapshots" in captured.out
-
-
-class TestIsSnapshotRelatedRule:
-    """Tests for _is_snapshot_related_rule function."""
-
-    def test_snapshot_in_name(self):
-        """Test rule with snapshot in name."""
-        rule = {
-            "Name": "daily-snapshot-rule",
-            "Description": "Creates daily snapshots",
-        }
-
-        assert _is_snapshot_related_rule(rule) is True
-
-    def test_ami_in_description(self):
-        """Test rule with AMI in description."""
-        rule = {
-            "Name": "nightly-rule",
-            "Description": "Create AMI backup nightly",
-        }
-
-        assert _is_snapshot_related_rule(rule) is True
-
-    def test_backup_in_name(self):
-        """Test rule with backup in name."""
-        rule = {
-            "Name": "backup-rule",
-            "Description": "Regular backup",
-        }
-
-        assert _is_snapshot_related_rule(rule) is True
-
-    def test_not_snapshot_related(self):
-        """Test rule not related to snapshots."""
-        rule = {
-            "Name": "monitoring-rule",
-            "Description": "Monitoring alerts",
-        }
-
-        assert _is_snapshot_related_rule(rule) is False
 
 
 class TestDisplayBackupJobs:

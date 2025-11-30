@@ -111,7 +111,8 @@ def audit_s3_comprehensive():
     print()
 
     try:
-        buckets = boto3.client("s3").list_buckets().get("Buckets", [])
+        response = boto3.client("s3").list_buckets()
+        buckets = response.get("Buckets", [])
 
         if not buckets:
             print("✅ No S3 buckets found in your account")

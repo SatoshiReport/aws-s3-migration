@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from cost_toolkit.scripts.rds.db_inspection_common import (
     analyze_tables,
     get_database_size,
@@ -359,8 +361,6 @@ class TestAnalyzeTables:
 
     def test_analyze_tables_with_errors(self):
         """Test analyzing tables with errors."""
-        import pytest
-
         mock_cursor = MagicMock()
         mock_cursor.fetchone.side_effect = Exception("Connection lost")
 

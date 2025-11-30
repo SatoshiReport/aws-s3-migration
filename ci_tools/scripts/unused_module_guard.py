@@ -66,9 +66,20 @@ class GuardModule(Protocol):
         raise NotImplementedError
 
 
+class CISharedRootNotConfiguredError(RuntimeError):
+    """Raised when CI_SHARED_ROOT is not set."""
+
+
 def _load_shared_guard() -> GuardModule:
     """Load the canonical unused_module_guard implementation."""
-    shared_root = Path(os.environ.get("CI_SHARED_ROOT", Path.home() / "ci_shared"))
+    ci_shared_root_env = os.environ.get("CI_SHARED_ROOT")
+    if not ci_shared_root_env:
+        raise CISharedRootNotConfiguredError(
+            "CI_SHARED_ROOT environment variable is required. "
+            "Set it to the path of your ci_shared repository clone."
+        )
+
+    shared_root = Path(ci_shared_root_env)
     shared_guard = shared_root / "ci_tools" / "scripts" / "unused_module_guard.py"
     if not shared_guard.exists():
         raise SharedGuardMissingError(shared_guard)
@@ -84,14 +95,23 @@ def _load_shared_guard() -> GuardModule:
 
 
 def _load_config() -> tuple[list[str], list[str], list[str]]:
-    """Load repo-specific config providing excludes and allow-lists."""
+    """Load repo-specific config providing excludes and allow-lists.
+
+    Returns empty lists for each config key if the config file does not exist.
+    Raises if the file exists but cannot be read or parsed.
+    """
     if not _CONFIG_FILE.exists():
         return [], [], []
 
     try:
-        data = json.loads(_CONFIG_FILE.read_text())
-    except (OSError, json.JSONDecodeError):
-        return [], [], []
+        raw = _CONFIG_FILE.read_text()
+    except OSError as exc:
+        raise RuntimeError(f"Unable to read unused_module_guard config {_CONFIG_FILE}") from exc
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"Invalid JSON in {_CONFIG_FILE}") from exc
 
     excludes = [str(pattern) for pattern in data.get("exclude_patterns", [])]
     allow_list = [str(pattern) for pattern in data.get("suspicious_allow_patterns", [])]
@@ -114,6 +134,63 @@ def _matches_duplicate_exclude(file_path: object, patterns: Sequence[str]) -> bo
     return False
 
 
+def _update_suspicious_patterns(guard: GuardModule, allowed_patterns: Sequence[str]) -> None:
+    if not allowed_patterns:
+        return
+    suspicious_patterns = getattr(guard, "SUSPICIOUS_PATTERNS", None)
+    if suspicious_patterns is None:
+        print(
+            "⚠️  Shared unused_module_guard missing SUSPICIOUS_PATTERNS; "
+            "allowed_patterns override skipped.",
+            file=sys.stderr,
+        )
+        guard.SUSPICIOUS_PATTERNS = tuple()
+        return
+    guard.SUSPICIOUS_PATTERNS = tuple(
+        pattern for pattern in suspicious_patterns if pattern not in allowed_patterns
+    )
+
+
+def _wrap_find_unused(guard: GuardModule, extra_excludes: Sequence[str]) -> None:
+    if not extra_excludes:
+        return
+    original_find_unused = guard.find_unused_modules
+
+    def find_unused_with_config(root, exclude_patterns=None):
+        combined = list(exclude_patterns or [])
+        combined.extend(extra_excludes)
+        result = original_find_unused(root, exclude_patterns=combined)
+        if hasattr(guard, "LAST_EXCLUDES"):
+            guard.LAST_EXCLUDES = combined  # type: ignore[attr-defined]
+        return result
+
+    guard.find_unused_modules = find_unused_with_config  # type: ignore[assignment]
+
+
+def _wrap_duplicate_detection(
+    guard: GuardModule, extra_excludes: Sequence[str], duplicate_excludes: Sequence[str]
+) -> None:
+    combined_duplicate_excludes = list(
+        dict.fromkeys([p for p in [*extra_excludes, *duplicate_excludes] if p])
+    )
+    if not combined_duplicate_excludes:
+        return
+    original_find_duplicates = getattr(guard, "find_suspicious_duplicates", None)
+    if original_find_duplicates is None:
+        return
+
+    def find_duplicates_with_config(root):
+        results = original_find_duplicates(root)
+        return [
+            (file_path, reason)
+            for file_path, reason in results
+            if not _matches_duplicate_exclude(file_path, combined_duplicate_excludes)
+        ]
+
+    # type: ignore[assignment]
+    guard.find_suspicious_duplicates = find_duplicates_with_config
+
+
 def _apply_config_overrides(
     guard: GuardModule,
     extra_excludes: Sequence[str],
@@ -121,51 +198,9 @@ def _apply_config_overrides(
     duplicate_excludes: Sequence[str],
 ) -> None:
     """Patch the shared guard module with repo-specific behavior."""
-    suspicious_patterns = getattr(guard, "SUSPICIOUS_PATTERNS", None)
-    if allowed_patterns and suspicious_patterns is not None:
-        guard.SUSPICIOUS_PATTERNS = tuple(
-            pattern for pattern in suspicious_patterns if pattern not in allowed_patterns
-        )
-    elif allowed_patterns and suspicious_patterns is None:
-        print(
-            "⚠️  Shared unused_module_guard missing SUSPICIOUS_PATTERNS; "
-            "allowed_patterns override skipped.",
-            file=sys.stderr,
-        )
-        guard.SUSPICIOUS_PATTERNS = tuple()
-
-    if extra_excludes:
-        original_find_unused = guard.find_unused_modules
-
-        def find_unused_with_config(root, exclude_patterns=None):
-            combined = list(exclude_patterns or [])
-            combined.extend(extra_excludes)
-            result = original_find_unused(root, exclude_patterns=combined)
-            # Ensure LAST_EXCLUDES is updated in the shared module
-            if hasattr(guard, "LAST_EXCLUDES"):
-                guard.LAST_EXCLUDES = combined  # type: ignore[attr-defined]
-            return result
-
-        guard.find_unused_modules = find_unused_with_config  # type: ignore[assignment]
-
-    combined_duplicate_excludes = list(
-        dict.fromkeys([p for p in [*extra_excludes, *duplicate_excludes] if p])
-    )
-    if combined_duplicate_excludes:
-        original_find_duplicates = getattr(guard, "find_suspicious_duplicates", None)
-
-        if original_find_duplicates is not None:
-
-            def find_duplicates_with_config(root):
-                results = original_find_duplicates(root)
-                return [
-                    (file_path, reason)
-                    for file_path, reason in results
-                    if not _matches_duplicate_exclude(file_path, combined_duplicate_excludes)
-                ]
-
-            # type: ignore[assignment]
-            guard.find_suspicious_duplicates = find_duplicates_with_config
+    _update_suspicious_patterns(guard, allowed_patterns)
+    _wrap_find_unused(guard, extra_excludes)
+    _wrap_duplicate_detection(guard, extra_excludes, duplicate_excludes)
 
 
 def _bootstrap() -> Callable[[], int]:

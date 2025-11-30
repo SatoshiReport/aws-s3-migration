@@ -14,7 +14,9 @@ from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.common.credential_utils import setup_aws_credentials
-from cost_toolkit.scripts.aws_ec2_operations import delete_security_group as delete_security_group_canonical
+from cost_toolkit.scripts.aws_ec2_operations import (
+    delete_security_group as delete_security_group_canonical,
+)
 
 # Unused security groups identified in the audit
 UNUSED_SECURITY_GROUPS = [
@@ -99,17 +101,6 @@ EMPTY_VPCS = [
 ]
 
 
-def delete_security_group(ec2_client, group_id, group_name, region):
-    """
-    Delete a specific security group.
-    """
-    return delete_security_group_canonical(
-        region=region,
-        group_id=group_id,
-        group_name=group_name,
-        ec2_client=ec2_client,
-    )
-
 
 def print_cleanup_intro():
     """Print introduction and warning messages for the cleanup operation"""
@@ -154,7 +145,12 @@ def clean_security_groups(aws_access_key_id, aws_secret_access_key):
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        if delete_security_group(ec2_client, group_id, group_name, region):
+        if delete_security_group_canonical(
+            region=region,
+            group_id=group_id,
+            group_name=group_name,
+            ec2_client=ec2_client,
+        ):
             successful_deletions += 1
         else:
             failed_deletions += 1

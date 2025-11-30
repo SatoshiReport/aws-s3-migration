@@ -18,6 +18,7 @@ from tests.assertions import assert_equal
 Category = categories.Category
 Candidate = core_scanner.Candidate
 CacheConfig = db_loader.CacheConfig
+CacheWriteError = db_loader.CacheWriteError
 DatabaseInfo = db_loader.DatabaseInfo
 ScanContext = db_loader.ScanContext
 _try_load_from_cache = db_loader._try_load_from_cache  # pylint: disable=protected-access
@@ -363,8 +364,6 @@ def test_write_cache_if_needed_success(tmp_path):
 
 def test_write_cache_if_needed_handles_oserror(tmp_path):
     """Test write_cache_if_needed raises CacheWriteError on OSError."""
-    from cleanup_temp_artifacts.db_loader import CacheWriteError
-
     cache_config = CacheConfig(
         enabled=True,
         cache_dir=tmp_path / "cache",

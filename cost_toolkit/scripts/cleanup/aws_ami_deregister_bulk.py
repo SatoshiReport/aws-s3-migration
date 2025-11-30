@@ -10,7 +10,7 @@ import sys
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
-from cost_toolkit.common.cli_utils import confirm_action
+from cost_toolkit.common.confirmation_prompts import confirm_deregistration
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 
@@ -99,14 +99,6 @@ def print_deregistration_warning(amis_to_deregister):
     print("   - Associated snapshots can then be deleted for cost savings")
     print(f"   - Total potential monthly savings: ${total_potential_savings:.2f}")
     print()
-
-
-def confirm_deregistration():
-    """Prompt user for deregistration confirmation. Delegates to canonical implementation."""
-    return confirm_action(
-        "Type 'DEREGISTER ALL AMIS' to confirm bulk deregistration: ",
-        exact_match="DEREGISTER ALL AMIS",
-    )
 
 
 def process_ami_deregistrations(amis_to_deregister, aws_access_key_id, aws_secret_access_key):

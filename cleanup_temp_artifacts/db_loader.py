@@ -70,8 +70,8 @@ def _get_db_file_stats(conn: sqlite3.Connection) -> tuple[int, int]:
     try:
         max_rowid_row = conn.execute("SELECT MAX(rowid) FROM files").fetchone()
         max_rowid = max_rowid_row[0] if max_rowid_row and max_rowid_row[0] is not None else 0
-    except sqlite3.OperationalError:
-        max_rowid = total_files
+    except sqlite3.OperationalError as exc:
+        raise CandidateLoadError("Migration database missing expected 'rowid' column") from exc
 
     return total_files, max_rowid
 
@@ -110,7 +110,9 @@ def _try_load_from_cache(
     if not is_valid:
         return cache_path, False, None
 
-    generated = metadata.get("generated_at", "unknown time")
+    if "generated_at" not in metadata:
+        raise CacheValidationError("Cache metadata missing generated_at timestamp")
+    generated = metadata["generated_at"]
     print(
         f"Using cached results from {generated} "
         f"(files={db_info.total_files:,}). Use --refresh-cache to rescan.\n"

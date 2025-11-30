@@ -9,16 +9,25 @@ from datetime import datetime, timezone
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
+from cost_toolkit.common.aws_common import get_all_aws_regions
 from cost_toolkit.common.backup_utils import check_aws_backup_plans as get_backup_plans
 from cost_toolkit.common.backup_utils import (
     check_dlm_lifecycle_policies,
     check_eventbridge_scheduled_rules,
+    is_backup_related_rule,
 )
 from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 # Constants
 SNAPSHOT_ANALYSIS_DAYS = 30
+
+
+def _require_field(payload: dict, field: str, context: str):
+    """Raise if an expected field is missing."""
+    if field not in payload:
+        raise RuntimeError(f"{context} missing required field '{field}'")
+    return payload[field]
 
 
 def _display_backup_plan(backup_client, plan):
@@ -32,7 +41,10 @@ def _display_backup_plan(backup_client, plan):
 
     try:
         plan_details = backup_client.get_backup_plan(BackupPlanId=plan_id)
-        rules = plan_details["BackupPlan"].get("Rules", [])
+        backup_plan = plan_details["BackupPlan"]
+        if "Rules" not in backup_plan:
+            raise RuntimeError("Backup plan missing Rules payload")
+        rules = backup_plan["Rules"]
         _display_backup_rules(rules)
     except ClientError as e:
         print(f"    Error getting plan details: {e}")
@@ -41,13 +53,13 @@ def _display_backup_plan(backup_client, plan):
 def _display_backup_rules(rules):
     """Display backup plan rules."""
     for rule in rules:
-        rule_name = rule["RuleName"]
+        rule_name = rule.get("RuleName", "<Unnamed Rule>")
         schedule = rule.get("ScheduleExpression", "No schedule")
-        lifecycle = rule.get("Lifecycle", {})
+        lifecycle = rule.get("Lifecycle")
 
         print(f"    Rule: {rule_name}")
         print(f"      Schedule: {schedule}")
-        if lifecycle:
+        if lifecycle is not None:
             print(f"      Lifecycle: {lifecycle}")
         print()
 
@@ -56,7 +68,7 @@ def _display_backup_jobs(backup_client, region):
     """Display recent backup jobs."""
     try:
         jobs_response = backup_client.list_backup_jobs(MaxResults=10)
-        backup_jobs = jobs_response.get("BackupJobs", [])
+        backup_jobs = _require_field(jobs_response, "BackupJobs", "Backup jobs response")
 
         if backup_jobs:
             print(f"📋 Recent Backup Jobs in {region}:")
@@ -69,12 +81,13 @@ def _display_backup_jobs(backup_client, region):
 def _display_single_job(job):
     """Display details for a single backup job."""
     job_id = job["BackupJobId"]
-    resource_arn = job.get("ResourceArn", "Unknown")
-    state = job["State"]
-    creation_date = job["CreationDate"]
+    resource_arn = job.get("ResourceArn")
+    state = _require_field(job, "State", "Backup job")
+    creation_date = _require_field(job, "CreationDate", "Backup job")
 
     print(f"  Job: {job_id}")
-    print(f"    Resource: {resource_arn}")
+    if resource_arn:
+        print(f"    Resource: {resource_arn}")
     print(f"    State: {state}")
     print(f"    Created: {creation_date}")
     print()
@@ -105,7 +118,12 @@ def _display_policy_schedules(dlm_client, policy_id):
         policy_details = dlm_client.get_lifecycle_policy(PolicyId=policy_id)
         policy_detail = policy_details["Policy"]
 
-        schedules = policy_detail.get("PolicyDetails", {}).get("Schedules", [])
+        policy_details_section = _require_field(
+            policy_detail, "PolicyDetails", "Lifecycle policy details"
+        )
+        schedules = _require_field(
+            policy_details_section, "Schedules", "Lifecycle policy schedules"
+        )
         for schedule in schedules:
             _display_single_schedule(schedule)
     except ClientError as e:
@@ -114,17 +132,17 @@ def _display_policy_schedules(dlm_client, policy_id):
 
 def _display_single_schedule(schedule):
     """Display a single policy schedule."""
-    name = schedule.get("Name", "Unnamed")
-    create_rule = schedule.get("CreateRule", {})
-    interval = create_rule.get("Interval", "Unknown")
-    interval_unit = create_rule.get("IntervalUnit", "")
+    name = _require_field(schedule, "Name", "Lifecycle schedule")
+    create_rule = _require_field(schedule, "CreateRule", "Lifecycle schedule")
+    interval = _require_field(create_rule, "Interval", "Lifecycle schedule create rule")
+    interval_unit = _require_field(create_rule, "IntervalUnit", "Lifecycle schedule create rule")
 
     print(f"    Schedule: {name}")
     print(f"      Frequency: Every {interval} {interval_unit}")
 
-    retain_rule = schedule.get("RetainRule", {})
-    if retain_rule:
-        count = retain_rule.get("Count", "Unknown")
+    retain_rule = schedule.get("RetainRule")
+    if retain_rule is not None:
+        count = _require_field(retain_rule, "Count", "Lifecycle retain rule")
         print(f"      Retention: {count} snapshots")
     print()
 
@@ -139,7 +157,7 @@ def check_data_lifecycle_manager(region):
             print(f"📅 Data Lifecycle Manager Policies in {region}:")
             for policy in policies:
                 policy_id = policy["PolicyId"]
-                description = policy.get("Description", "No description")
+                description = policy.get("Description")
                 state = policy["State"]
 
                 print(f"  Policy: {policy_id}")
@@ -154,21 +172,11 @@ def check_data_lifecycle_manager(region):
             print(f"  Error checking DLM in {region}: {e}")
 
 
-def _is_snapshot_related_rule(rule):
-    """Check if an EventBridge rule is related to snapshots/AMIs."""
-    rule_name = rule["Name"]
-    description = rule.get("Description", "")
-    return any(
-        keyword in rule_name.lower() or keyword in description.lower()
-        for keyword in ["snapshot", "ami", "backup", "image"]
-    )
-
-
 def _display_rule_details(events_client, rule):
     """Display details for a single EventBridge rule."""
     rule_name = rule["Name"]
-    description = rule.get("Description", "No description")
-    state = rule["State"]
+    description = rule.get("Description")
+    state = _require_field(rule, "State", "EventBridge rule")
     schedule = rule.get("ScheduleExpression", "Event-driven")
 
     print(f"  Rule: {rule_name}")
@@ -179,7 +187,7 @@ def _display_rule_details(events_client, rule):
     # Get targets
     try:
         targets_response = events_client.list_targets_by_rule(Rule=rule_name)
-        targets = targets_response.get("Targets", [])
+        targets = _require_field(targets_response, "Targets", "EventBridge targets response")
 
         for target in targets:
             target_arn = target["Arn"]
@@ -196,7 +204,7 @@ def check_scheduled_events(region):
 
     if rules:
         events_client = create_client("events", region=region)
-        snapshot_rules = [rule for rule in rules if _is_snapshot_related_rule(rule)]
+        snapshot_rules = [rule for rule in rules if is_backup_related_rule(rule)]
 
         if snapshot_rules:
             print(f"⏰ EventBridge Rules (Snapshot/AMI related) in {region}:")
@@ -206,10 +214,10 @@ def check_scheduled_events(region):
 
 def _categorize_snapshot(snapshot):
     """Categorize a snapshot by its creation pattern."""
-    description = snapshot.get("Description", "")
+    description = _require_field(snapshot, "Description", "Snapshot")
     snapshot_id = snapshot["SnapshotId"]
     start_time = snapshot["StartTime"]
-    size = snapshot.get("VolumeSize", 0)
+    size = _require_field(snapshot, "VolumeSize", "Snapshot")
 
     if "CreateImage" in description:
         pattern = "AMI Creation (CreateImage)"
@@ -254,7 +262,7 @@ def analyze_recent_snapshots(region):
         ec2_client = create_client("ec2", region=region)
 
         snapshots_response = ec2_client.describe_snapshots(OwnerIds=["self"], MaxResults=50)
-        snapshots = snapshots_response.get("Snapshots", [])
+        snapshots = _require_field(snapshots_response, "Snapshots", "Snapshots response")
 
         now = datetime.now(timezone.utc)
         recent_snapshots = [
@@ -287,10 +295,10 @@ def main():
     print("Checking for automated backup services and snapshot creation...")
     print()
 
-    # Focus on regions where we have resources
-    priority_regions = ["eu-west-2", "us-east-2", "us-east-1"]
+    # Check all regions
+    regions = get_all_aws_regions()
 
-    for region in priority_regions:
+    for region in regions:
         print(f"🔍 Auditing {region}")
         print("=" * 80)
 

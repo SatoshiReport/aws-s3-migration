@@ -22,7 +22,7 @@ def _get_domain_annual_cost(domain_name):
 def _process_single_domain(route53domains, domain):
     """Process a single domain and return its details."""
     domain_name = domain.get("DomainName", "")
-    expiry = domain.get("Expiry")
+    expiry = domain.get("Expiry", None)
     auto_renew = domain.get("AutoRenew", False)
 
     print(f"Domain: {domain_name}")
@@ -39,7 +39,8 @@ def _process_single_domain(route53domains, domain):
         print(f"  Status: {', '.join(status) if status else 'Unknown'}")
         print("  Nameservers:")
         for ns in nameservers:
-            print(f"    {ns.get('Name', '')}")
+            ns_name = ns.get("Name", "")
+            print(f"    {ns_name}")
 
         annual_cost = _get_domain_annual_cost(domain_name)
         print(f"  Estimated annual cost: ${annual_cost:.2f}")
@@ -67,7 +68,8 @@ def check_route53_registered_domains():
 
     try:
         route53domains = boto3.client("route53domains", region_name="us-east-1")
-        domains = route53domains.list_domains().get("Domains", [])
+        domains_response = route53domains.list_domains()
+        domains = domains_response.get("Domains", [])
 
         if not domains:
             print("✅ No domains registered through Route 53")
@@ -112,7 +114,8 @@ def check_current_hosted_zones():
         for zone in hosted_zones:
             zone_id = zone["Id"].split("/")[-1]  # Remove /hostedzone/ prefix
             zone_name = zone["Name"]
-            is_private = zone.get("Config", {}).get("PrivateZone", False)
+            config = zone.get("Config", {})
+            is_private = config.get("PrivateZone", False)
             record_count = zone.get("ResourceRecordSetCount", 0)
 
             print(f"Hosted Zone: {zone_name}")

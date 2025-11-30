@@ -1,13 +1,39 @@
 """Orchestration components: Managing bucket migration and status reporting"""
 
-import sys
 from pathlib import Path
 
 from cost_toolkit.common.format_utils import format_bytes
 from migration_state_v2 import MigrationStateV2, Phase
 from migration_sync import BucketSyncer
 from migration_utils import print_verification_success_messages
-from migration_verify import BucketDeleter, BucketVerifier
+from migration_verify_bucket import BucketVerifier
+from migration_verify_delete import BucketDeleter
+
+
+class MigrationFatalError(Exception):
+    """Fatal error that stops the migration process."""
+
+
+def _require_bucket_fields(bucket: str, bucket_info: dict) -> None:
+    """Ensure all expected status fields are present before proceeding."""
+    if bucket_info is None:
+        raise ValueError(f"Bucket '{bucket}' missing from migration state")
+
+    required_fields = (
+        "file_count",
+        "total_size",
+        "sync_complete",
+        "verify_complete",
+        "delete_complete",
+        "verified_file_count",
+        "size_verified_count",
+        "checksum_verified_count",
+        "total_bytes_verified",
+        "local_file_count",
+    )
+    missing = [field for field in required_fields if field not in bucket_info.keys()]
+    if missing:
+        raise ValueError(f"Bucket '{bucket}' state missing fields: {', '.join(missing)}")
 
 
 def show_verification_summary(bucket_info: dict):
@@ -50,7 +76,9 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
     def process_bucket(self, bucket: str):
         """Process a single bucket through sync → verify → delete pipeline"""
         bucket_info = self.state.get_bucket_info(bucket)
-        if not bucket_info.get("sync_complete", False):
+        _require_bucket_fields(bucket, bucket_info)
+
+        if not bucket_info["sync_complete"]:
             self.state.set_current_phase(Phase.SYNCING)
             print("→ Step 1/3: Syncing from S3...")
             print()
@@ -63,12 +91,11 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
             print("→ Step 1/3: Already synced ✓")
             print()
         needs_verification = (
-            not bucket_info.get("verify_complete", False)
-            or bucket_info.get("verified_file_count") is None
+            not bucket_info["verify_complete"] or bucket_info["verified_file_count"] is None
         )
         if needs_verification:
             self.state.set_current_phase(Phase.VERIFYING)
-            if bucket_info.get("verify_complete", False):
+            if bucket_info["verify_complete"]:
                 print("→ Step 2/3: Re-verifying to compute detailed stats...")
             else:
                 print("→ Step 2/3: Verifying local files...")
@@ -88,8 +115,9 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
         else:
             print("→ Step 2/3: Already verified ✓")
             print()
-        if not bucket_info.get("delete_complete", False):
+        if not bucket_info["delete_complete"]:
             bucket_info = self.state.get_bucket_info(bucket)
+            _require_bucket_fields(bucket, bucket_info)
             self.state.set_current_phase(Phase.DELETING)
             print("→ Step 3/3: Delete from S3")
             print()
@@ -139,7 +167,7 @@ def handle_drive_error(error):
     print("State has been saved. When you reconnect the drive,")
     print("run 'python migrate_v2.py' to resume.")
     print("=" * 70)
-    sys.exit(1)
+    raise MigrationFatalError(f"Drive error: {error}")
 
 
 def handle_migration_error(bucket, error):
@@ -156,7 +184,7 @@ def handle_migration_error(bucket, error):
     print("State has been saved.")
     print("Fix the issue and run 'python migrate_v2.py' to resume.")
     print("=" * 70)
-    sys.exit(1)
+    raise MigrationFatalError(f"Migration error: {error}")
 
 
 class StatusReporter:  # pylint: disable=too-few-public-methods

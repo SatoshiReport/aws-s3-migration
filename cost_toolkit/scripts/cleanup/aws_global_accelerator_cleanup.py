@@ -4,7 +4,7 @@ AWS Global Accelerator Cleanup Script
 Disables and deletes all Global Accelerator resources to eliminate charges.
 """
 
-import time
+from threading import Event
 
 import boto3
 from botocore.exceptions import ClientError
@@ -12,6 +12,7 @@ from botocore.exceptions import ClientError
 from ..aws_utils import setup_aws_credentials
 
 MAX_ACCELERATOR_WAIT_SECONDS = 600
+_WAIT_EVENT = Event()
 
 
 def _get_ga_client():
@@ -65,7 +66,7 @@ def disable_accelerator(accelerator_arn):
                 print("  ✅ Accelerator is disabled and ready for deletion")
                 return True
 
-            time.sleep(wait_interval)
+            _WAIT_EVENT.wait(wait_interval)
             elapsed_time += wait_interval
 
         print("  ⚠️ Timeout waiting for accelerator to reach stable state")
@@ -100,7 +101,7 @@ def delete_listeners(accelerator_arn):
                 client.delete_endpoint_group(EndpointGroupArn=eg_arn)
 
                 # Wait for endpoint group deletion
-                time.sleep(5)
+                _WAIT_EVENT.wait(5)
 
             # Delete listener
             client.delete_listener(ListenerArn=listener_arn)

@@ -72,7 +72,6 @@ python migrate_v2.py status
 | `GLACIER_RESTORE_TIER` | Restore tier (`Expedited`, `Standard`, or `Bulk`; auto-adjusted for Deep Archive) |
 | `MAX_GLACIER_RESTORES` | Concurrency cap for restore submissions per batch |
 | `DOWNLOAD_CHUNK_SIZE` | Streaming chunk size for downloads (bytes) |
-| `MAX_CONCURRENT_DOWNLOADS` | (Legacy - not used by migrate_v2.py which uses AWS CLI) |
 | `MAX_CONCURRENT_VERIFICATIONS` | Parallel verification workers |
 | `BATCH_SIZE`, `DB_BATCH_COMMIT_SIZE` | Batch sizing for work distribution and DB commits |
 | `MULTIPART_THRESHOLD`, `MULTIPART_CHUNKSIZE`, `MAX_CONCURRENCY`, `USE_THREADS` | Transfer manager tuning parameters |

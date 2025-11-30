@@ -37,7 +37,7 @@ def get_bucket_location(
     )
 
     response = s3_client.get_bucket_location(Bucket=bucket_name)
-    location = response.get("LocationConstraint")
+    location = response.get("LocationConstraint", None)
 
     # S3 API returns None for us-east-1 buckets - this is documented AWS behavior, not a fallback
     # See: https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetBucketLocation.html

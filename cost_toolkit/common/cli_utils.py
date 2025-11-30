@@ -70,6 +70,10 @@ def create_migration_cli_parser(
     return parser
 
 
+class ConfirmationNotReceivedError(RuntimeError):
+    """Raised when confirmation input is not available (e.g., non-interactive mode)."""
+
+
 def confirm_action(message, skip_prompt=False, exact_match=None):
     """
     Prompt user to confirm an action with flexible confirmation patterns.
@@ -82,6 +86,9 @@ def confirm_action(message, skip_prompt=False, exact_match=None):
 
     Returns:
         bool: True if user confirmed or prompt was skipped, False otherwise
+
+    Raises:
+        ConfirmationNotReceivedError: If running in non-interactive mode (EOFError).
 
     Examples:
         # Simple yes/no confirmation
@@ -101,9 +108,11 @@ def confirm_action(message, skip_prompt=False, exact_match=None):
 
     try:
         response = input(message).strip()
-    except EOFError:
-        print("\nConfirmation not received.")
-        return False
+    except EOFError as exc:
+        raise ConfirmationNotReceivedError(
+            "Confirmation required but running in non-interactive mode. "
+            "Use --yes flag to skip confirmation."
+        ) from exc
 
     if exact_match is not None:
         return response == exact_match

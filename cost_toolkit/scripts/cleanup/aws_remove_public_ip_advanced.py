@@ -7,8 +7,8 @@ from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
 from cost_toolkit.scripts import aws_utils
-from cost_toolkit.scripts.cleanup import aws_remove_public_ip as basic_remove
 from cost_toolkit.scripts.aws_utils import get_instance_info
+from cost_toolkit.scripts.cleanup import aws_remove_public_ip as basic_remove
 from cost_toolkit.scripts.cleanup.public_ip_common import (
     delay,
     fetch_instance_network_details,
@@ -22,15 +22,15 @@ def _get_instance_details(_ec2, instance_id, region_name):
     details = fetch_instance_network_details(
         instance_id, region_name, instance_fetcher=get_instance_info
     )
-    if not details["network_interface_id"]:
+    if not details.current_eni_id:
         raise RuntimeError("Instance has no primary network interface; cannot remove public IP.")
 
-    print(f"  Current state: {details['state']}")
-    print(f"  Current public IP: {details['public_ip']}")
-    print(f"  VPC: {details['vpc_id']}")
-    print(f"  Subnet: {details['subnet_id']}")
-    print(f"  Security Groups: {details['security_groups']}")
-    print(f"  Current ENI: {details['current_eni_id']}")
+    print(f"  Current state: {details.state}")
+    print(f"  Current public IP: {details.public_ip}")
+    print(f"  VPC: {details.vpc_id}")
+    print(f"  Subnet: {details.subnet_id}")
+    print(f"  Security Groups: {details.security_groups}")
+    print(f"  Current ENI: {details.current_eni_id}")
 
     return details
 
@@ -93,7 +93,7 @@ def _verify_and_cleanup(ec2, instance_id, current_eni_id, region_name):
     delay(10)
 
     updated_instance = get_instance_info(instance_id, region_name)
-    new_public_ip = updated_instance.get("PublicIpAddress")
+    new_public_ip = updated_instance.get("PublicIpAddress", None)
 
     if new_public_ip:
         print(f"  ❌ Instance still has public IP: {new_public_ip}")
@@ -119,19 +119,17 @@ def remove_public_ip_by_network_interface_replacement(instance_id, region_name):
         ec2 = create_client("ec2", region=region_name)
         details = _get_instance_details(ec2, instance_id, region_name)
 
-        if not details["public_ip"]:
+        if not details.public_ip:
             print(f"✅ Instance {instance_id} already has no public IP")
             return True
 
-        _stop_instance(ec2, instance_id, details["state"])
+        _stop_instance(ec2, instance_id, details.state)
 
-        new_eni_id = _create_new_eni(
-            ec2, details["subnet_id"], details["security_groups"], instance_id
-        )
+        new_eni_id = _create_new_eni(ec2, details.subnet_id, details.security_groups, instance_id)
         if not new_eni_id:
             return False
 
-        if not _replace_eni(ec2, instance_id, details["current_eni"], new_eni_id):
+        if not _replace_eni(ec2, instance_id, details.current_eni, new_eni_id):
             try:
                 ec2.delete_network_interface(NetworkInterfaceId=new_eni_id)
             except ClientError as e:
@@ -147,7 +145,7 @@ def remove_public_ip_by_network_interface_replacement(instance_id, region_name):
             print(f"  ❌ Error starting instance: {e}")
             return False
 
-        return _verify_and_cleanup(ec2, instance_id, details["current_eni_id"], region_name)
+        return _verify_and_cleanup(ec2, instance_id, details.current_eni_id, region_name)
 
     except ClientError as e:
         print(f"❌ Error in advanced public IP removal: {e}")
@@ -187,7 +185,7 @@ def simple_stop_start_without_public_ip(instance_id, region_name):
         # Verify
         delay(10)
         updated_instance = get_instance_info(instance_id, region_name)
-        new_public_ip = updated_instance.get("PublicIpAddress")
+        new_public_ip = updated_instance.get("PublicIpAddress", None)
 
         if new_public_ip:
             print(f"  ❌ Instance still has public IP: {new_public_ip}")

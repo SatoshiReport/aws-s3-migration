@@ -74,7 +74,6 @@ BUCKET_STATUS_TABLE_SQL = """
         verify_complete BOOLEAN DEFAULT 0,
         delete_complete BOOLEAN DEFAULT 0,
         local_file_count INTEGER,
-        local_total_size INTEGER,
         verified_file_count INTEGER,
         size_verified_count INTEGER,
         checksum_verified_count INTEGER,

@@ -97,7 +97,7 @@ def delete_snapshot(
             response = client.describe_snapshots(SnapshotIds=[snapshot_id])
             snapshot = response["Snapshots"][0]
             size_gb = snapshot["VolumeSize"]
-            description = snapshot.get("Description", "No description")  # Description is optional
+            description = snapshot.get("Description", "No description")
             start_time = snapshot["StartTime"]
 
             print(f"🔍 Snapshot to delete: {snapshot_id}")
@@ -109,7 +109,7 @@ def delete_snapshot(
         client.delete_snapshot(SnapshotId=snapshot_id)
         print(f"   ✅ Successfully deleted {snapshot_id}")
     except ClientError as e:
-        error_code = e.response["Error"].get("Code") if hasattr(e, "response") else None
+        error_code = e.response["Error"]["Code"] if hasattr(e, "response") and "Code" in e.response["Error"] else None
         if error_code == "InvalidSnapshot.NotFound":
             print(f"   ℹ️  Snapshot {snapshot_id} not found in {region}")
             return False
@@ -291,7 +291,7 @@ def describe_security_groups(
         params["GroupIds"] = group_ids
 
     response = ec2_client.describe_security_groups(**params)
-    return response["SecurityGroups"]
+    return response.get("SecurityGroups", [])
 
 
 def delete_security_group(
@@ -370,7 +370,7 @@ def describe_snapshots(
         params["SnapshotIds"] = snapshot_ids
 
     response = ec2_client.describe_snapshots(**params)
-    return response["Snapshots"]
+    return response.get("Snapshots", [])
 
 
 def describe_volumes(
@@ -405,7 +405,7 @@ def describe_volumes(
         params["Filters"] = filters
 
     response = ec2_client.describe_volumes(**params)
-    return response["Volumes"]
+    return response.get("Volumes", [])
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point

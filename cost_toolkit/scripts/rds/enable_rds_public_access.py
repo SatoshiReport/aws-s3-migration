@@ -4,7 +4,7 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_rds_client
-from cost_toolkit.scripts.aws_utils import setup_aws_credentials
+from cost_toolkit.scripts.aws_utils import setup_aws_credentials, wait_for_db_instance_available
 
 
 def enable_public_access():
@@ -27,10 +27,7 @@ def enable_public_access():
         print("   This may take 2-3 minutes...")
 
         # Wait for the modification to complete
-        waiter = rds.get_waiter("db_instance_available")
-        waiter.wait(
-            DBInstanceIdentifier="simba-db-restored", WaiterConfig={"Delay": 30, "MaxAttempts": 10}
-        )
+        wait_for_db_instance_available(rds, "simba-db-restored", max_attempts=10)
 
         print("✅ RDS instance is now publicly accessible!")
         print("🔍 You can now connect to explore your data")

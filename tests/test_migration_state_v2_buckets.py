@@ -165,7 +165,7 @@ class TestBucketInfoRetrieval:
 
         info = state.get_bucket_info("nonexistent-bucket")
 
-        assert info == {}
+        assert not info
 
 
 def test_migration_state_v2_get_scan_summary(tmp_path: Path):

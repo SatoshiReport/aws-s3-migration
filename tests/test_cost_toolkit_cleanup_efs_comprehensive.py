@@ -18,7 +18,11 @@ from cost_toolkit.scripts.cleanup.aws_efs_cleanup import (
 
 @patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(0, 0))
 @patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup.aws_utils.setup_aws_credentials")
-def test_delete_efs_resources_calls_shared_setup(mock_setup, mock_process):
+@patch(
+    "cost_toolkit.scripts.cleanup.aws_efs_cleanup.get_all_aws_regions",
+    return_value=["us-east-1", "us-east-2"],
+)
+def test_delete_efs_resources_calls_shared_setup(_mock_regions, mock_setup, mock_process):
     """delete_efs_resources should load credentials once before processing regions."""
     delete_efs_resources()
     mock_setup.assert_called_once()
@@ -81,8 +85,9 @@ class TestWaitForMountTargetsDeletion:
             {"MountTargets": []},
         ]
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._WAIT_EVENT") as mock_event:
             _wait_for_mount_targets_deletion(mock_client, "fs-123")
+            assert mock_event.wait.call_count == 2
 
         captured = capsys.readouterr()
         assert "All mount targets deleted" in captured.out
@@ -96,8 +101,9 @@ class TestWaitForMountTargetsDeletion:
             {"MountTargets": []},
         ]
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._WAIT_EVENT") as mock_event:
             _wait_for_mount_targets_deletion(mock_client, "fs-123")
+            assert mock_event.wait.call_count == 3
 
         captured = capsys.readouterr()
         assert "Still waiting" in captured.out
@@ -109,9 +115,10 @@ class TestWaitForMountTargetsDeletion:
             {"Error": {"Code": "FileSystemNotFound"}}, "describe_mount_targets"
         )
 
-        with patch("time.sleep"):
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._WAIT_EVENT") as mock_event:
             # Should not raise exception
             _wait_for_mount_targets_deletion(mock_client, "fs-123")
+            mock_event.wait.assert_called_once()
 
 
 class TestDeleteSingleFilesystem:
@@ -246,7 +253,11 @@ class TestDeleteEfsResources:
         with patch(
             "cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(2, 4)
         ):
-            delete_efs_resources()
+            with patch(
+                "cost_toolkit.scripts.cleanup.aws_efs_cleanup.get_all_aws_regions",
+                return_value=["us-east-1", "us-east-2"],
+            ):
+                delete_efs_resources()
 
         captured = capsys.readouterr()
         assert "EFS Cleanup Summary" in captured.out
@@ -259,7 +270,11 @@ class TestDeleteEfsResources:
         with patch(
             "cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(0, 0)
         ):
-            delete_efs_resources()
+            with patch(
+                "cost_toolkit.scripts.cleanup.aws_efs_cleanup.get_all_aws_regions",
+                return_value=["us-east-1", "us-east-2"],
+            ):
+                delete_efs_resources()
 
         captured = capsys.readouterr()
         assert "No EFS resources were deleted" in captured.out
@@ -267,12 +282,16 @@ class TestDeleteEfsResources:
     def test_delete_resources_handles_errors(self, capsys):
         """Test error handling during resource deletion."""
         with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region") as mock_process:
-            mock_process.side_effect = [
-                (1, 2),
-                ClientError({"Error": {"Code": "AccessDenied"}}, "describe_file_systems"),
-            ]
+            with patch(
+                "cost_toolkit.scripts.cleanup.aws_efs_cleanup.get_all_aws_regions",
+                return_value=["us-east-1", "us-east-2"],
+            ):
+                mock_process.side_effect = [
+                    (1, 2),
+                    ClientError({"Error": {"Code": "AccessDenied"}}, "describe_file_systems"),
+                ]
 
-            delete_efs_resources()
+                delete_efs_resources()
 
         captured = capsys.readouterr()
         assert "Error accessing EFS" in captured.out

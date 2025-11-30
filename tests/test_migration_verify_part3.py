@@ -4,7 +4,8 @@ from unittest import mock
 
 import pytest
 
-from migration_verify import BucketDeleter, BucketVerifier
+from migration_verify_bucket import BucketVerifier
+from migration_verify_delete import BucketDeleter
 from tests.assertions import assert_equal
 
 

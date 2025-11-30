@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 
@@ -21,7 +20,7 @@ def test_compress_with_xz_success(tmp_path):
     assert compressed_path.exists()
 
 
-def test_compress_with_xz_failure(tmp_path):
+def test_compress_with_xz_failure():
     """Test compress_with_xz with compression failure."""
     with pytest.raises(SystemExit):
         compress_with_xz(Path("nonexistent.txt"))

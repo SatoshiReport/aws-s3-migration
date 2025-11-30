@@ -74,15 +74,10 @@ def test_determine_default_db_path_raises_without_config():
         assert "STATE_DB_PATH must be set" in str(exc_info.value)
 
 
-def test_default_constants_are_lazy():
-    """Test that DEFAULT_BASE_PATH and DEFAULT_DB_PATH are lazy path objects."""
-    from cleanup_temp_artifacts.config import _LazyPath  # pylint: disable=no-name-in-module
-
-    # Both are now _LazyPath objects for deferred evaluation
-    assert isinstance(DEFAULT_BASE_PATH, _LazyPath)
-    assert isinstance(DEFAULT_DB_PATH, _LazyPath)
-    # They resolve to Path when accessed - test this indirectly
-    # (actual resolution is tested elsewhere)
+def test_default_constants_resolve_paths():
+    """Test that DEFAULT_BASE_PATH and DEFAULT_DB_PATH resolve to paths."""
+    assert isinstance(DEFAULT_BASE_PATH, Path)
+    assert isinstance(DEFAULT_DB_PATH, Path)
 
 
 def test_determine_default_base_path_raises_with_none_in_config(monkeypatch):

@@ -7,18 +7,14 @@ from __future__ import annotations
 import builtins
 import hashlib
 import shutil
-import subprocess
 import tempfile
 import uuid
-from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import boto3
-
-AWS_SYNC_MIN_ARGS = 4
 
 try:
     from .migrate_v2_smoke_shared import (
@@ -45,31 +41,77 @@ def run_simulated_smoke_test(deps: SmokeTestDeps):
         _run_simulated_workflow(ctx, stats.manifest_before)
         _cleanup_simulated_data(ctx)
         _print_simulated_report(ctx, stats)
-    except Exception:  # pragma: no cover - diagnostic helper
-        ctx.should_cleanup = False
-        print("\nSmoke test failed!")
-        print(f"Temporary files retained at: {ctx.temp_dir}")
-        raise
     finally:
         ctx.restore()
+
+
+class _InMemoryBody:
+    """Minimal stream wrapper to match boto3 Body interface for tests."""
+
+    def __init__(self, data: bytes):
+        self._data = data
+
+    def iter_chunks(self, chunk_size: int = 1024 * 1024):
+        for idx in range(0, len(self._data), chunk_size):
+            yield self._data[idx : idx + chunk_size]
 
 
 class _SimulatedS3Client:
     """Minimal S3 client that serves the generated sample data."""
 
-    def __init__(self, bucket_name: str, object_entries):
+    def __init__(self, bucket_name: str, object_entries, base_path: Path):
         self.bucket_name = bucket_name
-        self.object_entries = object_entries
+        self.object_entries = {entry["Key"]: entry for entry in object_entries}
+        self.base_path = base_path
 
     def list_buckets(self):
         return {"Buckets": [{"Name": self.bucket_name}]}
 
     def get_paginator(self, operation_name: str):
         if operation_name == "list_objects_v2":
-            return _SimulatedListObjectsPaginator(self.bucket_name, self.object_entries)
+            return _SimulatedListObjectsPaginator(
+                self.bucket_name, list(self.object_entries.values())
+            )
         if operation_name in {"list_object_versions", "list_multipart_uploads"}:
             return _EmptyPaginator()
         raise NotImplementedError(f"Unsupported paginator: {operation_name}")
+
+    def get_object(self, *, Bucket: str, Key: str):  # pylint: disable=invalid-name
+        if Bucket != self.bucket_name:
+            raise RuntimeError(f"Unknown bucket {Bucket}")
+        entry = self.object_entries[Key] if Key in self.object_entries else None
+        if entry is None:
+            raise RuntimeError(f"Missing object {Key}")
+        file_path = self.base_path / Key
+        data = file_path.read_bytes()
+        return {"Body": _InMemoryBody(data), "ContentLength": len(data), "ETag": entry["ETag"]}
+
+    def delete_objects(self, *, Bucket: str, Delete: dict):  # pylint: disable=invalid-name
+        if Bucket != self.bucket_name:
+            raise RuntimeError(f"Unknown bucket {Bucket}")
+        objects_to_delete = Delete.get("Objects", [])
+        for obj in objects_to_delete:
+            key = obj["Key"]
+            self.object_entries.pop(key, None)
+            file_path = self.base_path / key
+            if file_path.exists():
+                file_path.unlink()
+        return {"Deleted": objects_to_delete}
+
+    def delete_bucket(self, *, Bucket: str):  # pylint: disable=invalid-name
+        if Bucket != self.bucket_name:
+            raise RuntimeError(f"Unknown bucket {Bucket}")
+        if self.base_path.exists():
+            shutil.rmtree(self.base_path, ignore_errors=True)
+        self.object_entries.clear()
+
+    def abort_multipart_upload(
+        self, *, Bucket: str, Key: str, UploadId: str
+    ):  # pylint: disable=invalid-name
+        if Bucket != self.bucket_name:
+            raise RuntimeError(f"Unknown bucket {Bucket}")
+        self.object_entries.pop(Key, None)
+        return {"Aborted": True, "Key": Key, "UploadId": UploadId}
 
 
 class _SimulatedListObjectsPaginator:
@@ -92,53 +134,6 @@ class _EmptyPaginator:
         yield {}
 
 
-class _Stream:
-    """Simple file-like stream for fake subprocess pipes."""
-
-    def __init__(self, lines=None):
-        if lines is None:
-            lines = []
-        self._lines = deque(lines)
-        self._buffer = "\n".join(lines)
-
-    def readline(self):
-        if self._lines:
-            return self._lines.popleft() + "\n"
-        return ""
-
-    def read(self):
-        return self._buffer
-
-    def has_lines(self):
-        return bool(self._lines)
-
-
-class _FakeAwsSyncProcess:
-    """Fake aws s3 sync process that copies from the simulated bucket."""
-
-    def __init__(self, source_bucket_path: Path, local_bucket_path: Path, object_entries):
-        self._stdout_lines = []
-        for entry in object_entries:
-            src = source_bucket_path / entry["Key"]
-            dst = local_bucket_path / entry["Key"]
-            dst.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(src, dst)
-            size = entry["Size"]
-            if size >= 1024 * 1024:
-                value = size / (1024 * 1024)
-                suffix = "MiB"
-            else:
-                value = max(size / 1024, 0.01)
-                suffix = "KiB"
-            self._stdout_lines.append(f"Completed {value:.2f}{suffix}")
-        self.stdout = _Stream(self._stdout_lines.copy())
-        self.stderr = _Stream([])
-        self.returncode = 0
-
-    def poll(self):
-        return None if self.stdout.has_lines() else 0
-
-
 @dataclass
 class _SimulatedSmokeContext:
     """Tracks resources allocated for the simulated smoke test."""
@@ -152,7 +147,6 @@ class _SimulatedSmokeContext:
     backup_state_db: Path
     should_cleanup: bool
     original_boto_client: Any
-    original_popen: Any
     original_input: Any
     original_state_db: str
     original_exclusions: list[str]
@@ -180,7 +174,6 @@ class _SimulatedSmokeContext:
             backup_state_db=backup_state_db,
             should_cleanup=True,
             original_boto_client=boto3.client,
-            original_popen=subprocess.Popen,
             original_input=builtins.input,
             original_state_db=deps.config.STATE_DB_PATH,
             original_exclusions=list(deps.config.EXCLUDED_BUCKETS),
@@ -188,7 +181,6 @@ class _SimulatedSmokeContext:
 
     def restore(self):
         boto3.client = self.original_boto_client
-        subprocess.Popen = self.original_popen
         builtins.input = self.original_input
         self.deps.config.STATE_DB_PATH = self.original_state_db
         self.deps.config.EXCLUDED_BUCKETS = self.original_exclusions
@@ -248,30 +240,17 @@ def _build_object_entries(simulated_bucket_path: Path) -> list[dict[str, Any]]:
 
 
 def _install_simulated_hooks(ctx: _SimulatedSmokeContext, object_entries: list[dict[str, Any]]):
-    """Monkeypatch AWS/boto/subprocess plumbing to use simulated data."""
-    simulated_s3_client = _SimulatedS3Client(ctx.bucket_name, object_entries)
+    """Monkeypatch AWS/boto plumbing to use simulated data."""
+    simulated_s3_client = _SimulatedS3Client(
+        ctx.bucket_name, object_entries, ctx.simulated_bucket_path
+    )
 
     def _fake_boto3_client(service_name, *args, **kwargs):
         if service_name == "s3":
             return simulated_s3_client
         return ctx.original_boto_client(service_name, *args, **kwargs)
 
-    def _fake_popen(cmd, *popen_args, **popen_kwargs):
-        if len(cmd) >= AWS_SYNC_MIN_ARGS and cmd[:3] == ["aws", "s3", "sync"]:
-            s3_url = cmd[3]
-            if not s3_url.startswith("s3://"):
-                msg = f"Unexpected sync source: {s3_url}"
-                raise RuntimeError(msg)
-            target_bucket = s3_url[5:].strip("/").split("/")[0]
-            if target_bucket != ctx.bucket_name:
-                msg = f"Smoke test only supports bucket {ctx.bucket_name}"
-                raise RuntimeError(msg)
-            dest_path = Path(cmd[4].rstrip("/"))
-            return _FakeAwsSyncProcess(ctx.simulated_bucket_path, dest_path, object_entries)
-        return ctx.original_popen(cmd, *popen_args, **popen_kwargs)
-
     boto3.client = _fake_boto3_client
-    subprocess.Popen = _fake_popen
     builtins.input = lambda _prompt="": "no"
     ctx.deps.config.STATE_DB_PATH = str(ctx.backup_state_db)
     ctx.deps.config.EXCLUDED_BUCKETS = []

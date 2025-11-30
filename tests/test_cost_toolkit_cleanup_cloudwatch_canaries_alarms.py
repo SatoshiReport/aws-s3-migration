@@ -19,7 +19,11 @@ from cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup import (
 
 @patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region")
 @patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials")
-def test_delete_canaries_calls_shared_setup(mock_setup, mock_process):
+@patch(
+    "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.get_all_aws_regions",
+    return_value=["us-east-1", "us-east-2", "us-west-2"],
+)
+def test_delete_canaries_calls_shared_setup(_mock_regions, mock_setup, mock_process):
     """delete_cloudwatch_canaries should load credentials before running."""
     delete_cloudwatch_canaries()
     mock_setup.assert_called_once()

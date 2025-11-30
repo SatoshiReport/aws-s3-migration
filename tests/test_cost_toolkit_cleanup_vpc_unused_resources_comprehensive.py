@@ -29,7 +29,7 @@ class TestDeleteSecurityGroup:
         assert result is True
         mock_client.delete_security_group.assert_called_once_with(GroupId="sg-123")
         captured = capsys.readouterr()
-        assert "Successfully deleted" in captured.out
+        assert "Deleted security group" in captured.out
 
     def test_delete_security_group_error(self, capsys):
         """Test security group deletion with error."""
@@ -41,7 +41,7 @@ class TestDeleteSecurityGroup:
         result = delete_security_group(mock_client, "sg-123", "test-sg", "us-east-1")
         assert result is False
         captured = capsys.readouterr()
-        assert "Error deleting" in captured.out
+        assert "Failed to delete security group" in captured.out
 
     def test_delete_security_group_not_found(self, capsys):
         """Test deleting non-existent security group."""
@@ -52,7 +52,7 @@ class TestDeleteSecurityGroup:
         result = delete_security_group(mock_client, "sg-nonexist", "missing-sg", "us-east-1")
         assert result is False
         captured = capsys.readouterr()
-        assert "Error deleting" in captured.out
+        assert "Failed to delete security group" in captured.out
 
 
 def test_print_cleanup_intro(capsys):
@@ -162,8 +162,8 @@ class TestPrintCleanupSummary:
         print_cleanup_summary(5, 2)
         captured = capsys.readouterr()
         assert "VPC CLEANUP SUMMARY" in captured.out
-        assert "Successfully deleted: 5" in captured.out
-        assert "Failed to delete: 2" in captured.out
+        assert "✅ Successfully deleted: 5 security groups" in captured.out
+        assert "❌ Failed to delete: 2 security groups" in captured.out
         assert "cleanup completed successfully" in captured.out
         assert "Benefits:" in captured.out
 
@@ -172,7 +172,7 @@ class TestPrintCleanupSummary:
         print_cleanup_summary(0, 5)
         captured = capsys.readouterr()
         assert "VPC CLEANUP SUMMARY" in captured.out
-        assert "Successfully deleted: 0" in captured.out
+        assert "✅ Successfully deleted: 0 security groups" in captured.out
         assert "cleanup completed successfully" not in captured.out
 
     def test_print_cleanup_summary_with_empty_vpcs(self, capsys):

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import pytest
 from unittest.mock import patch
 
 from cost_toolkit.common.format_utils import format_bytes
@@ -21,14 +22,13 @@ def test_calculate_monthly_cost_standard():
 
 
 def test_calculate_monthly_cost_unknown_class():
-    """Test calculate_monthly_cost falls back to STANDARD for unknown class."""
+    """Test calculate_monthly_cost raises on unknown storage classes."""
     with patch(
         "cost_toolkit.scripts.audit.s3_audit.utils.STORAGE_CLASS_PRICING",
-        {"STANDARD": 0.023, "GLACIER": 0.004},
+        {"STANDARD": 0.023},
     ):
-        cost = calculate_monthly_cost(1024**3, "UNKNOWN_CLASS")
-        # Should use STANDARD pricing as fallback
-        assert_equal(cost, 0.023)
+        with pytest.raises(ValueError, match="Unknown storage class"):
+            calculate_monthly_cost(1024**3, "UNKNOWN_CLASS")
 
 
 def test_format_bytes_small_values():
