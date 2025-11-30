@@ -49,7 +49,9 @@ def _print_key_grants(kms, key_id):
             print(f"  Active Grants: {len(grants['Grants'])}")
             for grant in grants["Grants"][:3]:  # Show first 3 grants
                 grantee = grant.get("GranteePrincipal", "Unknown")
-                operations = grant.get("Operations", [])
+                operations = []
+                if "Operations" in grant:
+                    operations = grant["Operations"]
                 print(f"    - Grantee: {grantee}")
                 print(f"      Operations: {operations}")
     except ClientError as e:

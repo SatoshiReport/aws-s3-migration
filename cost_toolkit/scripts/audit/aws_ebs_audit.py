@@ -17,7 +17,9 @@ OLD_SNAPSHOT_AGE_DAYS = 30
 
 def _get_attachment_info(volume):
     """Extract attachment information from volume"""
-    attachments = volume.get("Attachments", [])
+    attachments = []
+    if "Attachments" in volume:
+        attachments = volume["Attachments"]
     if not attachments:
         return "Not attached"
     instance_id = attachments[0].get("InstanceId", "Unknown")
@@ -86,9 +88,13 @@ def _audit_region(region):
     """Audit EBS resources in a single region"""
     ec2 = create_client("ec2", region=region)
     volumes_response = ec2.describe_volumes()
-    volumes = volumes_response.get("Volumes", [])
+    volumes = []
+    if "Volumes" in volumes_response:
+        volumes = volumes_response["Volumes"]
     snapshots_response = ec2.describe_snapshots(OwnerIds=["self"])
-    snapshots = snapshots_response.get("Snapshots", [])
+    snapshots = []
+    if "Snapshots" in snapshots_response:
+        snapshots = snapshots_response["Snapshots"]
 
     if not volumes and not snapshots:
         return [], []

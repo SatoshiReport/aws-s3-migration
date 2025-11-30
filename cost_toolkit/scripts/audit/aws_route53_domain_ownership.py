@@ -32,8 +32,12 @@ def _process_single_domain(route53domains, domain):
     try:
         domain_detail = route53domains.get_domain_detail(DomainName=domain_name)
         registrar = domain_detail.get("RegistrarName", "Unknown")
-        status = domain_detail.get("StatusList", [])
-        nameservers = domain_detail.get("Nameservers", [])
+        status = []
+        if "StatusList" in domain_detail:
+            status = domain_detail["StatusList"]
+        nameservers = []
+        if "Nameservers" in domain_detail:
+            nameservers = domain_detail["Nameservers"]
 
         print(f"  Registrar: {registrar}")
         print(f"  Status: {', '.join(status) if status else 'Unknown'}")
@@ -69,7 +73,9 @@ def check_route53_registered_domains():
     try:
         route53domains = boto3.client("route53domains", region_name="us-east-1")
         domains_response = route53domains.list_domains()
-        domains = domains_response.get("Domains", [])
+        domains = []
+        if "Domains" in domains_response:
+            domains = domains_response["Domains"]
 
         if not domains:
             print("✅ No domains registered through Route 53")
@@ -103,7 +109,9 @@ def check_current_hosted_zones():
 
         # Get all hosted zones
         response = route53.list_hosted_zones()
-        hosted_zones = response.get("HostedZones", [])
+        hosted_zones = []
+        if "HostedZones" in response:
+            hosted_zones = response["HostedZones"]
 
         if not hosted_zones:
             print("✅ No hosted zones found")

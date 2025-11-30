@@ -17,7 +17,9 @@ def _extract_instance_info(instance):
     """Extract and format information from an RDS instance"""
     db_subnet_group = instance.get("DBSubnetGroup", {})
     endpoint = instance.get("Endpoint", {})
-    subnets = db_subnet_group.get("Subnets", [])
+    subnets = []
+    if "Subnets" in db_subnet_group:
+        subnets = db_subnet_group["Subnets"]
     return {
         "identifier": instance["DBInstanceIdentifier"],
         "engine": instance["Engine"],
@@ -40,7 +42,9 @@ def _extract_instance_info(instance):
 def _extract_cluster_info(cluster):
     """Extract and format information from an RDS cluster"""
     db_subnet_group = cluster.get("DBSubnetGroup", {})
-    subnets = db_subnet_group.get("Subnets", [])
+    subnets = []
+    if "Subnets" in db_subnet_group:
+        subnets = db_subnet_group["Subnets"]
     return {
         "identifier": cluster["DBClusterIdentifier"],
         "engine": cluster["Engine"],

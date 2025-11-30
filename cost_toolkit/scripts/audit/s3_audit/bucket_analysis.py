@@ -57,7 +57,9 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
     # Check lifecycle policy
     try:
         lifecycle_response = s3_client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
-        rules = lifecycle_response.get("Rules", [])
+        rules = []
+        if "Rules" in lifecycle_response:
+            rules = lifecycle_response["Rules"]
         if not isinstance(rules, list):
             logging.warning(
                 "Lifecycle configuration response missing Rules for bucket %s", bucket_name
