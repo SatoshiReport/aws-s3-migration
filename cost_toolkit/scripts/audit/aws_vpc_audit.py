@@ -9,6 +9,9 @@ from cost_toolkit.common.aws_common import get_all_aws_regions
 
 def _process_elastic_ip_address(addr, region_name):
     """Process a single elastic IP address and return its info."""
+    addr_tags = []
+    if "Tags" in addr:
+        addr_tags = addr["Tags"]
     ip_info = {
         "region": region_name,
         "public_ip": addr.get("PublicIp", "N/A"),
@@ -17,7 +20,7 @@ def _process_elastic_ip_address(addr, region_name):
         "instance_id": addr.get("InstanceId"),
         "network_interface_id": addr.get("NetworkInterfaceId"),
         "domain": addr.get("Domain", "N/A"),
-        "tags": addr.get("Tags", []),
+        "tags": addr_tags,
     }
 
     if "AssociationId" in addr:
@@ -65,7 +68,9 @@ def audit_elastic_ips_in_region(region_name):
         ec2 = create_client("ec2", region=region_name)
 
         response = ec2.describe_addresses()
-        addresses = response.get("Addresses", [])
+        addresses = []
+        if "Addresses" in response:
+            addresses = response["Addresses"]
 
         if not addresses:
             print(f"✅ No Elastic IP addresses found in {region_name}")
@@ -103,7 +108,9 @@ def audit_nat_gateways_in_region(region_name):
         ec2 = create_client("ec2", region=region_name)
 
         response = ec2.describe_nat_gateways()
-        nat_gateways = response.get("NatGateways", [])
+        nat_gateways = []
+        if "NatGateways" in response:
+            nat_gateways = response["NatGateways"]
 
         if not nat_gateways:
             print(f"✅ No NAT Gateways found in {region_name}")
@@ -112,6 +119,9 @@ def audit_nat_gateways_in_region(region_name):
         region_summary = []
 
         for nat in nat_gateways:
+            nat_tags = []
+            if "Tags" in nat:
+                nat_tags = nat["Tags"]
             nat_info = {
                 "region": region_name,
                 "nat_gateway_id": nat.get("NatGatewayId"),
@@ -119,7 +129,7 @@ def audit_nat_gateways_in_region(region_name):
                 "vpc_id": nat.get("VpcId"),
                 "subnet_id": nat.get("SubnetId"),
                 "create_time": nat.get("CreateTime"),
-                "tags": nat.get("Tags", []),
+                "tags": nat_tags,
             }
 
             # NAT Gateway costs approximately $0.045/hour + data processing
