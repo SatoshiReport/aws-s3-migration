@@ -45,7 +45,7 @@ def disable_global_accelerators():
     disabled = 0
     for accelerator in accelerators:
         accelerator_arn = accelerator["AcceleratorArn"]
-        accelerator_name = accelerator.get("Name", "Unnamed")
+        accelerator_name = accelerator.get("Name") if "Name" in accelerator else None
         print(f"📍 Found accelerator: {accelerator_name}")
         print(f"   ARN: {accelerator_arn}")
         if not ga_cleanup.disable_accelerator(accelerator_arn):
@@ -60,7 +60,7 @@ def _stop_instance(lightsail_client, instance):
     """Stop a single Lightsail instance."""
     instance_name = instance["name"]
     state = instance["state"]["name"]
-    bundle_id = instance.get("bundleId", None)
+    bundle_id = instance.get("bundleId") if "bundleId" in instance else None
 
     print(f"📦 Found instance: {instance_name}")
     print(f"   State: {state}")
@@ -89,7 +89,7 @@ def _stop_database(lightsail_client, database):
     """Stop a single Lightsail database."""
     db_name = database["name"]
     db_state = database["state"]
-    bundle_id = database.get("relationalDatabaseBundleId", None)
+    bundle_id = database.get("relationalDatabaseBundleId") if "relationalDatabaseBundleId" in database else None
 
     print(f"🗄️  Found database: {db_name}")
     print(f"   State: {db_state}")
@@ -117,9 +117,9 @@ def _process_region(region):
     lightsail_client = create_client("lightsail", region=region)
 
     instances_response = lightsail_client.get_instances()
-    instances = instances_response.get("instances", [])
+    instances = instances_response.get("instances") if "instances" in instances_response else []
     databases_response = lightsail_client.get_relational_databases()
-    databases = databases_response.get("relationalDatabases", [])
+    databases = databases_response.get("relationalDatabases") if "relationalDatabases" in databases_response else []
 
     if not instances and not databases:
         print(f"✅ No Lightsail resources found in {region}")

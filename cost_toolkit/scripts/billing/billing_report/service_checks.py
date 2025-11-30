@@ -78,7 +78,7 @@ def _check_lightsail_databases_in_region(lightsail_client):
     for database in databases_response["relationalDatabases"]:
         total_count += 1
         if database["relationalDatabaseBlueprintId"] and database["masterDatabaseName"]:
-            state = database.get("state", "")
+            state = database.get("state") if "state" in database else ""
             if "stopped" in state.lower():
                 stopped_count += 1
 

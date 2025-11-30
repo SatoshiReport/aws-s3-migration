@@ -53,9 +53,9 @@ def _display_backup_plan(backup_client, plan):
 def _display_backup_rules(rules):
     """Display backup plan rules."""
     for rule in rules:
-        rule_name = rule.get("RuleName", "<Unnamed Rule>")
-        schedule = rule.get("ScheduleExpression", "No schedule")
-        lifecycle = rule.get("Lifecycle")
+        rule_name = rule.get("RuleName") if "RuleName" in rule else None
+        schedule = rule.get("ScheduleExpression") if "ScheduleExpression" in rule else None
+        lifecycle = rule.get("Lifecycle") if "Lifecycle" in rule else None
 
         print(f"    Rule: {rule_name}")
         print(f"      Schedule: {schedule}")
@@ -175,9 +175,9 @@ def check_data_lifecycle_manager(region):
 def _display_rule_details(events_client, rule):
     """Display details for a single EventBridge rule."""
     rule_name = rule["Name"]
-    description = rule.get("Description")
+    description = rule.get("Description") if "Description" in rule else None
     state = _require_field(rule, "State", "EventBridge rule")
-    schedule = rule.get("ScheduleExpression", "Event-driven")
+    schedule = rule.get("ScheduleExpression") if "ScheduleExpression" in rule else None
 
     print(f"  Rule: {rule_name}")
     print(f"    Description: {description}")
