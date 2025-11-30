@@ -40,12 +40,15 @@ def _get_active_instances(ec2_client):
     active_instances = []
     for reservation in instances_response["Reservations"]:
         for instance in reservation["Instances"]:
+            tags = []
+            if "Tags" in instance:
+                tags = instance["Tags"]
             active_instances.append(
                 {
                     "instance_id": instance["InstanceId"],
                     "vpc_id": instance.get("VpcId"),
                     "state": instance["State"]["Name"],
-                    "name": get_resource_name(instance.get("Tags", [])),
+                    "name": get_resource_name(tags),
                 }
             )
     return active_instances
@@ -57,10 +60,13 @@ def _collect_vpc_subnets(ec2_client, vpc_id):
     subnets = []
     if "Subnets" in subnets_response:
         for subnet in subnets_response["Subnets"]:
+            subnet_tags = []
+            if "Tags" in subnet:
+                subnet_tags = subnet["Tags"]
             subnets.append(
                 {
                     "subnet_id": subnet["SubnetId"],
-                    "name": get_resource_name(subnet.get("Tags", [])),
+                    "name": get_resource_name(subnet_tags),
                     "cidr": subnet["CidrBlock"],
                     "availability_zone": subnet["AvailabilityZone"],
                     "available_ips": subnet["AvailableIpAddressCount"],
@@ -94,12 +100,19 @@ def _collect_vpc_route_tables(ec2_client, vpc_id):
     route_tables = []
     if "RouteTables" in rt_response:
         for rt in rt_response["RouteTables"]:
-            associations = rt.get("Associations", [])
-            routes = rt.get("Routes", [])
+            associations = []
+            if "Associations" in rt:
+                associations = rt["Associations"]
+            routes = []
+            if "Routes" in rt:
+                routes = rt["Routes"]
+            rt_tags = []
+            if "Tags" in rt:
+                rt_tags = rt["Tags"]
             route_tables.append(
                 {
                     "route_table_id": rt["RouteTableId"],
-                    "name": get_resource_name(rt.get("Tags", [])),
+                    "name": get_resource_name(rt_tags),
                     "is_main": any(assoc.get("Main", False) for assoc in associations),
                     "associations": len(associations),
                     "routes": len(routes),
@@ -116,12 +129,20 @@ def _collect_vpc_internet_gateways(ec2_client, vpc_id):
     internet_gateways = []
     if "InternetGateways" in igw_response:
         for igw in igw_response["InternetGateways"]:
-            attachments = igw.get("Attachments", [])
+            attachments = []
+            if "Attachments" in igw:
+                attachments = igw["Attachments"]
+            igw_tags = []
+            if "Tags" in igw:
+                igw_tags = igw["Tags"]
+            igw_state = "detached"
+            if attachments:
+                igw_state = attachments[0]["State"]
             internet_gateways.append(
                 {
                     "gateway_id": igw["InternetGatewayId"],
-                    "name": get_resource_name(igw.get("Tags", [])),
-                    "state": attachments[0]["State"] if attachments else "detached",
+                    "name": get_resource_name(igw_tags),
+                    "state": igw_state,
                 }
             )
     return internet_gateways
@@ -135,10 +156,13 @@ def _collect_vpc_nat_gateways(ec2_client, vpc_id):
     nat_gateways = []
     if "NatGateways" in nat_response:
         for nat in nat_response["NatGateways"]:
+            nat_tags = []
+            if "Tags" in nat:
+                nat_tags = nat["Tags"]
             nat_gateways.append(
                 {
                     "nat_gateway_id": nat["NatGatewayId"],
-                    "name": get_resource_name(nat.get("Tags", [])),
+                    "name": get_resource_name(nat_tags),
                     "state": nat["State"],
                     "subnet_id": nat["SubnetId"],
                 }
@@ -177,10 +201,13 @@ def _collect_unused_network_interfaces(ec2_client):
     if "NetworkInterfaces" in eni_response:
         for eni in eni_response["NetworkInterfaces"]:
             if "Attachment" not in eni:
+                eni_tags = []
+                if "TagSet" in eni:
+                    eni_tags = eni["TagSet"]
                 unused_interfaces.append(
                     {
                         "interface_id": eni["NetworkInterfaceId"],
-                        "name": get_resource_name(eni.get("TagSet", [])),
+                        "name": get_resource_name(eni_tags),
                         "vpc_id": eni["VpcId"],
                         "subnet_id": eni["SubnetId"],
                         "private_ip": eni["PrivateIpAddress"],
@@ -230,7 +257,9 @@ def audit_vpc_resources_in_region(region, aws_access_key_id, aws_secret_access_k
         }
 
         vpcs_response = ec2_client.describe_vpcs()
-        vpcs = vpcs_response.get("Vpcs", [])
+        vpcs = []
+        if "Vpcs" in vpcs_response:
+            vpcs = vpcs_response["Vpcs"]
 
         if not vpcs:
             return None
@@ -239,8 +268,13 @@ def audit_vpc_resources_in_region(region, aws_access_key_id, aws_secret_access_k
 
         for vpc in vpcs:
             vpc_id = vpc["VpcId"]
-            vpc_name = get_resource_name(vpc.get("Tags", []))
-            is_default = vpc.get("IsDefault", False)
+            vpc_tags = []
+            if "Tags" in vpc:
+                vpc_tags = vpc["Tags"]
+            vpc_name = get_resource_name(vpc_tags)
+            is_default = False
+            if "IsDefault" in vpc:
+                is_default = vpc["IsDefault"]
 
             vpc_instances = [inst for inst in active_instances if inst["vpc_id"] == vpc_id]
 
