@@ -25,7 +25,10 @@ def list_accelerators():
     try:
         client = _get_ga_client()  # Global Accelerator is only in us-west-2
         response = client.list_accelerators()
-        return response.get("Accelerators", [])
+        accelerators = []
+        if "Accelerators" in response:
+            accelerators = response["Accelerators"]
+        return accelerators
     except ClientError as e:
         print(f"❌ Error listing accelerators: {str(e)}")
         return []
@@ -85,7 +88,9 @@ def delete_listeners(accelerator_arn):
 
         # List listeners
         response = client.list_listeners(AcceleratorArn=accelerator_arn)
-        listeners = response.get("Listeners", [])
+        listeners = []
+        if "Listeners" in response:
+            listeners = response["Listeners"]
 
         for listener in listeners:
             listener_arn = listener["ListenerArn"]
@@ -93,7 +98,9 @@ def delete_listeners(accelerator_arn):
 
             # First delete endpoint groups
             eg_response = client.list_endpoint_groups(ListenerArn=listener_arn)
-            endpoint_groups = eg_response.get("EndpointGroups", [])
+            endpoint_groups = []
+            if "EndpointGroups" in eg_response:
+                endpoint_groups = eg_response["EndpointGroups"]
 
             for eg in endpoint_groups:
                 eg_arn = eg["EndpointGroupArn"]

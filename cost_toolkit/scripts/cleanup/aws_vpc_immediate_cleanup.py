@@ -25,7 +25,9 @@ def release_public_ip_from_instance(instance_id, region_name):
         print(f"Current public IP: {current_public_ip}")
 
         # Check if it's an Elastic IP or auto-assigned
-        network_interfaces = instance.get("NetworkInterfaces", [])
+        network_interfaces = []
+        if "NetworkInterfaces" in instance:
+            network_interfaces = instance["NetworkInterfaces"]
         first_interface = network_interfaces[0] if network_interfaces else {}
         association = first_interface.get("Association", {})
         association_id = association.get("AssociationId")
@@ -75,7 +77,9 @@ def remove_detached_internet_gateway(igw_id, region_name):
         response = ec2.describe_internet_gateways(InternetGatewayIds=[igw_id])
         igw = response["InternetGateways"][0]
 
-        attachments = igw.get("Attachments", [])
+        attachments = []
+        if "Attachments" in igw:
+            attachments = igw["Attachments"]
         if attachments:
             attached_vpcs = [att["VpcId"] for att in attachments if att["State"] == "available"]
             if attached_vpcs:
@@ -122,13 +126,17 @@ def _check_vpc_network_resources(ec2, vpc_id, analysis):
     igw_response = ec2.describe_internet_gateways(
         Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
     )
-    igws = igw_response.get("InternetGateways", [])
+    igws = []
+    if "InternetGateways" in igw_response:
+        igws = igw_response["InternetGateways"]
     if igws:
         analysis["dependencies"].append(f"{len(igws)} Internet Gateways")
 
     # Check for NAT Gateways
     nat_response = ec2.describe_nat_gateways(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
-    nat_gateways = nat_response.get("NatGateways", [])
+    nat_gateways = []
+    if "NatGateways" in nat_response:
+        nat_gateways = nat_response["NatGateways"]
     nats = [nat for nat in nat_gateways if nat["State"] != "deleted"]
     if nats:
         analysis["blocking_resources"].append(f"{len(nats)} NAT Gateways")
@@ -138,7 +146,9 @@ def _check_vpc_network_resources(ec2, vpc_id, analysis):
     endpoints_response = ec2.describe_vpc_endpoints(
         Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
     )
-    vpc_endpoints = endpoints_response.get("VpcEndpoints", [])
+    vpc_endpoints = []
+    if "VpcEndpoints" in endpoints_response:
+        vpc_endpoints = endpoints_response["VpcEndpoints"]
     endpoints = [ep for ep in vpc_endpoints if ep["State"] != "deleted"]
     if endpoints:
         analysis["blocking_resources"].append(f"{len(endpoints)} VPC Endpoints")
@@ -150,7 +160,9 @@ def _check_vpc_load_balancers(region_name, vpc_id, analysis):
     try:
         elbv2 = create_client("elbv2", region=region_name)
         lb_response = elbv2.describe_load_balancers()
-        load_balancers = lb_response.get("LoadBalancers", [])
+        load_balancers = []
+        if "LoadBalancers" in lb_response:
+            load_balancers = lb_response["LoadBalancers"]
         vpc_lbs = [lb for lb in load_balancers if "VpcId" in lb and lb["VpcId"] == vpc_id]
         if vpc_lbs:
             analysis["blocking_resources"].append(f"{len(vpc_lbs)} Load Balancers")
@@ -164,7 +176,9 @@ def _check_vpc_rds_instances(region_name, vpc_id, analysis):
     try:
         rds = create_client("rds", region=region_name)
         db_response = rds.describe_db_instances()
-        db_instances = db_response.get("DBInstances", [])
+        db_instances = []
+        if "DBInstances" in db_response:
+            db_instances = db_response["DBInstances"]
         vpc_dbs = []
         for db in db_instances:
             db_subnet_group = db.get("DBSubnetGroup")
@@ -197,7 +211,9 @@ def analyze_vpc_dependencies(region_name):
 
         # Get all VPCs
         vpcs_response = ec2.describe_vpcs()
-        vpcs = vpcs_response.get("Vpcs", [])
+        vpcs = []
+        if "Vpcs" in vpcs_response:
+            vpcs = vpcs_response["Vpcs"]
 
         vpc_analysis = {}
 

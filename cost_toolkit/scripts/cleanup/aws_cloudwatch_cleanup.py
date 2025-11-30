@@ -49,7 +49,9 @@ def _process_canaries_in_region(region):
     synthetics_client = create_client("synthetics", region=region)
 
     response = synthetics_client.describe_canaries()
-    canaries = response.get("Canaries", [])
+    canaries = []
+    if "Canaries" in response:
+        canaries = response["Canaries"]
 
     if not canaries:
         print(f"✅ No canaries found in {region}")
@@ -108,7 +110,9 @@ def _disable_alarms_in_region(region):
     cloudwatch_client = create_client("cloudwatch", region=region)
 
     response = cloudwatch_client.describe_alarms()
-    alarms = response.get("MetricAlarms", [])
+    alarms = []
+    if "MetricAlarms" in response:
+        alarms = response["MetricAlarms"]
 
     if not alarms:
         print(f"✅ No alarms found in {region}")
@@ -183,7 +187,9 @@ def _reduce_retention_in_region(region):
     logs_client = create_client("logs", region=region)
 
     response = logs_client.describe_log_groups()
-    log_groups = response.get("logGroups", [])
+    log_groups = []
+    if "logGroups" in response:
+        log_groups = response["logGroups"]
 
     if not log_groups:
         print(f"✅ No log groups found in {region}")

@@ -17,7 +17,9 @@ def release_elastic_ips_in_region(region_name):
 
         # Get all Elastic IP addresses
         response = ec2.describe_addresses()
-        addresses = response.get("Addresses", [])
+        addresses = []
+        if "Addresses" in response:
+            addresses = response["Addresses"]
 
         if not addresses:
             print(f"✅ No Elastic IP addresses found in {region_name}")

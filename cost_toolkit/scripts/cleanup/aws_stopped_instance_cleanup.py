@@ -60,8 +60,12 @@ def get_instance_cleanup_details(
     if name is None:
         raise ValueError(f"Instance {instance_id} is missing required 'Name' tag")
 
-    security_groups = instance.get("SecurityGroups", [])
-    network_interfaces = instance.get("NetworkInterfaces", [])
+    security_groups = []
+    if "SecurityGroups" in instance:
+        security_groups = instance["SecurityGroups"]
+    network_interfaces = []
+    if "NetworkInterfaces" in instance:
+        network_interfaces = instance["NetworkInterfaces"]
     instance_info = {
         "instance_id": instance_id,
         "name": name,

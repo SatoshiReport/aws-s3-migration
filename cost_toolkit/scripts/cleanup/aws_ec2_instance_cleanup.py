@@ -97,7 +97,9 @@ def _get_last_activity_from_metrics(cloudwatch, instance_id):
             Statistics=["Average"],
         )
 
-        datapoints = metrics_response.get("Datapoints", [])
+        datapoints = []
+        if "Datapoints" in metrics_response:
+            datapoints = metrics_response["Datapoints"]
         if datapoints:
             datapoints.sort(key=lambda x: x["Timestamp"])
             last_activity = datapoints[-1]["Timestamp"]
