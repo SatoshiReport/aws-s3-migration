@@ -33,8 +33,8 @@ def get_ami_details(ec2_client, ami_id):
                 "architecture": ami.get("Architecture", "N/A"),
                 "virtualization_type": ami.get("VirtualizationType", "N/A"),
                 "root_device_type": ami.get("RootDeviceType", "N/A"),
-                "block_device_mappings": ami.get("BlockDeviceMappings", []),
-                "tags": ami.get("Tags", []),
+                "block_device_mappings": ami.get("BlockDeviceMappings") if "BlockDeviceMappings" in ami else [],
+                "tags": ami.get("Tags") if "Tags" in ami else [],
             }
     except ClientError as e:
         return {"ami_id": ami_id, "error": str(e), "accessible": False}
@@ -58,13 +58,16 @@ def check_ami_usage(ec2_client, ami_id):
         instances = []
         for reservation in response["Reservations"]:
             for instance in reservation["Instances"]:
+                instance_tags = []
+                if "Tags" in instance:
+                    instance_tags = instance["Tags"]
                 instances.append(
                     {
                         "instance_id": instance["InstanceId"],
                         "state": instance["State"]["Name"],
                         "launch_time": instance.get("LaunchTime", "N/A"),
                         "instance_type": instance.get("InstanceType", "N/A"),
-                        "tags": instance.get("Tags", []),
+                        "tags": instance_tags,
                     }
                 )
 

@@ -24,7 +24,7 @@ def _build_instance_info(instance, region_name, hourly_cost, monthly_cost):
         "subnet_id": instance.get("SubnetId", None),
         "public_ip": instance.get("PublicIpAddress", None),
         "private_ip": instance.get("PrivateIpAddress", None),
-        "tags": instance.get("Tags", []),
+        "tags": instance.get("Tags") if "Tags" in instance else [],
     }
 
 
@@ -215,7 +215,9 @@ def _process_single_volume(volume):
 
     monthly_cost = calculate_ebs_monthly_cost(volume_type, size_gb, iops, throughput)
 
-    attachments = volume.get("Attachments", [])
+    attachments = []
+    if "Attachments" in volume:
+        attachments = volume["Attachments"]
     attached_to = attachments[0]["InstanceId"] if attachments and "InstanceId" in attachments[0] else None
 
     print(f"Volume: {volume_id}")
@@ -247,7 +249,9 @@ def analyze_ebs_volumes_in_region(region_name):
     try:
         ec2 = create_client("ec2", region=region_name)
         volumes_response = ec2.describe_volumes()
-        volumes = volumes_response.get("Volumes", [])
+        volumes = []
+        if "Volumes" in volumes_response:
+            volumes = volumes_response["Volumes"]
 
         if not volumes:
             print(f"✅ No EBS volumes found in {region_name}")
