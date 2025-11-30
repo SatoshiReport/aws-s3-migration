@@ -62,7 +62,9 @@ def _delete_bucket_and_contents(s3_client, bucket: str):
                 s3_client.delete_objects(Bucket=bucket, Delete={"Objects": objects})
         s3_client.delete_bucket(Bucket=bucket)
     except ClientError as exc:  # pragma: no cover - cleanup best effort
-        error_dict = exc.response["Error"] if "Error" in exc.response else {}
+        error_dict = {}
+        if "Error" in exc.response:
+            error_dict = exc.response["Error"]
         error_code = error_dict.get("Code", None)
         if error_code not in {"NoSuchBucket", "404"}:
             raise
