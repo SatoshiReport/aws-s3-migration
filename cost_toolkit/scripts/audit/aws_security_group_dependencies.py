@@ -26,7 +26,9 @@ def _collect_network_interface_deps(ec2_client, group_id):
         Filters=[{"Name": "group-id", "Values": [group_id]}]
     )
     network_interfaces = []
-    eni_list = eni_response.get("NetworkInterfaces", [])
+    eni_list = []
+    if "NetworkInterfaces" in eni_response:
+        eni_list = eni_response["NetworkInterfaces"]
     for eni in eni_list:
         network_interfaces.append(
             {
@@ -64,9 +66,13 @@ def _collect_instance_deps(ec2_client, group_id):
 def _check_inbound_rules(sg, group_id):
     """Check inbound rules for references to target group."""
     rules = []
-    ip_permissions = sg.get("IpPermissions", [])
+    ip_permissions = []
+    if "IpPermissions" in sg:
+        ip_permissions = sg["IpPermissions"]
     for rule in ip_permissions:
-        group_pairs = rule.get("UserIdGroupPairs", [])
+        group_pairs = []
+        if "UserIdGroupPairs" in rule:
+            group_pairs = rule["UserIdGroupPairs"]
         for group_pair in group_pairs:
             pair_group_id = group_pair.get("GroupId")
             if pair_group_id == group_id:
@@ -87,9 +93,13 @@ def _check_inbound_rules(sg, group_id):
 def _check_outbound_rules(sg, group_id):
     """Check outbound rules for references to target group."""
     rules = []
-    ip_permissions_egress = sg.get("IpPermissionsEgress", [])
+    ip_permissions_egress = []
+    if "IpPermissionsEgress" in sg:
+        ip_permissions_egress = sg["IpPermissionsEgress"]
     for rule in ip_permissions_egress:
-        group_pairs = rule.get("UserIdGroupPairs", [])
+        group_pairs = []
+        if "UserIdGroupPairs" in rule:
+            group_pairs = rule["UserIdGroupPairs"]
         for group_pair in group_pairs:
             pair_group_id = group_pair.get("GroupId")
             if pair_group_id == group_id:
@@ -111,7 +121,9 @@ def _collect_sg_rule_refs(ec2_client, group_id):
     """Collect security group rules referencing this group."""
     all_sgs_response = ec2_client.describe_security_groups()
     rules = []
-    security_groups = all_sgs_response.get("SecurityGroups", [])
+    security_groups = []
+    if "SecurityGroups" in all_sgs_response:
+        security_groups = all_sgs_response["SecurityGroups"]
     for sg in security_groups:
         if sg["GroupId"] == group_id:
             continue
@@ -133,9 +145,13 @@ def _collect_rds_deps(group_id, region, aws_access_key_id, aws_secret_access_key
 
         rds_response = rds_client.describe_db_instances()
         rds_instances = []
-        db_instances = rds_response.get("DBInstances", [])
+        db_instances = []
+        if "DBInstances" in rds_response:
+            db_instances = rds_response["DBInstances"]
         for db in db_instances:
-            vpc_security_groups = db.get("VpcSecurityGroups", [])
+            vpc_security_groups = []
+            if "VpcSecurityGroups" in db:
+                vpc_security_groups = db["VpcSecurityGroups"]
             for sg in vpc_security_groups:
                 if sg["VpcSecurityGroupId"] == group_id:
                     db_subnet_group = db.get("DbSubnetGroup", {})
