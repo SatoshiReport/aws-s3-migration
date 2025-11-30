@@ -39,8 +39,8 @@ def _parse_required_port(name: str) -> int:
     raw_value = _require_env_var(name)
     try:
         return int(raw_value)
-    except ValueError:
-        raise RuntimeError(f"{name} must be a valid integer, got {raw_value!r}")
+    except ValueError as exc:
+        raise RuntimeError(f"{name} must be a valid integer, got {raw_value!r}") from exc
 
 
 def _split_required_list(name: str) -> list[str]:

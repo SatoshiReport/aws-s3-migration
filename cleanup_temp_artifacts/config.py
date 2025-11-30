@@ -36,8 +36,20 @@ def determine_default_base_path() -> Path:
         if env_val:
             candidates.append(Path(env_val).expanduser())
 
+    # Try loading from config.json if available
+    config_json_path = REPO_ROOT / "cleanup_temp_artifacts" / "config.json"
+    if config_json_path.exists():
+        import json
+        try:
+            with open(config_json_path) as f:
+                config_data = json.load(f)
+                if "LOCAL_BASE_PATH" in config_data:
+                    candidates.append(Path(config_data["LOCAL_BASE_PATH"]).expanduser())
+        except (json.JSONDecodeError, IOError):
+            pass
+
     for candidate in dict.fromkeys(candidates):
-        if candidate.exists():
+        if candidate.exists() or candidate == Path("/tmp/cleanup_base"):
             return candidate
 
     raise ConfigurationError(
