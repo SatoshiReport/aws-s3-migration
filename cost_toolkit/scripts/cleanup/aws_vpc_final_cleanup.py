@@ -16,7 +16,9 @@ def release_remaining_elastic_ip():
 
         # Get the remaining Elastic IP
         response = ec2.describe_addresses()
-        addresses = response.get("Addresses", [])
+        addresses = []
+        if "Addresses" in response:
+            addresses = response["Addresses"]
 
         if not addresses:
             print("✅ No Elastic IP addresses found in eu-west-2")

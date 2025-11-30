@@ -63,7 +63,9 @@ def delete_hosted_zone(zone_name, zone_id):
         # Step 1: Get all records in the zone
         print("  Step 1: Getting all DNS records...")
         records_response = route53.list_resource_record_sets(HostedZoneId=f"/hostedzone/{zone_id}")
-        records = records_response.get("ResourceRecordSets", [])
+        records = []
+        if "ResourceRecordSets" in records_response:
+            records = records_response["ResourceRecordSets"]
 
         # Step 2: Delete all records except NS and SOA (which can't be deleted)
         print("  Step 2: Deleting DNS records...")

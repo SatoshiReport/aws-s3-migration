@@ -35,7 +35,9 @@ def _delete_backup_selection(backup_client, plan_id, selection):
 def _delete_plan_selections(backup_client, plan_id):
     """Delete all selections for a backup plan."""
     selections_response = backup_client.list_backup_selections(BackupPlanId=plan_id)
-    selections = selections_response.get("BackupSelectionsList", [])
+    selections = []
+    if "BackupSelectionsList" in selections_response:
+        selections = selections_response["BackupSelectionsList"]
 
     if selections:
         print(f"    🔍 Found {len(selections)} backup selection(s) to remove first")
@@ -175,7 +177,9 @@ def check_backup_vault_policies(region):
 
         # List backup vaults
         vaults_response = backup_client.list_backup_vaults()
-        vaults = vaults_response.get("BackupVaultList", [])
+        vaults = []
+        if "BackupVaultList" in vaults_response:
+            vaults = vaults_response["BackupVaultList"]
 
         if vaults:
             print(f"🏦 Found {len(vaults)} backup vault(s) in {region}")
@@ -193,7 +197,9 @@ def check_backup_vault_policies(region):
                         BackupVaultName=vault_name, MaxResults=1
                     )
 
-                    recovery_points_list = recovery_points.get("RecoveryPoints", [])
+                    recovery_points_list = []
+                    if "RecoveryPoints" in recovery_points:
+                        recovery_points_list = recovery_points["RecoveryPoints"]
                     point_count = len(recovery_points_list)
                     if point_count > 0:
                         print("    ℹ️  Vault contains recovery points - keeping vault")

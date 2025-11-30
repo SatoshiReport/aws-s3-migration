@@ -99,7 +99,9 @@ def analyze_security_groups_usage(region_name):
         ec2 = boto3.client("ec2", region_name=region_name)
 
         sg_response = ec2.describe_security_groups()
-        all_sgs = sg_response.get("SecurityGroups", [])
+        all_sgs = []
+        if "SecurityGroups" in sg_response:
+            all_sgs = sg_response["SecurityGroups"]
 
         used_sgs = set()
         used_sgs.update(_collect_used_sgs_from_instances(ec2))
@@ -226,7 +228,9 @@ def analyze_subnet_usage(region_name):
         ec2 = boto3.client("ec2", region_name=region_name)
 
         subnet_response = ec2.describe_subnets()
-        all_subnets = subnet_response.get("Subnets", [])
+        all_subnets = []
+        if "Subnets" in subnet_response:
+            all_subnets = subnet_response["Subnets"]
 
         used_subnets = set()
         used_subnets.update(_collect_used_subnets_from_instances(ec2))

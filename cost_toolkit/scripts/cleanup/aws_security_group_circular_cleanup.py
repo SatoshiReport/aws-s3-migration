@@ -35,9 +35,13 @@ def remove_security_group_rule(ec2_client, group_id, rule_type, rule_data):
 def _check_inbound_rules(sg, target_group_id):
     """Check inbound rules for references to target group."""
     rules = []
-    ip_permissions = sg.get("IpPermissions", [])
+    ip_permissions = []
+    if "IpPermissions" in sg:
+        ip_permissions = sg["IpPermissions"]
     for rule in ip_permissions:
-        user_id_group_pairs = rule.get("UserIdGroupPairs", [])
+        user_id_group_pairs = []
+        if "UserIdGroupPairs" in rule:
+            user_id_group_pairs = rule["UserIdGroupPairs"]
         for group_pair in user_id_group_pairs:
             pair_group_id = group_pair.get("GroupId")
             if pair_group_id == target_group_id:
@@ -56,9 +60,13 @@ def _check_inbound_rules(sg, target_group_id):
 def _check_outbound_rules(sg, target_group_id):
     """Check outbound rules for references to target group."""
     rules = []
-    ip_permissions_egress = sg.get("IpPermissionsEgress", [])
+    ip_permissions_egress = []
+    if "IpPermissionsEgress" in sg:
+        ip_permissions_egress = sg["IpPermissionsEgress"]
     for rule in ip_permissions_egress:
-        user_id_group_pairs = rule.get("UserIdGroupPairs", [])
+        user_id_group_pairs = []
+        if "UserIdGroupPairs" in rule:
+            user_id_group_pairs = rule["UserIdGroupPairs"]
         for group_pair in user_id_group_pairs:
             pair_group_id = group_pair.get("GroupId")
             if pair_group_id == target_group_id:
@@ -83,7 +91,9 @@ def get_security_group_rules_referencing_group(ec2_client, target_group_id):
         raise
 
     rules_to_remove = []
-    security_groups = response.get("SecurityGroups", [])
+    security_groups = []
+    if "SecurityGroups" in response:
+        security_groups = response["SecurityGroups"]
     for sg in security_groups:
         rules_to_remove.extend(_check_inbound_rules(sg, target_group_id))
         rules_to_remove.extend(_check_outbound_rules(sg, target_group_id))
