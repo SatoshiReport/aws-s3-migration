@@ -3,7 +3,8 @@ S3 Audit Package.
 Provides comprehensive S3 bucket analysis, cost estimation, and optimization recommendations.
 """
 
-from .bucket_analysis import analyze_bucket_objects, get_bucket_region
+from cost_toolkit.common.s3_utils import get_bucket_region
+from .bucket_analysis import analyze_bucket_objects
 from .cli import audit_s3_comprehensive
 from .recommendations import generate_optimization_recommendations
 from .reporting import (
