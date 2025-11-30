@@ -38,7 +38,9 @@ def _print_zone_records(_route53, zone_id):
 
             print(f"    {record_name} ({record_type}) TTL: {ttl}")
 
-            resource_records = record.get("ResourceRecords", [])
+            resource_records = []
+            if "ResourceRecords" in record:
+                resource_records = record["ResourceRecords"]
             for rr in resource_records:
                 rr_value = rr.get("Value", "")
                 print(f"      -> {rr_value}")
@@ -118,7 +120,9 @@ def audit_route53_health_checks():
         route53 = create_route53_client()
 
         response = route53.list_health_checks()
-        health_checks = response.get("HealthChecks", [])
+        health_checks = []
+        if "HealthChecks" in response:
+            health_checks = response["HealthChecks"]
 
         if not health_checks:
             print("✅ No health checks found")
@@ -172,7 +176,9 @@ def audit_route53_resolver_endpoints():
 
         # Get resolver endpoints
         response = route53resolver.list_resolver_endpoints()
-        endpoints = response.get("ResolverEndpoints", [])
+        endpoints = []
+        if "ResolverEndpoints" in response:
+            endpoints = response["ResolverEndpoints"]
 
         if not endpoints:
             print("✅ No resolver endpoints found")

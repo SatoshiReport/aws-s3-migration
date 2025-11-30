@@ -39,7 +39,9 @@ def _print_network_info(instance):
     print(f"  VPC ID: {vpc_id}")
     print(f"  Subnet ID: {subnet_id}")
 
-    security_groups = instance.get("SecurityGroups", [])
+    security_groups = []
+    if "SecurityGroups" in instance:
+        security_groups = instance["SecurityGroups"]
     print("\n🔒 SECURITY GROUPS:")
     for sg in security_groups:
         print(f"  {sg['GroupId']} ({sg['GroupName']})")
@@ -48,7 +50,9 @@ def _print_network_info(instance):
 def _check_internet_gateway(route_tables):
     """Check if route tables have an internet gateway."""
     for route_table in route_tables:
-        routes = route_table.get("Routes", [])
+        routes = []
+        if "Routes" in route_table:
+            routes = route_table["Routes"]
         for route in routes:
             dest_cidr = route.get("DestinationCidrBlock", None)
             if dest_cidr == "0.0.0.0/0":
@@ -148,7 +152,9 @@ def get_instance_connection_info(instance_id, region_name):
         _print_connection_options(instance_id, region_name, public_ip, public_dns)
         _check_ssm_availability(instance_id, region_name)
 
-        tags = instance.get("Tags", [])
+        tags = []
+        if "Tags" in instance:
+            tags = instance["Tags"]
         if tags:
             print("\n🏷️  INSTANCE TAGS:")
             for tag in tags:
