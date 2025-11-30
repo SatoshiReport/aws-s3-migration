@@ -17,9 +17,14 @@ def parse_hosted_zone(zone):
     """
     zone_id = zone["Id"].split("/")[-1]  # Remove /hostedzone/ prefix
     zone_name = zone["Name"]
-    config = zone.get("Config", {})
-    is_private = config.get("PrivateZone", False)
-    record_count = zone.get("ResourceRecordSetCount", 0)
+
+    is_private = False
+    if "Config" in zone and "PrivateZone" in zone["Config"]:
+        is_private = zone["Config"]["PrivateZone"]
+
+    record_count = 0
+    if "ResourceRecordSetCount" in zone:
+        record_count = zone["ResourceRecordSetCount"]
 
     return {
         "zone_id": zone_id,

@@ -174,8 +174,10 @@ def delete_route_tables(ec2_client, vpc_id, skip_main=True):
     route_tables = rt_response["RouteTables"]
     for rt in route_tables:
         if skip_main:
-            associations = rt.get("Associations", [])
-            is_main = any(("Main" in assoc and assoc["Main"]) for assoc in associations)
+            if "Associations" not in rt:
+                is_main = False
+            else:
+                is_main = any(("Main" in assoc and assoc["Main"]) for assoc in rt["Associations"])
             if is_main:
                 continue
 
