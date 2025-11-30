@@ -79,7 +79,7 @@ class _SimulatedS3Client:
     def get_object(self, *, Bucket: str, Key: str):  # pylint: disable=invalid-name
         if Bucket != self.bucket_name:
             raise RuntimeError(f"Unknown bucket {Bucket}")
-        entry = self.object_entries[Key] if Key in self.object_entries else None
+        entry = self.object_entries.get(Key)
         if entry is None:
             raise RuntimeError(f"Missing object {Key}")
         file_path = self.base_path / Key

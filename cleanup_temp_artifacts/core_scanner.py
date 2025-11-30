@@ -115,7 +115,7 @@ def _process_parent_directory(
         logging.warning("Cannot resolve directory %s during scan: %s", parent, exc)
         return
 
-    entry = candidates[canonical] if canonical in candidates else None
+    entry = candidates.get(canonical)
     if entry:
         if entry.size_bytes is None:
             entry.size_bytes = file_size
