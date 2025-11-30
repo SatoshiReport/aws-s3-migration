@@ -1,5 +1,16 @@
 """
-Shared AWS utility functions for S3 bucket management.
+Root-level AWS utility module for backward compatibility.
+
+This module provides AWS utilities at the root level for scripts that import from here.
+Functions defined here are generally also available in cost_toolkit modules:
+- get_boto3_clients(): Core utilities for creating AWS service clients
+- get_aws_identity(): Account identity information
+- list_s3_buckets(): Wrapper around cost_toolkit.scripts.aws_s3_operations
+- generate_restrictive_bucket_policy(): Policy generation utilities
+- Policy file I/O and bucket policy application functions
+
+Note: New code should prefer importing from cost_toolkit.common and cost_toolkit.scripts
+modules directly rather than from this root-level compatibility layer.
 """
 
 import json

@@ -28,9 +28,8 @@ def determine_default_base_path() -> Path:
     """Return the local base path for migrated objects."""
     candidates: list[Path] = []
 
-    local_base = getattr(config_module, "LOCAL_BASE_PATH", None)
-    if local_base is not None:
-        candidates.append(Path(local_base).expanduser())
+    if hasattr(config_module, "LOCAL_BASE_PATH"):
+        candidates.append(Path(config_module.LOCAL_BASE_PATH).expanduser())
 
     for name in ("CLEANUP_TEMP_ROOT", "CLEANUP_ROOT"):
         env_val = os.environ.get(name)
@@ -53,9 +52,9 @@ def determine_default_db_path() -> Path:
     Raises:
         ConfigurationError: If STATE_DB_PATH is not configured.
     """
-    state_db = getattr(config_module, "STATE_DB_PATH", None)
-    if not state_db:
+    if not hasattr(config_module, "STATE_DB_PATH"):
         raise ConfigurationError("STATE_DB_PATH must be set in config.py")
+    state_db = config_module.STATE_DB_PATH
     candidate = Path(state_db)
     if not candidate.is_absolute():
         candidate = (REPO_ROOT / candidate).resolve()

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.s3_utils import get_bucket_region as canonical_get_bucket_region
+from cost_toolkit.common.s3_utils import get_bucket_region
 from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
 
 
@@ -36,16 +36,6 @@ def _require_public_access_config(response: dict) -> dict:
     return pab
 
 
-def get_bucket_region(bucket_name):
-    """
-    Get the region where a bucket is located.
-
-    Exposes get_bucket_location as a module attribute so test patches apply and delegates to
-    the canonical helper for consistent error handling.
-    """
-    return canonical_get_bucket_region(
-        bucket_name, verbose=True, location_getter=get_bucket_location
-    )
 
 
 def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):

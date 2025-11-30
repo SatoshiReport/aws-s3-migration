@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import boto3
 from botocore.exceptions import ClientError
 
+from cost_toolkit.common.s3_utils import get_bucket_region
 from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
 from cost_toolkit.scripts.aws_s3_operations import list_buckets
 
@@ -57,27 +58,6 @@ def delete_snapshot(snapshot_id, region):
     return delete_snapshot_canonical(snapshot_id, region, verbose=True)
 
 
-def get_bucket_region(bucket_name):
-    """
-    Get the region for an S3 bucket.
-
-    Args:
-        bucket_name: Name of the S3 bucket
-
-    Returns:
-        str: AWS region name
-
-    Raises:
-        ClientError: If bucket not found or API call fails
-    """
-    # Delegate to canonical implementation
-    from cost_toolkit.scripts.aws_s3_operations import (  # pylint: disable=import-outside-toplevel
-        get_bucket_location,
-    )
-
-    region = get_bucket_location(bucket_name)
-    print(f"    Region: {region}")
-    return region
 
 
 def get_bucket_size_metrics(bucket_name, region):

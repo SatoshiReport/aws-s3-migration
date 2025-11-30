@@ -11,33 +11,12 @@ Implements specific S3 bucket configurations:
 from botocore.exceptions import ClientError, NoCredentialsError
 
 from cost_toolkit.common.aws_client_factory import create_s3_client
+from cost_toolkit.common.s3_utils import get_bucket_region
 from cost_toolkit.scripts.aws_s3_operations import list_buckets
 from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 # Bucket to exclude from standardization - DO NOT TOUCH
 EXCLUDED_BUCKET = "akiaiw6gwdirbsbuzqiq-arq-1"
-
-
-def get_bucket_region(bucket_name):
-    """
-    Get the region where a bucket is located.
-
-    Delegates to canonical get_bucket_location from aws_s3_operations.
-
-    Args:
-        bucket_name: Name of the S3 bucket
-
-    Returns:
-        str: AWS region name
-
-    Raises:
-        ClientError: If bucket not found or API call fails
-    """
-    from cost_toolkit.scripts.aws_s3_operations import (  # pylint: disable=import-outside-toplevel
-        get_bucket_location,
-    )
-
-    return get_bucket_location(bucket_name)
 
 
 def ensure_bucket_private(bucket_name, region):

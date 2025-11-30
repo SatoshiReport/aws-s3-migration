@@ -9,9 +9,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Dict, Protocol, Sequence, cast
 
-
-class CISharedRootNotConfiguredError(RuntimeError):
-    """Raised when CI_SHARED_ROOT is not set."""
+from ci_tools.scripts import CISharedRootNotConfiguredError
 
 
 _LOCAL_PATH = Path(__file__).resolve()
