@@ -100,9 +100,13 @@ def report_lightsail_cost_breakdown():
         )
         rows = []
         total = 0.0
-        results_by_time = response.get("ResultsByTime", [])
+        results_by_time = []
+        if "ResultsByTime" in response:
+            results_by_time = response["ResultsByTime"]
         for result in results_by_time:
-            groups = result.get("Groups", [])
+            groups = []
+            if "Groups" in result:
+                groups = result["Groups"]
             for group in groups:
                 amount = float(group["Metrics"]["UnblendedCost"]["Amount"])
                 if amount <= 0:

@@ -48,9 +48,9 @@ def _process_single_bucket(bucket_name, bucket_region, storage_class_summary):
 
     # Generate recommendations
     recommendations = generate_optimization_recommendations(bucket_analysis)
-    bucket_recommendations = (
-        [(bucket_name, rec) for rec in recommendations] if recommendations else []
-    )
+    bucket_recommendations = []
+    if recommendations:
+        bucket_recommendations = [(bucket_name, rec) for rec in recommendations]
 
     print()
 

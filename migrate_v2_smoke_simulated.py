@@ -89,7 +89,9 @@ class _SimulatedS3Client:
     def delete_objects(self, *, Bucket: str, Delete: dict):  # pylint: disable=invalid-name
         if Bucket != self.bucket_name:
             raise RuntimeError(f"Unknown bucket {Bucket}")
-        objects_to_delete = Delete.get("Objects", [])
+        objects_to_delete = []
+        if "Objects" in Delete:
+            objects_to_delete = Delete["Objects"]
         for obj in objects_to_delete:
             key = obj["Key"]
             self.object_entries.pop(key, None)

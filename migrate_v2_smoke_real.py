@@ -48,10 +48,14 @@ def _delete_bucket_and_contents(s3_client, bucket: str):
         paginator = s3_client.get_paginator("list_object_versions")
         for page in paginator.paginate(Bucket=bucket):
             objects = []
-            versions = page.get("Versions", [])
+            versions = []
+            if "Versions" in page:
+                versions = page["Versions"]
             for version in versions:
                 objects.append({"Key": version["Key"], "VersionId": version["VersionId"]})
-            delete_markers = page.get("DeleteMarkers", [])
+            delete_markers = []
+            if "DeleteMarkers" in page:
+                delete_markers = page["DeleteMarkers"]
             for marker in delete_markers:
                 objects.append({"Key": marker["Key"], "VersionId": marker["VersionId"]})
             if objects:
@@ -153,7 +157,9 @@ def seed_real_bucket(ctx: RealSmokeContext) -> RealSmokeStats:
     )
     print(f"  Uploaded {files_created} files to s3://{ctx.bucket_name}")
     buckets_response = ctx.s3.list_buckets()
-    buckets_list = buckets_response.get("Buckets", [])
+    buckets_list = []
+    if "Buckets" in buckets_response:
+        buckets_list = buckets_response["Buckets"]
     existing_buckets = [b["Name"] for b in buckets_list]
     ctx.deps.config.EXCLUDED_BUCKETS = [b for b in existing_buckets if b != ctx.bucket_name]
     ctx.deps.config.STATE_DB_PATH = str(ctx.state_db_path)

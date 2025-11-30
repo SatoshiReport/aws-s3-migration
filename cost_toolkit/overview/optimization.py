@@ -24,7 +24,9 @@ def _scan_region_for_unattached_volumes(region):
     total_cost = 0.0
 
     for volume in volumes:
-        attachments = volume.get("Attachments", [])
+        attachments = []
+        if "Attachments" in volume:
+            attachments = volume["Attachments"]
         if not attachments:
             count += 1
             size_gb = volume["Size"]

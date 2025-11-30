@@ -115,8 +115,13 @@ def _bucket_has_contents(s3, bucket: str) -> bool:
     for page in paginator.paginate(Bucket=bucket, PaginationConfig={"MaxItems": 1}):
         versions_raw = page.get("Versions") if "Versions" in page else None
         delete_markers_raw = page.get("DeleteMarkers") if "DeleteMarkers" in page else None
-        versions = _ensure_list(versions_raw) if versions_raw else []
-        delete_markers = _ensure_list(delete_markers_raw) if delete_markers_raw else []
+        versions = []
+        if versions_raw:
+            versions = _ensure_list(versions_raw)
+
+        delete_markers = []
+        if delete_markers_raw:
+            delete_markers = _ensure_list(delete_markers_raw)
         if versions or delete_markers:
             return True
     return False
@@ -144,7 +149,9 @@ def _process_delete_page(
 def _delete_page_objects(s3, bucket: str, objects_to_delete: List[dict]) -> List[dict]:
     """Issue a bulk delete for the provided objects and return any errors."""
     response = s3.delete_objects(Bucket=bucket, Delete={"Objects": objects_to_delete})
-    response_errors = response.get("Errors", [])
+    response_errors = []
+    if "Errors" in response:
+        response_errors = response["Errors"]
     errors = _ensure_list(response_errors)
     if errors:
         print("\n  Encountered delete errors:")

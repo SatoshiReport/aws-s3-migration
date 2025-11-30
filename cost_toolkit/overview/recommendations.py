@@ -19,7 +19,9 @@ def get_completed_cleanups():
         if os.path.exists(cleanup_log_path):
             with open(cleanup_log_path, "r", encoding="utf-8") as f:
                 log_data = json.load(f)
-                cleanup_actions = log_data.get("cleanup_actions", [])
+                cleanup_actions = []
+                if "cleanup_actions" in log_data:
+                    cleanup_actions = log_data["cleanup_actions"]
                 for action in cleanup_actions:
                     status = action.get("status", None)
                     if status == "completed":

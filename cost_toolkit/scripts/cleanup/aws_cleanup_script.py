@@ -117,9 +117,14 @@ def _process_region(region):
     lightsail_client = create_client("lightsail", region=region)
 
     instances_response = lightsail_client.get_instances()
-    instances = instances_response.get("instances") if "instances" in instances_response else []
+    instances = []
+    if "instances" in instances_response:
+        instances = instances_response["instances"]
+
     databases_response = lightsail_client.get_relational_databases()
-    databases = databases_response.get("relationalDatabases") if "relationalDatabases" in databases_response else []
+    databases = []
+    if "relationalDatabases" in databases_response:
+        databases = databases_response["relationalDatabases"]
 
     if not instances and not databases:
         print(f"✅ No Lightsail resources found in {region}")
