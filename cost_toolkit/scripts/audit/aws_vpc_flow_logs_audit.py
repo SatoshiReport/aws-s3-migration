@@ -12,7 +12,9 @@ def _check_log_group_size(logs_client, log_group_name):
     """Check CloudWatch log group size and calculate cost."""
     try:
         log_group_response = logs_client.describe_log_groups(logGroupNamePrefix=log_group_name)
-        log_groups = log_group_response.get("logGroups", [])
+        log_groups = []
+        if "logGroups" in log_group_response:
+            log_groups = log_group_response["logGroups"]
         for log_group in log_groups:
             if log_group["logGroupName"] == log_group_name:
                 stored_bytes = log_group.get("storedBytes", 0)
@@ -37,7 +39,9 @@ def audit_flow_logs_in_region(region_name):
 
         # Get VPC Flow Logs
         response = ec2.describe_flow_logs()
-        flow_logs = response.get("FlowLogs", [])
+        flow_logs = []
+        if "FlowLogs" in response:
+            flow_logs = response["FlowLogs"]
 
         if not flow_logs:
             print(f"✅ No VPC Flow Logs found in {region_name}")
@@ -46,16 +50,22 @@ def audit_flow_logs_in_region(region_name):
         region_summary = []
 
         for flow_log in flow_logs:
+            resource_ids = []
+            if "ResourceIds" in flow_log:
+                resource_ids = flow_log["ResourceIds"]
+            tags = []
+            if "Tags" in flow_log:
+                tags = flow_log["Tags"]
             flow_info = {
                 "region": region_name,
                 "flow_log_id": flow_log.get("FlowLogId", None),
                 "flow_log_status": flow_log.get("FlowLogStatus", None),
                 "resource_type": flow_log.get("ResourceType", None),
-                "resource_id": flow_log.get("ResourceIds", []),
+                "resource_id": resource_ids,
                 "log_destination_type": flow_log.get("LogDestinationType", None),
                 "log_destination": flow_log.get("LogDestination", None),
                 "creation_time": flow_log.get("CreationTime", None),
-                "tags": flow_log.get("Tags", []),
+                "tags": tags,
             }
 
             print(f"Flow Log: {flow_info['flow_log_id']}")
@@ -90,7 +100,9 @@ def audit_flow_logs_in_region(region_name):
 def _check_vpc_peering_connections(ec2):
     """Check VPC peering connections."""
     response = ec2.describe_vpc_peering_connections()
-    peering_connections = response.get("VpcPeeringConnections", [])
+    peering_connections = []
+    if "VpcPeeringConnections" in response:
+        peering_connections = response["VpcPeeringConnections"]
     print(f"VPC Peering Connections: {len(peering_connections)}")
     for peering in peering_connections:
         status_obj = peering.get("Status", {})
@@ -101,7 +113,9 @@ def _check_vpc_peering_connections(ec2):
 def _check_vpc_endpoints(ec2):
     """Check VPC endpoints."""
     response = ec2.describe_vpc_endpoints()
-    endpoints = response.get("VpcEndpoints", [])
+    endpoints = []
+    if "VpcEndpoints" in response:
+        endpoints = response["VpcEndpoints"]
     print(f"VPC Endpoints: {len(endpoints)}")
     for endpoint in endpoints:
         endpoint_type = endpoint.get("VpcEndpointType", "Unknown")
@@ -117,10 +131,24 @@ def _check_vpc_resource_counts(ec2):
     nacl_response = ec2.describe_network_acls()
     rt_response = ec2.describe_route_tables()
     subnet_response = ec2.describe_subnets()
-    print(f"Security Groups: {len(sg_response.get('SecurityGroups', []))}")
-    print(f"Network ACLs: {len(nacl_response.get('NetworkAcls', []))}")
-    print(f"Route Tables: {len(rt_response.get('RouteTables', []))}")
-    print(f"Subnets: {len(subnet_response.get('Subnets', []))}")
+
+    sgs = []
+    if "SecurityGroups" in sg_response:
+        sgs = sg_response["SecurityGroups"]
+    nacls = []
+    if "NetworkAcls" in nacl_response:
+        nacls = nacl_response["NetworkAcls"]
+    rts = []
+    if "RouteTables" in rt_response:
+        rts = rt_response["RouteTables"]
+    subnets = []
+    if "Subnets" in subnet_response:
+        subnets = subnet_response["Subnets"]
+
+    print(f"Security Groups: {len(sgs)}")
+    print(f"Network ACLs: {len(nacls)}")
+    print(f"Route Tables: {len(rts)}")
+    print(f"Subnets: {len(subnets)}")
 
 
 def audit_additional_vpc_costs_in_region(region_name):

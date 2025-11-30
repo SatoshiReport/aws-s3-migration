@@ -291,7 +291,10 @@ def describe_security_groups(
         params["GroupIds"] = group_ids
 
     response = ec2_client.describe_security_groups(**params)
-    return response.get("SecurityGroups", [])
+    security_groups = []
+    if "SecurityGroups" in response:
+        security_groups = response["SecurityGroups"]
+    return security_groups
 
 
 def delete_security_group(
@@ -370,7 +373,10 @@ def describe_snapshots(
         params["SnapshotIds"] = snapshot_ids
 
     response = ec2_client.describe_snapshots(**params)
-    return response.get("Snapshots", [])
+    snapshots = []
+    if "Snapshots" in response:
+        snapshots = response["Snapshots"]
+    return snapshots
 
 
 def describe_volumes(
@@ -405,7 +411,10 @@ def describe_volumes(
         params["Filters"] = filters
 
     response = ec2_client.describe_volumes(**params)
-    return response.get("Volumes", [])
+    volumes = []
+    if "Volumes" in response:
+        volumes = response["Volumes"]
+    return volumes
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point

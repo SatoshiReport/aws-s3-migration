@@ -30,7 +30,9 @@ def _get_nameserver_records(route53, zone_id, domain_name):
         record_type = record.get("Type")
         record_name = record.get("Name")
         if record_type == "NS" and record_name == f"{domain_name}.":
-            resource_records = record.get("ResourceRecords", [])
+            resource_records = []
+            if "ResourceRecords" in record:
+                resource_records = record["ResourceRecords"]
             return [rr.get("Value") for rr in resource_records]
 
     raise NSRecordsNotFoundError(domain_name)

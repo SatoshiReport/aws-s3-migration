@@ -238,7 +238,9 @@ def verify_canva_verification(domain):
             StartRecordType="TXT",
             MaxItems="5",
         )
-        txt_record_sets = txt_records.get("ResourceRecordSets", [])
+        txt_record_sets = []
+        if "ResourceRecordSets" in txt_records:
+            txt_record_sets = txt_records["ResourceRecordSets"]
 
         for record in txt_record_sets:
             record_type = record.get("Type")
@@ -247,7 +249,9 @@ def verify_canva_verification(domain):
             record_name = record.get("Name", "")
             if not record_name.startswith(f"_canva-domain-verify.{domain}."):
                 continue
-            resource_records = record.get("ResourceRecords", [])
+            resource_records = []
+            if "ResourceRecords" in record:
+                resource_records = record["ResourceRecords"]
             values = [
                 rr.get("Value", "").replace('"', "") for rr in resource_records
             ]
@@ -266,7 +270,9 @@ def verify_canva_verification(domain):
 def _find_hosted_zone_for_domain(route53, domain):
     """Find the Route53 hosted zone for a domain"""
     response = route53.list_hosted_zones()
-    hosted_zones = response.get("HostedZones", [])
+    hosted_zones = []
+    if "HostedZones" in response:
+        hosted_zones = response["HostedZones"]
 
     for zone in hosted_zones:
         if zone["Name"] == f"{domain}.":
@@ -277,13 +283,17 @@ def _find_hosted_zone_for_domain(route53, domain):
 def _print_nameservers(route53, zone_id, domain):
     """Print nameservers for the zone"""
     records_response = route53.list_resource_record_sets(HostedZoneId=zone_id)
-    records = records_response.get("ResourceRecordSets", [])
+    records = []
+    if "ResourceRecordSets" in records_response:
+        records = records_response["ResourceRecordSets"]
 
     for record in records:
         record_type = record.get("Type")
         record_name = record.get("Name")
         if record_type == "NS" and record_name == f"{domain}.":
-            resource_records = record.get("ResourceRecords", [])
+            resource_records = []
+            if "ResourceRecords" in record:
+                resource_records = record["ResourceRecords"]
             nameservers = [rr.get("Value") for rr in resource_records]
             print("  ✅ Nameservers configured:")
             for ns in nameservers:

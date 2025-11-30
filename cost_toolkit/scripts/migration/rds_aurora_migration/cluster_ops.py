@@ -32,7 +32,9 @@ def discover_rds_instances():
                 if "DBClusterIdentifier" in instance and instance["DBClusterIdentifier"]:
                     continue
 
-                vpc_security_groups = instance.get("VpcSecurityGroups", [])
+                vpc_security_groups = []
+                if "VpcSecurityGroups" in instance:
+                    vpc_security_groups = instance["VpcSecurityGroups"]
                 db_subnet_group = instance.get("DBSubnetGroup", None)
                 db_param_groups = instance.get("DBParameterGroups", [{}])
                 instance_info = {

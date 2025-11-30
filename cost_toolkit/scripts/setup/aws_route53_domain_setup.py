@@ -103,7 +103,9 @@ def verify_canva_dns_setup(domain_name, zone_id):
         route53 = boto3.client("route53")
 
         records_response = route53.list_resource_record_sets(HostedZoneId=f"/hostedzone/{zone_id}")
-        records = records_response.get("ResourceRecordSets", [])
+        records = []
+        if "ResourceRecordSets" in records_response:
+            records = records_response["ResourceRecordSets"]
 
         has_root_a, has_www_a, has_canva_txt, canva_ip = _check_dns_records(records, domain_name)
         all_present = _print_dns_status(has_root_a, has_www_a, has_canva_txt)
@@ -121,7 +123,9 @@ def create_missing_dns_records(domain_name, zone_id, canva_ip):
 
         # Get current records
         records_response = route53.list_resource_record_sets(HostedZoneId=f"/hostedzone/{zone_id}")
-        records = records_response.get("ResourceRecordSets", [])
+        records = []
+        if "ResourceRecordSets" in records_response:
+            records = records_response["ResourceRecordSets"]
 
         existing_records = _build_existing_records_map(records)
 

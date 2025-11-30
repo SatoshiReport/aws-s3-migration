@@ -51,7 +51,9 @@ def _extract_attachment_info(volume: Dict, region: str) -> Dict:
     Returns:
         Dictionary with attachment details or None values if not attached
     """
-    attachments = volume.get("Attachments", [])
+    attachments = []
+    if "Attachments" in volume:
+        attachments = volume["Attachments"]
     if attachments:
         attachment = attachments[0]
         instance_id = attachment["InstanceId"]

@@ -34,7 +34,10 @@ def list_hosted_zones(
     )
 
     response = route53_client.list_hosted_zones()
-    return response.get("HostedZones", [])
+    hosted_zones = []
+    if "HostedZones" in response:
+        hosted_zones = response["HostedZones"]
+    return hosted_zones
 
 
 def get_hosted_zone(
@@ -90,7 +93,10 @@ def list_resource_record_sets(
     )
 
     response = route53_client.list_resource_record_sets(HostedZoneId=hosted_zone_id)
-    return response.get("ResourceRecordSets", [])
+    resource_record_sets = []
+    if "ResourceRecordSets" in response:
+        resource_record_sets = response["ResourceRecordSets"]
+    return resource_record_sets
 
 
 def create_hosted_zone(
