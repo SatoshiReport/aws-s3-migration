@@ -86,8 +86,9 @@ def get_instance_name(ec2_client, instance_id: str) -> Optional[str]:
     response = ec2_client.describe_instances(InstanceIds=[instance_id])
     for reservation in response["Reservations"]:
         for instance in reservation["Instances"]:
-            tags = instance.get("Tags", [])
-            for tag in tags:
+            if "Tags" not in instance:
+                continue
+            for tag in instance["Tags"]:
                 if tag["Key"] == "Name":
                     return tag["Value"]
     return None
@@ -176,8 +177,9 @@ def extract_tag_value(resource, key):
     Returns:
         str: Tag value if found, None otherwise
     """
-    tags = resource.get("Tags", [])
-    for tag in tags:
+    if "Tags" not in resource:
+        return None
+    for tag in resource["Tags"]:
         if tag["Key"] == key:
             return tag["Value"]
     return None
@@ -193,8 +195,9 @@ def get_resource_tags(resource):
     Returns:
         dict: Dictionary of tag key-value pairs
     """
-    tags = resource.get("Tags", [])
-    return {tag["Key"]: tag["Value"] for tag in tags}
+    if "Tags" not in resource:
+        return {}
+    return {tag["Key"]: tag["Value"] for tag in resource["Tags"]}
 
 
 def extract_volumes_from_instance(instance):
@@ -208,8 +211,9 @@ def extract_volumes_from_instance(instance):
         list: List of dicts with volume_id, device, and delete_on_termination
     """
     volumes = []
-    block_device_mappings = instance.get("BlockDeviceMappings", [])
-    for bdm in block_device_mappings:
+    if "BlockDeviceMappings" not in instance:
+        return volumes
+    for bdm in instance["BlockDeviceMappings"]:
         if "Ebs" in bdm:
             volumes.append(
                 {
@@ -256,15 +260,20 @@ def get_instance_details(ec2_client, instance_id):
     if instance is None:
         return None
 
-    placement = instance.get("Placement", {})
-    availability_zone = placement.get("AvailabilityZone")
+    availability_zone = None
+    if "Placement" in instance and "AvailabilityZone" in instance["Placement"]:
+        availability_zone = instance["Placement"]["AvailabilityZone"]
+
+    launch_time = None
+    if "LaunchTime" in instance:
+        launch_time = instance["LaunchTime"]
 
     return {
         "instance_id": instance_id,
         "name": extract_tag_value(instance, "Name"),
         "state": instance["State"]["Name"],
         "instance_type": instance["InstanceType"],
-        "launch_time": instance.get("LaunchTime"),
+        "launch_time": launch_time,
         "availability_zone": availability_zone,
         "volumes": extract_volumes_from_instance(instance),
         "tags": get_resource_tags(instance),
