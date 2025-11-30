@@ -8,7 +8,6 @@ from botocore.exceptions import ClientError
 
 from cost_toolkit.common.confirmation_prompts import confirm_snapshot_deletion
 from cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final import (
-    delete_snapshot,
     get_snapshots_to_delete,
     print_deletion_warning,
     process_snapshot_deletions,

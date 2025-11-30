@@ -11,7 +11,6 @@ from cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources import (
     UNUSED_SECURITY_GROUPS,
     clean_security_groups,
     cleanup_unused_vpc_resources,
-    delete_security_group,
     main,
     print_cleanup_intro,
     print_cleanup_summary,
