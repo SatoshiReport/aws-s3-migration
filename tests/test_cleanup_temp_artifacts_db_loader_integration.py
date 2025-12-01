@@ -40,7 +40,7 @@ def mock_args():
     args.cache_dir = Path("/tmp/cache")
     args.refresh_cache = False
     args.cache_ttl = 3600
-    args.categories = [Category("cat1", "desc1", _dummy_matcher)]
+    args.categories = [Category("cat1", "desc1", _dummy_matcher, prune=True)]
     args.min_size_bytes = TEST_MIN_SIZE_BYTES
     return args
 
@@ -61,7 +61,7 @@ def mock_db_info():
 @pytest.fixture
 def mock_category():
     """Create mock Category."""
-    return Category("cat1", "desc1", _dummy_matcher)
+    return Category("cat1", "desc1", _dummy_matcher, prune=True)
 
 
 def test_try_load_from_cache_valid(tmp_path, capsys):
@@ -83,7 +83,7 @@ def test_try_load_from_cache_valid(tmp_path, capsys):
     mock_db_info.max_rowid = TEST_MAX_ROWID
     mock_db_info.db_stat.st_mtime_ns = 123456789
 
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     candidate = Candidate(path=Path("/tmp/test"), category=category, size_bytes=1024, mtime=12345)
     metadata = {
         "generated_at": "2025-11-12T00:00:00+00:00",
@@ -133,7 +133,7 @@ def test_try_load_from_cache_cache_invalid_validation_failed(tmp_path):
     mock_db_info.max_rowid = TEST_MAX_ROWID
     mock_db_info.db_stat.st_mtime_ns = 123456789
 
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     candidate = Candidate(path=Path("/tmp/test"), category=category, size_bytes=1024, mtime=12345)
     metadata = {
         "generated_at": "2025-11-12T00:00:00+00:00",
@@ -223,7 +223,7 @@ def test_load_candidates_from_db_closes_connection(mock_args, tmp_path):
 
 def test_scan_context_dataclass(mock_args):
     """Test ScanContext dataclass creation."""
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     ctx = ScanContext(
         args=mock_args,
         scan_params={"categories": ["cat1"]},
@@ -239,7 +239,7 @@ def test_scan_context_dataclass(mock_args):
 
 def test_scan_context_none_cutoff(mock_args):
     """Test ScanContext with None cutoff_ts."""
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     ctx = ScanContext(
         args=mock_args,
         scan_params={"categories": ["cat1"]},
@@ -330,7 +330,7 @@ def test_write_cache_if_needed_success(tmp_path):
         refresh_cache=False,
         cache_ttl=3600,
     )
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     candidate = Candidate(path=Path("/tmp/test"), category=category, size_bytes=1024, mtime=12345)
     load_result = MagicMock()
     load_result.candidates = [candidate]
