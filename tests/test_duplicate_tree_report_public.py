@@ -22,6 +22,7 @@ def test_reexported_symbols_are_accessible():
 
 def test_main_delegates_to_cli(monkeypatch):
     """Ensure duplicate_tree_report.main routes to duplicate_tree_cli."""
+
     class DummyCliModule(ModuleType):
         """Minimal module stub that exposes a main entry point."""
 

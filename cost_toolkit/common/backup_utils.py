@@ -85,6 +85,5 @@ def is_backup_related_rule(rule):
     # Combined list from both files: snapshot, ami, backup, image, createimage
     keywords = ["snapshot", "ami", "backup", "image", "createimage"]
     return any(
-        keyword in rule_name.lower() or keyword in description.lower()
-        for keyword in keywords
+        keyword in rule_name.lower() or keyword in description.lower() for keyword in keywords
     )

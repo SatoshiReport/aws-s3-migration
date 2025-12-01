@@ -101,7 +101,6 @@ def get_security_group_rules_referencing_group(ec2_client, target_group_id):
     return rules_to_remove
 
 
-
 def _get_circular_security_groups():
     """Return list of security groups with circular dependencies from shared constants."""
     return ALL_CIRCULAR_SECURITY_GROUPS

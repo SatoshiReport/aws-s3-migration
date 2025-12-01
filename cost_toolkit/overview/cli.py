@@ -51,7 +51,9 @@ def get_current_month_costs():
                     total_cost += cost
 
     except ClientError as e:
-        raise RuntimeError(f"Failed to retrieve current month costs from AWS Cost Explorer: {str(e)}") from e
+        raise RuntimeError(
+            f"Failed to retrieve current month costs from AWS Cost Explorer: {str(e)}"
+        ) from e
     return service_costs, total_cost
 
 

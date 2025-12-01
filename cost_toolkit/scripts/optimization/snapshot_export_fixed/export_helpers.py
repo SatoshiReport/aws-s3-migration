@@ -190,4 +190,3 @@ def export_ami_to_s3_with_recovery(
         return export_task_id, result_key
 
     return None, None
-

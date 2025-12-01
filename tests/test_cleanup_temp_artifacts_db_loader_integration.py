@@ -11,6 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests.conftest_test_values import TEST_MAX_ROWID, TEST_MIN_SIZE_BYTES
+
 # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts import categories, core_scanner, db_loader
 from tests.assertions import assert_equal
@@ -39,7 +41,7 @@ def mock_args():
     args.refresh_cache = False
     args.cache_ttl = 3600
     args.categories = [Category("cat1", "desc1", _dummy_matcher)]
-    args.min_size_bytes = 1024
+    args.min_size_bytes = TEST_MIN_SIZE_BYTES
     return args
 
 
@@ -78,7 +80,7 @@ def test_try_load_from_cache_valid(tmp_path, capsys):
     mock_db_info = MagicMock()
     mock_db_info.db_path = Path("/tmp/test.db")
     mock_db_info.total_files = 100
-    mock_db_info.max_rowid = 500
+    mock_db_info.max_rowid = TEST_MAX_ROWID
     mock_db_info.db_stat.st_mtime_ns = 123456789
 
     category = Category("cat1", "desc1", _dummy_matcher)
@@ -128,7 +130,7 @@ def test_try_load_from_cache_cache_invalid_validation_failed(tmp_path):
     mock_db_info = MagicMock()
     mock_db_info.db_path = Path("/tmp/test.db")
     mock_db_info.total_files = 100
-    mock_db_info.max_rowid = 500
+    mock_db_info.max_rowid = TEST_MAX_ROWID
     mock_db_info.db_stat.st_mtime_ns = 123456789
 
     category = Category("cat1", "desc1", _dummy_matcher)
@@ -336,7 +338,7 @@ def test_write_cache_if_needed_success(tmp_path):
     mock_db_info = MagicMock()
     mock_db_info.db_path = Path("/tmp/test.db")
     mock_db_info.total_files = 100
-    mock_db_info.max_rowid = 500
+    mock_db_info.max_rowid = TEST_MAX_ROWID
     mock_db_info.db_stat.st_mtime_ns = 123456789
 
     cache_path = tmp_path / "cache" / "test.json"

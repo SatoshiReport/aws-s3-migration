@@ -21,16 +21,178 @@ class TestPsycopg2Availability:
         assert explore_user_data.MAX_SAMPLE_COLUMNS == 5
 
 
-def test_function_exists():
-    """Test that _try_database_connection function exists.
+class TestRequireEnvVar:
+    """Tests for _require_env_var function."""
 
-    Note: This test exists because psycopg2 is conditionally imported
-    and testing these functions requires complex mocking that doesn't provide
-    significant value. The function behavior is covered by integration testing.
-    """
-    assert hasattr(explore_user_data, "_try_database_connection")
-    # pylint: disable=protected-access
-    assert callable(explore_user_data._try_database_connection)
+    def test_require_env_var_present(self):
+        """Test getting a required environment variable that exists."""
+        with patch.dict("os.environ", {"TEST_VAR": "test_value"}):
+            result = explore_user_data._require_env_var(
+                "TEST_VAR"
+            )  # pylint: disable=protected-access
+            assert result == "test_value"
+
+    def test_require_env_var_missing(self):
+        """Test getting a required environment variable that doesn't exist."""
+        with patch.dict("os.environ", {}, clear=True):
+            try:
+                explore_user_data._require_env_var(
+                    "MISSING_VAR"
+                )  # pylint: disable=protected-access
+                assert False, "Should have raised RuntimeError"
+            except RuntimeError as exc:
+                assert "MISSING_VAR is required" in str(exc)
+
+    def test_require_env_var_empty_string(self):
+        """Test getting a required environment variable that is empty."""
+        with patch.dict("os.environ", {"EMPTY_VAR": ""}):
+            try:
+                explore_user_data._require_env_var("EMPTY_VAR")  # pylint: disable=protected-access
+                assert False, "Should have raised RuntimeError"
+            except RuntimeError as exc:
+                assert "EMPTY_VAR is required" in str(exc)
+
+    def test_require_env_var_whitespace_only(self):
+        """Test getting a required environment variable that contains only whitespace."""
+        with patch.dict("os.environ", {"WHITESPACE_VAR": "   "}):
+            try:
+                explore_user_data._require_env_var(
+                    "WHITESPACE_VAR"
+                )  # pylint: disable=protected-access
+                assert False, "Should have raised RuntimeError"
+            except RuntimeError as exc:
+                assert "WHITESPACE_VAR is required" in str(exc)
+
+    def test_require_env_var_strips_whitespace(self):
+        """Test that _require_env_var strips whitespace."""
+        with patch.dict("os.environ", {"TRIMMED_VAR": "  value  "}):
+            result = explore_user_data._require_env_var(
+                "TRIMMED_VAR"
+            )  # pylint: disable=protected-access
+            assert result == "value"
+
+
+class TestParseRequiredPort:
+    """Tests for _parse_required_port function."""
+
+    def test_parse_required_port_valid(self):
+        """Test parsing a valid port number."""
+        with patch.dict("os.environ", {"TEST_PORT": "5432"}):
+            result = explore_user_data._parse_required_port(
+                "TEST_PORT"
+            )  # pylint: disable=protected-access
+            assert result == 5432
+
+    def test_parse_required_port_invalid(self):
+        """Test parsing an invalid port number."""
+        with patch.dict("os.environ", {"TEST_PORT": "not_a_number"}):
+            try:
+                explore_user_data._parse_required_port(
+                    "TEST_PORT"
+                )  # pylint: disable=protected-access
+                assert False, "Should have raised RuntimeError"
+            except RuntimeError as exc:
+                assert "must be a valid integer" in str(exc)
+                assert "not_a_number" in str(exc)
+
+    def test_parse_required_port_missing(self):
+        """Test parsing a missing port environment variable."""
+        with patch.dict("os.environ", {}, clear=True):
+            try:
+                explore_user_data._parse_required_port(
+                    "MISSING_PORT"
+                )  # pylint: disable=protected-access
+                assert False, "Should have raised RuntimeError"
+            except RuntimeError as exc:
+                assert "MISSING_PORT is required" in str(exc)
+
+
+class TestSplitRequiredList:
+    """Tests for _split_required_list function."""
+
+    def test_split_required_list_single_value(self):
+        """Test splitting a list with single value."""
+        with patch.dict("os.environ", {"TEST_LIST": "db1"}):
+            result = explore_user_data._split_required_list(
+                "TEST_LIST"
+            )  # pylint: disable=protected-access
+            assert result == ["db1"]
+
+    def test_split_required_list_multiple_values(self):
+        """Test splitting a list with multiple values."""
+        with patch.dict("os.environ", {"TEST_LIST": "db1,db2,db3"}):
+            result = explore_user_data._split_required_list(
+                "TEST_LIST"
+            )  # pylint: disable=protected-access
+            assert result == ["db1", "db2", "db3"]
+
+    def test_split_required_list_with_whitespace(self):
+        """Test splitting a list with whitespace around values."""
+        with patch.dict("os.environ", {"TEST_LIST": " db1 , db2 , db3 "}):
+            result = explore_user_data._split_required_list(
+                "TEST_LIST"
+            )  # pylint: disable=protected-access
+            assert result == ["db1", "db2", "db3"]
+
+    def test_split_required_list_empty_values(self):
+        """Test splitting a list with only commas (empty values)."""
+        with patch.dict("os.environ", {"TEST_LIST": ",,"}):
+            try:
+                explore_user_data._split_required_list(
+                    "TEST_LIST"
+                )  # pylint: disable=protected-access
+                assert False, "Should have raised RuntimeError"
+            except RuntimeError as exc:
+                assert "TEST_LIST must contain at least one value" in str(exc)
+
+    def test_split_required_list_missing(self):
+        """Test splitting a missing environment variable."""
+        with patch.dict("os.environ", {}, clear=True):
+            try:
+                explore_user_data._split_required_list(
+                    "MISSING_LIST"
+                )  # pylint: disable=protected-access
+                assert False, "Should have raised RuntimeError"
+            except RuntimeError as exc:
+                assert "MISSING_LIST is required" in str(exc)
+
+
+class TestLoadRestoredDbSettings:
+    """Tests for _load_restored_db_settings function."""
+
+    def test_load_restored_db_settings_complete(self):
+        """Test loading complete restored DB settings."""
+        env = {
+            "RESTORED_DB_HOST": "localhost",
+            "RESTORED_DB_PORT": "5432",
+            "RESTORED_DB_USERNAME": "admin",
+            "RESTORED_DB_NAMES": "postgres,testdb",
+            "RESTORED_DB_PASSWORDS": "pass1,pass2",
+        }
+        with patch.dict("os.environ", env):
+            host, port, databases, username, passwords = (
+                explore_user_data._load_restored_db_settings()
+            )  # pylint: disable=protected-access
+            assert host == "localhost"
+            assert port == 5432
+            assert databases == ["postgres", "testdb"]
+            assert username == "admin"
+            assert passwords == ["pass1", "pass2"]
+
+    def test_load_restored_db_settings_missing_host(self):
+        """Test loading restored DB settings with missing HOST."""
+        env = {
+            "RESTORED_DB_PORT": "5432",
+            "RESTORED_DB_USERNAME": "admin",
+            "RESTORED_DB_NAMES": "postgres",
+            "RESTORED_DB_PASSWORDS": "pass1",
+        }
+        with patch.dict("os.environ", env, clear=True):
+            try:
+                explore_user_data._load_restored_db_settings()  # pylint: disable=protected-access
+                assert False, "Should have raised RuntimeError"
+            except RuntimeError as exc:
+                assert "RESTORED_DB_HOST is required" in str(exc)
 
 
 class TestTryDatabaseConnection:
@@ -69,6 +231,65 @@ class TestTryDatabaseConnection:
             else:
                 explore_user_data.__dict__.pop("psycopg2", None)
 
+    def test_connection_failure_returns_none(self, capsys):
+        """Test connection failure returns None."""
+        mock_psycopg2 = MagicMock()
+        mock_psycopg2.Error = Exception
+        mock_psycopg2.connect.side_effect = Exception("Connection refused")
+
+        # Inject psycopg2 into the module's globals
+        original_global = explore_user_data.__dict__.get("psycopg2")
+        explore_user_data.__dict__["psycopg2"] = mock_psycopg2
+
+        try:
+            result_conn, result_db = (
+                explore_user_data._try_database_connection(  # pylint: disable=protected-access
+                    "localhost", 5432, ["testdb"], "testuser", ["testpass"]
+                )
+            )
+
+            assert result_conn is None
+            assert result_db is None
+            captured = capsys.readouterr()
+            assert "Failed:" in captured.out
+        finally:
+            if original_global is not None:
+                explore_user_data.__dict__["psycopg2"] = original_global
+            else:
+                explore_user_data.__dict__.pop("psycopg2", None)
+
+    def test_connection_retries_with_multiple_db_and_passwords(self, capsys):
+        """Test connection retries with multiple database and password combinations."""
+        mock_conn = MagicMock()
+        mock_psycopg2 = MagicMock()
+        mock_psycopg2.Error = Exception
+        # Fail first 2 times, succeed on 3rd
+        mock_psycopg2.connect.side_effect = [
+            Exception("Failed 1"),
+            Exception("Failed 2"),
+            mock_conn,
+        ]
+
+        # Inject psycopg2 into the module's globals
+        original_global = explore_user_data.__dict__.get("psycopg2")
+        explore_user_data.__dict__["psycopg2"] = mock_psycopg2
+
+        try:
+            result_conn, result_db = (
+                explore_user_data._try_database_connection(  # pylint: disable=protected-access
+                    "localhost", 5432, ["db1", "db2"], "testuser", ["pass1", "pass2"]
+                )
+            )
+
+            assert result_conn == mock_conn
+            assert result_db == "db2"
+            assert mock_psycopg2.connect.call_count == 3
+        finally:
+            if original_global is not None:
+                explore_user_data.__dict__["psycopg2"] = original_global
+            else:
+                explore_user_data.__dict__.pop("psycopg2", None)
+
 
 class TestExploreRestoredDatabase:
     """Tests for explore_restored_database function."""
@@ -83,9 +304,11 @@ class TestExploreRestoredDatabase:
         assert "pip install psycopg2-binary" in captured.out
 
     @patch("cost_toolkit.scripts.rds.explore_user_data.PSYCOPG2_AVAILABLE", True)
+    @patch("cost_toolkit.scripts.rds.explore_user_data._load_restored_db_settings")
     @patch("cost_toolkit.scripts.rds.explore_user_data._try_database_connection")
-    def test_connection_fails(self, mock_try_conn, capsys):
+    def test_connection_fails(self, mock_try_conn, mock_load, capsys):
         """Test when connection fails."""
+        mock_load.return_value = ("localhost", 5432, ["postgres"], "admin", ["password"])
         mock_try_conn.return_value = (None, None)
 
         explore_user_data.explore_restored_database()
@@ -95,7 +318,8 @@ class TestExploreRestoredDatabase:
         assert "Please check the database configuration" in captured.out
 
     @patch("cost_toolkit.scripts.rds.explore_user_data.PSYCOPG2_AVAILABLE", True)
-    def test_successful_exploration(self, capsys):
+    @patch("cost_toolkit.scripts.rds.explore_user_data._load_restored_db_settings")
+    def test_successful_exploration(self, mock_load, capsys):
         """Test successful database exploration."""
         with (
             patch(
@@ -121,6 +345,7 @@ class TestExploreRestoredDatabase:
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
             mock_conn.cursor.return_value = mock_cursor
+            mock_load.return_value = ("localhost", 5432, ["postgres"], "admin", ["password"])
             mock_try_conn.return_value = (mock_conn, "postgres")
             mock_list_tables.return_value = [("public", "users", "postgres")]
 
@@ -145,26 +370,20 @@ class TestExploreRestoredDatabase:
             captured = capsys.readouterr()
             assert "Database exploration completed!" in captured.out
 
-    @patch("cost_toolkit.scripts.rds.explore_user_data.PSYCOPG2_AVAILABLE", True)
-    @patch("cost_toolkit.scripts.rds.explore_user_data._try_database_connection")
-    def test_connection_parameters(self, mock_try_conn):
-        """Test that correct connection parameters are used."""
-        mock_try_conn.return_value = (None, None)
 
-        explore_user_data.explore_restored_database()
+class TestMainReturnCode:
+    """Tests for main function return codes."""
 
-        # Verify connection was attempted with correct parameters
-        call_args = mock_try_conn.call_args[0]
-        assert call_args[0] == explore_user_data.DEFAULT_RESTORED_HOST
-        assert call_args[1] == explore_user_data.DEFAULT_RESTORED_PORT
-        assert "postgres" in call_args[2]
-        assert call_args[3] == explore_user_data.DEFAULT_RESTORED_USERNAME
-        assert len(call_args[4]) > 0  # Has passwords
+    @patch("cost_toolkit.scripts.rds.explore_user_data.explore_restored_database")
+    def test_main_returns_zero_on_success(self, mock_explore):
+        """Test that main returns 0 when explore succeeds."""
+        mock_explore.return_value = True
+        result = explore_user_data.main()
+        assert result == 0
 
-
-@patch("cost_toolkit.scripts.rds.explore_user_data.explore_restored_database")
-def test_main_calls_explore(mock_explore):
-    """Test that main calls explore_restored_database."""
-    explore_user_data.main()
-
-    mock_explore.assert_called_once()
+    @patch("cost_toolkit.scripts.rds.explore_user_data.explore_restored_database")
+    def test_main_returns_one_on_failure(self, mock_explore):
+        """Test that main returns 1 when explore fails."""
+        mock_explore.return_value = False
+        result = explore_user_data.main()
+        assert result == 1

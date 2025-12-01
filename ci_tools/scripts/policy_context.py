@@ -3,26 +3,49 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Dict, Protocol, Sequence, cast
 
-from ci_tools.scripts import CISharedRootNotConfiguredError
+
+class CISharedRootNotConfiguredError(RuntimeError):
+    """Raised when CI_SHARED_ROOT is not configured and cannot be found."""
 
 
 _LOCAL_PATH = Path(__file__).resolve()
 _REPO_ROOT = _LOCAL_PATH.parents[2]
 
-_CI_SHARED_ROOT_ENV = os.environ.get("CI_SHARED_ROOT")
-if not _CI_SHARED_ROOT_ENV:
+
+def _load_ci_shared_root() -> Path:
+    """Load CI_SHARED_ROOT from config file or environment variable."""
+    config_file = _REPO_ROOT / "ci_shared_root.json"
+
+    if config_file.exists():
+        try:
+            with open(config_file, "r", encoding="utf-8") as f:
+                config = json.load(f)
+                ci_shared_root = config.get("ci_shared_root")
+                if ci_shared_root:
+                    return Path(ci_shared_root).expanduser().resolve()
+        except (IOError, json.JSONDecodeError):
+            pass
+
+    env_root = os.environ.get("CI_SHARED_ROOT")
+    if env_root:
+        return Path(env_root).expanduser().resolve()
+
     raise CISharedRootNotConfiguredError(
-        "CI_SHARED_ROOT environment variable is required. "
-        "Set it to the path of your ci_shared repository clone."
+        f"CI_SHARED_ROOT not configured. "
+        f"Create {config_file} with:\n"
+        f'{{"ci_shared_root": "/path/to/ci_shared"}}\n'
+        f"or set the CI_SHARED_ROOT environment variable."
     )
 
-_ENV_SHARED_ROOT = Path(_CI_SHARED_ROOT_ENV)
+
+_ENV_SHARED_ROOT = _load_ci_shared_root()
 
 
 def _candidate_context_paths() -> tuple[Path, ...]:

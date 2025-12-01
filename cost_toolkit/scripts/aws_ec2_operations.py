@@ -109,7 +109,11 @@ def delete_snapshot(
         client.delete_snapshot(SnapshotId=snapshot_id)
         print(f"   ✅ Successfully deleted {snapshot_id}")
     except ClientError as e:
-        error_code = e.response["Error"]["Code"] if hasattr(e, "response") and "Code" in e.response["Error"] else None
+        error_code = (
+            e.response["Error"]["Code"]
+            if hasattr(e, "response") and "Code" in e.response["Error"]
+            else None
+        )
         if error_code == "InvalidSnapshot.NotFound":
             print(f"   ℹ️  Snapshot {snapshot_id} not found in {region}")
             return False

@@ -55,7 +55,9 @@ def _run_audit_script(name, script_path):
         else:
             print(f"  ⚠️ Script {script_path} has no main()")
     except ClientError as e:
-        raise RuntimeError(f"AWS API error while running audit script {script_path}: {str(e)}") from e
+        raise RuntimeError(
+            f"AWS API error while running audit script {script_path}: {str(e)}"
+        ) from e
     except (
         AttributeError,
         ImportError,

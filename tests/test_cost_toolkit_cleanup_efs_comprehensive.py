@@ -6,6 +6,12 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from tests.conftest_test_values import (
+    TEST_EFS_FILESYSTEM_COUNT,
+    TEST_EFS_MOUNT_TARGET_COUNT_LARGE,
+    TEST_EFS_MOUNT_TARGET_COUNT_MEDIUM,
+    TEST_EFS_MOUNT_TARGET_COUNT_SMALL,
+)
 from cost_toolkit.scripts.cleanup.aws_efs_cleanup import (
     _delete_mount_targets,
     _delete_single_filesystem,
@@ -46,8 +52,8 @@ class TestDeleteMountTargets:
 
         count = _delete_mount_targets(mock_client, "fs-123")
 
-        assert count == 3
-        assert mock_client.delete_mount_target.call_count == 3
+        assert count == TEST_EFS_MOUNT_TARGET_COUNT_MEDIUM
+        assert mock_client.delete_mount_target.call_count == TEST_EFS_MOUNT_TARGET_COUNT_MEDIUM
         captured = capsys.readouterr()
         assert "Deleting mount target" in captured.out
 
@@ -139,7 +145,7 @@ class TestDeleteSingleFilesystem:
                 success, mt_count = _delete_single_filesystem(mock_client, fs)
 
         assert success is True
-        assert mt_count == 2
+        assert mt_count == TEST_EFS_MOUNT_TARGET_COUNT_SMALL
         mock_client.delete_file_system.assert_called_once_with(FileSystemId="fs-123")
         captured = capsys.readouterr()
         assert "Successfully deleted" in captured.out
@@ -203,8 +209,8 @@ class TestProcessRegion:
             ):
                 fs_count, mt_count = _process_region("us-east-1")
 
-        assert fs_count == 2
-        assert mt_count == 4  # 2 filesystems * 2 mount targets each
+        assert fs_count == TEST_EFS_FILESYSTEM_COUNT
+        assert mt_count == TEST_EFS_MOUNT_TARGET_COUNT_LARGE  # 2 filesystems * 2 mount targets each
         captured = capsys.readouterr()
         assert "Found 2 EFS file systems" in captured.out
 
@@ -241,8 +247,8 @@ class TestProcessRegion:
             ):
                 fs_count, mt_count = _process_region("us-east-1")
 
-        assert fs_count == 2
-        assert mt_count == 3
+        assert fs_count == TEST_EFS_FILESYSTEM_COUNT
+        assert mt_count == TEST_EFS_MOUNT_TARGET_COUNT_MEDIUM
 
 
 class TestDeleteEfsResources:

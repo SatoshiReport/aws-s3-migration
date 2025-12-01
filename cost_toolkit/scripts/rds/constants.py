@@ -17,7 +17,9 @@ PUBLIC_SUBNETS = [
 DEFAULT_SUBNET_GROUP_DESCRIPTION = "Public subnets only for RDS internet access"
 
 
-def create_public_subnet_group(rds, subnet_group_name, description: str = DEFAULT_SUBNET_GROUP_DESCRIPTION):
+def create_public_subnet_group(
+    rds, subnet_group_name, description: str = DEFAULT_SUBNET_GROUP_DESCRIPTION
+):
     """Create a new DB subnet group with public subnets.
 
     Args:

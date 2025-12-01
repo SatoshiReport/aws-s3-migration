@@ -92,7 +92,9 @@ def _get_network_metrics(cloudwatch, instance_id, start_time, end_time):
         else:
             print("  Network In: No data")
     except ClientError as e:
-        raise RuntimeError(f"Failed to retrieve network metrics for instance {instance_id}: {e}") from e
+        raise RuntimeError(
+            f"Failed to retrieve network metrics for instance {instance_id}: {e}"
+        ) from e
 
 
 def _estimate_monthly_cost(instance_type, state):

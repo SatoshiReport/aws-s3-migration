@@ -18,6 +18,8 @@ from cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete import (
     print_bulk_deletion_warning,
     process_bulk_deletions,
 )
+
+
 class TestGetSnapshotDetails:
     """Tests for get_snapshot_details function."""
 
@@ -182,6 +184,7 @@ class TestDeleteSnapshotSafely:
                 assert result is False
                 captured = capsys.readouterr()
                 assert "Error deleting snapshot snap-123" in captured.out
+
 
 def test_get_bulk_deletion_snapshots_returns_list_of_snapshots():
     """Test that function returns expected list."""

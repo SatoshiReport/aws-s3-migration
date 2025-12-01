@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from tests.conftest_test_values import TEST_SECURITY_GROUP_COUNT
 from cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup import (
     _check_inbound_rules,
     _check_outbound_rules,
@@ -224,7 +225,7 @@ def test_remove_cross_references_remove_references(capsys):
                 }
             ]
             count = _remove_cross_references(mock_client, sgs)
-    assert count == 2  # 1 rule per group
+    assert count == TEST_SECURITY_GROUP_COUNT  # 1 rule per group
     captured = capsys.readouterr()
     assert "Removing cross-references" in captured.out
 
@@ -245,7 +246,7 @@ class TestDeleteSecurityGroups:
             return_value=True,
         ):
             count = _delete_security_groups(mock_client, sgs)
-        assert count == 2
+        assert count == TEST_SECURITY_GROUP_COUNT
         captured = capsys.readouterr()
         assert "Deleting security groups" in captured.out
 

@@ -40,6 +40,7 @@ def determine_default_base_path() -> Path:
     config_json_path = REPO_ROOT / "cleanup_temp_artifacts" / "config.json"
     if config_json_path.exists():
         import json
+
         try:
             with open(config_json_path) as f:
                 config_data = json.load(f)

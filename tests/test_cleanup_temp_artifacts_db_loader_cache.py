@@ -11,6 +11,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from tests.conftest_test_values import TEST_MAX_ROWID
+
 # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts import categories, core_scanner, db_loader
 from tests.assertions import assert_equal
@@ -63,7 +65,7 @@ def test_try_load_from_cache_file_not_exists(tmp_path):
     mock_db_info = MagicMock()
     mock_db_info.db_path = Path("/tmp/test.db")
     mock_db_info.total_files = 100
-    mock_db_info.max_rowid = 500
+    mock_db_info.max_rowid = TEST_MAX_ROWID
     mock_db_info.db_stat.st_mtime_ns = 123456789
 
     cache_path, cache_used, candidates = _try_load_from_cache(
@@ -127,7 +129,7 @@ def test_try_load_from_cache_invalid_cache(tmp_path):
     mock_db_info = MagicMock()
     mock_db_info.db_path = Path("/tmp/test.db")
     mock_db_info.total_files = 100
-    mock_db_info.max_rowid = 500
+    mock_db_info.max_rowid = TEST_MAX_ROWID
     mock_db_info.db_stat.st_mtime_ns = 123456789
 
     with patch("cleanup_temp_artifacts.db_loader.build_cache_key", return_value="test"):

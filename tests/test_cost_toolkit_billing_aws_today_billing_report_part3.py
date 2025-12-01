@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+from tests.conftest_test_values import TEST_MINUTE_HALF_HOUR
 from cost_toolkit.scripts.billing.aws_today_billing_report import (
     _calculate_hourly_info,
     _calculate_trend_indicator,
@@ -95,7 +96,7 @@ class TestCalculateHourlyInfo:
         """Test hourly info calculation with partial hours."""
         mock_now = MagicMock()
         mock_now.hour = 6
-        mock_now.minute = 30
+        mock_now.minute = TEST_MINUTE_HALF_HOUR
 
         result = _calculate_hourly_info(6.50, mock_now)
 

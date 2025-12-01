@@ -62,13 +62,13 @@ class PolicyApplicationError(RuntimeError):
 def apply_policy_to_bucket(bucket, dry_run):
     """Apply policy to a single bucket.
 
-    Raises:
-        PolicyFileNotFoundError: If the policy file for the bucket does not exist.
-        PolicyApplicationError: If applying the policy fails.
+    Returns:
+        True if policy was successfully applied, False otherwise.
     """
     policy_file = os.path.join("policies", f"{bucket}_policy.json")
     if not os.path.exists(policy_file):
-        raise PolicyFileNotFoundError(f"Policy file not found: {policy_file}")
+        print(f"Policy file not found: {policy_file}")
+        return False
     try:
         policy_json = load_policy_from_file(policy_file)
         if dry_run:
@@ -76,8 +76,10 @@ def apply_policy_to_bucket(bucket, dry_run):
         else:
             apply_bucket_policy(bucket, policy_json)
             print(f"✓ Applied policy to {bucket}")
+        return True
     except (OSError, IOError, ValueError) as e:
-        raise PolicyApplicationError(f"Failed to apply policy to {bucket}: {e}") from e
+        print(f"Failed to apply policy to {bucket}: {e}")
+        return False
 
 
 def main():

@@ -11,6 +11,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tests.conftest_test_values import TEST_MIN_SIZE_BYTES
+
 # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts import categories, core_scanner, db_loader
 from tests.assertions import assert_equal
@@ -161,7 +163,7 @@ def test_build_cache_and_db_info():
     args.refresh_cache = False
     args.cache_ttl = 3600
     args.categories = [Category("cat1", "desc1", _dummy_matcher)]
-    args.min_size_bytes = 1024
+    args.min_size_bytes = TEST_MIN_SIZE_BYTES
 
     mock_stat = MagicMock()
     mock_stat.st_mtime_ns = 123456789

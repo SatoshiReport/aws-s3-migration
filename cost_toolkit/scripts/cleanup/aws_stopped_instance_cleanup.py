@@ -79,9 +79,7 @@ def get_instance_cleanup_details(
         "volumes": volumes,
         "tags": tags,
         "security_groups": [sg["GroupId"] for sg in security_groups],
-        "network_interfaces": [
-            eni["NetworkInterfaceId"] for eni in network_interfaces
-        ],
+        "network_interfaces": [eni["NetworkInterfaceId"] for eni in network_interfaces],
     }
 
     return instance_info

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
+from tests.conftest_test_values import TEST_MINUTE_HALF_HOUR
 from cost_toolkit.scripts.billing.aws_hourly_billing_report import (
     _display_optimization_insights,
     format_hourly_billing_report,
@@ -78,7 +79,7 @@ class TestFormatHourlyBillingReport:
         mock_now.strftime.return_value = "2025-11-13 12:30:00"
         mock_now.replace.return_value = datetime(2025, 11, 13, 12, 0, 0)
         mock_now.hour = 12
-        mock_now.minute = 30
+        mock_now.minute = TEST_MINUTE_HALF_HOUR
         mock_datetime_module.now.return_value = mock_now
 
         hourly_data = {
@@ -127,7 +128,7 @@ class TestFormatHourlyBillingReport:
         mock_now.strftime.return_value = "2025-11-13 12:30:00"
         mock_now.replace.return_value = datetime(2025, 11, 13, 12, 0, 0)
         mock_now.hour = 12
-        mock_now.minute = 30
+        mock_now.minute = TEST_MINUTE_HALF_HOUR
         mock_datetime_module.now.return_value = mock_now
 
         hourly_data = {

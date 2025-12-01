@@ -186,18 +186,25 @@ def _collect_used_subnets_from_rds(region_name):
     return used_subnets
 
 
+def _extract_subnet_from_az(az):
+    """Extract subnet ID from availability zone."""
+    return az.get("SubnetId") if "SubnetId" in az else None
+
+
 def _collect_used_subnets_from_elb(region_name):
     """Collect subnet IDs from load balancers."""
     used_subnets = set()
     try:
         elbv2 = boto3.client("elbv2", region_name=region_name)
         lb_response = elbv2.describe_load_balancers()
-        if "LoadBalancers" in lb_response:
-            for lb in lb_response["LoadBalancers"]:
-                if "AvailabilityZones" in lb:
-                    for az in lb["AvailabilityZones"]:
-                        if "SubnetId" in az:
-                            used_subnets.add(az["SubnetId"])
+        load_balancers = lb_response.get("LoadBalancers", [])
+
+        for lb in load_balancers:
+            availability_zones = lb.get("AvailabilityZones", [])
+            for az in availability_zones:
+                subnet_id = _extract_subnet_from_az(az)
+                if subnet_id:
+                    used_subnets.add(subnet_id)
     except ClientError as e:
         print(f"  Warning: Could not check ELB subnets: {e}")
 

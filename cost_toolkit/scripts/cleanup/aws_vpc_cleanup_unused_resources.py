@@ -101,7 +101,6 @@ EMPTY_VPCS = [
 ]
 
 
-
 def print_cleanup_intro():
     """Print introduction and warning messages for the cleanup operation"""
     print("AWS VPC Unused Resources Cleanup")

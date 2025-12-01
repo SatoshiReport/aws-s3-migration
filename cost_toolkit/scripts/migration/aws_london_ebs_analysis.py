@@ -80,34 +80,40 @@ def _start_stopped_instance(ec2, instance_id):
         print(f"  ❌ Error starting instance: {e}")
 
 
+def _is_related_snapshot(snap, instance_id, attached_volumes):
+    """Check if snapshot is related to instance or attached volumes."""
+    description = snap.get("Description", "")
+    if instance_id in description:
+        return True
+    return any(vol["id"] in description for vol in attached_volumes)
+
+
+def _print_snapshot_info(snap):
+    """Print snapshot details."""
+    snap_id = snap["SnapshotId"]
+    size = snap.get("VolumeSize", 0)
+    start_time = snap["StartTime"]
+    description = snap.get("Description")
+    print(f"    {snap_id}: {size} GB, created {start_time}")
+    print(f"      Description: {description}")
+
+
 def _analyze_snapshots(ec2, instance_id, attached_volumes):
     """Analyze snapshots related to the instance."""
     print("📸 Related Snapshots Analysis:")
     try:
         snapshots_response = ec2.describe_snapshots(OwnerIds=["sel"])
-        if "Snapshots" not in snapshots_response:
-            snapshots = []
-        else:
-            snapshots = snapshots_response["Snapshots"]
+        snapshots = snapshots_response.get("Snapshots", [])
 
-        related_snapshots = []
-        for snap in snapshots:
-            description = snap.get("Description") if "Description" in snap else ""
-            if instance_id in description or any(
-                vol["id"] in description for vol in attached_volumes
-            ):
-                related_snapshots.append(snap)
+        related_snapshots = [
+            snap for snap in snapshots
+            if _is_related_snapshot(snap, instance_id, attached_volumes)
+        ]
 
         if related_snapshots:
             print(f"  Found {len(related_snapshots)} snapshots related to this instance:")
             for snap in related_snapshots:
-                snap_id = snap["SnapshotId"]
-                size = snap.get("VolumeSize") if "VolumeSize" in snap else 0
-                start_time = snap["StartTime"]
-                description = snap.get("Description") if "Description" in snap else None
-
-                print(f"    {snap_id}: {size} GB, created {start_time}")
-                print(f"      Description: {description}")
+                _print_snapshot_info(snap)
             print()
         else:
             print("  No snapshots directly related to this instance found.")
@@ -196,7 +202,9 @@ def analyze_london_ebs():
         elif current_state == "running":
             print("✅ Instance is already running!")
             public_ip = instance.get("PublicIpAddress") if "PublicIpAddress" in instance else None
-            private_ip = instance.get("PrivateIpAddress") if "PrivateIpAddress" in instance else None
+            private_ip = (
+                instance.get("PrivateIpAddress") if "PrivateIpAddress" in instance else None
+            )
             print(f"  Public IP: {public_ip}")
             print(f"  Private IP: {private_ip}")
             print()

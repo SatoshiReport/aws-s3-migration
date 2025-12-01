@@ -170,45 +170,43 @@ def disable_eventbridge_backup_rules(region):
         print(f"  Error checking EventBridge rules in {region}: {e}")
 
 
+def _check_vault_recovery_points(backup_client, vault_name):
+    """Check and report recovery point status for a vault."""
+    try:
+        recovery_points = backup_client.list_recovery_points_by_backup_vault(
+            BackupVaultName=vault_name, MaxResults=1
+        )
+        recovery_points_list = recovery_points.get("RecoveryPoints", [])
+        point_count = len(recovery_points_list)
+        if point_count > 0:
+            print("    ℹ️  Vault contains recovery points - keeping vault")
+        else:
+            print("    ℹ️  Vault is empty - could be deleted if desired")
+    except ClientError as e:
+        print(f"    ⚠️  Error checking vault contents: {e}")
+
+
+def _print_vault_info(vault):
+    """Print vault information."""
+    vault_name = vault["BackupVaultName"]
+    creation_date = vault["CreationDate"]
+    print(f"  Vault: {vault_name}")
+    print(f"    Created: {creation_date}")
+    return vault_name
+
+
 def check_backup_vault_policies(region):
     """Check and optionally clean up backup vault policies."""
     try:
         backup_client = create_client("backup", region=region)
-
-        # List backup vaults
         vaults_response = backup_client.list_backup_vaults()
-        vaults = []
-        if "BackupVaultList" in vaults_response:
-            vaults = vaults_response["BackupVaultList"]
+        vaults = vaults_response.get("BackupVaultList", [])
 
         if vaults:
             print(f"🏦 Found {len(vaults)} backup vault(s) in {region}")
-
             for vault in vaults:
-                vault_name = vault["BackupVaultName"]
-                creation_date = vault["CreationDate"]
-
-                print(f"  Vault: {vault_name}")
-                print(f"    Created: {creation_date}")
-
-                # Check if vault has any recovery points
-                try:
-                    recovery_points = backup_client.list_recovery_points_by_backup_vault(
-                        BackupVaultName=vault_name, MaxResults=1
-                    )
-
-                    recovery_points_list = []
-                    if "RecoveryPoints" in recovery_points:
-                        recovery_points_list = recovery_points["RecoveryPoints"]
-                    point_count = len(recovery_points_list)
-                    if point_count > 0:
-                        print("    ℹ️  Vault contains recovery points - keeping vault")
-                    else:
-                        print("    ℹ️  Vault is empty - could be deleted if desired")
-
-                except ClientError as e:
-                    print(f"    ⚠️  Error checking vault contents: {e}")
-
+                vault_name = _print_vault_info(vault)
+                _check_vault_recovery_points(backup_client, vault_name)
                 print()
         else:
             print(f"  No backup vaults found in {region}")

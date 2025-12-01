@@ -182,7 +182,11 @@ def _check_vpc_rds_instances(region_name, vpc_id, analysis):
         vpc_dbs = []
         for db in db_instances:
             db_subnet_group = db.get("DBSubnetGroup")
-            if db_subnet_group and "VpcId" in db_subnet_group and db_subnet_group["VpcId"] == vpc_id:
+            if (
+                db_subnet_group
+                and "VpcId" in db_subnet_group
+                and db_subnet_group["VpcId"] == vpc_id
+            ):
                 vpc_dbs.append(db)
         if vpc_dbs:
             analysis["blocking_resources"].append(f"{len(vpc_dbs)} RDS instances")

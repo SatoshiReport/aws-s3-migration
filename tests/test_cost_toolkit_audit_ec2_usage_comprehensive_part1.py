@@ -7,6 +7,7 @@ from unittest.mock import MagicMock
 
 from botocore.exceptions import ClientError
 
+from tests.conftest_test_values import TEST_MAX_CPU_PERCENT
 from cost_toolkit.scripts.audit.aws_ec2_usage_audit import (  # pyright: ignore[reportPrivateUsage]
     _calculate_cpu_metrics,
     _determine_usage_level,
@@ -41,7 +42,7 @@ class TestCalculateCpuMetrics:
         avg_cpu, max_cpu, latest = _calculate_cpu_metrics(mock_cloudwatch, "i-123")
 
         assert avg_cpu == 12.5
-        assert max_cpu == 25.0
+        assert max_cpu == TEST_MAX_CPU_PERCENT
         assert latest["Average"] == 15.0
 
     def test_calculate_cpu_metrics_no_data(self):

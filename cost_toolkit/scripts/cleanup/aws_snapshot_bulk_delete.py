@@ -15,7 +15,6 @@ from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot, find_resour
 
 from ..aws_utils import setup_aws_credentials
 
-
 COMMON_REGIONS = get_common_regions_extended()
 
 

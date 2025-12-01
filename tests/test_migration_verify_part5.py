@@ -7,7 +7,7 @@ import pytest
 
 from migration_verify_bucket import BucketVerifier
 from migration_verify_checksums import VerificationProgressTracker
-from migration_verify_delete import BucketDeleter
+from migration_verify_delete import BucketDeleter, _bucket_has_contents, _ensure_list
 from migration_verify_inventory import FileInventoryChecker
 from tests.assertions import assert_equal
 
@@ -100,6 +100,8 @@ def test_delete_bucket_with_pagination_triggers_progress():
         {"Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(2000, 2500)]},
     ]
     mock_s3.get_paginator.return_value = mock_paginator
+    # Mock delete_objects to return a response without errors
+    mock_s3.delete_objects.return_value = {"Deleted": []}
 
     deleter = BucketDeleter(mock_s3, mock_state)
     deleter.delete_bucket("test-bucket")
@@ -141,3 +143,62 @@ def test_error_handling_across_components(tmp_path, mock_db_connection):
 
     with pytest.raises(ValueError):
         verifier.verify_bucket("test-bucket")
+
+
+# Edge case tests for _ensure_list() function
+def test_ensure_list_with_empty_input():
+    """Test _ensure_list with empty/None inputs"""
+    assert_equal(_ensure_list(None), [])
+    assert_equal(_ensure_list([]), [])
+    assert_equal(_ensure_list(""), [])
+
+
+def test_ensure_list_with_dict_input():
+    """Test _ensure_list converts dict to single-element list"""
+    test_dict = {"Key": "file.txt", "VersionId": "v1"}
+    result = _ensure_list(test_dict)
+    assert_equal(len(result), 1)
+    assert_equal(result[0], test_dict)
+
+
+def test_ensure_list_with_list_input():
+    """Test _ensure_list returns list as-is"""
+    test_list = [{"Key": "file1.txt"}, {"Key": "file2.txt"}]
+    result = _ensure_list(test_list)
+    assert_equal(result, test_list)
+
+
+# Edge case tests for _bucket_has_contents() function
+def test_bucket_has_contents_empty():
+    """Test bucket with no content returns False"""
+    mock_s3 = mock.Mock()
+    mock_paginator = mock.Mock()
+    mock_paginator.paginate.return_value = [{}]  # Empty page
+    mock_s3.get_paginator.return_value = mock_paginator
+
+    result = _bucket_has_contents(mock_s3, "empty-bucket")
+    assert result is False
+
+
+def test_bucket_has_contents_with_versions():
+    """Test bucket with versions returns True"""
+    mock_s3 = mock.Mock()
+    mock_paginator = mock.Mock()
+    mock_paginator.paginate.return_value = [{"Versions": [{"Key": "file.txt", "VersionId": "v1"}]}]
+    mock_s3.get_paginator.return_value = mock_paginator
+
+    result = _bucket_has_contents(mock_s3, "bucket-with-versions")
+    assert result is True
+
+
+def test_bucket_has_contents_with_delete_markers():
+    """Test bucket with delete markers returns True"""
+    mock_s3 = mock.Mock()
+    mock_paginator = mock.Mock()
+    mock_paginator.paginate.return_value = [
+        {"DeleteMarkers": [{"Key": "file.txt", "VersionId": "d1"}]}
+    ]
+    mock_s3.get_paginator.return_value = mock_paginator
+
+    result = _bucket_has_contents(mock_s3, "bucket-with-delete-markers")
+    assert result is True

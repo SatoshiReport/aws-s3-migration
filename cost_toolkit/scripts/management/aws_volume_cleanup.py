@@ -58,8 +58,6 @@ def delete_snapshot(snapshot_id, region):
     return delete_snapshot_canonical(snapshot_id, region, verbose=True)
 
 
-
-
 def get_bucket_size_metrics(bucket_name, region):
     """Get bucket size metrics from CloudWatch"""
     try:

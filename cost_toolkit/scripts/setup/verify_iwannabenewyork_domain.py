@@ -100,10 +100,7 @@ def verify_http_connectivity(domain):
         response = _http_get(http_url, allow_redirects=False, timeout=10)
 
         location_header = response.headers.get("Location", "")
-        if (
-            response.status_code == HTTP_STATUS_MOVED_PERMANENTLY
-            and "https://" in location_header
-        ):
+        if response.status_code == HTTP_STATUS_MOVED_PERMANENTLY and "https://" in location_header:
             print(
                 f"  ✅ HTTP redirects to HTTPS ({HTTP_STATUS_MOVED_PERMANENTLY}): "
                 f"{response.headers['Location']}"
@@ -252,9 +249,7 @@ def verify_canva_verification(domain):
             resource_records = []
             if "ResourceRecords" in record:
                 resource_records = record["ResourceRecords"]
-            values = [
-                rr.get("Value", "").replace('"', "") for rr in resource_records
-            ]
+            values = [rr.get("Value", "").replace('"', "") for rr in resource_records]
             if values:
                 print(f"  ✅ Canva verification TXT record found: {', '.join(values)}")
                 return True

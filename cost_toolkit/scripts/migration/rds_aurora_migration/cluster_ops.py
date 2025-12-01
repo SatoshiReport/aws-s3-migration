@@ -48,14 +48,22 @@ def discover_rds_instances():
                     "storage_type": instance["StorageType"],
                     "multi_az": instance["MultiAZ"],
                     "publicly_accessible": instance["PubliclyAccessible"],
-                    "vpc_security_groups": [
-                        sg["VpcSecurityGroupId"] for sg in vpc_security_groups
-                    ],
-                    "db_subnet_group": db_subnet_group["DBSubnetGroupName"] if db_subnet_group and "DBSubnetGroupName" in db_subnet_group else None,
-                    "parameter_group": db_param_groups[0]["DBParameterGroupName"] if db_param_groups and "DBParameterGroupName" in db_param_groups[0] else None,
+                    "vpc_security_groups": [sg["VpcSecurityGroupId"] for sg in vpc_security_groups],
+                    "db_subnet_group": (
+                        db_subnet_group["DBSubnetGroupName"]
+                        if db_subnet_group and "DBSubnetGroupName" in db_subnet_group
+                        else None
+                    ),
+                    "parameter_group": (
+                        db_param_groups[0]["DBParameterGroupName"]
+                        if db_param_groups and "DBParameterGroupName" in db_param_groups[0]
+                        else None
+                    ),
                     "backup_retention": instance.get("BackupRetentionPeriod", 0),
                     "preferred_backup_window": instance.get("PreferredBackupWindow", None),
-                    "preferred_maintenance_window": instance.get("PreferredMaintenanceWindow", None),
+                    "preferred_maintenance_window": instance.get(
+                        "PreferredMaintenanceWindow", None
+                    ),
                     "storage_encrypted": instance["StorageEncrypted"],
                     "kms_key_id": instance.get("KmsKeyId", None),
                     "deletion_protection": instance["DeletionProtection"],

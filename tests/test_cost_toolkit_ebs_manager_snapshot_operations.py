@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
+from tests.conftest_test_values import TEST_LARGE_VOLUME_SIZE_GIB
 from cost_toolkit.scripts.management.ebs_manager.snapshot import (
     SnapshotCreationError,
     VolumeNotFoundError,
@@ -334,7 +335,7 @@ def test_create_volume_snapshot_large_volume(mock_boto_client, mock_find_region,
     mock_ec2 = MagicMock()
     mock_boto_client.return_value = mock_ec2
 
-    large_size = 16384  # 16 TiB
+    large_size = TEST_LARGE_VOLUME_SIZE_GIB  # 16 TiB
 
     mock_ec2.describe_volumes.return_value = {
         "Volumes": [

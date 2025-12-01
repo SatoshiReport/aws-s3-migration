@@ -9,6 +9,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from tests.conftest_test_values import TEST_MAX_ROWID
 from cleanup_temp_artifacts.cache import (  # pylint: disable=no-name-in-module
     CACHE_VERSION,
     CacheReadError,
@@ -196,7 +197,7 @@ def test_write_cache(tmp_path):
     mock_db_info = MagicMock()
     mock_db_info.db_path = Path("/tmp/test.db")
     mock_db_info.total_files = 100
-    mock_db_info.max_rowid = 500
+    mock_db_info.max_rowid = TEST_MAX_ROWID
     mock_db_info.db_stat.st_mtime_ns = 123456789
 
     scan_params = {"categories": ["cat1"]}

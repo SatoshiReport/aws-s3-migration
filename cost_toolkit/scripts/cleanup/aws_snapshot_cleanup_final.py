@@ -114,9 +114,7 @@ def process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secre
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        if delete_snapshot_canonical(
-            snapshot_id, region, ec2_client=ec2_client
-        ):
+        if delete_snapshot_canonical(snapshot_id, region, ec2_client=ec2_client):
             successful_deletions += 1
             total_savings += monthly_cost
         else:

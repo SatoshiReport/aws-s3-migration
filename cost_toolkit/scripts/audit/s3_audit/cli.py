@@ -8,8 +8,8 @@ from collections import defaultdict
 import boto3
 from botocore.exceptions import ClientError, NoCredentialsError
 
-from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 from cost_toolkit.common.s3_utils import get_bucket_region
+from cost_toolkit.scripts.aws_utils import setup_aws_credentials
 
 from .bucket_analysis import analyze_bucket_objects
 from .recommendations import generate_optimization_recommendations

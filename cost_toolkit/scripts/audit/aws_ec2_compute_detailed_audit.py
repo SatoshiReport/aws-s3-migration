@@ -218,7 +218,9 @@ def _process_single_volume(volume):
     attachments = []
     if "Attachments" in volume:
         attachments = volume["Attachments"]
-    attached_to = attachments[0]["InstanceId"] if attachments and "InstanceId" in attachments[0] else None
+    attached_to = (
+        attachments[0]["InstanceId"] if attachments and "InstanceId" in attachments[0] else None
+    )
 
     print(f"Volume: {volume_id}")
     print(f"  Type: {volume_type}")

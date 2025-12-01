@@ -28,6 +28,51 @@ def _check_log_group_size(logs_client, log_group_name):
     return 0
 
 
+def _build_flow_info(flow_log, region_name):
+    """Extract flow log information from API response."""
+    resource_ids = flow_log.get("ResourceIds", [])
+    tags = flow_log.get("Tags", [])
+    return {
+        "region": region_name,
+        "flow_log_id": flow_log.get("FlowLogId"),
+        "flow_log_status": flow_log.get("FlowLogStatus"),
+        "resource_type": flow_log.get("ResourceType"),
+        "resource_id": resource_ids,
+        "log_destination_type": flow_log.get("LogDestinationType"),
+        "log_destination": flow_log.get("LogDestination"),
+        "creation_time": flow_log.get("CreationTime"),
+        "tags": tags,
+    }
+
+
+def _print_flow_info(flow_info):
+    """Print flow log details."""
+    print(f"Flow Log: {flow_info['flow_log_id']}")
+    print(f"  Status: {flow_info['flow_log_status']}")
+    print(f"  Resource Type: {flow_info['resource_type']}")
+    print(f"  Resource IDs: {flow_info['resource_id']}")
+    print(f"  Destination Type: {flow_info['log_destination_type']}")
+    print(f"  Destination: {flow_info['log_destination']}")
+    print(f"  Created: {flow_info['creation_time']}")
+
+
+def _process_flow_log_with_cost(flow_info, logs_client):
+    """Process flow log and calculate storage cost if applicable."""
+    if flow_info["log_destination_type"] == "cloud-watch-logs":
+        log_group_name = flow_info["log_destination"].split(":")[-1]
+        storage_cost = _check_log_group_size(logs_client, log_group_name)
+        if storage_cost > 0:
+            flow_info["storage_cost"] = storage_cost
+
+
+def _print_flow_tags(tags):
+    """Print flow log tags."""
+    if tags:
+        print("  Tags:")
+        for tag in tags:
+            print(f"    {tag['Key']}: {tag['Value']}")
+
+
 def audit_flow_logs_in_region(region_name):
     """Audit VPC Flow Logs in a specific region"""
     print(f"\n🔍 Auditing VPC Flow Logs in {region_name}")
@@ -37,56 +82,19 @@ def audit_flow_logs_in_region(region_name):
         ec2 = create_client("ec2", region=region_name)
         logs_client = create_client("logs", region=region_name)
 
-        # Get VPC Flow Logs
         response = ec2.describe_flow_logs()
-        flow_logs = []
-        if "FlowLogs" in response:
-            flow_logs = response["FlowLogs"]
+        flow_logs = response.get("FlowLogs", [])
 
         if not flow_logs:
             print(f"✅ No VPC Flow Logs found in {region_name}")
             return []
 
         region_summary = []
-
         for flow_log in flow_logs:
-            resource_ids = []
-            if "ResourceIds" in flow_log:
-                resource_ids = flow_log["ResourceIds"]
-            tags = []
-            if "Tags" in flow_log:
-                tags = flow_log["Tags"]
-            flow_info = {
-                "region": region_name,
-                "flow_log_id": flow_log.get("FlowLogId", None),
-                "flow_log_status": flow_log.get("FlowLogStatus", None),
-                "resource_type": flow_log.get("ResourceType", None),
-                "resource_id": resource_ids,
-                "log_destination_type": flow_log.get("LogDestinationType", None),
-                "log_destination": flow_log.get("LogDestination", None),
-                "creation_time": flow_log.get("CreationTime", None),
-                "tags": tags,
-            }
-
-            print(f"Flow Log: {flow_info['flow_log_id']}")
-            print(f"  Status: {flow_info['flow_log_status']}")
-            print(f"  Resource Type: {flow_info['resource_type']}")
-            print(f"  Resource IDs: {flow_info['resource_id']}")
-            print(f"  Destination Type: {flow_info['log_destination_type']}")
-            print(f"  Destination: {flow_info['log_destination']}")
-            print(f"  Created: {flow_info['creation_time']}")
-
-            if flow_info["log_destination_type"] == "cloud-watch-logs":
-                log_group_name = flow_info["log_destination"].split(":")[-1]
-                storage_cost = _check_log_group_size(logs_client, log_group_name)
-                if storage_cost > 0:
-                    flow_info["storage_cost"] = storage_cost
-
-            if flow_info["tags"]:
-                print("  Tags:")
-                for tag in flow_info["tags"]:
-                    print(f"    {tag['Key']}: {tag['Value']}")
-
+            flow_info = _build_flow_info(flow_log, region_name)
+            _print_flow_info(flow_info)
+            _process_flow_log_with_cost(flow_info, logs_client)
+            _print_flow_tags(flow_info["tags"])
             print()
             region_summary.append(flow_info)
 
@@ -120,9 +128,12 @@ def _check_vpc_endpoints(ec2):
     for endpoint in endpoints:
         endpoint_type = endpoint.get("VpcEndpointType", "Unknown")
         print(f"  Endpoint: {endpoint['VpcEndpointId']} ({endpoint_type})")
-        print(f"    Service: {endpoint.get('ServiceName', 'Unknown'}"))
-        print(f"    State: {endpoint.get('State', 'Unknown'}"))
-        print(f"    Created: {endpoint.get('CreationTimestamp', 'N/A'}"))
+        service_name = endpoint.get("ServiceName", "Unknown")
+        print(f"    Service: {service_name}")
+        state = endpoint.get("State", "Unknown")
+        print(f"    State: {state}")
+        created = endpoint.get("CreationTimestamp", "N/A")
+        print(f"    Created: {created}")
 
 
 def _check_vpc_resource_counts(ec2):

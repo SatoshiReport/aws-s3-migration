@@ -168,11 +168,7 @@ def cache_is_valid(
     meta_rowcount = metadata.get("rowcount")
     meta_max_rowid = metadata.get("max_rowid")
     meta_db_mtime_ns = metadata.get("db_mtime_ns")
-    if (
-        meta_rowcount != rowcount
-        or meta_max_rowid != max_rowid
-        or meta_db_mtime_ns != db_mtime_ns
-    ):
+    if meta_rowcount != rowcount or meta_max_rowid != max_rowid or meta_db_mtime_ns != db_mtime_ns:
         return False
 
     # Check TTL if enabled

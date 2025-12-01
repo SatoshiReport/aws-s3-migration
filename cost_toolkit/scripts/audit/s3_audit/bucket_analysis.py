@@ -10,9 +10,6 @@ from datetime import datetime, timedelta, timezone
 import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.s3_utils import get_bucket_region
-from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
-
 
 def _require_public_access_config(response: dict) -> dict:
     """Ensure public access block payload is complete."""
@@ -34,8 +31,6 @@ def _require_public_access_config(response: dict) -> dict:
         for field in missing:
             pab[field] = False
     return pab
-
-
 
 
 def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
@@ -75,7 +70,9 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
     # Check encryption
     try:
         encryption_response = s3_client.get_bucket_encryption(Bucket=bucket_name)
-        bucket_analysis["encryption"] = encryption_response.get("ServerSideEncryptionConfiguration", None)
+        bucket_analysis["encryption"] = encryption_response.get(
+            "ServerSideEncryptionConfiguration", None
+        )
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code != "ServerSideEncryptionConfigurationNotFoundError":

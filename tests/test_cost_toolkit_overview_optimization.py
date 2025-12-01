@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
+from tests.conftest_test_values import TEST_UNATTACHED_VOLUME_COUNT
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.overview.optimization import (
     _check_old_snapshots,
@@ -60,7 +61,7 @@ def test_scan_region_for_unattached_volumes_with_volumes():
 
         count, cost = _scan_region_for_unattached_volumes("us-east-1")
 
-        assert count == 2
+        assert count == TEST_UNATTACHED_VOLUME_COUNT
         assert cost > 0
 
 

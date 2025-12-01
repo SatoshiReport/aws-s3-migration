@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from cost_toolkit.common.format_utils import format_bytes
 from cost_toolkit.scripts.audit.s3_audit.utils import calculate_monthly_cost

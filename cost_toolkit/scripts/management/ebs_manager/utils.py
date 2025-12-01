@@ -58,4 +58,3 @@ def get_volume_tags(volume: Dict) -> Dict[str, str]:
         Dictionary of tag key-value pairs
     """
     return get_resource_tags(volume)
-

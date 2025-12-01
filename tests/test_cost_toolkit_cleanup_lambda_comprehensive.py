@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from tests.conftest_test_values import TEST_LAMBDA_CALL_COUNT
 from cost_toolkit.common.aws_test_constants import DEFAULT_TEST_REGIONS
 from cost_toolkit.scripts.cleanup.aws_lambda_cleanup import delete_lambda_functions
 
@@ -95,7 +96,7 @@ def test_delete_lambda_functions_iterates_regions(capsys):
                 call_count += 1
                 if call_count == 1:
                     return {"Functions": [{"FunctionName": "func-us-east-1"}]}
-                if call_count == 2:
+                if call_count == TEST_LAMBDA_CALL_COUNT:
                     return {"Functions": [{"FunctionName": "func-us-east-2"}]}
                 return {"Functions": [{"FunctionName": "func-us-west-2"}]}
 
