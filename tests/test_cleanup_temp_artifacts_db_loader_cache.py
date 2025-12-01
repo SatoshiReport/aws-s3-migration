@@ -46,7 +46,7 @@ def test_try_load_from_cache_disabled():
         Path("/base"),
         mock_db_info,
         {"categories": ["cat1"]},
-        {"cat1": Category("cat1", "desc1", _dummy_matcher)},
+        {"cat1": Category("cat1", "desc1", _dummy_matcher, prune=True)},
     )
 
     assert cache_path is None
@@ -73,7 +73,7 @@ def test_try_load_from_cache_file_not_exists(tmp_path):
         Path("/base"),
         mock_db_info,
         {"categories": ["cat1"]},
-        {"cat1": Category("cat1", "desc1", _dummy_matcher)},
+        {"cat1": Category("cat1", "desc1", _dummy_matcher, prune=True)},
     )
 
     assert cache_path is not None
@@ -103,7 +103,7 @@ def test_try_load_from_cache_refresh_requested(tmp_path):
             Path("/base"),
             mock_db_info,
             {"categories": ["cat1"]},
-            {"cat1": Category("cat1", "desc1", _dummy_matcher)},
+            {"cat1": Category("cat1", "desc1", _dummy_matcher, prune=True)},
         )
 
     assert cache_path is not None
@@ -142,7 +142,7 @@ def test_try_load_from_cache_invalid_cache(tmp_path):
                 Path("/base"),
                 mock_db_info,
                 {"categories": ["cat1"]},
-                {"cat1": Category("cat1", "desc1", _dummy_matcher)},
+                {"cat1": Category("cat1", "desc1", _dummy_matcher, prune=True)},
             )
 
     assert cache_path is not None
@@ -158,7 +158,7 @@ def mock_args():
     args.cache_dir = Path("/tmp/cache")
     args.refresh_cache = False
     args.cache_ttl = 3600
-    args.categories = [Category("cat1", "desc1", _dummy_matcher)]
+    args.categories = [Category("cat1", "desc1", _dummy_matcher, prune=True)]
     args.min_size_bytes = 1024
     return args
 
@@ -179,7 +179,7 @@ def mock_db_info():
 def test_load_or_scan_candidates_from_cache(mock_args, mock_db_info):
     """Test _load_or_scan_candidates loads from cache when available."""
     conn = MagicMock()
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     candidate = Candidate(path=Path("/tmp/test"), category=category, size_bytes=1024, mtime=12345)
 
     cache_config = CacheConfig(
@@ -216,7 +216,7 @@ def test_load_or_scan_candidates_from_cache(mock_args, mock_db_info):
 def test_load_or_scan_candidates_from_db(mock_args, mock_db_info):
     """Test _load_or_scan_candidates scans DB when cache unavailable."""
     conn = MagicMock()
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     candidate = Candidate(path=Path("/tmp/test"), category=category, size_bytes=1024, mtime=12345)
 
     cache_config = CacheConfig(

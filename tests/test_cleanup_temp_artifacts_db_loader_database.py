@@ -162,7 +162,7 @@ def test_build_cache_and_db_info():
     args.cache_dir = Path("/tmp/cache")
     args.refresh_cache = False
     args.cache_ttl = 3600
-    args.categories = [Category("cat1", "desc1", _dummy_matcher)]
+    args.categories = [Category("cat1", "desc1", _dummy_matcher, prune=True)]
     args.min_size_bytes = TEST_MIN_SIZE_BYTES
 
     mock_stat = MagicMock()
