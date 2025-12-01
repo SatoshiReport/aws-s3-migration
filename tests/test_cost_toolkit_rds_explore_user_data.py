@@ -5,106 +5,30 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from cost_toolkit.scripts.rds import explore_user_data
+from tests.conftest_rds_shared import (
+    TestConstantsShared,
+    TestParseRequiredPortShared,
+    TestRequireEnvVarShared,
+)
 
 
-class TestPsycopg2Availability:
-    """Tests for psycopg2 availability check."""
+# Re-export shared test classes for user data module
+class TestConstants(TestConstantsShared):
+    """Tests for module constants - user data module."""
 
-    def test_psycopg2_available_flag_true(self):
-        """Test that PSYCOPG2_AVAILABLE flag is set when module is available."""
-        # Module imports at top, so if tests run, psycopg2 is mocked or available
-        assert hasattr(explore_user_data, "PSYCOPG2_AVAILABLE")
-        assert isinstance(explore_user_data.PSYCOPG2_AVAILABLE, bool)
-
-    def test_max_sample_columns_constant(self):
-        """Test that MAX_SAMPLE_COLUMNS constant is defined."""
-        assert explore_user_data.MAX_SAMPLE_COLUMNS == 5
+    pass
 
 
-class TestRequireEnvVar:
-    """Tests for _require_env_var function."""
+class TestRequireEnvVar(TestRequireEnvVarShared):
+    """Tests for _require_env_var function - user data module."""
 
-    def test_require_env_var_present(self):
-        """Test getting a required environment variable that exists."""
-        with patch.dict("os.environ", {"TEST_VAR": "test_value"}):
-            result = explore_user_data._require_env_var(
-                "TEST_VAR"
-            )  # pylint: disable=protected-access
-            assert result == "test_value"
-
-    def test_require_env_var_missing(self):
-        """Test getting a required environment variable that doesn't exist."""
-        with patch.dict("os.environ", {}, clear=True):
-            try:
-                explore_user_data._require_env_var(
-                    "MISSING_VAR"
-                )  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "MISSING_VAR is required" in str(exc)
-
-    def test_require_env_var_empty_string(self):
-        """Test getting a required environment variable that is empty."""
-        with patch.dict("os.environ", {"EMPTY_VAR": ""}):
-            try:
-                explore_user_data._require_env_var("EMPTY_VAR")  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "EMPTY_VAR is required" in str(exc)
-
-    def test_require_env_var_whitespace_only(self):
-        """Test getting a required environment variable that contains only whitespace."""
-        with patch.dict("os.environ", {"WHITESPACE_VAR": "   "}):
-            try:
-                explore_user_data._require_env_var(
-                    "WHITESPACE_VAR"
-                )  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "WHITESPACE_VAR is required" in str(exc)
-
-    def test_require_env_var_strips_whitespace(self):
-        """Test that _require_env_var strips whitespace."""
-        with patch.dict("os.environ", {"TRIMMED_VAR": "  value  "}):
-            result = explore_user_data._require_env_var(
-                "TRIMMED_VAR"
-            )  # pylint: disable=protected-access
-            assert result == "value"
+    pass
 
 
-class TestParseRequiredPort:
-    """Tests for _parse_required_port function."""
+class TestParseRequiredPort(TestParseRequiredPortShared):
+    """Tests for _parse_required_port function - user data module."""
 
-    def test_parse_required_port_valid(self):
-        """Test parsing a valid port number."""
-        with patch.dict("os.environ", {"TEST_PORT": "5432"}):
-            result = explore_user_data._parse_required_port(
-                "TEST_PORT"
-            )  # pylint: disable=protected-access
-            assert result == 5432
-
-    def test_parse_required_port_invalid(self):
-        """Test parsing an invalid port number."""
-        with patch.dict("os.environ", {"TEST_PORT": "not_a_number"}):
-            try:
-                explore_user_data._parse_required_port(
-                    "TEST_PORT"
-                )  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "must be a valid integer" in str(exc)
-                assert "not_a_number" in str(exc)
-
-    def test_parse_required_port_missing(self):
-        """Test parsing a missing port environment variable."""
-        with patch.dict("os.environ", {}, clear=True):
-            try:
-                explore_user_data._parse_required_port(
-                    "MISSING_PORT"
-                )  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "MISSING_PORT is required" in str(exc)
+    pass
 
 
 class TestSplitRequiredList:
