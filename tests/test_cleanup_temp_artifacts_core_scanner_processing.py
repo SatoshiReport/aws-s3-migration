@@ -81,9 +81,9 @@ def test_progress_tracker_update_completion(capsys):
 
 def test_match_category_first_match():
     """Test match_category returns first matching category."""
-    cat1 = Category("cat1", "Category 1", _never_matcher)
-    cat2 = Category("cat2", "Category 2", _pycache_matcher)
-    cat3 = Category("cat3", "Category 3", _dummy_matcher)
+    cat1 = Category("cat1", "Category 1", _never_matcher, prune=True)
+    cat2 = Category("cat2", "Category 2", _pycache_matcher, prune=True)
+    cat3 = Category("cat3", "Category 3", _dummy_matcher, prune=True)
 
     categories = [cat1, cat2, cat3]
     result = match_category(Path("/tmp/__pycache__"), True, categories)
@@ -93,8 +93,8 @@ def test_match_category_first_match():
 
 def test_match_category_no_match():
     """Test match_category returns None when no category matches."""
-    cat1 = Category("cat1", "Category 1", _never_matcher)
-    cat2 = Category("cat2", "Category 2", _never_matcher)
+    cat1 = Category("cat1", "Category 1", _never_matcher, prune=True)
+    cat2 = Category("cat2", "Category 2", _never_matcher, prune=True)
 
     categories = [cat1, cat2]
     result = match_category(Path("/tmp/other"), True, categories)
@@ -108,8 +108,8 @@ def test_match_category_exception_handling():
     def failing_matcher(path: Path, is_dir: bool) -> bool:
         raise ValueError("Matcher failed")
 
-    cat1 = Category("cat1", "Category 1", failing_matcher)
-    cat2 = Category("cat2", "Category 2", _dummy_matcher)
+    cat1 = Category("cat1", "Category 1", failing_matcher, prune=True)
+    cat2 = Category("cat2", "Category 2", _dummy_matcher, prune=True)
 
     categories = [cat1, cat2]
 
@@ -122,7 +122,7 @@ def test_match_category_exception_handling():
 
 def test_match_category_file_vs_directory():
     """Test match_category respects is_dir parameter."""
-    categories = [Category("cat1", "Category 1", _pycache_matcher)]
+    categories = [Category("cat1", "Category 1", _pycache_matcher, prune=True)]
 
     result_dir = match_category(Path("/tmp/__pycache__"), True, categories)
     result_file = match_category(Path("/tmp/__pycache__"), False, categories)
@@ -138,7 +138,7 @@ def test_process_parent_directory_new_candidate(tmp_path):
 
     candidates = {}
     non_matching = set()
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     _process_parent_directory(
         parent,
@@ -163,7 +163,7 @@ def test_process_parent_directory_accumulate_size(tmp_path):
 
     candidates = {}
     non_matching = set()
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     _process_parent_directory(
         parent,
@@ -194,7 +194,7 @@ def test_process_parent_directory_no_category_match(tmp_path):
 
     candidates = {}
     non_matching = set()
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     _process_parent_directory(
         parent,
@@ -216,7 +216,7 @@ def test_process_parent_directory_cutoff_time(tmp_path):
 
     candidates = {}
     non_matching = set()
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     cutoff_ts = time.time() - 1000
 
@@ -240,7 +240,7 @@ def test_process_parent_directory_skips_non_matching_cache(tmp_path):
 
     candidates = {}
     non_matching = {parent.resolve()}
-    category = Category("any", "Any category", _dummy_matcher)
+    category = Category("any", "Any category", _dummy_matcher, prune=True)
 
     _process_parent_directory(
         parent,
@@ -260,7 +260,7 @@ def test_process_parent_directory_stat_error(tmp_path, caplog):
 
     candidates = {}
     non_matching = set()
-    category = Category("any", "Any category", _dummy_matcher)
+    category = Category("any", "Any category", _dummy_matcher, prune=True)
 
     with caplog.at_level(logging.WARNING):
         _process_parent_directory(
@@ -282,7 +282,7 @@ def test_process_parent_directory_resolve_error():
     """Test _process_parent_directory handles resolve errors."""
     candidates = {}
     non_matching = set()
-    category = Category("any", "Any category", _dummy_matcher)
+    category = Category("any", "Any category", _dummy_matcher, prune=True)
 
     with patch.object(Path, "resolve", side_effect=OSError("Resolve failed")):
         parent = Path("/tmp/test")
