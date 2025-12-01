@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from unittest import mock
 from unittest.mock import Mock, patch
 
 from cost_toolkit.scripts.rds import explore_aurora_data

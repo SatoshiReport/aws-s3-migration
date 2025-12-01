@@ -6,12 +6,6 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
-from tests.conftest_test_values import (
-    TEST_EFS_FILESYSTEM_COUNT,
-    TEST_EFS_MOUNT_TARGET_COUNT_LARGE,
-    TEST_EFS_MOUNT_TARGET_COUNT_MEDIUM,
-    TEST_EFS_MOUNT_TARGET_COUNT_SMALL,
-)
 from cost_toolkit.scripts.cleanup.aws_efs_cleanup import (
     _delete_mount_targets,
     _delete_single_filesystem,
@@ -19,6 +13,12 @@ from cost_toolkit.scripts.cleanup.aws_efs_cleanup import (
     _wait_for_mount_targets_deletion,
     delete_efs_resources,
     main,
+)
+from tests.conftest_test_values import (
+    TEST_EFS_FILESYSTEM_COUNT,
+    TEST_EFS_MOUNT_TARGET_COUNT_LARGE,
+    TEST_EFS_MOUNT_TARGET_COUNT_MEDIUM,
+    TEST_EFS_MOUNT_TARGET_COUNT_SMALL,
 )
 
 

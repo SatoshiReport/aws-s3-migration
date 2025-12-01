@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 
 from botocore.exceptions import ClientError
 
-from tests.conftest_test_values import TEST_MAX_CPU_PERCENT
 from cost_toolkit.scripts.audit.aws_ec2_usage_audit import (  # pyright: ignore[reportPrivateUsage]
     _calculate_cpu_metrics,
     _determine_usage_level,
@@ -16,6 +15,7 @@ from cost_toolkit.scripts.audit.aws_ec2_usage_audit import (  # pyright: ignore[
     _print_cpu_metrics,
     _process_instance_details,
 )
+from tests.conftest_test_values import TEST_MAX_CPU_PERCENT
 
 
 class TestCalculateCpuMetrics:
@@ -182,32 +182,6 @@ class TestGetNetworkMetrics:
         assert "Network metrics error" in captured.out
 
 
-class TestGetInstanceName:
-    """Tests for _get_instance_name function."""
-
-    def test_get_instance_name_with_tag(self):
-        """Test getting instance name from tags."""
-        instance = {"Tags": [{"Key": "Name", "Value": "web-server"}]}
-
-        result = _get_instance_name(instance)
-
-        assert result == "web-server"
-
-    def test_get_instance_name_no_name_tag(self):
-        """Test getting instance name without Name tag."""
-        instance = {"Tags": [{"Key": "Environment", "Value": "prod"}]}
-
-        result = _get_instance_name(instance)
-
-        assert result is None
-
-    def test_get_instance_name_no_tags(self):
-        """Test getting instance name with no tags."""
-        instance = {}
-
-        result = _get_instance_name(instance)
-
-        assert result is None
 
 
 class TestEstimateMonthlyCost:

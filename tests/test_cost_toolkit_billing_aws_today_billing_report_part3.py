@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
-from tests.conftest_test_values import TEST_MINUTE_HALF_HOUR
 from cost_toolkit.scripts.billing.aws_today_billing_report import (
     _calculate_hourly_info,
     _calculate_trend_indicator,
 )
+from tests.conftest_test_values import TEST_MINUTE_HALF_HOUR
 
 
 class TestCalculateTrendIndicator:

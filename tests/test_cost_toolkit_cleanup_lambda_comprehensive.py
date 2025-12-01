@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
-from tests.conftest_test_values import TEST_LAMBDA_CALL_COUNT
 from cost_toolkit.common.aws_test_constants import DEFAULT_TEST_REGIONS
 from cost_toolkit.scripts.cleanup.aws_lambda_cleanup import delete_lambda_functions
+from tests.conftest_test_values import TEST_LAMBDA_CALL_COUNT
 
 
 @patch("cost_toolkit.scripts.cleanup.aws_lambda_cleanup.aws_utils.setup_aws_credentials")

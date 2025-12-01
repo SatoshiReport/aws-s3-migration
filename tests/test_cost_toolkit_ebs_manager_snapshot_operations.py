@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
-from tests.conftest_test_values import TEST_LARGE_VOLUME_SIZE_GIB
 from cost_toolkit.scripts.management.ebs_manager.snapshot import (
     SnapshotCreationError,
     VolumeNotFoundError,
@@ -16,6 +15,7 @@ from cost_toolkit.scripts.management.ebs_manager.snapshot import (
     create_volume_snapshot,
 )
 from tests.assertions import assert_equal
+from tests.conftest_test_values import TEST_LARGE_VOLUME_SIZE_GIB
 
 
 # Main function tests - success paths

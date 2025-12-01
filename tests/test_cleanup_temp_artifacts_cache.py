@@ -9,7 +9,6 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from tests.conftest_test_values import TEST_MAX_ROWID
 from cleanup_temp_artifacts.cache import (  # pylint: disable=no-name-in-module
     CACHE_VERSION,
     CacheReadError,
@@ -23,6 +22,7 @@ from cleanup_temp_artifacts.cache import (  # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts.categories import Category  # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts.core_scanner import Candidate  # pylint: disable=no-name-in-module
 from tests.assertions import assert_equal
+from tests.conftest_test_values import TEST_MAX_ROWID
 
 
 def _dummy_matcher(path: Path, is_dir: bool) -> bool:  # pylint: disable=unused-argument

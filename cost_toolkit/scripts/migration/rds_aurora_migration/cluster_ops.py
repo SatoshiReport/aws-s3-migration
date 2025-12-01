@@ -58,8 +58,7 @@ def _print_instance_info(instance_info):
     print(f"   Class: {instance_info['instance_class']}")
     print(f"   Status: {instance_info['status']}")
     print(
-        f"   Storage: {instance_info['allocated_storage']} GB "
-        f"({instance_info['storage_type']})"
+        f"   Storage: {instance_info['allocated_storage']} GB " f"({instance_info['storage_type']})"
     )
 
 

@@ -106,8 +106,7 @@ def _analyze_snapshots(ec2, instance_id, attached_volumes):
         snapshots = snapshots_response.get("Snapshots", [])
 
         related_snapshots = [
-            snap for snap in snapshots
-            if _is_related_snapshot(snap, instance_id, attached_volumes)
+            snap for snap in snapshots if _is_related_snapshot(snap, instance_id, attached_volumes)
         ]
 
         if related_snapshots:

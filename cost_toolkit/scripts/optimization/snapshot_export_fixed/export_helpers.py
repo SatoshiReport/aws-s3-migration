@@ -31,6 +31,20 @@ class MonitoringState:
     consecutive_api_errors: int = 0
 
 
+@dataclass
+class ExportContext:
+    """Context data for export monitoring operations."""
+
+    ec2_client: object
+    s3_client: object
+    export_task_id: str
+    s3_key: str
+    bucket_name: str
+    snapshot_size_gb: float
+    elapsed_hours: float
+    current_time: float
+
+
 def _start_export_task_fixed(ec2_client, ami_id, bucket_name):
     """Start AMI export task and return task ID and S3 key."""
     export_task_id, s3_key = start_ami_export_task(ec2_client, ami_id, bucket_name)
@@ -121,9 +135,7 @@ def _fetch_and_reset_errors(ec2_client, export_task_id, state):
     return task
 
 
-def _process_task_status(
-    task, state, ec2_client, s3_client, export_task_id, s3_key, bucket_name, snapshot_size_gb, elapsed_hours, current_time
-):
+def _process_task_status(task, state, export_context):
     """Process and report task status, return tuple (should_continue, return_value or None)."""
     task_progress = task.get("Progress") or "N/A"
     task_status_msg = task.get("StatusMessage", "")
@@ -131,21 +143,19 @@ def _process_task_status(
         task["Status"],
         task_progress,
         task_status_msg,
-        elapsed_hours,
+        export_context.elapsed_hours,
     )
 
     current_progress = int(task_progress) if task_progress != "N/A" else 0
-    _track_progress_change(state, current_progress, current_time)
+    _track_progress_change(state, current_progress, export_context.current_time)
 
-    is_terminal, terminal_type = _check_terminal_state_fixed(
-        task, task["Status"], elapsed_hours
-    )
+    is_terminal, terminal_type = _check_terminal_state_fixed(task, task["Status"], export_context.elapsed_hours)
     if is_terminal:
         if terminal_type == "completed":
-            return False, (True, s3_key)
+            return False, (True, export_context.s3_key)
         if terminal_type == "deleted":
             return False, _handle_task_deletion_recovery(
-                s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours
+                export_context.s3_client, export_context.bucket_name, export_context.s3_key, export_context.snapshot_size_gb, export_context.elapsed_hours
             )
 
     return True, None
@@ -179,9 +189,17 @@ def monitor_export_with_recovery(
             _WAIT_EVENT.wait(constants.EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
             continue
 
-        should_continue, return_value = _process_task_status(
-            task, state, ec2_client, s3_client, export_task_id, s3_key, bucket_name, snapshot_size_gb, elapsed_hours, current_time
+        export_context = ExportContext(
+            ec2_client=ec2_client,
+            s3_client=s3_client,
+            export_task_id=export_task_id,
+            s3_key=s3_key,
+            bucket_name=bucket_name,
+            snapshot_size_gb=snapshot_size_gb,
+            elapsed_hours=elapsed_hours,
+            current_time=current_time,
         )
+        should_continue, return_value = _process_task_status(task, state, export_context)
         if not should_continue:
             return return_value
 

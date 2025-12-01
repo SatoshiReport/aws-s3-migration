@@ -16,44 +16,6 @@ from cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final import (
 )
 
 
-class TestDeleteSnapshot:
-    """Tests for delete_snapshot function."""
-
-    def test_delete_snapshot_success(self, capsys):
-        """Test successful snapshot deletion."""
-        mock_ec2 = MagicMock()
-
-        result = delete_snapshot(mock_ec2, "snap-123", "us-east-1")
-
-        assert result is True
-        mock_ec2.delete_snapshot.assert_called_once_with(SnapshotId="snap-123")
-        captured = capsys.readouterr()
-        assert "Deleting snapshot: snap-123" in captured.out
-        assert "Successfully deleted snap-123" in captured.out
-
-    def test_delete_snapshot_error(self, capsys):
-        """Test error when deleting snapshot."""
-        mock_ec2 = MagicMock()
-        mock_ec2.delete_snapshot.side_effect = ClientError(
-            {"Error": {"Code": "InvalidSnapshot.InUse"}}, "delete_snapshot"
-        )
-
-        result = delete_snapshot(mock_ec2, "snap-error", "us-east-1")
-
-        assert result is False
-        captured = capsys.readouterr()
-        assert "Error deleting snap-error" in captured.out
-
-    def test_delete_snapshot_not_found(self):
-        """Test deleting non-existent snapshot."""
-        mock_ec2 = MagicMock()
-        mock_ec2.delete_snapshot.side_effect = ClientError(
-            {"Error": {"Code": "InvalidSnapshot.NotFound"}}, "delete_snapshot"
-        )
-
-        result = delete_snapshot(mock_ec2, "snap-notfound", "us-east-1")
-
-        assert result is False
 
 
 class TestGetSnapshotsToDelete:

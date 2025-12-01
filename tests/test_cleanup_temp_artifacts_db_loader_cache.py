@@ -11,11 +11,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from tests.conftest_test_values import TEST_MAX_ROWID
-
 # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts import categories, core_scanner, db_loader
 from tests.assertions import assert_equal
+from tests.conftest_test_values import TEST_MAX_ROWID
 
 Category = categories.Category
 Candidate = core_scanner.Candidate

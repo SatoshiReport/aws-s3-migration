@@ -8,12 +8,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
-from tests.conftest_test_values import TEST_MINUTE_HALF_HOUR
 from cost_toolkit.scripts.billing.aws_hourly_billing_report import (
     _display_optimization_insights,
     format_hourly_billing_report,
     main,
 )
+from tests.conftest_test_values import TEST_MINUTE_HALF_HOUR
 
 
 class TestDisplayOptimizationInsights:

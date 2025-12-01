@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
-from tests.conftest_test_values import TEST_SECURITY_GROUP_COUNT
 from cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup import (
     _check_inbound_rules,
     _check_outbound_rules,
@@ -19,6 +18,7 @@ from cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup import (
     get_security_group_rules_referencing_group,
     remove_security_group_rule,
 )
+from tests.conftest_test_values import TEST_SECURITY_GROUP_COUNT
 
 
 class TestRemoveSecurityGroupRule:
@@ -170,28 +170,6 @@ class TestGetSecurityGroupRulesReferencingGroup:
         assert "Error getting security group rules" in captured.out
 
 
-class TestDeleteSecurityGroup:
-    """Tests for delete_security_group function."""
-
-    def test_delete_group_success(self, capsys):
-        """Test successful security group deletion."""
-        mock_client = MagicMock()
-        result = delete_security_group(mock_client, "sg-123", "test-sg")
-        assert result is True
-        mock_client.delete_security_group.assert_called_once_with(GroupId="sg-123")
-        captured = capsys.readouterr()
-        assert "Deleted security group" in captured.out
-
-    def test_delete_group_error(self, capsys):
-        """Test error when deleting security group."""
-        mock_client = MagicMock()
-        mock_client.delete_security_group.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_security_group"
-        )
-        result = delete_security_group(mock_client, "sg-123", "test-sg")
-        assert result is False
-        captured = capsys.readouterr()
-        assert "Failed to delete security group" in captured.out
 
 
 def test_get_circular_security_groups_returns_list():

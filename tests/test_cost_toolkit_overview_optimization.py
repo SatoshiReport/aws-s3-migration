@@ -8,7 +8,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
-from tests.conftest_test_values import TEST_UNATTACHED_VOLUME_COUNT
 from cost_toolkit.common.cost_utils import calculate_ebs_volume_cost
 from cost_toolkit.overview.optimization import (
     _check_old_snapshots,
@@ -17,6 +16,7 @@ from cost_toolkit.overview.optimization import (
     _scan_region_for_unattached_volumes,
     analyze_optimization_opportunities,
 )
+from tests.conftest_test_values import TEST_UNATTACHED_VOLUME_COUNT
 
 
 def test_calculate_volume_cost_gp3():
