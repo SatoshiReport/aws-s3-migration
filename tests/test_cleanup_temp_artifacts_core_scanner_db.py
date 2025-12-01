@@ -35,7 +35,7 @@ def test_scan_candidates_from_db_empty_database(tmp_path):
     conn.execute("CREATE TABLE files (bucket TEXT, key TEXT, size INTEGER)")
     conn.commit()
 
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     result = scan_candidates_from_db(
         conn,
@@ -66,7 +66,7 @@ def test_scan_candidates_from_db_with_data(tmp_path):
     )
     conn.commit()
 
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     result = scan_candidates_from_db(
         conn,
@@ -106,7 +106,7 @@ def test_scan_candidates_from_db_filters_by_size(tmp_path):
     )
     conn.commit()
 
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     result = scan_candidates_from_db(
         conn,
@@ -138,7 +138,7 @@ def test_scan_candidates_from_db_applies_cutoff(tmp_path):
     )
     conn.commit()
 
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     cutoff_ts = time.time() - 1000
 
@@ -168,7 +168,7 @@ def test_scan_candidates_from_db_skips_invalid_paths(tmp_path):
     )
     conn.commit()
 
-    category = Category("any", "Any category", _dummy_matcher)
+    category = Category("any", "Any category", _dummy_matcher, prune=True)
 
     result = scan_candidates_from_db(
         conn,
@@ -203,7 +203,7 @@ def test_scan_candidates_from_db_multiple_files_same_dir(tmp_path):
     )
     conn.commit()
 
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     result = scan_candidates_from_db(
         conn,
@@ -245,8 +245,8 @@ def test_scan_candidates_from_db_multiple_categories(tmp_path):
     def cache_matcher(path: Path, is_dir: bool) -> bool:
         return is_dir and path.name == ".cache"
 
-    cat1 = Category("pycache", "Python cache", _pycache_matcher)
-    cat2 = Category("cache", "Generic cache", cache_matcher)
+    cat1 = Category("pycache", "Python cache", _pycache_matcher, prune=True)
+    cat2 = Category("cache", "Generic cache", cache_matcher, prune=True)
 
     result = scan_candidates_from_db(
         conn,
@@ -280,7 +280,7 @@ def test_scan_candidates_from_db_raises_on_null_sizes(tmp_path):
     )
     conn.commit()
 
-    category = Category("pycache", "Python cache", _pycache_matcher)
+    category = Category("pycache", "Python cache", _pycache_matcher, prune=True)
 
     with pytest.raises(CandidateLoadError) as exc_info:
         scan_candidates_from_db(

@@ -31,8 +31,8 @@ def _dummy_matcher(path: Path, is_dir: bool) -> bool:  # pylint: disable=unused-
 
 def test_build_scan_params():
     """Test build_scan_params creates correct parameter dict."""
-    category1 = Category("cat1", "desc1", _dummy_matcher)
-    category2 = Category("cat2", "desc2", _dummy_matcher)
+    category1 = Category("cat1", "desc1", _dummy_matcher, prune=True)
+    category2 = Category("cat2", "desc2", _dummy_matcher, prune=True)
 
     params = build_scan_params(
         categories=[category1, category2],
@@ -47,7 +47,7 @@ def test_build_scan_params():
 
 def test_build_scan_params_with_none():
     """Test build_scan_params with None values."""
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
 
     params = build_scan_params(
         categories=[category],
@@ -84,7 +84,7 @@ def test_build_cache_key_different_inputs():
 def test_load_cache_missing_file(tmp_path):
     """Test load_cache raises CacheReadError for missing cache file."""
     cache_file = tmp_path / "missing.json"
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
 
     with pytest.raises(CacheReadError):
         load_cache(cache_file, {"categories": ["cat1"]}, {"cat1": category})
@@ -94,7 +94,7 @@ def test_load_cache_invalid_json(tmp_path):
     """Test load_cache raises CacheReadError for invalid JSON."""
     cache_file = tmp_path / "invalid.json"
     cache_file.write_text("invalid json {")
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
 
     with pytest.raises(CacheReadError):
         load_cache(cache_file, {"categories": ["cat1"]}, {"cat1": category})
@@ -109,7 +109,7 @@ def test_load_cache_wrong_version(tmp_path):
         "candidates": [],
     }
     cache_file.write_text(json.dumps(payload))
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
 
     with pytest.raises(CacheValidationError):
         load_cache(cache_file, {"categories": ["cat1"]}, {"cat1": category})
@@ -124,7 +124,7 @@ def test_load_cache_wrong_scan_params(tmp_path):
         "candidates": [],
     }
     cache_file.write_text(json.dumps(payload))
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
 
     with pytest.raises(CacheValidationError):
         load_cache(cache_file, {"categories": ["cat1"]}, {"cat1": category})
@@ -133,7 +133,7 @@ def test_load_cache_wrong_scan_params(tmp_path):
 def test_load_cache_valid(tmp_path):
     """Test load_cache with valid cache."""
     cache_file = tmp_path / "cache.json"
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     scan_params = {"categories": ["cat1"]}
 
     payload = {
@@ -168,7 +168,7 @@ def test_load_cache_valid(tmp_path):
 def test_load_cache_unknown_category(tmp_path):
     """Test load_cache raises CacheValidationError for unknown category."""
     cache_file = tmp_path / "cache.json"
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     scan_params = {"categories": ["cat1"]}
 
     payload = {
@@ -191,7 +191,7 @@ def test_load_cache_unknown_category(tmp_path):
 def test_write_cache(tmp_path):
     """Test write_cache creates valid cache file."""
     cache_file = tmp_path / "cache" / "test.json"
-    category = Category("cat1", "desc1", _dummy_matcher)
+    category = Category("cat1", "desc1", _dummy_matcher, prune=True)
     candidate = Candidate(path=Path("/tmp/test"), category=category, size_bytes=1024, mtime=12345)
 
     mock_db_info = MagicMock()

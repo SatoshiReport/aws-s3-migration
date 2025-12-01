@@ -28,7 +28,7 @@ def _dummy_matcher(path: Path, is_dir: bool) -> bool:  # pylint: disable=unused-
 
 def test_candidate_dataclass():
     """Test Candidate dataclass creation."""
-    category = Category("test-cat", "Test category", _dummy_matcher)
+    category = Category("test-cat", "Test category", _dummy_matcher, prune=True)
     candidate = Candidate(
         path=Path("/tmp/test"),
         category=category,
@@ -44,7 +44,7 @@ def test_candidate_dataclass():
 
 def test_candidate_iso_mtime():
     """Test Candidate.iso_mtime property."""
-    category = Category("test-cat", "Test category", _dummy_matcher)
+    category = Category("test-cat", "Test category", _dummy_matcher, prune=True)
     mtime = 1234567890.0
     candidate = Candidate(
         path=Path("/tmp/test"),
@@ -62,7 +62,7 @@ def test_candidate_iso_mtime():
 
 def test_candidate_load_result_dataclass():
     """Test CandidateLoadResult dataclass creation."""
-    category = Category("test-cat", "Test category", _dummy_matcher)
+    category = Category("test-cat", "Test category", _dummy_matcher, prune=True)
     candidate = Candidate(Path("/tmp"), category, 100, 123.0)
 
     result = CandidateLoadResult(
@@ -155,7 +155,7 @@ def test_iter_relevant_dirs_traversal_to_parent_of_base(tmp_path):
 
 def test_filter_candidates_by_size():
     """Test _filter_candidates_by_size with minimum size."""
-    category = Category("cat", "Category", _dummy_matcher)
+    category = Category("cat", "Category", _dummy_matcher, prune=True)
 
     candidates = {
         Path("/tmp/a"): Candidate(Path("/tmp/a"), category, 100, 123.0),
@@ -173,7 +173,7 @@ def test_filter_candidates_by_size():
 
 def test_filter_candidates_by_size_no_minimum():
     """Test _filter_candidates_by_size with no minimum."""
-    category = Category("cat", "Category", _dummy_matcher)
+    category = Category("cat", "Category", _dummy_matcher, prune=True)
 
     candidates = {
         Path("/tmp/a"): Candidate(Path("/tmp/a"), category, 100, 123.0),
@@ -188,7 +188,7 @@ def test_filter_candidates_by_size_no_minimum():
 def test_filter_candidates_by_size_raises_on_none_sizes():
     """Test _filter_candidates_by_size raises MissingSizeError for None size values."""
 
-    category = Category("cat", "Category", _dummy_matcher)
+    category = Category("cat", "Category", _dummy_matcher, prune=True)
 
     candidates = {
         Path("/tmp/a"): Candidate(Path("/tmp/a"), category, None, 123.0),
