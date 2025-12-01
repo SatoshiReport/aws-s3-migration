@@ -34,9 +34,9 @@ def get_ami_details(ec2_client, ami_id):
                 "virtualization_type": ami.get("VirtualizationType", "N/A"),
                 "root_device_type": ami.get("RootDeviceType", "N/A"),
                 "block_device_mappings": (
-                    ami.get("BlockDeviceMappings") if "BlockDeviceMappings" in ami else []
+                    ami.get("BlockDeviceMappings") or []
                 ),
-                "tags": ami.get("Tags") if "Tags" in ami else [],
+                "tags": ami.get("Tags") or [],
             }
     except ClientError as e:
         return {"ami_id": ami_id, "error": str(e), "accessible": False}

@@ -45,7 +45,7 @@ def disable_global_accelerators():
     disabled = 0
     for accelerator in accelerators:
         accelerator_arn = accelerator["AcceleratorArn"]
-        accelerator_name = accelerator.get("Name") if "Name" in accelerator else None
+        accelerator_name = accelerator.get("Name")
         print(f"📍 Found accelerator: {accelerator_name}")
         print(f"   ARN: {accelerator_arn}")
         if not ga_cleanup.disable_accelerator(accelerator_arn):

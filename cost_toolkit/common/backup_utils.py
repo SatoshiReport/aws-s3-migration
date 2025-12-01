@@ -81,7 +81,7 @@ def is_backup_related_rule(rule):
         bool: True if related to backup/snapshot, False otherwise
     """
     rule_name = rule["Name"]
-    description = rule.get("Description") if "Description" in rule else ""
+    description = rule.get("Description") or ""
     # Combined list from both files: snapshot, ami, backup, image, createimage
     keywords = ["snapshot", "ami", "backup", "image", "createimage"]
     return any(

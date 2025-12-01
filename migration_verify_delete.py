@@ -113,8 +113,8 @@ def _bucket_has_contents(s3, bucket: str) -> bool:
     """Return True if any versions/delete markers remain in the bucket."""
     paginator = s3.get_paginator("list_object_versions")
     for page in paginator.paginate(Bucket=bucket, PaginationConfig={"MaxItems": 1}):
-        versions_raw = page.get("Versions") if "Versions" in page else None
-        delete_markers_raw = page.get("DeleteMarkers") if "DeleteMarkers" in page else None
+        versions_raw = page.get("Versions")
+        delete_markers_raw = page.get("DeleteMarkers")
         versions = []
         if versions_raw:
             versions = _ensure_list(versions_raw)

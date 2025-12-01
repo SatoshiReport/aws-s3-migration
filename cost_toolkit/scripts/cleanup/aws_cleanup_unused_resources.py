@@ -188,7 +188,7 @@ def _collect_used_subnets_from_rds(region_name):
 
 def _extract_subnet_from_az(az):
     """Extract subnet ID from availability zone."""
-    return az.get("SubnetId") if "SubnetId" in az else None
+    return az.get("SubnetId")
 
 
 def _collect_used_subnets_from_elb(region_name):

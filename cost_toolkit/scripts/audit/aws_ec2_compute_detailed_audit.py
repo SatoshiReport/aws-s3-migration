@@ -24,7 +24,7 @@ def _build_instance_info(instance, region_name, hourly_cost, monthly_cost):
         "subnet_id": instance.get("SubnetId", None),
         "public_ip": instance.get("PublicIpAddress", None),
         "private_ip": instance.get("PrivateIpAddress", None),
-        "tags": instance.get("Tags") if "Tags" in instance else [],
+        "tags": instance.get("Tags") or [],
     }
 
 

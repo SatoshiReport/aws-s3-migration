@@ -22,7 +22,7 @@ def _print_volume_details(ec2, vol):
             device = None
         create_time = volume["CreateTime"]
         tags = get_resource_tags(volume)
-        name_tag = tags.get("Name") if "Name" in tags else None
+        name_tag = tags.get("Name")
 
         print(f"  Volume: {vol['id']}")
         print(f"    Size: {vol['size']}")
@@ -45,7 +45,7 @@ def _check_unattached_volume(ec2, unattached_volume):
 
         create_time = volume["CreateTime"]
         tags = get_resource_tags(volume)
-        name_tag = tags.get("Name") if "Name" in tags else None
+        name_tag = tags.get("Name")
 
         print(f"  Volume: {unattached_volume['id']}")
         print(f"    Size: {unattached_volume['size']}")
