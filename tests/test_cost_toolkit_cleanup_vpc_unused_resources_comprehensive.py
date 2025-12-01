@@ -6,6 +6,9 @@ from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
 
+from cost_toolkit.scripts.aws_ec2_operations import (
+    delete_security_group,
+)
 from cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources import (
     EMPTY_VPCS,
     UNUSED_SECURITY_GROUPS,
