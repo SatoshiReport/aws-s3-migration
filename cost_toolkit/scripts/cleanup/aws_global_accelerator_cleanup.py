@@ -25,10 +25,7 @@ def list_accelerators():
     try:
         client = _get_ga_client()  # Global Accelerator is only in us-west-2
         response = client.list_accelerators()
-        accelerators = []
-        if "Accelerators" in response:
-            accelerators = response["Accelerators"]
-        return accelerators
+        return response.get("Accelerators", [])
     except ClientError as e:
         print(f"❌ Error listing accelerators: {str(e)}")
         return []
