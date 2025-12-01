@@ -186,3 +186,55 @@ def rds_module(request):
     else:
         from cost_toolkit.scripts.rds import explore_user_data
         return explore_user_data
+
+
+@pytest.fixture
+def rds_postgres_instance():
+    """RDS PostgreSQL instance data for audit tests."""
+    from datetime import datetime
+    return {
+        "DBInstanceIdentifier": "db-1",
+        "Engine": "postgres",
+        "EngineVersion": "14.5",
+        "DBInstanceClass": "db.t3.micro",
+        "DBInstanceStatus": "available",
+        "AllocatedStorage": 20,
+        "StorageType": "gp3",
+        "MultiAZ": False,
+        "PubliclyAccessible": False,
+        "InstanceCreateTime": datetime(2024, 1, 15, 10, 30),
+    }
+
+
+@pytest.fixture
+def aurora_postgresql_cluster():
+    """Aurora PostgreSQL cluster data for audit tests."""
+    from datetime import datetime
+    return {
+        "DBClusterIdentifier": "test-cluster",
+        "Engine": "aurora-postgresql",
+        "EngineVersion": "14.6",
+        "Status": "available",
+        "DatabaseName": "mydb",
+        "MasterUsername": "admin",
+        "MultiAZ": True,
+        "StorageEncrypted": True,
+        "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
+    }
+
+
+@pytest.fixture
+def aurora_mysql_cluster():
+    """Aurora MySQL cluster data for audit tests."""
+    from datetime import datetime
+    return {
+        "DBClusterIdentifier": "aurora-cluster",
+        "Engine": "aurora-mysql",
+        "EngineVersion": "8.0",
+        "Status": "available",
+        "DatabaseName": "prod",
+        "MasterUsername": "dbadmin",
+        "MultiAZ": False,
+        "StorageEncrypted": True,
+        "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
+    }
