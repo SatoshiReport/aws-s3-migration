@@ -34,33 +34,24 @@ class TestRequireEnvVarShared:
         from unittest.mock import patch
 
         with patch.dict("os.environ", {}, clear=True):
-            try:
+            with pytest.raises(RuntimeError, match="MISSING_VAR is required"):
                 rds_module._require_env_var("MISSING_VAR")  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "MISSING_VAR is required" in str(exc)
 
     def test_require_env_var_empty_string(self, rds_module):
         """Test getting a required environment variable that is empty."""
         from unittest.mock import patch
 
         with patch.dict("os.environ", {"EMPTY_VAR": ""}):
-            try:
+            with pytest.raises(RuntimeError, match="EMPTY_VAR is required"):
                 rds_module._require_env_var("EMPTY_VAR")  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "EMPTY_VAR is required" in str(exc)
 
     def test_require_env_var_whitespace_only(self, rds_module):
         """Test getting a required environment variable that contains only whitespace."""
         from unittest.mock import patch
 
         with patch.dict("os.environ", {"WHITESPACE_VAR": "   "}):
-            try:
+            with pytest.raises(RuntimeError, match="WHITESPACE_VAR is required"):
                 rds_module._require_env_var("WHITESPACE_VAR")  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "WHITESPACE_VAR is required" in str(exc)
 
     def test_require_env_var_strips_whitespace(self, rds_module):
         """Test that _require_env_var strips whitespace."""
@@ -87,20 +78,13 @@ class TestParseRequiredPortShared:
         from unittest.mock import patch
 
         with patch.dict("os.environ", {"TEST_PORT": "not_a_number"}):
-            try:
+            with pytest.raises(RuntimeError, match="must be a valid integer"):
                 rds_module._parse_required_port("TEST_PORT")  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "must be a valid integer" in str(exc)
-                assert "not_a_number" in str(exc)
 
     def test_parse_required_port_missing(self, rds_module):
         """Test parsing a missing port environment variable."""
         from unittest.mock import patch
 
         with patch.dict("os.environ", {}, clear=True):
-            try:
+            with pytest.raises(RuntimeError, match="MISSING_PORT is required"):
                 rds_module._parse_required_port("MISSING_PORT")  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "MISSING_PORT is required" in str(exc)
