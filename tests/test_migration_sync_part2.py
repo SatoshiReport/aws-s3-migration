@@ -44,7 +44,7 @@ class _FakeS3:
         return _FakePaginator(contents)
 
     def get_object(
-        self, Bucket, Key, **_kwargs
+        self, _Bucket, Key, **_kwargs
     ):  # pylint: disable=invalid-name  # noqa: N803 - boto3 casing
         """Return a fake object body."""
         data = self.objects.get(Key)

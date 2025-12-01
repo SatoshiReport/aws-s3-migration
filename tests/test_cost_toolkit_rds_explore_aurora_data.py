@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from unittest import mock
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from cost_toolkit.scripts.rds import explore_aurora_data
 
@@ -57,14 +57,18 @@ class TestRequireEnvVar:
     def test_require_env_var_present(self):
         """Test getting a required environment variable that exists."""
         with patch.dict("os.environ", {"TEST_VAR": "test_value"}):
-            result = explore_aurora_data._require_env_var("TEST_VAR")
+            result = explore_aurora_data._require_env_var(  # pylint: disable=protected-access
+                "TEST_VAR"
+            )
             assert result == "test_value"
 
     def test_require_env_var_missing(self):
         """Test getting a required environment variable that doesn't exist."""
         with patch.dict("os.environ", {}, clear=True):
             try:
-                explore_aurora_data._require_env_var("MISSING_VAR")
+                explore_aurora_data._require_env_var(  # pylint: disable=protected-access
+                    "MISSING_VAR"
+                )
                 assert False, "Should have raised RuntimeError"
             except RuntimeError as exc:
                 assert "MISSING_VAR is required" in str(exc)
@@ -73,7 +77,9 @@ class TestRequireEnvVar:
         """Test getting a required environment variable that is empty."""
         with patch.dict("os.environ", {"EMPTY_VAR": ""}):
             try:
-                explore_aurora_data._require_env_var("EMPTY_VAR")
+                explore_aurora_data._require_env_var(  # pylint: disable=protected-access
+                    "EMPTY_VAR"
+                )
                 assert False, "Should have raised RuntimeError"
             except RuntimeError as exc:
                 assert "EMPTY_VAR is required" in str(exc)
@@ -82,7 +88,9 @@ class TestRequireEnvVar:
         """Test getting a required environment variable that contains only whitespace."""
         with patch.dict("os.environ", {"WHITESPACE_VAR": "   "}):
             try:
-                explore_aurora_data._require_env_var("WHITESPACE_VAR")
+                explore_aurora_data._require_env_var(  # pylint: disable=protected-access
+                    "WHITESPACE_VAR"
+                )
                 assert False, "Should have raised RuntimeError"
             except RuntimeError as exc:
                 assert "WHITESPACE_VAR is required" in str(exc)
@@ -90,7 +98,9 @@ class TestRequireEnvVar:
     def test_require_env_var_strips_whitespace(self):
         """Test that _require_env_var strips whitespace."""
         with patch.dict("os.environ", {"TRIMMED_VAR": "  value  "}):
-            result = explore_aurora_data._require_env_var("TRIMMED_VAR")
+            result = explore_aurora_data._require_env_var(  # pylint: disable=protected-access
+                "TRIMMED_VAR"
+            )
             assert result == "value"
 
 
@@ -100,14 +110,18 @@ class TestParseRequiredPort:
     def test_parse_required_port_valid(self):
         """Test parsing a valid port number."""
         with patch.dict("os.environ", {"TEST_PORT": "5432"}):
-            result = explore_aurora_data._parse_required_port("TEST_PORT")
+            result = explore_aurora_data._parse_required_port(  # pylint: disable=protected-access
+                "TEST_PORT"
+            )
             assert result == 5432
 
     def test_parse_required_port_invalid(self):
         """Test parsing an invalid port number."""
         with patch.dict("os.environ", {"TEST_PORT": "not_a_number"}):
             try:
-                explore_aurora_data._parse_required_port("TEST_PORT")
+                explore_aurora_data._parse_required_port(  # pylint: disable=protected-access
+                    "TEST_PORT"
+                )
                 assert False, "Should have raised RuntimeError"
             except RuntimeError as exc:
                 assert "must be a valid integer" in str(exc)
@@ -117,7 +131,9 @@ class TestParseRequiredPort:
         """Test parsing a missing port environment variable."""
         with patch.dict("os.environ", {}, clear=True):
             try:
-                explore_aurora_data._parse_required_port("MISSING_PORT")
+                explore_aurora_data._parse_required_port(  # pylint: disable=protected-access
+                    "MISSING_PORT"
+                )
                 assert False, "Should have raised RuntimeError"
             except RuntimeError as exc:
                 assert "MISSING_PORT is required" in str(exc)
@@ -136,7 +152,9 @@ class TestLoadAuroraSettings:
             "AURORA_PASSWORD": "password123",
         }
         with patch.dict("os.environ", env):
-            host, port, database, username, password = explore_aurora_data._load_aurora_settings()
+            host, port, database, username, password = (
+                explore_aurora_data._load_aurora_settings()  # pylint: disable=protected-access
+            )
             assert host == "aurora.example.com"
             assert port == 5432
             assert database == "testdb"
@@ -153,7 +171,7 @@ class TestLoadAuroraSettings:
         }
         with patch.dict("os.environ", env, clear=True):
             try:
-                explore_aurora_data._load_aurora_settings()
+                explore_aurora_data._load_aurora_settings()  # pylint: disable=protected-access
                 assert False, "Should have raised RuntimeError"
             except RuntimeError as exc:
                 assert "AURORA_HOST is required" in str(exc)
@@ -202,9 +220,9 @@ class TestExploreWithSuccessfulConnection:
 
     @patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True)
     @patch("cost_toolkit.scripts.rds.explore_aurora_data._load_aurora_settings")
-    def test_explore_with_successful_connection(self, mock_load, capsys):
+    def test_explore_with_successful_connection(self, mock_load):
         """Test explore_aurora_database with successful database connection."""
-        import sys
+        import sys  # pylint: disable=import-outside-toplevel
 
         mock_psycopg2 = mock.Mock()
         mock_connection = mock.Mock()
@@ -248,7 +266,7 @@ class TestExploreWithConnectionError:
     @patch("cost_toolkit.scripts.rds.explore_aurora_data._load_aurora_settings")
     def test_explore_connection_error(self, mock_load, capsys):
         """Test explore_aurora_database with connection error."""
-        import sys
+        import sys  # pylint: disable=import-outside-toplevel
 
         mock_psycopg2 = mock.Mock()
         mock_psycopg2.Error = Exception
@@ -273,7 +291,7 @@ class TestExploreEmptyDatabase:
     @patch("cost_toolkit.scripts.rds.explore_aurora_data._load_aurora_settings")
     def test_explore_with_empty_database(self, mock_load, capsys):
         """Test explore_aurora_database when database has no tables."""
-        import sys
+        import sys  # pylint: disable=import-outside-toplevel
 
         mock_psycopg2 = mock.Mock()
         mock_connection = mock.Mock()
@@ -317,7 +335,7 @@ class TestExploreWithData:
     @patch("cost_toolkit.scripts.rds.explore_aurora_data._load_aurora_settings")
     def test_explore_with_data_in_database(self, mock_load, capsys):
         """Test explore_aurora_database when database contains data."""
-        import sys
+        import sys  # pylint: disable=import-outside-toplevel
 
         mock_psycopg2 = mock.Mock()
         mock_connection = mock.Mock()

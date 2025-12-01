@@ -258,7 +258,7 @@ class TestTryDatabaseConnection:
             else:
                 explore_user_data.__dict__.pop("psycopg2", None)
 
-    def test_connection_retries_with_multiple_db_and_passwords(self, capsys):
+    def test_connection_retries_with_multiple_db_and_passwords(self):
         """Test connection retries with multiple database and password combinations."""
         mock_conn = MagicMock()
         mock_psycopg2 = MagicMock()

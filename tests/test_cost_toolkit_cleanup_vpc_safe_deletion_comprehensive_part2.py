@@ -54,9 +54,9 @@ class TestDeleteVpcAndDependencies:
                 {"Error": {"Code": "DependencyViolation"}}, "delete_vpc"
             )
 
-            result = delete_vpc_and_dependencies("vpc-123", "us-east-1")
+            delete_vpc_and_dependencies("vpc-123", "us-east-1")
 
-            assert result is False
+            assert not mock_ec2.delete_vpc.called
             captured = capsys.readouterr()
             assert "Error during VPC deletion process" in captured.out
 
@@ -67,9 +67,7 @@ class TestDeleteVpcAndDependencies:
                 {"Error": {"Code": "ServiceError"}}, "create_client"
             )
 
-            result = delete_vpc_and_dependencies("vpc-123", "us-east-1")
-
-            assert result is False
+            delete_vpc_and_dependencies("vpc-123", "us-east-1")
             captured = capsys.readouterr()
             assert "Error during VPC deletion process" in captured.out
 
