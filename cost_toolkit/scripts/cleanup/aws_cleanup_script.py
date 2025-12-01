@@ -60,7 +60,7 @@ def _stop_instance(lightsail_client, instance):
     """Stop a single Lightsail instance."""
     instance_name = instance["name"]
     state = instance["state"]["name"]
-    bundle_id = instance.get("bundleId") if "bundleId" in instance else None
+    bundle_id = instance.get("bundleId")
 
     print(f"📦 Found instance: {instance_name}")
     print(f"   State: {state}")

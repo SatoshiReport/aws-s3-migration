@@ -69,8 +69,8 @@ def _start_stopped_instance(ec2, instance_id):
 
         response = ec2.describe_instances(InstanceIds=[instance_id])
         instance = response["Reservations"][0]["Instances"][0]
-        public_ip = instance.get("PublicIpAddress") if "PublicIpAddress" in instance else None
-        private_ip = instance.get("PrivateIpAddress") if "PrivateIpAddress" in instance else None
+        public_ip = instance.get("PublicIpAddress")
+        private_ip = instance.get("PrivateIpAddress")
 
         print(f"  Public IP: {public_ip}")
         print(f"  Private IP: {private_ip}")
@@ -201,10 +201,8 @@ def analyze_london_ebs():
             _start_stopped_instance(ec2, instance_id)
         elif current_state == "running":
             print("✅ Instance is already running!")
-            public_ip = instance.get("PublicIpAddress") if "PublicIpAddress" in instance else None
-            private_ip = (
-                instance.get("PrivateIpAddress") if "PrivateIpAddress" in instance else None
-            )
+            public_ip = instance.get("PublicIpAddress")
+            private_ip = instance.get("PrivateIpAddress")
             print(f"  Public IP: {public_ip}")
             print(f"  Private IP: {private_ip}")
             print()
