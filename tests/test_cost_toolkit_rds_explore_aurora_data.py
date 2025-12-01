@@ -6,19 +6,30 @@ from unittest import mock
 from unittest.mock import patch
 
 from cost_toolkit.scripts.rds import explore_aurora_data
+from tests.conftest_rds_shared import (
+    TestConstantsShared,
+    TestParseRequiredPortShared,
+    TestRequireEnvVarShared,
+)
 
 
-class TestConstants:
-    """Tests for module constants."""
+# Re-export shared test classes for aurora data module
+class TestConstants(TestConstantsShared):
+    """Tests for module constants - aurora data module."""
 
-    def test_psycopg2_available_flag(self):
-        """Test that PSYCOPG2_AVAILABLE flag is defined."""
-        assert hasattr(explore_aurora_data, "PSYCOPG2_AVAILABLE")
-        assert isinstance(explore_aurora_data.PSYCOPG2_AVAILABLE, bool)
+    pass
 
-    def test_max_sample_columns_constant(self):
-        """Test that MAX_SAMPLE_COLUMNS constant is defined."""
-        assert explore_aurora_data.MAX_SAMPLE_COLUMNS == 5
+
+class TestRequireEnvVar(TestRequireEnvVarShared):
+    """Tests for _require_env_var function - aurora data module."""
+
+    pass
+
+
+class TestParseRequiredPort(TestParseRequiredPortShared):
+    """Tests for _parse_required_port function - aurora data module."""
+
+    pass
 
 
 class TestExploreAuroraDatabase:
@@ -49,94 +60,6 @@ def test_main_calls_explore(mock_explore):
     explore_aurora_data.main()
 
     mock_explore.assert_called_once()
-
-
-class TestRequireEnvVar:
-    """Tests for _require_env_var function."""
-
-    def test_require_env_var_present(self):
-        """Test getting a required environment variable that exists."""
-        with patch.dict("os.environ", {"TEST_VAR": "test_value"}):
-            result = explore_aurora_data._require_env_var(  # pylint: disable=protected-access
-                "TEST_VAR"
-            )
-            assert result == "test_value"
-
-    def test_require_env_var_missing(self):
-        """Test getting a required environment variable that doesn't exist."""
-        with patch.dict("os.environ", {}, clear=True):
-            try:
-                explore_aurora_data._require_env_var(  # pylint: disable=protected-access
-                    "MISSING_VAR"
-                )
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "MISSING_VAR is required" in str(exc)
-
-    def test_require_env_var_empty_string(self):
-        """Test getting a required environment variable that is empty."""
-        with patch.dict("os.environ", {"EMPTY_VAR": ""}):
-            try:
-                explore_aurora_data._require_env_var(  # pylint: disable=protected-access
-                    "EMPTY_VAR"
-                )
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "EMPTY_VAR is required" in str(exc)
-
-    def test_require_env_var_whitespace_only(self):
-        """Test getting a required environment variable that contains only whitespace."""
-        with patch.dict("os.environ", {"WHITESPACE_VAR": "   "}):
-            try:
-                explore_aurora_data._require_env_var(  # pylint: disable=protected-access
-                    "WHITESPACE_VAR"
-                )
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "WHITESPACE_VAR is required" in str(exc)
-
-    def test_require_env_var_strips_whitespace(self):
-        """Test that _require_env_var strips whitespace."""
-        with patch.dict("os.environ", {"TRIMMED_VAR": "  value  "}):
-            result = explore_aurora_data._require_env_var(  # pylint: disable=protected-access
-                "TRIMMED_VAR"
-            )
-            assert result == "value"
-
-
-class TestParseRequiredPort:
-    """Tests for _parse_required_port function."""
-
-    def test_parse_required_port_valid(self):
-        """Test parsing a valid port number."""
-        with patch.dict("os.environ", {"TEST_PORT": "5432"}):
-            result = explore_aurora_data._parse_required_port(  # pylint: disable=protected-access
-                "TEST_PORT"
-            )
-            assert result == 5432
-
-    def test_parse_required_port_invalid(self):
-        """Test parsing an invalid port number."""
-        with patch.dict("os.environ", {"TEST_PORT": "not_a_number"}):
-            try:
-                explore_aurora_data._parse_required_port(  # pylint: disable=protected-access
-                    "TEST_PORT"
-                )
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "must be a valid integer" in str(exc)
-                assert "not_a_number" in str(exc)
-
-    def test_parse_required_port_missing(self):
-        """Test parsing a missing port environment variable."""
-        with patch.dict("os.environ", {}, clear=True):
-            try:
-                explore_aurora_data._parse_required_port(  # pylint: disable=protected-access
-                    "MISSING_PORT"
-                )
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "MISSING_PORT is required" in str(exc)
 
 
 class TestLoadAuroraSettings:

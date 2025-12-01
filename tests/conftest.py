@@ -172,3 +172,17 @@ def assert_raises_error():
                 )
 
     return _assert_raises
+
+
+@pytest.fixture(params=["aurora", "user"])
+def rds_module(request):
+    """Parametrized fixture for testing both aurora and user RDS modules.
+
+    Parametrizes across explore_aurora_data and explore_user_data modules.
+    """
+    if request.param == "aurora":
+        from cost_toolkit.scripts.rds import explore_aurora_data
+        return explore_aurora_data
+    else:
+        from cost_toolkit.scripts.rds import explore_user_data
+        return explore_user_data
