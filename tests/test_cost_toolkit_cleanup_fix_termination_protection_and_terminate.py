@@ -296,9 +296,7 @@ class TestMainFailures:
             ) as mock_load:
                 error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
                 mock_load.side_effect = error
-                try:
+                with pytest.raises(ClientError):
                     main()
-                    assert False, "Should have raised ClientError"
-                except ClientError:
-                    captured = capsys.readouterr()
-                    assert "Critical error during termination protection fix" in captured.out
+                captured = capsys.readouterr()
+                assert "Critical error during termination protection fix" in captured.out

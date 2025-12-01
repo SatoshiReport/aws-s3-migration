@@ -61,24 +61,18 @@ class TestSplitRequiredList:
     def test_split_required_list_empty_values(self):
         """Test splitting a list with only commas (empty values)."""
         with patch.dict("os.environ", {"TEST_LIST": ",,"}):
-            try:
+            with pytest.raises(RuntimeError, match="TEST_LIST must contain at least one value"):
                 explore_user_data._split_required_list(
                     "TEST_LIST"
                 )  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "TEST_LIST must contain at least one value" in str(exc)
 
     def test_split_required_list_missing(self):
         """Test splitting a missing environment variable."""
         with patch.dict("os.environ", {}, clear=True):
-            try:
+            with pytest.raises(RuntimeError, match="MISSING_LIST is required"):
                 explore_user_data._split_required_list(
                     "MISSING_LIST"
                 )  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "MISSING_LIST is required" in str(exc)
 
 
 class TestLoadRestoredDbSettings:
@@ -112,11 +106,8 @@ class TestLoadRestoredDbSettings:
             "RESTORED_DB_PASSWORDS": "pass1",
         }
         with patch.dict("os.environ", env, clear=True):
-            try:
+            with pytest.raises(RuntimeError, match="RESTORED_DB_HOST is required"):
                 explore_user_data._load_restored_db_settings()  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "RESTORED_DB_HOST is required" in str(exc)
 
 
 class TestTryDatabaseConnection:

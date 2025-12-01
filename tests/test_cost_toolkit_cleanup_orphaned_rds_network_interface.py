@@ -264,12 +264,10 @@ class TestMain:
                     {"Error": {"Code": "ServiceUnavailable"}}, "setup_aws_credentials"
                 )
                 mock_load.side_effect = error
-                try:
+                with pytest.raises(ClientError):
                     main()
-                    assert False, "Should have raised ClientError"
-                except ClientError:
-                    captured = capsys.readouterr()
-                    assert "Critical error during cleanup" in captured.out
+                captured = capsys.readouterr()
+                assert "Critical error during cleanup" in captured.out
 
 
 def test_expected_orphaned_interfaces_constant():

@@ -93,11 +93,8 @@ class TestLoadAuroraSettings:
             "AURORA_PASSWORD": "password123",
         }
         with patch.dict("os.environ", env, clear=True):
-            try:
+            with pytest.raises(RuntimeError, match="AURORA_HOST is required"):
                 explore_aurora_data._load_aurora_settings()  # pylint: disable=protected-access
-                assert False, "Should have raised RuntimeError"
-            except RuntimeError as exc:
-                assert "AURORA_HOST is required" in str(exc)
 
 
 class TestExploreAuroraReturnValues:

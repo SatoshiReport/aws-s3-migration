@@ -204,13 +204,11 @@ class TestMain:
         with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_load:
             error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
             mock_load.side_effect = error
-            try:
+            with pytest.raises(SystemExit) as exc_info:
                 main()
-                assert False, "Should have raised ClientError and exited"
-            except SystemExit as e:
-                assert e.code == 1
-                captured = capsys.readouterr()
-                assert "Script failed" in captured.out
+            assert exc_info.value.code == 1
+            captured = capsys.readouterr()
+            assert "Script failed" in captured.out
 
     def test_main_calls_cleanup(self):
         """Test that main calls cleanup_failed_export_amis."""

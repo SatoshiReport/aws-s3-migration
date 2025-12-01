@@ -95,11 +95,8 @@ class TestCreateS3Bucket:
             {"Error": {"Code": "ServiceError"}}, "create_bucket"
         )
 
-        try:
+        with pytest.raises(ClientError):
             _create_s3_bucket(mock_s3, "test-bucket")
-            assert False, "Should have raised exception"
-        except ClientError:
-            pass
 
 
 class TestDisplayVolumeInfo:
