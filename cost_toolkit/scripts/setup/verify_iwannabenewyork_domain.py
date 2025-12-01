@@ -213,6 +213,21 @@ def check_ssl_certificate(domain):
         return False
 
 
+def _is_canva_verification_record(record, domain):
+    """Check if a record is the Canva verification TXT record."""
+    record_type = record.get("Type")
+    if record_type != "TXT":
+        return False
+    record_name = record.get("Name", "")
+    return record_name.startswith(f"_canva-domain-verify.{domain}.")
+
+
+def _extract_canva_record_values(record):
+    """Extract Canva verification values from a TXT record."""
+    resource_records = record.get("ResourceRecords", [])
+    return [rr.get("Value", "").replace('"', "") for rr in resource_records]
+
+
 def verify_canva_verification(domain):
     """Check if Canva domain verification is in place"""
     print(f"\n🎨 Checking Canva domain verification for {domain}")
@@ -235,21 +250,12 @@ def verify_canva_verification(domain):
             StartRecordType="TXT",
             MaxItems="5",
         )
-        txt_record_sets = []
-        if "ResourceRecordSets" in txt_records:
-            txt_record_sets = txt_records["ResourceRecordSets"]
+        txt_record_sets = txt_records.get("ResourceRecordSets", [])
 
         for record in txt_record_sets:
-            record_type = record.get("Type")
-            if record_type != "TXT":
+            if not _is_canva_verification_record(record, domain):
                 continue
-            record_name = record.get("Name", "")
-            if not record_name.startswith(f"_canva-domain-verify.{domain}."):
-                continue
-            resource_records = []
-            if "ResourceRecords" in record:
-                resource_records = record["ResourceRecords"]
-            values = [rr.get("Value", "").replace('"', "") for rr in resource_records]
+            values = _extract_canva_record_values(record)
             if values:
                 print(f"  ✅ Canva verification TXT record found: {', '.join(values)}")
                 return True

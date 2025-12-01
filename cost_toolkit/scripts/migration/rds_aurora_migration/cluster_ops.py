@@ -13,6 +13,56 @@ from ...aws_utils import (
 )
 
 
+def _extract_instance_info(instance, region):
+    """Extract instance information into a dictionary."""
+    vpc_security_groups = instance.get("VpcSecurityGroups", [])
+    db_subnet_group = instance.get("DBSubnetGroup")
+    db_param_groups = instance.get("DBParameterGroups", [{}])
+
+    return {
+        "region": region,
+        "identifier": instance["DBInstanceIdentifier"],
+        "engine": instance["Engine"],
+        "engine_version": instance["EngineVersion"],
+        "instance_class": instance["DBInstanceClass"],
+        "status": instance["DBInstanceStatus"],
+        "allocated_storage": instance["AllocatedStorage"],
+        "storage_type": instance["StorageType"],
+        "multi_az": instance["MultiAZ"],
+        "publicly_accessible": instance["PubliclyAccessible"],
+        "vpc_security_groups": [sg["VpcSecurityGroupId"] for sg in vpc_security_groups],
+        "db_subnet_group": (
+            db_subnet_group["DBSubnetGroupName"]
+            if db_subnet_group and "DBSubnetGroupName" in db_subnet_group
+            else None
+        ),
+        "parameter_group": (
+            db_param_groups[0]["DBParameterGroupName"]
+            if db_param_groups and "DBParameterGroupName" in db_param_groups[0]
+            else None
+        ),
+        "backup_retention": instance.get("BackupRetentionPeriod", 0),
+        "preferred_backup_window": instance.get("PreferredBackupWindow"),
+        "preferred_maintenance_window": instance.get("PreferredMaintenanceWindow"),
+        "storage_encrypted": instance["StorageEncrypted"],
+        "kms_key_id": instance.get("KmsKeyId"),
+        "deletion_protection": instance["DeletionProtection"],
+    }
+
+
+def _print_instance_info(instance_info):
+    """Print discovered instance details."""
+    print(f"\n📦 Found RDS Instance: {instance_info['identifier']}")
+    print(f"   Region: {instance_info['region']}")
+    print(f"   Engine: {instance_info['engine']} {instance_info['engine_version']}")
+    print(f"   Class: {instance_info['instance_class']}")
+    print(f"   Status: {instance_info['status']}")
+    print(
+        f"   Storage: {instance_info['allocated_storage']} GB "
+        f"({instance_info['storage_type']})"
+    )
+
+
 def discover_rds_instances():
     """Discover all RDS instances across regions"""
     setup_aws_credentials()
@@ -28,58 +78,13 @@ def discover_rds_instances():
             rds_client = boto3.client("rds", region_name=region)
             response = rds_client.describe_db_instances()
 
-            for instance in response["DBInstances"]:
-                if "DBClusterIdentifier" in instance and instance["DBClusterIdentifier"]:
+            for instance in response.get("DBInstances", []):
+                if instance.get("DBClusterIdentifier"):
                     continue
 
-                vpc_security_groups = []
-                if "VpcSecurityGroups" in instance:
-                    vpc_security_groups = instance["VpcSecurityGroups"]
-                db_subnet_group = instance.get("DBSubnetGroup", None)
-                db_param_groups = instance.get("DBParameterGroups", [{}])
-                instance_info = {
-                    "region": region,
-                    "identifier": instance["DBInstanceIdentifier"],
-                    "engine": instance["Engine"],
-                    "engine_version": instance["EngineVersion"],
-                    "instance_class": instance["DBInstanceClass"],
-                    "status": instance["DBInstanceStatus"],
-                    "allocated_storage": instance["AllocatedStorage"],
-                    "storage_type": instance["StorageType"],
-                    "multi_az": instance["MultiAZ"],
-                    "publicly_accessible": instance["PubliclyAccessible"],
-                    "vpc_security_groups": [sg["VpcSecurityGroupId"] for sg in vpc_security_groups],
-                    "db_subnet_group": (
-                        db_subnet_group["DBSubnetGroupName"]
-                        if db_subnet_group and "DBSubnetGroupName" in db_subnet_group
-                        else None
-                    ),
-                    "parameter_group": (
-                        db_param_groups[0]["DBParameterGroupName"]
-                        if db_param_groups and "DBParameterGroupName" in db_param_groups[0]
-                        else None
-                    ),
-                    "backup_retention": instance.get("BackupRetentionPeriod", 0),
-                    "preferred_backup_window": instance.get("PreferredBackupWindow", None),
-                    "preferred_maintenance_window": instance.get(
-                        "PreferredMaintenanceWindow", None
-                    ),
-                    "storage_encrypted": instance["StorageEncrypted"],
-                    "kms_key_id": instance.get("KmsKeyId", None),
-                    "deletion_protection": instance["DeletionProtection"],
-                }
-
+                instance_info = _extract_instance_info(instance, region)
                 discovered_instances.append(instance_info)
-
-                print(f"\n📦 Found RDS Instance: {instance_info['identifier']}")
-                print(f"   Region: {region}")
-                print(f"   Engine: {instance_info['engine']} {instance_info['engine_version']}")
-                print(f"   Class: {instance_info['instance_class']}")
-                print(f"   Status: {instance_info['status']}")
-                print(
-                    f"   Storage: {instance_info['allocated_storage']} GB "
-                    f"({instance_info['storage_type']})"
-                )
+                _print_instance_info(instance_info)
 
         except ClientError as e:
             if "not available" not in str(e).lower():

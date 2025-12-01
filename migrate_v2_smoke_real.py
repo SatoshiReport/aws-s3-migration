@@ -42,30 +42,29 @@ def _create_bucket(s3_client, bucket_name: str, region: str):
     waiter.wait(Bucket=bucket_name)
 
 
+def _collect_delete_objects(page):
+    """Collect all objects and delete markers from a page for batch deletion."""
+    objects = []
+    versions = page.get("Versions", [])
+    for version in versions:
+        objects.append({"Key": version["Key"], "VersionId": version["VersionId"]})
+    delete_markers = page.get("DeleteMarkers", [])
+    for marker in delete_markers:
+        objects.append({"Key": marker["Key"], "VersionId": marker["VersionId"]})
+    return objects
+
+
 def _delete_bucket_and_contents(s3_client, bucket: str):
     """Delete all objects (and versions) from the bucket and remove the bucket."""
     try:
         paginator = s3_client.get_paginator("list_object_versions")
         for page in paginator.paginate(Bucket=bucket):
-            objects = []
-            versions = []
-            if "Versions" in page:
-                versions = page["Versions"]
-            for version in versions:
-                objects.append({"Key": version["Key"], "VersionId": version["VersionId"]})
-            delete_markers = []
-            if "DeleteMarkers" in page:
-                delete_markers = page["DeleteMarkers"]
-            for marker in delete_markers:
-                objects.append({"Key": marker["Key"], "VersionId": marker["VersionId"]})
+            objects = _collect_delete_objects(page)
             if objects:
                 s3_client.delete_objects(Bucket=bucket, Delete={"Objects": objects})
         s3_client.delete_bucket(Bucket=bucket)
     except ClientError as exc:  # pragma: no cover - cleanup best effort
-        error_dict = {}
-        if "Error" in exc.response:
-            error_dict = exc.response["Error"]
-        error_code = error_dict.get("Code", None)
+        error_code = exc.response.get("Error", {}).get("Code")
         if error_code not in {"NoSuchBucket", "404"}:
             raise
 

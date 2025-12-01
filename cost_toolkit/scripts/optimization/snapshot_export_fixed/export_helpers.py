@@ -114,6 +114,43 @@ def _handle_api_errors(state: MonitoringState, exception: ClientError) -> None:
         )
 
 
+def _fetch_and_reset_errors(ec2_client, export_task_id, state):
+    """Fetch task status and reset error counter."""
+    task, _ = _fetch_export_task_status(ec2_client, export_task_id)
+    state.consecutive_api_errors = 0
+    return task
+
+
+def _process_task_status(
+    task, state, ec2_client, s3_client, export_task_id, s3_key, bucket_name, snapshot_size_gb, elapsed_hours, current_time
+):
+    """Process and report task status, return tuple (should_continue, return_value or None)."""
+    task_progress = task.get("Progress") or "N/A"
+    task_status_msg = task.get("StatusMessage", "")
+    _print_export_status(
+        task["Status"],
+        task_progress,
+        task_status_msg,
+        elapsed_hours,
+    )
+
+    current_progress = int(task_progress) if task_progress != "N/A" else 0
+    _track_progress_change(state, current_progress, current_time)
+
+    is_terminal, terminal_type = _check_terminal_state_fixed(
+        task, task["Status"], elapsed_hours
+    )
+    if is_terminal:
+        if terminal_type == "completed":
+            return False, (True, s3_key)
+        if terminal_type == "deleted":
+            return False, _handle_task_deletion_recovery(
+                s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours
+            )
+
+    return True, None
+
+
 def monitor_export_with_recovery(
     ec2_client, s3_client, export_task_id, s3_key, *, bucket_name, snapshot_size_gb
 ):
@@ -132,8 +169,7 @@ def monitor_export_with_recovery(
             )
 
         try:
-            task, _ = _fetch_export_task_status(ec2_client, export_task_id)
-            state.consecutive_api_errors = 0
+            task = _fetch_and_reset_errors(ec2_client, export_task_id, state)
         except ExportTaskDeletedException:
             return _handle_task_deletion_recovery(
                 s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours
@@ -143,28 +179,11 @@ def monitor_export_with_recovery(
             _WAIT_EVENT.wait(constants.EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
             continue
 
-        task_progress = task.get("Progress") or "N/A"
-        task_status_msg = task.get("StatusMessage", "")
-        _print_export_status(
-            task["Status"],
-            task_progress,
-            task_status_msg,
-            elapsed_hours,
+        should_continue, return_value = _process_task_status(
+            task, state, ec2_client, s3_client, export_task_id, s3_key, bucket_name, snapshot_size_gb, elapsed_hours, current_time
         )
-
-        current_progress = int(task_progress) if task_progress != "N/A" else 0
-        _track_progress_change(state, current_progress, current_time)
-
-        is_terminal, terminal_type = _check_terminal_state_fixed(
-            task, task["Status"], elapsed_hours
-        )
-        if is_terminal:
-            if terminal_type == "completed":
-                return True, s3_key
-            if terminal_type == "deleted":
-                return _handle_task_deletion_recovery(
-                    s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours
-                )
+        if not should_continue:
+            return return_value
 
         _WAIT_EVENT.wait(EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
 

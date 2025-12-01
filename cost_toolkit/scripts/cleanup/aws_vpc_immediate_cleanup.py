@@ -120,39 +120,43 @@ def _check_vpc_ec2_instances(ec2, vpc_id, analysis):
         analysis["can_delete"] = False
 
 
-def _check_vpc_network_resources(ec2, vpc_id, analysis):
-    """Check for network resources (IGW, NAT, Endpoints) in a VPC"""
-    # Check for attached Internet Gateways
+def _check_vpc_igws(ec2, vpc_id, analysis):
+    """Check for attached Internet Gateways in a VPC"""
     igw_response = ec2.describe_internet_gateways(
         Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
     )
-    igws = []
-    if "InternetGateways" in igw_response:
-        igws = igw_response["InternetGateways"]
+    igws = igw_response.get("InternetGateways", [])
     if igws:
         analysis["dependencies"].append(f"{len(igws)} Internet Gateways")
 
-    # Check for NAT Gateways
+
+def _check_vpc_nat_gateways(ec2, vpc_id, analysis):
+    """Check for NAT Gateways in a VPC"""
     nat_response = ec2.describe_nat_gateways(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
-    nat_gateways = []
-    if "NatGateways" in nat_response:
-        nat_gateways = nat_response["NatGateways"]
+    nat_gateways = nat_response.get("NatGateways", [])
     nats = [nat for nat in nat_gateways if nat["State"] != "deleted"]
     if nats:
         analysis["blocking_resources"].append(f"{len(nats)} NAT Gateways")
         analysis["can_delete"] = False
 
-    # Check for VPC Endpoints
+
+def _check_vpc_endpoints(ec2, vpc_id, analysis):
+    """Check for VPC Endpoints in a VPC"""
     endpoints_response = ec2.describe_vpc_endpoints(
         Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
     )
-    vpc_endpoints = []
-    if "VpcEndpoints" in endpoints_response:
-        vpc_endpoints = endpoints_response["VpcEndpoints"]
+    vpc_endpoints = endpoints_response.get("VpcEndpoints", [])
     endpoints = [ep for ep in vpc_endpoints if ep["State"] != "deleted"]
     if endpoints:
         analysis["blocking_resources"].append(f"{len(endpoints)} VPC Endpoints")
         analysis["can_delete"] = False
+
+
+def _check_vpc_network_resources(ec2, vpc_id, analysis):
+    """Check for network resources (IGW, NAT, Endpoints) in a VPC"""
+    _check_vpc_igws(ec2, vpc_id, analysis)
+    _check_vpc_nat_gateways(ec2, vpc_id, analysis)
+    _check_vpc_endpoints(ec2, vpc_id, analysis)
 
 
 def _check_vpc_load_balancers(region_name, vpc_id, analysis):
