@@ -143,3 +143,32 @@ def setup_test_env(tmp_path, monkeypatch):
     """Changes to tmp_path (tests can verify directory creation)."""
     monkeypatch.chdir(tmp_path)
     return tmp_path
+
+
+@pytest.fixture
+def mock_boto3_ec2_client(monkeypatch):
+    """Create a mock EC2 client for testing (replaces boto3.client call)."""
+    from unittest.mock import MagicMock, patch
+
+    with patch("boto3.client") as mock_boto3:
+        mock_ec2 = MagicMock()
+        mock_boto3.return_value = mock_ec2
+        yield mock_ec2, mock_boto3
+
+
+@pytest.fixture
+def assert_raises_error():
+    """Helper fixture for testing exception raising patterns."""
+
+    def _assert_raises(exception_class, exception_message_substring, callable_fn):
+        """Assert that calling callable_fn raises exception_class with message."""
+        try:
+            callable_fn()
+            raise AssertionError(f"Should have raised {exception_class.__name__}")
+        except exception_class as e:
+            if exception_message_substring not in str(e):
+                raise AssertionError(
+                    f"Expected '{exception_message_substring}' in {str(e)}"
+                )
+
+    return _assert_raises
