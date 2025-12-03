@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.audit.aws_vpc_audit import (
@@ -13,6 +12,11 @@ from cost_toolkit.scripts.audit.aws_vpc_audit import (
     audit_elastic_ips_in_region,
 )
 from cost_toolkit.scripts.aws_ec2_operations import get_all_regions
+from tests.aws_region_test_utils import (
+    ELASTIC_IP_RESPONSE,
+    assert_regions_error,
+    assert_regions_success,
+)
 
 
 class TestGetAllRegions:
@@ -21,36 +25,12 @@ class TestGetAllRegions:
     @patch("cost_toolkit.common.aws_common.create_ec2_client")
     def test_get_all_regions_success(self, mock_create_client, monkeypatch):
         """Test successful retrieval of regions."""
-        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
-        mock_ec2 = MagicMock()
-        mock_create_client.return_value = mock_ec2
-        mock_ec2.describe_regions.return_value = {
-            "Regions": [
-                {"RegionName": "us-east-1"},
-                {"RegionName": "us-west-2"},
-                {"RegionName": "eu-west-1"},
-            ]
-        }
-
-        regions = get_all_regions()
-
-        assert len(regions) == 3
-        assert "us-east-1" in regions
-        assert "us-west-2" in regions
-        assert "eu-west-1" in regions
+        assert_regions_success(get_all_regions, mock_create_client, monkeypatch)
 
     @patch("cost_toolkit.common.aws_common.create_ec2_client")
     def test_get_all_regions_client_error(self, mock_create_client, monkeypatch):
         """Test error handling when describe_regions fails."""
-        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
-        mock_ec2 = MagicMock()
-        mock_create_client.return_value = mock_ec2
-        mock_ec2.describe_regions.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "describe_regions"
-        )
-
-        with pytest.raises(ClientError):
-            get_all_regions()
+        assert_regions_error(get_all_regions, mock_create_client, monkeypatch)
 
 
 class TestProcessElasticIpAddress:
@@ -212,24 +192,7 @@ class TestAuditElasticIpsInRegion:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_client.return_value = mock_ec2
-            mock_ec2.describe_addresses.return_value = {
-                "Addresses": [
-                    {
-                        "PublicIp": "54.123.45.67",
-                        "AllocationId": "eipalloc-123",
-                        "AssociationId": "eipassoc-456",
-                        "InstanceId": "i-123",
-                        "Domain": "vpc",
-                        "Tags": [],
-                    },
-                    {
-                        "PublicIp": "54.123.45.68",
-                        "AllocationId": "eipalloc-456",
-                        "Domain": "vpc",
-                        "Tags": [],
-                    },
-                ]
-            }
+            mock_ec2.describe_addresses.return_value = ELASTIC_IP_RESPONSE
 
             result = audit_elastic_ips_in_region("us-east-1")
 

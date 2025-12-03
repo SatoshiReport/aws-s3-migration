@@ -12,6 +12,10 @@ from cost_toolkit.scripts.audit.aws_instance_connection_info import (
     main,
 )
 from tests.assertions import assert_equal
+from tests.aws_instance_connection_test_utils import (
+    build_instance_connection_mocks,
+    run_connection_info_with_clients,
+)
 
 
 class TestMainPublicConnectivity:
@@ -146,22 +150,17 @@ class TestGetInstanceConnectionInfoPartialData:
 
     def test_get_instance_connection_info_partial_network_data(self):
         """Test get_instance_connection_info with partial network data."""
-        mock_instance = {
-            "InstanceId": "i-partial",
-            "InstanceType": "t3.micro",
-            "State": {"Name": "running"},
-            "LaunchTime": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            "VpcId": "vpc-123",
-            "SubnetId": "subnet-123",
-            "SecurityGroups": [],
-        }
-
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_subnets.return_value = {"Subnets": [{}]}
-        mock_ec2.describe_route_tables.return_value = {"RouteTables": []}
-
-        mock_ssm = MagicMock()
-        mock_ssm.describe_instance_information.return_value = {"InstanceInformationList": []}
+        mock_instance, mock_ec2, mock_ssm = build_instance_connection_mocks()
+        mock_instance.update(
+            {
+                "InstanceId": "i-partial",
+                "InstanceType": "t3.micro",
+                "State": {"Name": "running"},
+                "LaunchTime": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                "VpcId": "vpc-123",
+                "SubnetId": "subnet-123",
+            }
+        )
 
         with (
             patch(
@@ -231,22 +230,11 @@ class TestGetInstanceConnectionInfoSecurityGroups:
             ],
         }
 
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_subnets.return_value = {"Subnets": [{}]}
-        mock_ec2.describe_route_tables.return_value = {"RouteTables": []}
+        _, mock_ec2, mock_ssm = build_instance_connection_mocks()
 
-        mock_ssm = MagicMock()
-        mock_ssm.describe_instance_information.return_value = {"InstanceInformationList": []}
-
-        with (
-            patch(
-                "cost_toolkit.scripts.audit.aws_instance_connection_info.get_instance_info",
-                return_value=mock_instance,
-            ),
-            patch("boto3.client") as mock_boto_client,
-        ):
-            mock_boto_client.side_effect = [mock_ec2, mock_ssm]
-            get_instance_connection_info("i-multisg", "us-east-1")
+        run_connection_info_with_clients(
+            mock_instance, mock_ec2, mock_ssm, "i-multisg", "us-east-1"
+        )
 
         captured = capsys.readouterr()
         assert "sg-1 (web)" in captured.out

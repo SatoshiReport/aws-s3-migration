@@ -78,15 +78,7 @@ def test_get_phase_returns_phase_enum(phase_mgr):
 
 def testphase_manager_multiple_set_operations(phase_mgr):
     """Test multiple consecutive set operations"""
-    phases = [
-        Phase.SCANNING,
-        Phase.GLACIER_RESTORE,
-        Phase.GLACIER_WAIT,
-        Phase.SYNCING,
-        Phase.VERIFYING,
-        Phase.DELETING,
-        Phase.COMPLETE,
-    ]
+    phases = list(Phase)
 
     for phase in phases:
         phase_mgr.set_phase(phase)

@@ -16,6 +16,8 @@ from cost_toolkit.common.cost_utils import calculate_snapshot_cost
 from cost_toolkit.common.credential_utils import setup_aws_credentials
 from cost_toolkit.scripts.aws_ec2_operations import delete_snapshot as delete_snapshot_canonical
 
+delete_snapshot = delete_snapshot_canonical
+
 _WAIT_EVENT = Event()
 
 
@@ -114,7 +116,7 @@ def process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secre
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        if delete_snapshot_canonical(snapshot_id, region, ec2_client=ec2_client):
+        if delete_snapshot(snapshot_id, region, ec2_client=ec2_client):
             successful_deletions += 1
             total_savings += monthly_cost
         else:

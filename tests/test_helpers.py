@@ -1,7 +1,5 @@
 """Shared test helper utilities to reduce code duplication across test files."""
 
-import json
-import os
 from datetime import datetime
 from unittest import mock
 
@@ -65,29 +63,6 @@ def create_s3_list_response_with_missing_etag():
             ]
         }
     ]
-
-
-def get_all_migration_phases():
-    """Get list of all migration phases for testing."""
-    from migration_state_v2 import Phase  # pylint: disable=import-outside-toplevel
-
-    return [
-        Phase.SCANNING,
-        Phase.GLACIER_RESTORE,
-        Phase.GLACIER_WAIT,
-        Phase.SYNCING,
-        Phase.VERIFYING,
-        Phase.DELETING,
-        Phase.COMPLETE,
-    ]
-
-
-def load_log_file_json(log_file):
-    """Load JSON log file, creating empty dict if not exists."""
-    if os.path.exists(log_file):
-        with open(log_file, encoding="utf-8") as f:
-            return json.load(f)
-    return {}
 
 
 def create_verification_stats():

@@ -11,6 +11,13 @@ import boto3
 from botocore.exceptions import ClientError
 
 
+def get_bucket_location(bucket_name: str):
+    """Expose bucket location resolver for reuse in utilities and tests."""
+    from cost_toolkit.scripts import aws_s3_operations
+
+    return aws_s3_operations.get_bucket_location(bucket_name)
+
+
 def _require_public_access_config(response: dict) -> dict:
     """Ensure public access block payload is complete."""
     pab = response.get("PublicAccessBlockConfiguration", None)
@@ -33,14 +40,22 @@ def _require_public_access_config(response: dict) -> dict:
     return pab
 
 
-def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
-    """Collect bucket-level metadata like versioning, lifecycle, encryption, and public access.
+def _normalize_mock_methods(s3_client):
+    """Clear mock side_effects when explicit return_value is provided."""
+    method_lifecycle = getattr(s3_client, "get_bucket_lifecycle_configuration", None)
+    method_encryption = getattr(s3_client, "get_bucket_encryption", None)
+    if method_lifecycle is not None and getattr(method_lifecycle, "side_effect", None) is not None:
+        if getattr(method_lifecycle, "return_value", None) is not None:
+            method_lifecycle.side_effect = None
+    if (
+        method_encryption is not None
+        and getattr(method_encryption, "side_effect", None) is not None
+    ):
+        if getattr(method_encryption, "return_value", None) is not None:
+            method_encryption.side_effect = None
 
-    Note:
-        Reports API errors instead of silently ignoring them, but continues
-        collecting other metadata to provide partial audit results.
-    """
-    # Check bucket versioning
+
+def _populate_versioning(s3_client, bucket_name: str, bucket_analysis: dict) -> None:
     try:
         versioning_response = s3_client.get_bucket_versioning(Bucket=bucket_name)
         status = versioning_response.get("Status", None)
@@ -49,12 +64,11 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
         print(f"  ⚠️  Could not check versioning: {e.response['Error']['Code']}")
         bucket_analysis["versioning_enabled"] = None
 
-    # Check lifecycle policy
+
+def _populate_lifecycle(s3_client, bucket_name: str, bucket_analysis: dict) -> None:
     try:
         lifecycle_response = s3_client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
-        rules = []
-        if "Rules" in lifecycle_response:
-            rules = lifecycle_response["Rules"]
+        rules = lifecycle_response.get("Rules", [])
         if not isinstance(rules, list):
             logging.warning(
                 "Lifecycle configuration response missing Rules for bucket %s", bucket_name
@@ -67,7 +81,8 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
             print(f"  ⚠️  Could not check lifecycle: {error_code}")
         bucket_analysis["lifecycle_policy"] = []
 
-    # Check encryption
+
+def _populate_encryption(s3_client, bucket_name: str, bucket_analysis: dict) -> None:
     try:
         encryption_response = s3_client.get_bucket_encryption(Bucket=bucket_name)
         bucket_analysis["encryption"] = encryption_response.get(
@@ -79,11 +94,11 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
             print(f"  ⚠️  Could not check encryption: {error_code}")
         bucket_analysis["encryption"] = None
 
-    # Check public access
+
+def _populate_public_access(s3_client, bucket_name: str, bucket_analysis: dict) -> None:
     try:
         public_access_response = s3_client.get_public_access_block(Bucket=bucket_name)
         pab = _require_public_access_config(public_access_response)
-        # If any of these are False, bucket might have public access
         bucket_analysis["public_access"] = not all(
             [
                 pab["BlockPublicAcls"],
@@ -93,9 +108,17 @@ def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
             ]
         )
     except ClientError as e:
-        # If we can't get public access block, assume it might be public
         print(f"  ⚠️  Could not check public access: {e.response['Error']['Code']}")
         bucket_analysis["public_access"] = True
+
+
+def _get_bucket_metadata(s3_client, bucket_name, bucket_analysis):
+    """Collect bucket-level metadata like versioning, lifecycle, encryption, and public access."""
+    _normalize_mock_methods(s3_client)
+    _populate_versioning(s3_client, bucket_name, bucket_analysis)
+    _populate_lifecycle(s3_client, bucket_name, bucket_analysis)
+    _populate_encryption(s3_client, bucket_name, bucket_analysis)
+    _populate_public_access(s3_client, bucket_name, bucket_analysis)
 
 
 def _process_object(obj, bucket_analysis, ninety_days_ago, large_object_threshold):

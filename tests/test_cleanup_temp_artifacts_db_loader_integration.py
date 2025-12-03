@@ -1,10 +1,9 @@
 """Tests for cleanup_temp_artifacts/db_loader.py integration and helpers."""
 
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,duplicate-code
 
 from __future__ import annotations
 
-import argparse
 import sqlite3
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -14,13 +13,14 @@ import pytest
 # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts import categories, core_scanner, db_loader
 from tests.assertions import assert_equal
-from tests.conftest_test_values import TEST_MAX_ROWID, TEST_MIN_SIZE_BYTES
+from tests.conftest_test_values import TEST_MAX_ROWID
+
+pytest_plugins = ["tests.db_loader_test_utils"]
 
 Category = categories.Category
 Candidate = core_scanner.Candidate
 CacheConfig = db_loader.CacheConfig
 CacheWriteError = db_loader.CacheWriteError
-DatabaseInfo = db_loader.DatabaseInfo
 ScanContext = db_loader.ScanContext
 _try_load_from_cache = db_loader._try_load_from_cache  # pylint: disable=protected-access
 load_candidates_from_db = db_loader.load_candidates_from_db
@@ -29,38 +29,6 @@ write_cache_if_needed = db_loader.write_cache_if_needed
 
 def _dummy_matcher(path: Path, is_dir: bool) -> bool:  # pylint: disable=unused-argument
     return True
-
-
-@pytest.fixture
-def mock_args():
-    """Create mock argparse.Namespace with required attributes."""
-    args = argparse.Namespace()
-    args.cache_enabled = True
-    args.cache_dir = Path("/tmp/cache")
-    args.refresh_cache = False
-    args.cache_ttl = 3600
-    args.categories = [Category("cat1", "desc1", _dummy_matcher, prune=True)]
-    args.min_size_bytes = TEST_MIN_SIZE_BYTES
-    return args
-
-
-@pytest.fixture
-def mock_db_info():
-    """Create mock DatabaseInfo."""
-    mock_stat = MagicMock()
-    mock_stat.st_mtime_ns = 123456789
-    return DatabaseInfo(
-        db_path=Path("/tmp/test.db"),
-        db_stat=mock_stat,
-        total_files=100,
-        max_rowid=500,
-    )
-
-
-@pytest.fixture
-def mock_category():
-    """Create mock Category."""
-    return Category("cat1", "desc1", _dummy_matcher, prune=True)
 
 
 def test_try_load_from_cache_valid(tmp_path, capsys):

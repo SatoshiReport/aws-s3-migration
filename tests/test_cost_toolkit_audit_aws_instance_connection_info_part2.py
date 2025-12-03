@@ -14,6 +14,10 @@ from cost_toolkit.scripts.audit.aws_instance_connection_info import (
     get_instance_connection_info,
 )
 from tests.assertions import assert_equal
+from tests.aws_instance_connection_test_utils import (
+    build_instance_connection_mocks,
+    run_connection_info_with_clients,
+)
 
 
 class TestCheckSsmAvailability:
@@ -164,24 +168,19 @@ class TestGetInstanceConnectionInfoPrivate:
 
     def test_get_instance_connection_info_no_public_access(self):
         """Test get_instance_connection_info without public access."""
-        mock_instance = {
-            "InstanceId": "i-private",
-            "InstanceType": "t2.small",
-            "State": {"Name": "running"},
-            "LaunchTime": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
-            "PrivateIpAddress": "10.0.2.20",
-            "PrivateDnsName": "ip-10-0-2-20.ec2.internal",
-            "VpcId": "vpc-private",
-            "SubnetId": "subnet-private",
-            "SecurityGroups": [],
-        }
-
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_subnets.return_value = {"Subnets": [{}]}
-        mock_ec2.describe_route_tables.return_value = {"RouteTables": []}
-
-        mock_ssm = MagicMock()
-        mock_ssm.describe_instance_information.return_value = {"InstanceInformationList": []}
+        mock_instance, mock_ec2, mock_ssm = build_instance_connection_mocks()
+        mock_instance.update(
+            {
+                "InstanceId": "i-private",
+                "InstanceType": "t2.small",
+                "State": {"Name": "running"},
+                "LaunchTime": datetime(2024, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
+                "PrivateIpAddress": "10.0.2.20",
+                "PrivateDnsName": "ip-10-0-2-20.ec2.internal",
+                "VpcId": "vpc-private",
+                "SubnetId": "subnet-private",
+            }
+        )
 
         with (
             patch(
@@ -228,22 +227,11 @@ class TestGetInstanceConnectionInfoTags:
             "SecurityGroups": [],
         }
 
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_subnets.return_value = {"Subnets": [{}]}
-        mock_ec2.describe_route_tables.return_value = {"RouteTables": []}
+        _, mock_ec2, mock_ssm = build_instance_connection_mocks()
 
-        mock_ssm = MagicMock()
-        mock_ssm.describe_instance_information.return_value = {"InstanceInformationList": []}
-
-        with (
-            patch(
-                "cost_toolkit.scripts.audit.aws_instance_connection_info.get_instance_info",
-                return_value=mock_instance,
-            ),
-            patch("boto3.client") as mock_boto_client,
-        ):
-            mock_boto_client.side_effect = [mock_ec2, mock_ssm]
-            result = get_instance_connection_info("i-notags", "ap-south-1")
+        result = run_connection_info_with_clients(
+            mock_instance, mock_ec2, mock_ssm, "i-notags", "ap-south-1"
+        )
 
         assert_equal(result["instance_id"], "i-notags")
         assert_equal(result["state"], "stopped")

@@ -3,8 +3,8 @@
 
 from threading import Event
 
-import boto3
 from botocore.exceptions import ClientError
+import boto3
 
 from cost_toolkit.common.vpc_cleanup_utils import delete_vpc_and_dependencies
 
@@ -24,11 +24,11 @@ def delete_vpc_and_dependencies_with_logging(vpc_id, region_name):
     """
     print(f"\n🗑️  Deleting VPC {vpc_id} in {region_name}")
     try:
-        ec2 = boto3.client("ec2", region_name=region_name)
-        return delete_vpc_and_dependencies(ec2, vpc_id)
+        result = delete_vpc_and_dependencies(vpc_id, region_name=region_name)
     except ClientError as e:
         print(f"❌ Error during VPC deletion process: {e}")
         return False
+    return bool(result)
 
 
 def _get_safe_vpcs():
@@ -50,7 +50,7 @@ def _delete_vpcs(safe_vpcs):
         print(f"DELETING VPC {vpc_id} in {region}")
         print("=" * 80)
 
-        success = delete_vpc_and_dependencies(vpc_id, region)
+        success = delete_vpc_and_dependencies_with_logging(vpc_id, region)
         deletion_results.append((vpc_id, region, success))
 
         if success:

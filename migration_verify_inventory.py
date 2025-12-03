@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from importlib import import_module
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Set, Tuple
@@ -37,17 +38,18 @@ def _scan_local_directory(base_path: Path, bucket: str, expected_files: int) -> 
     local_files: Dict[str, Path] = {}
     scan_count = 0
     progress = ProgressTracker(update_interval=2.0)
-    for file_path in local_path.rglob("*"):
-        if not file_path.is_file():
-            continue
-        relative_path = file_path.relative_to(local_path)
-        s3_key = str(relative_path).replace("\\", "/")
-        local_files[s3_key] = file_path
-        scan_count += 1
-        if progress.should_update() or scan_count % 10000 == 0:
-            pct = (scan_count / expected_files * 100) if expected_files > 0 else 0
-            status = f"Scanned: {scan_count:,} files ({pct:.1f}%)  "
-            print(f"\r  {status}", end="", flush=True)
+    base_str = str(local_path)
+    for root, _, files in os.walk(base_str):
+        for file_name in files:
+            file_path = Path(root) / file_name
+            relative_str = os.path.relpath(str(file_path), base_str)
+            s3_key = relative_str.replace("\\", "/")
+            local_files[s3_key] = file_path
+            scan_count += 1
+            if progress.should_update() or scan_count % 10000 == 0:
+                pct = (scan_count / expected_files * 100) if expected_files > 0 else 0
+                status = f"Scanned: {scan_count:,} files ({pct:.1f}%)  "
+                print(f"\r  {status}", end="", flush=True)
     print(f"\r  Found {len(local_files):,} local files" + " " * 30)
     print()
     return local_files

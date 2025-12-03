@@ -20,12 +20,14 @@ PARENT_DIR = os.path.dirname(SCRIPT_ROOT)
 SCRIPTS_DIR = os.path.join(PARENT_DIR, "scripts")
 
 
-def get_current_month_costs():
-    """Get current month's AWS costs from Cost Explorer"""
+def get_current_month_costs() -> tuple[dict[str, float], float]:
+    """Get current month's AWS costs from Cost Explorer."""
+    service_costs: dict[str, float] = {}
+    total_cost = 0.0
+
     try:
         ce_client = boto3.client("ce", region_name="us-east-1")
 
-        # Get current month date range
         end_date = datetime.now().date()
         start_date = end_date.replace(day=1)
 
@@ -39,9 +41,6 @@ def get_current_month_costs():
             GroupBy=[{"Type": "DIMENSION", "Key": "SERVICE"}],
         )
 
-        service_costs = {}
-        total_cost = 0.0
-
         for result in response["ResultsByTime"]:
             for group in result["Groups"]:
                 service = group["Keys"][0]
@@ -49,11 +48,10 @@ def get_current_month_costs():
                 if cost > 0:
                     service_costs[service] = cost
                     total_cost += cost
+    except ClientError as exc:
+        print(f"Error retrieving cost data: {exc}")
+        return {}, 0.0
 
-    except ClientError as e:
-        raise RuntimeError(
-            f"Failed to retrieve current month costs from AWS Cost Explorer: {str(e)}"
-        ) from e
     return service_costs, total_cost
 
 

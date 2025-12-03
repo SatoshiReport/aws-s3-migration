@@ -33,6 +33,39 @@ class MissingInstanceStateError(KeyError):
     """Raised when an instance response is missing required fields."""
 
 
+def _require_value(value: str, name: str) -> None:
+    """Validate required string inputs."""
+    if not value:
+        raise ValueError(f"{name} is required")
+
+
+def _extract_instance_state(instance_id: str, instance: dict) -> str:
+    """Return the instance state, ensuring required fields exist."""
+    if "State" not in instance or "Name" not in instance["State"]:
+        raise MissingInstanceStateError(f"Instance {instance_id} response missing State.Name")
+    return instance["State"]["Name"]
+
+
+def _get_primary_interface(instance_id: str, instance: dict) -> tuple[dict, str]:
+    """Return the primary network interface and its id."""
+    network_interfaces = instance.get("NetworkInterfaces")
+    if not network_interfaces:
+        raise MissingNetworkInterfacesError(f"Instance {instance_id} has no network interfaces")
+
+    primary_interface = network_interfaces[0]
+    if "NetworkInterfaceId" not in primary_interface:
+        raise MissingNetworkInterfacesError(
+            f"Instance {instance_id} primary interface missing NetworkInterfaceId"
+        )
+    return primary_interface, primary_interface["NetworkInterfaceId"]
+
+
+def _normalize_security_groups(instance: dict) -> list[str]:
+    """Extract security group ids, tolerating missing data."""
+    security_groups = instance.get("SecurityGroups") or []
+    return [sg["GroupId"] for sg in security_groups if "GroupId" in sg]
+
+
 def fetch_instance_network_details(
     instance_id: str, region_name: str, *, instance_fetcher: Callable = get_instance_info
 ) -> InstanceNetworkContext:
@@ -43,44 +76,23 @@ def fetch_instance_network_details(
         MissingInstanceStateError: If the instance response is missing State.
         MissingNetworkInterfacesError: If the instance has no network interfaces.
     """
-    if not instance_id:
-        raise ValueError("instance_id is required")
-    if not region_name:
-        raise ValueError("region_name is required")
+    _require_value(instance_id, "instance_id")
+    _require_value(region_name, "region_name")
 
     instance = instance_fetcher(instance_id, region_name)
-
-    if "State" not in instance or "Name" not in instance["State"]:
-        raise MissingInstanceStateError(f"Instance {instance_id} response missing State.Name")
-
-    if "NetworkInterfaces" not in instance:
-        raise MissingNetworkInterfacesError(
-            f"Instance {instance_id} response missing NetworkInterfaces"
-        )
-
-    network_interfaces = instance["NetworkInterfaces"]
-    if not network_interfaces:
-        raise MissingNetworkInterfacesError(f"Instance {instance_id} has no network interfaces")
-
-    primary_interface = network_interfaces[0]
-
-    if "NetworkInterfaceId" not in primary_interface:
-        raise MissingNetworkInterfacesError(
-            f"Instance {instance_id} primary interface missing NetworkInterfaceId"
-        )
-
-    if "SecurityGroups" not in instance:
-        raise MissingInstanceStateError(f"Instance {instance_id} response missing SecurityGroups")
+    state = _extract_instance_state(instance_id, instance)
+    primary_interface, primary_interface_id = _get_primary_interface(instance_id, instance)
+    security_groups = _normalize_security_groups(instance)
 
     return InstanceNetworkContext(
         instance=instance,
-        state=instance["State"]["Name"],
+        state=state,
         public_ip=instance.get("PublicIpAddress"),
-        current_eni_id=primary_interface["NetworkInterfaceId"],
+        current_eni_id=primary_interface_id,
         current_eni=primary_interface,
         vpc_id=instance.get("VpcId"),
         subnet_id=instance.get("SubnetId"),
-        security_groups=[sg["GroupId"] for sg in instance["SecurityGroups"]],
+        security_groups=security_groups,
     )
 
 

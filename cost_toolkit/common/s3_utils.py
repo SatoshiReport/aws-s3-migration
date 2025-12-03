@@ -6,10 +6,8 @@ Common S3 operations used across multiple scripts.
 
 import logging
 
-from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
 
-
-def get_bucket_region(bucket_name, verbose=False, location_getter=None):
+def get_bucket_region(bucket_name, verbose=True, location_getter=None):
     """
     Get the region where an S3 bucket is located.
 
@@ -33,12 +31,18 @@ def get_bucket_region(bucket_name, verbose=False, location_getter=None):
     if location_getter is not None:
         resolver = location_getter
     else:
+        # Lazy import to allow patching in audit module tests
+        from cost_toolkit.scripts.audit.s3_audit.bucket_analysis import (
+            get_bucket_location,
+        )
+
         resolver = get_bucket_location
 
     region = resolver(bucket_name)
 
     if verbose:
         logging.info("    Region: %s", region)
+        print(f"    Region: {region}")
     return region
 
 

@@ -216,3 +216,8 @@ def _collect_vpc_endpoints(ec2_client):
                 }
             )
     return vpc_endpoints
+
+
+if __name__ == "__main__":
+    # Utility module; no direct CLI behavior.
+    pass

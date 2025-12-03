@@ -62,10 +62,7 @@ def audit_vpc_resources_in_region(region, aws_access_key_id, aws_secret_access_k
             "network_acls": [],
         }
 
-        vpcs_response = ec2_client.describe_vpcs()
-        vpcs = []
-        if "Vpcs" in vpcs_response:
-            vpcs = vpcs_response["Vpcs"]
+        vpcs = ec2_client.describe_vpcs().get("Vpcs", [])
 
         if not vpcs:
             return None
@@ -74,21 +71,13 @@ def audit_vpc_resources_in_region(region, aws_access_key_id, aws_secret_access_k
 
         for vpc in vpcs:
             vpc_id = vpc["VpcId"]
-            vpc_tags = []
-            if "Tags" in vpc:
-                vpc_tags = vpc["Tags"]
-            vpc_name = get_resource_name(vpc_tags)
-            is_default = False
-            if "IsDefault" in vpc:
-                is_default = vpc["IsDefault"]
-
             vpc_instances = [inst for inst in active_instances if inst["vpc_id"] == vpc_id]
 
             vpc_data = {
                 "vpc_id": vpc_id,
-                "name": vpc_name,
+                "name": get_resource_name(vpc.get("Tags")),
                 "cidr": vpc["CidrBlock"],
-                "is_default": is_default,
+                "is_default": vpc.get("IsDefault", False),
                 "state": vpc["State"],
                 "instances": vpc_instances,
                 "instance_count": len(vpc_instances),

@@ -165,10 +165,9 @@ def verify_dns_resolution(domain_name):
             results = socket.getaddrinfo(host, None, proto=socket.IPPROTO_TCP)
             addresses = [info[4][0] for info in results if info[4]]
             return addresses[0] if addresses else None
-        except socket.gaierror as exc:
-            raise RuntimeError(f"DNS lookup failed for {host}: {exc}") from exc
-        except OSError as exc:
-            raise RuntimeError(f"Network error during DNS lookup for {host}: {exc}") from exc
+        except (socket.gaierror, OSError) as exc:
+            print(f"  ❌ DNS lookup failed for {host}: {exc}")
+            return None
 
     root_ip = _resolve(domain_name)
     if root_ip:

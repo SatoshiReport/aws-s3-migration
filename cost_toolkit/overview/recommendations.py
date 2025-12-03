@@ -28,9 +28,9 @@ def get_completed_cleanups():
                         service = action.get("service", "")
                         completed_services.add(service.lower())
     except OSError as e:
-        raise RuntimeError(f"Failed to read cleanup log at {cleanup_log_path}: {e}") from e
+        print(f"Failed to read cleanup log at {cleanup_log_path}: {e}")
     except json.JSONDecodeError as e:
-        raise RuntimeError(f"Cleanup log is not valid JSON at {cleanup_log_path}: {e}") from e
+        print(f"Cleanup log is not valid JSON at {cleanup_log_path}: {e}")
 
     return completed_services
 

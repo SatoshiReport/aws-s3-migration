@@ -4,7 +4,7 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
-from cost_toolkit.common.aws_common import get_all_aws_regions
+from cost_toolkit.common.aws_common import get_all_aws_regions, list_elastic_ip_addresses
 
 
 def release_elastic_ips_in_region(region_name):
@@ -15,11 +15,7 @@ def release_elastic_ips_in_region(region_name):
     try:
         ec2 = create_client("ec2", region=region_name)
 
-        # Get all Elastic IP addresses
-        response = ec2.describe_addresses()
-        addresses = []
-        if "Addresses" in response:
-            addresses = response["Addresses"]
+        addresses = list_elastic_ip_addresses(ec2)
 
         if not addresses:
             print(f"✅ No Elastic IP addresses found in {region_name}")

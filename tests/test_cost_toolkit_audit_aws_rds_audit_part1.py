@@ -9,6 +9,7 @@ from cost_toolkit.scripts.audit.aws_rds_audit import (
     _process_aurora_cluster,
     _process_rds_instance,
 )
+from tests.rds_audit_test_utils import SERVERLESS_V1_CLUSTER, SERVERLESS_V2_CLUSTER
 
 
 class TestProcessRdsInstance:
@@ -112,21 +113,9 @@ class TestProcessRdsInstance:
 class TestProcessAuroraClusterBasic:
     """Tests for _process_aurora_cluster function - basic scenarios."""
 
-    def test_process_basic_cluster(self, capsys):
+    def test_process_basic_cluster(self, capsys, aurora_postgresql_cluster):
         """Test processing basic Aurora cluster."""
-        cluster = {
-            "DBClusterIdentifier": "test-cluster",
-            "Engine": "aurora-postgresql",
-            "EngineVersion": "14.6",
-            "Status": "available",
-            "DatabaseName": "mydb",
-            "MasterUsername": "admin",
-            "MultiAZ": True,
-            "StorageEncrypted": True,
-            "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
-        }
-
-        _process_aurora_cluster(cluster)
+        _process_aurora_cluster(aurora_postgresql_cluster)
 
         captured = capsys.readouterr()
         assert "Cluster ID: test-cluster" in captured.out
@@ -188,21 +177,7 @@ class TestProcessAuroraClusterServerless:
 
     def test_process_serverless_v1_cluster(self, capsys):
         """Test processing Aurora Serverless v1 cluster."""
-        cluster = {
-            "DBClusterIdentifier": "serverless-cluster",
-            "Engine": "aurora-mysql",
-            "EngineVersion": "5.7",
-            "Status": "available",
-            "DatabaseName": "testdb",
-            "MasterUsername": "admin",
-            "MultiAZ": False,
-            "StorageEncrypted": True,
-            "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
-            "EngineMode": "serverless",
-            "ScalingConfigurationInfo": {"MinCapacity": 2, "MaxCapacity": 16},
-        }
-
-        _process_aurora_cluster(cluster)
+        _process_aurora_cluster(SERVERLESS_V1_CLUSTER)
 
         captured = capsys.readouterr()
         assert "Engine Mode: Serverless" in captured.out
@@ -210,20 +185,7 @@ class TestProcessAuroraClusterServerless:
 
     def test_process_serverless_v2_cluster(self, capsys):
         """Test processing Aurora Serverless v2 cluster."""
-        cluster = {
-            "DBClusterIdentifier": "serverless-v2",
-            "Engine": "aurora-postgresql",
-            "EngineVersion": "14.6",
-            "Status": "available",
-            "DatabaseName": "mydb",
-            "MasterUsername": "postgres",
-            "MultiAZ": True,
-            "StorageEncrypted": True,
-            "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
-            "ServerlessV2ScalingConfiguration": {"MinCapacity": 0.5, "MaxCapacity": 4.0},
-        }
-
-        _process_aurora_cluster(cluster)
+        _process_aurora_cluster(SERVERLESS_V2_CLUSTER)
 
         captured = capsys.readouterr()
         assert "Engine Mode: Serverless V2" in captured.out

@@ -18,6 +18,8 @@ from cost_toolkit.scripts.aws_ec2_operations import (
     delete_security_group as delete_security_group_canonical,
 )
 
+delete_security_group = delete_security_group_canonical
+
 # Unused security groups identified in the audit
 UNUSED_SECURITY_GROUPS = [
     # us-east-1 region
@@ -144,7 +146,7 @@ def clean_security_groups(aws_access_key_id, aws_secret_access_key):
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        if delete_security_group_canonical(
+        if delete_security_group(
             region=region,
             group_id=group_id,
             group_name=group_name,

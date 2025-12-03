@@ -8,6 +8,9 @@ from pathlib import Path
 
 import pytest
 
+pytest_plugins = ["tests.unused_module_guard_test_utils"]
+pytestmark = pytest.mark.usefixtures("backup_guard_config")
+
 
 # Import the local shim module directly to access its classes
 def _import_local_shim():
@@ -24,23 +27,6 @@ def _import_local_shim():
 _local_shim_source = (
     Path(__file__).parent.parent / "ci_tools" / "scripts" / "unused_module_guard.py"
 ).read_text()
-
-
-@pytest.fixture(autouse=True)
-def _backup_config():
-    """Backup and restore config file for all tests."""
-    config_file = Path(__file__).parent.parent / "unused_module_guard.config.json"
-    original_content = None
-    if config_file.exists():
-        original_content = config_file.read_text()
-
-    yield
-
-    # Always restore original content after each test
-    if original_content is not None:
-        config_file.write_text(original_content, encoding="utf-8")
-    elif config_file.exists():
-        config_file.unlink()
 
 
 def test_shared_guard_error_classes_exist():

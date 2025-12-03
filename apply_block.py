@@ -79,8 +79,7 @@ def apply_policy_to_bucket(bucket, dry_run):
     except (OSError, IOError, ValueError) as e:
         print(f"Failed to apply policy to {bucket}: {e}")
         return False
-    else:
-        return True
+    return True
 
 
 def main():

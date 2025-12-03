@@ -20,6 +20,7 @@ from cost_toolkit.scripts.cleanup.aws_lightsail_cleanup import (
     main,
     record_cleanup_action,
 )
+from tests.lightsail_test_utils import build_empty_lightsail_client, build_lightsail_client
 
 
 class TestDeleteInstance:
@@ -136,18 +137,7 @@ class TestProcessRegion:
     def test_process_region_with_resources(self):
         """Test processing region with instances and databases."""
         with patch("boto3.client") as mock_client:
-            mock_ls = MagicMock()
-            mock_ls.get_instances.return_value = {
-                "instances": [
-                    {"name": "inst1", "state": {"name": "running"}, "bundleId": "nano_2_0"}
-                ]
-            }
-            mock_ls.get_relational_databases.return_value = {
-                "relationalDatabases": [
-                    {"name": "db1", "state": "available", "relationalDatabaseBundleId": "micro_1_0"}
-                ]
-            }
-            mock_client.return_value = mock_ls
+            mock_client.return_value = build_lightsail_client()
 
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup._delete_instance",
@@ -166,10 +156,7 @@ class TestProcessRegion:
     def test_process_region_no_resources(self):
         """Test processing region with no resources."""
         with patch("boto3.client") as mock_client:
-            mock_ls = MagicMock()
-            mock_ls.get_instances.return_value = {"instances": []}
-            mock_ls.get_relational_databases.return_value = {"relationalDatabases": []}
-            mock_client.return_value = mock_ls
+            mock_client.return_value = build_empty_lightsail_client()
 
             instances, databases, savings = _process_region("us-east-1")
 

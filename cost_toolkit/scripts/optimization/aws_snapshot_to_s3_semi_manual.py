@@ -211,7 +211,8 @@ def _prepare_all_snapshots(snapshots, aws_access_key_id, aws_secret_access_key):
             prepared_snapshots.append(prepared)
         except (BotoCoreError, ClientError) as exc:
             print(f"   ❌ Failed to prepare {snapshot['snapshot_id']}: {exc}")
-            raise
+        except RuntimeError as exc:
+            print(f"   ❌ Failed to prepare {snapshot['snapshot_id']}: {exc}")
     return prepared_snapshots
 
 

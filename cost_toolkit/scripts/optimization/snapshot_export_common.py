@@ -45,18 +45,22 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region, enable_versio
 
         except ClientError as e:
             print(f"   ❌ Error creating bucket {bucket_name}: {e}")
-            raise
+            return False
 
         return True
 
 
 def setup_s3_bucket_versioning(s3_client, bucket_name):
     """Enable S3 bucket versioning for data protection"""
-    s3_client.put_bucket_versioning(
-        Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
-    )
-    print(f"   ✅ Enabled versioning for {bucket_name}")
-    return True
+    try:
+        s3_client.put_bucket_versioning(
+            Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
+        )
+        print(f"   ✅ Enabled versioning for {bucket_name}")
+        return True
+    except ClientError as exc:
+        print(f"   ❌ Failed to enable versioning: {exc}")
+        return False
 
 
 def create_ami_from_snapshot(
@@ -98,7 +102,7 @@ def create_ami_from_snapshot(
         print(f"   ✅ AMI {ami_id} is now available")
     except ClientError as e:
         print(f"   ❌ Error creating AMI from snapshot {snapshot_id}: {e}")
-        raise
+        return None
     return ami_id
 
 

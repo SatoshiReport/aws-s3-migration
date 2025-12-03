@@ -56,9 +56,7 @@ def get_instance_cleanup_details(
         for vol in volumes_raw
     ]
 
-    name = extract_tag_value(instance, "Name")
-    if name is None:
-        raise ValueError(f"Instance {instance_id} is missing required 'Name' tag")
+    name = extract_tag_value(instance, "Name") or "No Name"
 
     security_groups = []
     if "SecurityGroups" in instance:

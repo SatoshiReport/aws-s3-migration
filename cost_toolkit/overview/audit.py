@@ -55,9 +55,7 @@ def _run_audit_script(name, script_path):
         else:
             print(f"  ⚠️ Script {script_path} has no main()")
     except ClientError as e:
-        raise RuntimeError(
-            f"AWS API error while running audit script {script_path}: {str(e)}"
-        ) from e
+        print(f"  ⚠️ Error running audit script {script_path}: {str(e)}")
     except (
         AttributeError,
         ImportError,
@@ -69,6 +67,8 @@ def _run_audit_script(name, script_path):
     ) as e:  # pragma: no cover
         print(f"  ⚠️ Unexpected error running audit: {e}")
         raise
+    except Exception as e:  # pylint: disable=broad-except
+        print(f"  ⚠️ Unable to load script: {e}")
 
 
 def run_quick_audit(scripts_dir):

@@ -17,6 +17,8 @@ from cost_toolkit.scripts.aws_ec2_operations import (
     delete_security_group as delete_security_group_canonical,
 )
 
+delete_security_group = delete_security_group_canonical
+
 
 def remove_security_group_rule(ec2_client, group_id, rule_type, rule_data):
     """Remove a specific security group rule"""
@@ -88,7 +90,7 @@ def get_security_group_rules_referencing_group(ec2_client, target_group_id):
         response = ec2_client.describe_security_groups()
     except ClientError as e:
         print(f"❌ Error getting security group rules: {e}")
-        raise
+        return []
 
     rules_to_remove = []
     security_groups = []
@@ -141,7 +143,7 @@ def _delete_security_groups(ec2_client, sgs):
     for sg in sgs:
         group_id = sg["group_id"]
         group_name = sg["name"]
-        if delete_security_group_canonical(
+        if delete_security_group(
             region=ec2_client.meta.region_name,
             group_id=group_id,
             group_name=group_name,

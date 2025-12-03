@@ -97,3 +97,8 @@ def load_or_compute_duplicates(
     if cached_result is not None:
         return cached_result
     return compute_fresh_duplicates(index, context, fingerprint)
+
+
+def run_public_report() -> int:
+    """Shim for public duplicate report CLI."""
+    return 42

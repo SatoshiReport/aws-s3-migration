@@ -324,7 +324,7 @@ class PhaseManager:
                     "Migration phase metadata is missing. "
                     "Reset the state DB to avoid resuming from an unknown phase."
                 )
-            return Phase(row["value"])
+            return _PhaseRuntime(row["value"])
 
     def set_phase(self, phase: "Phase"):
         """Set current migration phase"""

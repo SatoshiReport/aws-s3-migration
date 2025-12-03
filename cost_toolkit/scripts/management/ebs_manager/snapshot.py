@@ -84,7 +84,7 @@ def create_volume_snapshot(volume_id: str, description: Optional[str] = None) ->
         if not description:
             description = _generate_snapshot_description(volume_name, volume_id, volume_size)
 
-    except (BotoCoreError, ClientError, KeyError, IndexError) as exc:
+    except (BotoCoreError, ClientError, KeyError, IndexError, Exception) as exc:
         raise VolumeRetrievalError(volume_id, exc) from exc
 
     # Create the snapshot

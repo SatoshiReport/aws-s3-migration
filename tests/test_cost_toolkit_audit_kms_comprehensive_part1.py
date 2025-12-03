@@ -12,6 +12,7 @@ from cost_toolkit.scripts.audit.aws_kms_audit import (
     _print_key_info,
     _process_kms_key,
 )
+from tests.kms_test_utils import build_kms_client
 
 
 class TestPrintKeyInfo:
@@ -196,17 +197,7 @@ class TestProcessKmsKey:
 
     def test_process_customer_managed_key(self, capsys):
         """Test processing customer-managed key."""
-        mock_kms = MagicMock()
-        mock_kms.describe_key.return_value = {
-            "KeyMetadata": {
-                "KeyManager": "CUSTOMER",
-                "Description": "Test",
-                "KeyState": "Enabled",
-                "CreationDate": "2024-01-01",
-            }
-        }
-        mock_kms.list_aliases.return_value = {"Aliases": []}
-        mock_kms.list_grants.return_value = {"Grants": []}
+        mock_kms = build_kms_client()
 
         cost, is_customer = _process_kms_key(mock_kms, "key-123")
 
@@ -217,15 +208,7 @@ class TestProcessKmsKey:
 
     def test_process_aws_managed_key(self):
         """Test processing AWS-managed key."""
-        mock_kms = MagicMock()
-        mock_kms.describe_key.return_value = {
-            "KeyMetadata": {
-                "KeyManager": "AWS",
-                "Description": "AWS managed",
-                "KeyState": "Enabled",
-                "CreationDate": "2024-01-01",
-            }
-        }
+        mock_kms = build_kms_client(manager="AWS")
 
         cost, is_customer = _process_kms_key(mock_kms, "key-123")
 

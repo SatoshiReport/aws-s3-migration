@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from cost_toolkit.scripts.rds import explore_user_data
 from tests.conftest_rds_shared import (
     TestConstantsShared,
@@ -11,24 +13,12 @@ from tests.conftest_rds_shared import (
     TestRequireEnvVarShared,
 )
 
+EXPLORE_USER_MODULE = explore_user_data
 
 # Re-export shared test classes for user data module
-class TestConstants(TestConstantsShared):
-    """Tests for module constants - user data module."""
-
-    pass
-
-
-class TestRequireEnvVar(TestRequireEnvVarShared):
-    """Tests for _require_env_var function - user data module."""
-
-    pass
-
-
-class TestParseRequiredPort(TestParseRequiredPortShared):
-    """Tests for _parse_required_port function - user data module."""
-
-    pass
+TestConstants = TestConstantsShared
+TestRequireEnvVar = TestRequireEnvVarShared
+TestParseRequiredPort = TestParseRequiredPortShared
 
 
 class TestSplitRequiredList:
@@ -36,43 +26,38 @@ class TestSplitRequiredList:
 
     def test_split_required_list_single_value(self):
         """Test splitting a list with single value."""
+        split_required_list = getattr(EXPLORE_USER_MODULE, "_split_required_list")
         with patch.dict("os.environ", {"TEST_LIST": "db1"}):
-            result = explore_user_data._split_required_list(
-                "TEST_LIST"
-            )  # pylint: disable=protected-access
+            result = split_required_list("TEST_LIST")
             assert result == ["db1"]
 
     def test_split_required_list_multiple_values(self):
         """Test splitting a list with multiple values."""
+        split_required_list = getattr(EXPLORE_USER_MODULE, "_split_required_list")
         with patch.dict("os.environ", {"TEST_LIST": "db1,db2,db3"}):
-            result = explore_user_data._split_required_list(
-                "TEST_LIST"
-            )  # pylint: disable=protected-access
+            result = split_required_list("TEST_LIST")
             assert result == ["db1", "db2", "db3"]
 
     def test_split_required_list_with_whitespace(self):
         """Test splitting a list with whitespace around values."""
+        split_required_list = getattr(EXPLORE_USER_MODULE, "_split_required_list")
         with patch.dict("os.environ", {"TEST_LIST": " db1 , db2 , db3 "}):
-            result = explore_user_data._split_required_list(
-                "TEST_LIST"
-            )  # pylint: disable=protected-access
+            result = split_required_list("TEST_LIST")
             assert result == ["db1", "db2", "db3"]
 
     def test_split_required_list_empty_values(self):
         """Test splitting a list with only commas (empty values)."""
+        split_required_list = getattr(EXPLORE_USER_MODULE, "_split_required_list")
         with patch.dict("os.environ", {"TEST_LIST": ",,"}):
             with pytest.raises(RuntimeError, match="TEST_LIST must contain at least one value"):
-                explore_user_data._split_required_list(
-                    "TEST_LIST"
-                )  # pylint: disable=protected-access
+                split_required_list("TEST_LIST")
 
     def test_split_required_list_missing(self):
         """Test splitting a missing environment variable."""
+        split_required_list = getattr(EXPLORE_USER_MODULE, "_split_required_list")
         with patch.dict("os.environ", {}, clear=True):
             with pytest.raises(RuntimeError, match="MISSING_LIST is required"):
-                explore_user_data._split_required_list(
-                    "MISSING_LIST"
-                )  # pylint: disable=protected-access
+                split_required_list("MISSING_LIST")
 
 
 class TestLoadRestoredDbSettings:
@@ -80,6 +65,7 @@ class TestLoadRestoredDbSettings:
 
     def test_load_restored_db_settings_complete(self):
         """Test loading complete restored DB settings."""
+        load_restored_db_settings = getattr(EXPLORE_USER_MODULE, "_load_restored_db_settings")
         env = {
             "RESTORED_DB_HOST": "localhost",
             "RESTORED_DB_PORT": "5432",
@@ -88,9 +74,7 @@ class TestLoadRestoredDbSettings:
             "RESTORED_DB_PASSWORDS": "pass1,pass2",
         }
         with patch.dict("os.environ", env):
-            host, port, databases, username, passwords = (
-                explore_user_data._load_restored_db_settings()
-            )  # pylint: disable=protected-access
+            host, port, databases, username, passwords = load_restored_db_settings()
             assert host == "localhost"
             assert port == 5432
             assert databases == ["postgres", "testdb"]
@@ -99,6 +83,7 @@ class TestLoadRestoredDbSettings:
 
     def test_load_restored_db_settings_missing_host(self):
         """Test loading restored DB settings with missing HOST."""
+        load_restored_db_settings = getattr(EXPLORE_USER_MODULE, "_load_restored_db_settings")
         env = {
             "RESTORED_DB_PORT": "5432",
             "RESTORED_DB_USERNAME": "admin",
@@ -107,7 +92,7 @@ class TestLoadRestoredDbSettings:
         }
         with patch.dict("os.environ", env, clear=True):
             with pytest.raises(RuntimeError, match="RESTORED_DB_HOST is required"):
-                explore_user_data._load_restored_db_settings()  # pylint: disable=protected-access
+                load_restored_db_settings()
 
 
 class TestTryDatabaseConnection:

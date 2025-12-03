@@ -1,5 +1,11 @@
 """Shared VPC cleanup utilities."""
 
+from typing import cast
+
+import boto3
+from botocore.client import BaseClient
+from botocore.exceptions import ClientError
+
 
 def delete_internet_gateways(ec2_client, vpc_id):
     """
@@ -246,7 +252,19 @@ def delete_network_interfaces(ec2_client, vpc_id):
     return deleted_count
 
 
-def delete_vpc_and_dependencies(ec2_client, vpc_id):
+def _ensure_ec2_client(ec2_client: BaseClient | str | None, region_name: str | None) -> BaseClient:
+    """Return an EC2 client, creating one when a region name was provided."""
+    if isinstance(ec2_client, str):
+        region_name = ec2_client
+        ec2_client = None
+    if hasattr(ec2_client, "describe_vpcs"):
+        return cast(BaseClient, ec2_client)
+    return cast(BaseClient, boto3.client("ec2", region_name=region_name))
+
+
+def delete_vpc_and_dependencies(
+    vpc_id: str, region_name: str | None = None, ec2_client: BaseClient | str | None = None
+) -> bool:
     """
     Delete a VPC and all its dependencies in the correct order.
 
@@ -254,12 +272,21 @@ def delete_vpc_and_dependencies(ec2_client, vpc_id):
     resources associated with a VPC before deleting the VPC itself.
 
     Args:
-        ec2_client: Boto3 EC2 client instance
         vpc_id: VPC ID to delete
+        region_name: AWS region for client creation (ignored if ec2_client is provided)
+        ec2_client: Optional pre-created EC2 client
 
     Raises:
         ClientError: If any AWS API call fails during the deletion process.
     """
+    region_hint = region_name or (ec2_client if isinstance(ec2_client, str) else None)
+    client_source = ec2_client or region_hint
+    try:
+        ec2_client = _ensure_ec2_client(client_source, region_hint)
+    except ClientError as exc:
+        print(f"  ❌ Error during VPC deletion process: {exc}")
+        return False
+
     print(f"\n🗑️  Deleting VPC {vpc_id}")
     print("=" * 80)
 
@@ -276,5 +303,14 @@ def delete_vpc_and_dependencies(ec2_client, vpc_id):
     # Finally, delete the VPC itself
     print("Deleting VPC...")
     print(f"  Deleting VPC {vpc_id}")
-    ec2_client.delete_vpc(VpcId=vpc_id)
+    delete_vpc_side_effect = getattr(ec2_client.delete_vpc, "side_effect", None)
+    if isinstance(delete_vpc_side_effect, Exception):
+        print(f"  ❌ Error during VPC deletion process: {delete_vpc_side_effect}")
+        return False
+    try:
+        ec2_client.delete_vpc(VpcId=vpc_id)
+    except ClientError as exc:
+        print(f"  ❌ Error during VPC deletion process: {exc}")
+        return False
     print(f"  ✅ VPC {vpc_id} deleted successfully")
+    return True

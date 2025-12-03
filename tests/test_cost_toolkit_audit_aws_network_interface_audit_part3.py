@@ -6,6 +6,7 @@ from cost_toolkit.scripts.audit.aws_network_interface_audit import (
     _print_attached_interfaces,
     _print_unused_interfaces,
 )
+from tests.network_interface_test_utils import build_attached_interfaces
 
 
 class TestPrintUnusedInterfacesSingle:
@@ -327,28 +328,15 @@ class TestPrintAttachedInterfacesMultiple:
         regions_with_interfaces = [
             {
                 "region": "ap-south-1",
-                "attached_interfaces": [
-                    {
-                        "interface_id": "eni-1",
-                        "name": "interface-1",
-                        "type": "interface",
-                        "attached_to": "i-1",
-                        "status": "in-use",
-                        "vpc_id": "vpc-1",
-                        "private_ip": "10.0.0.1",
-                        "public_ip": "1.1.1.1",
-                    },
-                    {
-                        "interface_id": "eni-2",
-                        "name": "interface-2",
-                        "type": "lambda",
-                        "attached_to": "Not attached",
-                        "status": "in-use",
-                        "vpc_id": "vpc-2",
-                        "private_ip": "10.0.0.2",
-                        "public_ip": "None",
-                    },
-                ],
+                "attached_interfaces": build_attached_interfaces(
+                    overrides={
+                        1: {
+                            "type": "lambda",
+                            "attached_to": "Not attached",
+                            "public_ip": "None",
+                        }
+                    }
+                ),
             }
         ]
 

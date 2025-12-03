@@ -5,81 +5,14 @@
 
 from __future__ import annotations
 
-import importlib.util
-import os
 import sys
-import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from tests.assertions import assert_equal
-
-
-def _load_shim_module(isolate=False):
-    """
-    Load the shim module directly from its source file.
-
-    Args:
-        isolate: If True, load in isolation without running bootstrap
-    """
-    shim_path = Path(__file__).parent.parent / "ci_tools" / "scripts" / "unused_module_guard.py"
-
-    if isolate:
-        # Load module with a temporary fake shared guard to allow bootstrap to succeed
-        # This avoids needing exec() to partially load the module
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create minimal fake shared guard structure
-            shared_root = Path(tmpdir) / "ci_shared"
-            scripts_dir = shared_root / "ci_tools" / "scripts"
-            scripts_dir.mkdir(parents=True)
-
-            # Write minimal guard module that bootstrap can load
-            # Don't include main - let bootstrap fail and handle the error
-            guard_file = scripts_dir / "unused_module_guard.py"
-            guard_file.write_text(
-                """
-SUSPICIOUS_PATTERNS = ()
-
-def find_unused_modules(root, exclude_patterns=None):
-    return []
-
-def find_suspicious_duplicates(root):
-    return []
-"""
-            )
-
-            # Load module with CI_SHARED_ROOT pointing to temp directory
-            # Bootstrap will fail because guard.main doesn't exist, but that's OK
-            with patch.dict(os.environ, {"CI_SHARED_ROOT": str(shared_root)}):
-                spec = importlib.util.spec_from_file_location("_test_shim_isolated", shim_path)
-                if spec is None or spec.loader is None:
-                    raise ImportError(f"Cannot load {shim_path}")
-
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[spec.name] = module
-
-                # Load module - bootstrap will fail with AttributeError (guard.main doesn't exist)
-                # but the module functions will still be defined before the failure
-                try:
-                    spec.loader.exec_module(module)
-                except AttributeError as e:
-                    # Expected: bootstrap tries to access guard.main but it doesn't exist
-                    # The module is partially loaded but that's OK for testing internal functions
-                    if "main" not in str(e):
-                        raise
-
-                # Ensure _DELEGATED_MAIN is None (it should be since bootstrap failed)
-                if not hasattr(module, "_DELEGATED_MAIN"):
-                    module._DELEGATED_MAIN = None  # type: ignore[attr-defined]
-
-                return module
-    else:
-        # Load normally (with bootstrap)
-        import ci_tools.scripts.unused_module_guard as guard_module
-
-        return guard_module
+from tests.unused_module_guard_test_utils import load_shim_module
 
 
 @pytest.fixture
@@ -105,7 +38,7 @@ def test_exception_classes_exist():
 
 def test_shared_guard_missing_error_message():
     """Test SharedGuardMissingError message formatting."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     test_path = Path("/fake/path/to/guard.py")
     error = guard_module.SharedGuardMissingError(test_path)
@@ -117,7 +50,7 @@ def test_shared_guard_missing_error_message():
 
 def test_shared_guard_spec_error_message():
     """Test SharedGuardSpecError message formatting."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     test_path = Path("/fake/path/to/guard.py")
     error = guard_module.SharedGuardSpecError(test_path)
@@ -128,7 +61,7 @@ def test_shared_guard_spec_error_message():
 
 def test_shared_guard_initialization_error_message():
     """Test SharedGuardInitializationError message formatting."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     error = guard_module.SharedGuardInitializationError()
     assert "shared unused_module_guard failed to initialize" in str(error)
@@ -140,7 +73,7 @@ def test_load_shared_guard_missing(tmp_path: Path, monkeypatch: pytest.MonkeyPat
     fake_shared = tmp_path / "ci_shared"
     monkeypatch.setenv("CI_SHARED_ROOT", str(fake_shared))
 
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     with pytest.raises(guard_module.SharedGuardMissingError) as exc_info:
         guard_module._load_shared_guard()
@@ -160,7 +93,7 @@ def test_load_shared_guard_spec_error(tmp_path: Path, monkeypatch: pytest.Monkey
 
     monkeypatch.setenv("CI_SHARED_ROOT", str(shared_root))
 
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     # Mock spec_from_file_location to return None
     with patch("importlib.util.spec_from_file_location", return_value=None):
@@ -181,7 +114,7 @@ def test_load_shared_guard_spec_no_loader(tmp_path: Path, monkeypatch: pytest.Mo
 
     monkeypatch.setenv("CI_SHARED_ROOT", str(shared_root))
 
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     # Mock spec with no loader
     mock_spec = MagicMock()
@@ -216,7 +149,7 @@ def main():
 
     monkeypatch.setenv("CI_SHARED_ROOT", str(shared_root))
 
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     result = guard_module._load_shared_guard()
 
@@ -228,7 +161,7 @@ def main():
 
 def test_module_constants():
     """Test module-level constants are defined correctly."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     # Check constants exist
     assert hasattr(guard_module, "_LOCAL_MODULE_PATH")
@@ -252,7 +185,7 @@ def test_module_constants():
 
 def test_guard_module_protocol():
     """Test GuardModule protocol defines expected interface."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     # Create an object that conforms to the protocol
     class ConcreteGuard:

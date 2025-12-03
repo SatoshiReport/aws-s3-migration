@@ -4,7 +4,7 @@
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_client
-from cost_toolkit.common.aws_common import get_all_aws_regions
+from cost_toolkit.common.aws_common import get_all_aws_regions, list_elastic_ip_addresses
 
 
 def _process_elastic_ip_address(addr, region_name):
@@ -47,7 +47,7 @@ def _print_elastic_ip_details(ip_info):
     elif ip_info["network_interface_id"]:
         associated_with = ip_info["network_interface_id"]
     else:
-        associated_with = "(unassociated)"
+        associated_with = "Nothing"
     print(f"  Associated with: {associated_with}")
     print(f"  Domain: {ip_info['domain']}")
     print(f"  Estimated monthly cost: ${ip_info['monthly_cost_estimate']:.2f}")
@@ -67,10 +67,7 @@ def audit_elastic_ips_in_region(region_name):
     try:
         ec2 = create_client("ec2", region=region_name)
 
-        response = ec2.describe_addresses()
-        addresses = []
-        if "Addresses" in response:
-            addresses = response["Addresses"]
+        addresses = list_elastic_ip_addresses(ec2)
 
         if not addresses:
             print(f"✅ No Elastic IP addresses found in {region_name}")

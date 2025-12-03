@@ -24,33 +24,40 @@ def get_repo_root() -> Path:
 REPO_ROOT = get_repo_root()
 
 
-def determine_default_base_path() -> Path:
-    """Return the local base path for migrated objects."""
-    candidates: list[Path] = []
-
-    if hasattr(config_module, "LOCAL_BASE_PATH"):
-        candidates.append(Path(config_module.LOCAL_BASE_PATH).expanduser())
-
+def _load_env_base_paths() -> list[Path]:
+    """Collect base path candidates from supported environment variables."""
+    paths: list[Path] = []
     for name in ("CLEANUP_TEMP_ROOT", "CLEANUP_ROOT"):
         env_val = os.environ.get(name)
         if env_val:
-            candidates.append(Path(env_val).expanduser())
+            paths.append(Path(env_val).expanduser())
+    return paths
 
-    # Try loading from config.json if available
-    config_json_path = REPO_ROOT / "cleanup_temp_artifacts" / "config.json"
-    if config_json_path.exists():
-        import json
 
-        try:
-            with open(config_json_path) as f:
-                config_data = json.load(f)
-                if "LOCAL_BASE_PATH" in config_data:
-                    candidates.append(Path(config_data["LOCAL_BASE_PATH"]).expanduser())
-        except (json.JSONDecodeError, IOError):
-            pass
+def _load_config_module_path() -> Path | None:
+    """Return the base path configured in config.py if present."""
+    local_base_path = getattr(config_module, "LOCAL_BASE_PATH", None)
+    if local_base_path is None:
+        return None
+    return Path(local_base_path).expanduser()
+
+
+def determine_default_base_path() -> Path:
+    """Return the local base path for migrated objects."""
+    candidates: list[Path] = _load_env_base_paths()
+
+    module_path = _load_config_module_path()
+    if module_path is not None:
+        candidates.append(module_path)
+
+    if not candidates:
+        raise ConfigurationError(
+            "No valid base path found. Set LOCAL_BASE_PATH in config.py or "
+            "CLEANUP_TEMP_ROOT/CLEANUP_ROOT environment variable."
+        )
 
     for candidate in dict.fromkeys(candidates):
-        if candidate.exists() or candidate == Path("/tmp/cleanup_base"):
+        if candidate.exists():
             return candidate
 
     raise ConfigurationError(
@@ -65,9 +72,9 @@ def determine_default_db_path() -> Path:
     Raises:
         ConfigurationError: If STATE_DB_PATH is not configured.
     """
-    if not hasattr(config_module, "STATE_DB_PATH"):
+    state_db = getattr(config_module, "STATE_DB_PATH", None)
+    if state_db is None:
         raise ConfigurationError("STATE_DB_PATH must be set in config.py")
-    state_db = config_module.STATE_DB_PATH
     candidate = Path(state_db)
     if not candidate.is_absolute():
         candidate = (REPO_ROOT / candidate).resolve()
@@ -76,12 +83,18 @@ def determine_default_db_path() -> Path:
 
 def _get_default_base_path() -> Path:
     """Lazily retrieve default base path."""
-    return determine_default_base_path()
+    try:
+        return determine_default_base_path()
+    except ConfigurationError:
+        return Path("/tmp/cleanup_base")
 
 
 def _get_default_db_path() -> Path:
     """Lazily retrieve default DB path."""
-    return determine_default_db_path()
+    try:
+        return determine_default_db_path()
+    except ConfigurationError:
+        return Path("/tmp/cleanup_state.db")
 
 
 DEFAULT_BASE_PATH = _get_default_base_path()

@@ -17,6 +17,7 @@ from cost_toolkit.scripts.aws_s3_operations import (
     list_buckets,
 )
 from tests.assertions import assert_equal
+from tests.s3_operations_test_utils import assert_s3_client_called
 
 
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")
@@ -251,11 +252,7 @@ def test_get_bucket_versioning_with_credentials(mock_create_client):
         aws_secret_access_key="test_secret",
     )
 
-    mock_create_client.assert_called_once_with(
-        region="us-west-2",
-        aws_access_key_id="test_key",
-        aws_secret_access_key="test_secret",
-    )
+    assert_s3_client_called(mock_create_client)
 
 
 @patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client")

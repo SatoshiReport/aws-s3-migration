@@ -237,15 +237,7 @@ def test_migration_state_v2_phase_transition_sequence(tmp_path: Path):
     db_path = tmp_path / "test.db"
     state = MigrationStateV2(str(db_path))
 
-    phases = [
-        Phase.SCANNING,
-        Phase.GLACIER_RESTORE,
-        Phase.GLACIER_WAIT,
-        Phase.SYNCING,
-        Phase.VERIFYING,
-        Phase.DELETING,
-        Phase.COMPLETE,
-    ]
+    phases = list(Phase)
 
     for expected_phase in phases:
         state.set_current_phase(expected_phase)

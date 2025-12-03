@@ -1,25 +1,23 @@
 """Tests for cleanup_temp_artifacts/db_loader.py cache operations."""
 
-# pylint: disable=redefined-outer-name,import-outside-toplevel
+# pylint: disable=redefined-outer-name,import-outside-toplevel,duplicate-code
 
 from __future__ import annotations
 
-import argparse
 import sqlite3
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # pylint: disable=no-name-in-module
 from cleanup_temp_artifacts import categories, core_scanner, db_loader
 from tests.assertions import assert_equal
 from tests.conftest_test_values import TEST_MAX_ROWID
 
+pytest_plugins = ["tests.db_loader_test_utils"]
+
 Category = categories.Category
 Candidate = core_scanner.Candidate
 CacheConfig = db_loader.CacheConfig
-DatabaseInfo = db_loader.DatabaseInfo
 ScanContext = db_loader.ScanContext
 _load_or_scan_candidates = db_loader._load_or_scan_candidates  # pylint: disable=protected-access
 _perform_scan_operations = db_loader._perform_scan_operations  # pylint: disable=protected-access
@@ -149,37 +147,11 @@ def test_try_load_from_cache_invalid_cache(tmp_path):
     assert candidates is None
 
 
-@pytest.fixture
-def mock_args():
-    """Create mock argparse.Namespace with required attributes."""
-    args = argparse.Namespace()
-    args.cache_enabled = True
-    args.cache_dir = Path("/tmp/cache")
-    args.refresh_cache = False
-    args.cache_ttl = 3600
-    args.categories = [Category("cat1", "desc1", _dummy_matcher, prune=True)]
-    args.min_size_bytes = 1024
-    return args
-
-
-@pytest.fixture
-def mock_db_info():
-    """Create mock DatabaseInfo."""
-    mock_stat = MagicMock()
-    mock_stat.st_mtime_ns = 123456789
-    return DatabaseInfo(
-        db_path=Path("/tmp/test.db"),
-        db_stat=mock_stat,
-        total_files=100,
-        max_rowid=500,
-    )
-
-
-def test_load_or_scan_candidates_from_cache(mock_args, mock_db_info):
+def test_load_or_scan_candidates_from_cache(mock_args, mock_db_info, dummy_candidate):
     """Test _load_or_scan_candidates loads from cache when available."""
     conn = MagicMock()
     category = Category("cat1", "desc1", _dummy_matcher, prune=True)
-    candidate = Candidate(path=Path("/tmp/test"), category=category, size_bytes=1024, mtime=12345)
+    candidate = dummy_candidate
 
     cache_config = CacheConfig(
         enabled=True,

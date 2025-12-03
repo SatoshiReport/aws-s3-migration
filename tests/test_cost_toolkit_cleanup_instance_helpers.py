@@ -14,6 +14,12 @@ from cost_toolkit.scripts.cleanup.aws_instance_termination import (
     get_instance_details,
     get_volume_details,
 )
+from tests.ec2_instance_test_utils import (
+    INSTANCE_WITH_VOLUMES,
+    assert_standard_volumes,
+    build_describe_empty_client,
+    build_describe_not_found_client,
+)
 
 
 def test_extract_instance_name_combined():
@@ -42,30 +48,9 @@ class TestExtractVolumes:
 
     def test_extract_volumes_with_ebs(self):
         """Test extracting volumes with EBS mappings."""
-        instance = {
-            "BlockDeviceMappings": [
-                {
-                    "DeviceName": "/dev/sda1",
-                    "Ebs": {
-                        "VolumeId": "vol-123",
-                        "DeleteOnTermination": True,
-                    },
-                },
-                {
-                    "DeviceName": "/dev/sdb",
-                    "Ebs": {
-                        "VolumeId": "vol-456",
-                        "DeleteOnTermination": False,
-                    },
-                },
-            ]
-        }
+        instance = dict(INSTANCE_WITH_VOLUMES)
         volumes = extract_volumes_from_instance(instance)
-        assert len(volumes) == 2
-        assert volumes[0]["volume_id"] == "vol-123"
-        assert volumes[0]["delete_on_termination"] is True
-        assert volumes[1]["volume_id"] == "vol-456"
-        assert volumes[1]["delete_on_termination"] is False
+        assert_standard_volumes(volumes)
 
     def test_extract_volumes_no_ebs(self):
         """Test extracting volumes when no EBS volumes present."""
@@ -105,18 +90,12 @@ def test_get_instance_details_combined():
         assert result["region"] == "us-east-1"
 
     with patch("boto3.client") as mock_client:
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_instances.side_effect = ClientError(
-            {"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances"
-        )
-        mock_client.return_value = mock_ec2
+        mock_client.return_value = build_describe_not_found_client()
         with pytest.raises(ClientError):
             get_instance_details("i-notfound", "us-east-1")
 
     with patch("boto3.client") as mock_client:
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_instances.return_value = {"Reservations": []}
-        mock_client.return_value = mock_ec2
+        mock_client.return_value = build_describe_empty_client()
         result = get_instance_details("i-123", "us-east-1")
         assert result is None
 

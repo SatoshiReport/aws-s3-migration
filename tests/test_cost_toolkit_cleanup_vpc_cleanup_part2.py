@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from cost_toolkit.common.aws_test_constants import DEFAULT_TEST_REGIONS
 from cost_toolkit.scripts.cleanup.aws_vpc_cleanup import main
+from tests.aws_region_test_utils import ELASTIC_IP_RESPONSE, SINGLE_ELASTIC_IP_RESPONSE
 
 
 def _assert_summary_section(captured_output, expected_savings):
@@ -43,18 +44,7 @@ def test_main_user_confirms_with_ips(capsys):
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_client.return_value = mock_ec2
-            mock_ec2.describe_addresses.return_value = {
-                "Addresses": [
-                    {
-                        "PublicIp": "54.123.45.67",
-                        "AllocationId": "eipalloc-123",
-                    },
-                    {
-                        "PublicIp": "54.123.45.68",
-                        "AllocationId": "eipalloc-456",
-                    },
-                ]
-            }
+            mock_ec2.describe_addresses.return_value = ELASTIC_IP_RESPONSE
 
             main()
 
@@ -162,14 +152,7 @@ class TestMainCancellation:
             with patch("boto3.client") as mock_client:
                 mock_ec2 = MagicMock()
                 mock_client.return_value = mock_ec2
-                mock_ec2.describe_addresses.return_value = {
-                    "Addresses": [
-                        {
-                            "PublicIp": "54.123.45.67",
-                            "AllocationId": "eipalloc-123",
-                        }
-                    ]
-                }
+                mock_ec2.describe_addresses.return_value = SINGLE_ELASTIC_IP_RESPONSE
 
                 main()
 

@@ -17,6 +17,7 @@ from cost_toolkit.common.lightsail_utils import (
     UnknownBundleError,
     estimate_database_cost,
     estimate_instance_cost,
+    load_lightsail_resources,
 )
 
 from ..aws_utils import setup_aws_credentials
@@ -90,15 +91,7 @@ def _process_region(region):
         print(f"\n🔍 Checking region: {region}")
         lightsail_client = create_client("lightsail", region=region)
 
-        instances_response = lightsail_client.get_instances()
-        instances = []
-        if "instances" in instances_response:
-            instances = instances_response["instances"]
-
-        databases_response = lightsail_client.get_relational_databases()
-        databases = []
-        if "relationalDatabases" in databases_response:
-            databases = databases_response["relationalDatabases"]
+        instances, databases = load_lightsail_resources(lightsail_client)
 
         if not instances and not databases:
             print(f"✅ No Lightsail resources found in {region}")

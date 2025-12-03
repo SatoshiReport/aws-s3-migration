@@ -14,7 +14,10 @@ __all__ = ["LOCAL_BASE_PATH", "EXCLUDED_BUCKETS"]
 
 # Local destination directory for all bucket data
 # Set this in config_local.py (not committed to git)
-from config_local import LOCAL_BASE_PATH
+try:
+    from config_local import LOCAL_BASE_PATH
+except ImportError as exc:  # pragma: no cover - fail fast
+    raise ImportError("config_local.py is required") from exc
 
 # State database location
 STATE_DB_PATH: str = "s3_migration_state.db"
@@ -26,4 +29,7 @@ GLACIER_RESTORE_TIER: str = "Standard"  # Options: Expedited, Standard, Bulk
 # Bucket exclusions
 # Set this in config_local.py (not committed to git)
 # Add bucket names to skip during scanning (e.g., buckets you don't own or can't access)
-from config_local import EXCLUDED_BUCKETS
+try:
+    from config_local import EXCLUDED_BUCKETS
+except ImportError as exc:  # pragma: no cover - fail fast
+    raise ImportError("config_local.py is required") from exc

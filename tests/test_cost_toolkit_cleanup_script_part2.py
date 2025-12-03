@@ -12,6 +12,7 @@ from cost_toolkit.scripts.cleanup.aws_cleanup_script import (
     main,
     stop_lightsail_instances,
 )
+from tests.lightsail_test_utils import build_empty_lightsail_client, build_lightsail_client
 
 
 class TestStopDatabase:
@@ -95,18 +96,7 @@ class TestProcessRegionSuccess:
     def test_process_region_with_instances_and_databases(self, capsys):
         """Test processing region with both instances and databases."""
         with patch("boto3.client") as mock_client:
-            mock_ls = MagicMock()
-            mock_ls.get_instances.return_value = {
-                "instances": [
-                    {"name": "inst1", "state": {"name": "running"}, "bundleId": "nano_2_0"}
-                ]
-            }
-            mock_ls.get_relational_databases.return_value = {
-                "relationalDatabases": [
-                    {"name": "db1", "state": "available", "relationalDatabaseBundleId": "micro_1_0"}
-                ]
-            }
-            mock_client.return_value = mock_ls
+            mock_client.return_value = build_lightsail_client()
             instances, databases, savings = _process_region("us-east-1")
         assert instances == 1
         assert databases == 1
@@ -117,10 +107,7 @@ class TestProcessRegionSuccess:
     def test_process_region_no_resources(self, capsys):
         """Test processing region with no resources."""
         with patch("boto3.client") as mock_client:
-            mock_ls = MagicMock()
-            mock_ls.get_instances.return_value = {"instances": []}
-            mock_ls.get_relational_databases.return_value = {"relationalDatabases": []}
-            mock_client.return_value = mock_ls
+            mock_client.return_value = build_empty_lightsail_client()
             instances, databases, savings = _process_region("us-east-1")
         assert instances == 0
         assert databases == 0

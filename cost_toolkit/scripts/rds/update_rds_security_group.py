@@ -45,7 +45,12 @@ def update_security_group():
 
     # Get current public IP
     print("🌐 Getting your current public IP address...")
-    current_ip = _fetch_current_ip()
+    try:
+        current_ip = _fetch_current_ip()
+    except (PublicIPRetrievalError, ClientError) as exc:
+        print(f"❌ Could not get current IP: {exc}")
+        print("   Please provide your public IP address manually and rerun the script.")
+        return False
     print(f"   Your IP: {current_ip}")
 
     security_group_id = "sg-265aa043"  # From the previous analysis
@@ -80,6 +85,8 @@ def update_security_group():
             print("✅ Rule already exists for your IP")
         else:
             print(f"❌ Error updating security group: {e}")
+        return False
+    return True
 
 
 def main():

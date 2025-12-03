@@ -12,8 +12,6 @@ from cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final import (
 )
 
 
-
-
 class TestGetSnapshotsToDelete:
     """Tests for get_snapshots_to_delete function."""
 

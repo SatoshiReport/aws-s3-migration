@@ -15,11 +15,14 @@ from cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup import (
     _process_regions,
     _remove_cross_references,
     cleanup_circular_security_groups,
-    delete_security_group,
     get_security_group_rules_referencing_group,
     remove_security_group_rule,
 )
 from tests.conftest_test_values import TEST_SECURITY_GROUP_COUNT
+from tests.security_group_test_utils import (
+    describe_response_with_reference,
+    sample_sg_with_reference,
+)
 
 
 class TestRemoveSecurityGroupRule:
@@ -62,18 +65,7 @@ class TestCheckInboundRules:
 
     def test_check_rules_with_reference(self):
         """Test checking rules that reference target group."""
-        sg = {
-            "GroupId": "sg-source",
-            "GroupName": "source-sg",
-            "IpPermissions": [
-                {
-                    "IpProtocol": "tcp",
-                    "FromPort": 22,
-                    "ToPort": 22,
-                    "UserIdGroupPairs": [{"GroupId": "sg-target"}],
-                }
-            ],
-        }
+        sg = sample_sg_with_reference()
         rules = _check_inbound_rules(sg, "sg-target")
         assert len(rules) == 1
         assert rules[0]["source_sg_id"] == "sg-source"
@@ -139,23 +131,7 @@ class TestGetSecurityGroupRulesReferencingGroup:
     def test_get_rules_success(self):
         """Test successful retrieval of rules."""
         mock_client = MagicMock()
-        mock_client.describe_security_groups.return_value = {
-            "SecurityGroups": [
-                {
-                    "GroupId": "sg-source",
-                    "GroupName": "source-sg",
-                    "IpPermissions": [
-                        {
-                            "IpProtocol": "tcp",
-                            "FromPort": 22,
-                            "ToPort": 22,
-                            "UserIdGroupPairs": [{"GroupId": "sg-target"}],
-                        }
-                    ],
-                    "IpPermissionsEgress": [],
-                }
-            ]
-        }
+        mock_client.describe_security_groups.return_value = describe_response_with_reference()
         rules = get_security_group_rules_referencing_group(mock_client, "sg-target")
         assert len(rules) == 1
 
@@ -169,8 +145,6 @@ class TestGetSecurityGroupRulesReferencingGroup:
         assert not rules
         captured = capsys.readouterr()
         assert "Error getting security group rules" in captured.out
-
-
 
 
 def test_get_circular_security_groups_returns_list():

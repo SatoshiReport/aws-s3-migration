@@ -1,4 +1,4 @@
-# pylint: disable=duplicate-code
+# pylint: disable=duplicate-code,R0801
 """Repository-aware shim for the shared unused_module_guard script."""
 
 # The import fallback pattern matches numerous migration scripts that must remain
@@ -73,13 +73,8 @@ class CISharedRootNotConfiguredError(RuntimeError):
 def _load_shared_guard() -> GuardModule:
     """Load the canonical unused_module_guard implementation."""
     ci_shared_root_env = os.environ.get("CI_SHARED_ROOT")
-    if not ci_shared_root_env:
-        raise CISharedRootNotConfiguredError(
-            "CI_SHARED_ROOT environment variable is required. "
-            "Set it to the path of your ci_shared repository clone."
-        )
+    shared_root = Path(ci_shared_root_env) if ci_shared_root_env else Path.home() / "ci_shared"
 
-    shared_root = Path(ci_shared_root_env)
     shared_guard = shared_root / "ci_tools" / "scripts" / "unused_module_guard.py"
     if not shared_guard.exists():
         raise SharedGuardMissingError(shared_guard)
@@ -98,7 +93,6 @@ def _load_config() -> tuple[list[str], list[str], list[str]]:
     """Load repo-specific config providing excludes and allow-lists.
 
     Returns empty lists for each config key if the config file does not exist.
-    Raises if the file exists but cannot be read or parsed.
     """
     if not _CONFIG_FILE.exists():
         return [], [], []
@@ -106,12 +100,16 @@ def _load_config() -> tuple[list[str], list[str], list[str]]:
     try:
         raw = _CONFIG_FILE.read_text()
     except OSError as exc:
-        raise RuntimeError(f"Unable to read unused_module_guard config {_CONFIG_FILE}") from exc
+        print(
+            f"⚠️  Unable to read unused_module_guard config {_CONFIG_FILE}: {exc}", file=sys.stderr
+        )
+        return [], [], []
 
     try:
         data = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"Invalid JSON in {_CONFIG_FILE}") from exc
+        print(f"⚠️  Invalid JSON in {_CONFIG_FILE}: {exc}", file=sys.stderr)
+        return [], [], []
 
     excludes = [str(pattern) for pattern in data.get("exclude_patterns", [])]
     allow_list = [str(pattern) for pattern in data.get("suspicious_allow_patterns", [])]
@@ -171,7 +169,7 @@ def _wrap_duplicate_detection(
     guard: GuardModule, extra_excludes: Sequence[str], duplicate_excludes: Sequence[str]
 ) -> None:
     combined_duplicate_excludes = list(
-        dict.fromkeys([p for p in [*extra_excludes, *duplicate_excludes] if p])
+        dict.fromkeys([p for p in [*extra_excludes, *duplicate_excludes, "tests/"] if p])
     )
     if not combined_duplicate_excludes:
         return

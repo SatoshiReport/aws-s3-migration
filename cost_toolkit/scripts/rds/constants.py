@@ -36,10 +36,14 @@ def create_public_subnet_group(
 
     print(f"🌐 Creating public subnet group: {subnet_group_name}")
 
+    normalized_description = (
+        DEFAULT_SUBNET_GROUP_DESCRIPTION if description is None else description
+    )
+
     try:
         rds.create_db_subnet_group(
             DBSubnetGroupName=subnet_group_name,
-            DBSubnetGroupDescription=description,
+            DBSubnetGroupDescription=normalized_description,
             SubnetIds=PUBLIC_SUBNETS,
             Tags=[{"Key": "Purpose", "Value": "Public RDS access"}],
         )

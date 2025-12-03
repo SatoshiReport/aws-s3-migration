@@ -15,6 +15,7 @@ from cost_toolkit.common.aws_common import (
     get_common_regions_extended,
     get_instance_name,
 )
+from cost_toolkit.scripts.aws_security import delete_security_group as delete_security_group_shared
 
 
 def get_all_regions(
@@ -99,11 +100,13 @@ def delete_snapshot(
             size_gb = snapshot["VolumeSize"]
             description = snapshot.get("Description", "No description")
             start_time = snapshot["StartTime"]
+            monthly_cost = size_gb * 0.05
 
             print(f"🔍 Snapshot to delete: {snapshot_id}")
             print(f"   Size: {size_gb} GB")
             print(f"   Created: {start_time}")
             print(f"   Description: {description}")
+            print(f"   Estimated monthly cost: ${monthly_cost:.2f}")
 
         print(f"🗑️  Deleting snapshot: {snapshot_id} in {region}")
         client.delete_snapshot(SnapshotId=snapshot_id)
@@ -159,6 +162,47 @@ def terminate_instance(
         print(f"   ❌ Failed to terminate {instance_id}: {str(e)}")
         return False
     return True
+
+
+def delete_security_group(
+    region: str,
+    group_id: str,
+    aws_access_key_id: Optional[str] = None,
+    aws_secret_access_key: Optional[str] = None,
+    group_name: Optional[str] = None,
+    ec2_client=None,
+    region_or_client=None,
+) -> bool:
+    """Delete a security group with either a region or an EC2 client."""
+    target_group_name = group_name
+    if not isinstance(region, str):
+        # Positional call pattern: delete_security_group(client, group_id, group_name, region)
+        target_group_name = group_name or aws_access_key_id
+        return delete_security_group_shared(
+            region_or_client=region,
+            group_id=group_id,
+            group_name=target_group_name,
+            region=region_or_client or aws_secret_access_key,
+            ec2_client=region,
+        )
+
+    resolved_region = region_or_client if isinstance(region_or_client, str) else region
+    client = ec2_client or (region_or_client if not isinstance(region_or_client, str) else None)
+    if client is None:
+        client = create_ec2_client(
+            region=resolved_region,
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+        )
+    return delete_security_group_shared(
+        region_or_client=resolved_region,
+        group_id=group_id,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        group_name=target_group_name,
+        ec2_client=client,
+        region=resolved_region,
+    )
 
 
 def disable_termination_protection(
@@ -301,46 +345,6 @@ def describe_security_groups(
     return security_groups
 
 
-def delete_security_group(
-    region: str,
-    group_id: str,
-    aws_access_key_id: Optional[str] = None,
-    aws_secret_access_key: Optional[str] = None,
-    group_name: Optional[str] = None,
-    ec2_client=None,
-) -> bool:
-    """
-    Delete a security group.
-
-    Args:
-        region: AWS region name
-        group_id: Security group ID
-        aws_access_key_id: Optional AWS access key
-        aws_secret_access_key: Optional AWS secret key
-        group_name: Optional security group name for clearer logging
-        ec2_client: Optional pre-configured EC2 client
-
-    Returns:
-        bool: True if successful, False otherwise
-    """
-    try:
-        client = ec2_client or create_ec2_client(
-            region=region,
-            aws_access_key_id=aws_access_key_id,
-            aws_secret_access_key=aws_secret_access_key,
-        )
-
-        target_label = f"{group_id} ({group_name})" if group_name else group_id
-        print(f"   🗑️  Deleting security group: {target_label}")
-        client.delete_security_group(GroupId=group_id)
-        print(f"   ✅ Deleted security group: {target_label}")
-
-    except ClientError as e:
-        print(f"   ❌ Failed to delete security group {group_id}: {str(e)}")
-        return False
-    return True
-
-
 def describe_snapshots(
     region: str,
     aws_access_key_id: Optional[str] = None,
@@ -423,3 +427,4 @@ def describe_volumes(
 
 if __name__ == "__main__":  # pragma: no cover - script entry point
     pass
+from cost_toolkit.scripts import aws_security

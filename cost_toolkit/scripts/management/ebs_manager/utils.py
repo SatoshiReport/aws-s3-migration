@@ -5,11 +5,15 @@ Contains helper functions for region discovery and tag management.
 
 from typing import Dict, Optional
 
+import boto3
+
 from cost_toolkit.common.aws_client_factory import create_ec2_client
 from cost_toolkit.common.aws_common import (
     find_resource_region,
     get_all_aws_regions,
-    get_instance_name,
+)
+from cost_toolkit.common.aws_common import get_instance_name as _aws_common_get_instance_name
+from cost_toolkit.common.aws_common import (
     get_resource_tags,
 )
 
@@ -44,6 +48,17 @@ def get_instance_name_by_region(instance_id: str, region: str) -> Optional[str]:
     """
     ec2_client = create_ec2_client(region)
     return get_instance_name(ec2_client, instance_id)
+
+
+def _get_instance_name_with_client(ec2_client, instance_id: str) -> Optional[str]:
+    """Internal helper to allow mocking the underlying name lookup."""
+    return _aws_common_get_instance_name(ec2_client, instance_id)
+
+
+def get_instance_name(instance_id: str, region: str) -> Optional[str]:
+    """Create a regional EC2 client and return the instance Name tag if present."""
+    ec2_client = boto3.client("ec2", region_name=region)
+    return _get_instance_name_with_client(ec2_client, instance_id)
 
 
 def get_volume_tags(volume: Dict) -> Dict[str, str]:

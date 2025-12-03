@@ -13,6 +13,7 @@ from cost_toolkit.scripts.cleanup.aws_instance_termination import (
     _disable_termination_protection,
     _perform_termination,
 )
+from tests.ec2_instance_test_utils import INSTANCE_WITH_VOLUMES, assert_standard_volumes
 
 
 class TestDisableTerminationProtection:
@@ -120,24 +121,9 @@ class TestExtractHelpers:
 
     def test_extract_volumes_with_multiple_volumes(self):
         """Test extracting volumes from instance with multiple volumes."""
-        instance = {
-            "BlockDeviceMappings": [
-                {
-                    "DeviceName": "/dev/sda1",
-                    "Ebs": {"VolumeId": "vol-123", "DeleteOnTermination": True},
-                },
-                {
-                    "DeviceName": "/dev/sdb",
-                    "Ebs": {"VolumeId": "vol-456", "DeleteOnTermination": False},
-                },
-            ]
-        }
+        instance = dict(INSTANCE_WITH_VOLUMES)
         volumes = extract_volumes_from_instance(instance)
-        assert len(volumes) == 2
-        assert volumes[0]["volume_id"] == "vol-123"
-        assert volumes[0]["delete_on_termination"] is True
-        assert volumes[1]["volume_id"] == "vol-456"
-        assert volumes[1]["delete_on_termination"] is False
+        assert_standard_volumes(volumes)
 
     def test_extract_volumes_no_ebs(self):
         """Test extracting volumes when no EBS volumes exist."""

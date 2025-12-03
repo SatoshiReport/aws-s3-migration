@@ -11,6 +11,7 @@ from cost_toolkit.scripts.audit.aws_security_group_dependencies import (
     _collect_network_interface_deps,
     _collect_sg_rule_refs,
 )
+from tests.security_group_test_utils import sample_sg_with_reference
 
 
 class TestCollectNetworkInterfaceDeps:
@@ -162,18 +163,7 @@ class TestCheckInboundRules:
 
     def test_check_inbound_rules_with_reference(self):
         """Test checking inbound rules with matching group."""
-        sg = {
-            "GroupId": "sg-source",
-            "GroupName": "source-sg",
-            "IpPermissions": [
-                {
-                    "IpProtocol": "tcp",
-                    "FromPort": 22,
-                    "ToPort": 22,
-                    "UserIdGroupPairs": [{"GroupId": "sg-target"}],
-                }
-            ],
-        }
+        sg = sample_sg_with_reference()
 
         rules = _check_inbound_rules(sg, "sg-target")
 
@@ -280,19 +270,7 @@ class TestCollectSgRuleRefs:
                     "IpPermissions": [],
                     "IpPermissionsEgress": [],
                 },
-                {
-                    "GroupId": "sg-source",
-                    "GroupName": "source-sg",
-                    "IpPermissions": [
-                        {
-                            "IpProtocol": "tcp",
-                            "FromPort": 22,
-                            "ToPort": 22,
-                            "UserIdGroupPairs": [{"GroupId": "sg-target"}],
-                        }
-                    ],
-                    "IpPermissionsEgress": [],
-                },
+                {**sample_sg_with_reference(), "IpPermissionsEgress": []},
             ]
         }
 

@@ -5,6 +5,8 @@ from __future__ import annotations
 from unittest import mock
 from unittest.mock import patch
 
+import pytest
+
 from cost_toolkit.scripts.rds import explore_aurora_data
 from tests.conftest_rds_shared import (
     TestConstantsShared,
@@ -12,24 +14,12 @@ from tests.conftest_rds_shared import (
     TestRequireEnvVarShared,
 )
 
+EXPLORE_MODULE = "cost_toolkit.scripts.rds.explore_aurora_data"
 
 # Re-export shared test classes for aurora data module
-class TestConstants(TestConstantsShared):
-    """Tests for module constants - aurora data module."""
-
-    pass
-
-
-class TestRequireEnvVar(TestRequireEnvVarShared):
-    """Tests for _require_env_var function - aurora data module."""
-
-    pass
-
-
-class TestParseRequiredPort(TestParseRequiredPortShared):
-    """Tests for _parse_required_port function - aurora data module."""
-
-    pass
+TestConstants = TestConstantsShared
+TestRequireEnvVar = TestRequireEnvVarShared
+TestParseRequiredPort = TestParseRequiredPortShared
 
 
 class TestExploreAuroraDatabase:
@@ -153,23 +143,14 @@ class TestExploreWithSuccessfulConnection:
         sys.modules["psycopg2"] = mock_psycopg2
         mock_load.return_value = ("localhost", 5432, "testdb", "admin", "password")
 
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.print_database_version_info"):
-            with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_databases"):
-                with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_schemas"):
-                    with patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.list_tables", return_value=[]
-                    ):
-                        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_views"):
-                            with patch(
-                                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables",
-                                return_value=0,
-                            ):
-                                with patch(
-                                    "cost_toolkit.scripts.rds.explore_aurora_data.get_database_size"
-                                ):
-                                    with patch(
-                                        "cost_toolkit.scripts.rds.explore_aurora_data.list_functions"
-                                    ):
+        with patch(f"{EXPLORE_MODULE}.print_database_version_info"):
+            with patch(f"{EXPLORE_MODULE}.list_databases"):
+                with patch(f"{EXPLORE_MODULE}.list_schemas"):
+                    with patch(f"{EXPLORE_MODULE}.list_tables", return_value=[]):
+                        with patch(f"{EXPLORE_MODULE}.list_views"):
+                            with patch(f"{EXPLORE_MODULE}.analyze_tables", return_value=0):
+                                with patch(f"{EXPLORE_MODULE}.get_database_size"):
+                                    with patch(f"{EXPLORE_MODULE}.list_functions"):
                                         result = explore_aurora_data.explore_aurora_database()
 
         del sys.modules["psycopg2"]
@@ -222,23 +203,14 @@ class TestExploreEmptyDatabase:
         sys.modules["psycopg2"] = mock_psycopg2
         mock_load.return_value = ("localhost", 5432, "testdb", "admin", "password")
 
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.print_database_version_info"):
-            with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_databases"):
-                with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_schemas"):
-                    with patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.list_tables", return_value=[]
-                    ):
-                        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_views"):
-                            with patch(
-                                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables",
-                                return_value=0,
-                            ):
-                                with patch(
-                                    "cost_toolkit.scripts.rds.explore_aurora_data.get_database_size"
-                                ):
-                                    with patch(
-                                        "cost_toolkit.scripts.rds.explore_aurora_data.list_functions"
-                                    ):
+        with patch(f"{EXPLORE_MODULE}.print_database_version_info"):
+            with patch(f"{EXPLORE_MODULE}.list_databases"):
+                with patch(f"{EXPLORE_MODULE}.list_schemas"):
+                    with patch(f"{EXPLORE_MODULE}.list_tables", return_value=[]):
+                        with patch(f"{EXPLORE_MODULE}.list_views"):
+                            with patch(f"{EXPLORE_MODULE}.analyze_tables", return_value=0):
+                                with patch(f"{EXPLORE_MODULE}.get_database_size"):
+                                    with patch(f"{EXPLORE_MODULE}.list_functions"):
                                         result = explore_aurora_data.explore_aurora_database()
 
         del sys.modules["psycopg2"]
@@ -266,24 +238,16 @@ class TestExploreWithData:
         sys.modules["psycopg2"] = mock_psycopg2
         mock_load.return_value = ("localhost", 5432, "testdb", "admin", "password")
 
-        with patch("cost_toolkit.scripts.rds.explore_aurora_data.print_database_version_info"):
-            with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_databases"):
-                with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_schemas"):
+        with patch(f"{EXPLORE_MODULE}.print_database_version_info"):
+            with patch(f"{EXPLORE_MODULE}.list_databases"):
+                with patch(f"{EXPLORE_MODULE}.list_schemas"):
                     with patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.list_tables",
-                        return_value=[{"name": "test_table"}],
+                        f"{EXPLORE_MODULE}.list_tables", return_value=[{"name": "test_table"}]
                     ):
-                        with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_views"):
-                            with patch(
-                                "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables",
-                                return_value=100,
-                            ):
-                                with patch(
-                                    "cost_toolkit.scripts.rds.explore_aurora_data.get_database_size"
-                                ):
-                                    with patch(
-                                        "cost_toolkit.scripts.rds.explore_aurora_data.list_functions"
-                                    ):
+                        with patch(f"{EXPLORE_MODULE}.list_views"):
+                            with patch(f"{EXPLORE_MODULE}.analyze_tables", return_value=100):
+                                with patch(f"{EXPLORE_MODULE}.get_database_size"):
+                                    with patch(f"{EXPLORE_MODULE}.list_functions"):
                                         result = explore_aurora_data.explore_aurora_database()
 
         del sys.modules["psycopg2"]

@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import copy
+from unittest.mock import MagicMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common import aws_client_factory, credential_utils
+from cost_toolkit.scripts.rds import explore_aurora_data, explore_user_data
+from tests.rds_audit_test_utils import (
+    AURORA_MYSQL_CLUSTER,
+    AURORA_POSTGRES_CLUSTER,
+    DB_INSTANCE_SUMMARY,
+)
 
 pytest_plugins = ["tests.conftest_helpers"]
 
@@ -146,10 +153,8 @@ def setup_test_env(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def mock_boto3_ec2_client(monkeypatch):
+def mock_boto3_ec2_client():
     """Create a mock EC2 client for testing (replaces boto3.client call)."""
-    from unittest.mock import MagicMock, patch
-
     with patch("boto3.client") as mock_boto3:
         mock_ec2 = MagicMock()
         mock_boto3.return_value = mock_ec2
@@ -167,9 +172,7 @@ def assert_raises_error():
             raise AssertionError(f"Should have raised {exception_class.__name__}")
         except exception_class as e:
             if exception_message_substring not in str(e):
-                raise AssertionError(
-                    f"Expected '{exception_message_substring}' in {str(e)}"
-                )
+                raise AssertionError(f"Expected '{exception_message_substring}' in {str(e)}") from e
 
     return _assert_raises
 
@@ -181,60 +184,25 @@ def rds_module(request):
     Parametrizes across explore_aurora_data and explore_user_data modules.
     """
     if request.param == "aurora":
-        from cost_toolkit.scripts.rds import explore_aurora_data
         return explore_aurora_data
-    else:
-        from cost_toolkit.scripts.rds import explore_user_data
-        return explore_user_data
+    return explore_user_data
 
 
 @pytest.fixture
 def rds_postgres_instance():
     """RDS PostgreSQL instance data for audit tests."""
-    from datetime import datetime
-    return {
-        "DBInstanceIdentifier": "db-1",
-        "Engine": "postgres",
-        "EngineVersion": "14.5",
-        "DBInstanceClass": "db.t3.micro",
-        "DBInstanceStatus": "available",
-        "AllocatedStorage": 20,
-        "StorageType": "gp3",
-        "MultiAZ": False,
-        "PubliclyAccessible": False,
-        "InstanceCreateTime": datetime(2024, 1, 15, 10, 30),
-    }
+    instance = dict(DB_INSTANCE_SUMMARY)
+    instance["DBInstanceIdentifier"] = "db-1"
+    return instance
 
 
 @pytest.fixture
 def aurora_postgresql_cluster():
     """Aurora PostgreSQL cluster data for audit tests."""
-    from datetime import datetime
-    return {
-        "DBClusterIdentifier": "test-cluster",
-        "Engine": "aurora-postgresql",
-        "EngineVersion": "14.6",
-        "Status": "available",
-        "DatabaseName": "mydb",
-        "MasterUsername": "admin",
-        "MultiAZ": True,
-        "StorageEncrypted": True,
-        "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
-    }
+    return AURORA_POSTGRES_CLUSTER
 
 
 @pytest.fixture
 def aurora_mysql_cluster():
     """Aurora MySQL cluster data for audit tests."""
-    from datetime import datetime
-    return {
-        "DBClusterIdentifier": "aurora-cluster",
-        "Engine": "aurora-mysql",
-        "EngineVersion": "8.0",
-        "Status": "available",
-        "DatabaseName": "prod",
-        "MasterUsername": "dbadmin",
-        "MultiAZ": False,
-        "StorageEncrypted": True,
-        "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
-    }
+    return AURORA_MYSQL_CLUSTER

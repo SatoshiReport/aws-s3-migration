@@ -54,9 +54,10 @@ def _process_aurora_cluster(cluster):
     creation_time = cluster.get("ClusterCreateTime", "Unknown")
     print(f"  Creation Time: {creation_time}")
 
-    if "DBClusterMembers" in cluster:
-        print(f"  Cluster Members: {len(cluster['DBClusterMembers'])}")
-        for member in cluster["DBClusterMembers"]:
+    members = cluster.get("DBClusterMembers")
+    if members:
+        print(f"  Cluster Members: {len(members)}")
+        for member in members:
             role = "Writer" if member["IsClusterWriter"] else "Reader"
             print(f"    - {member['DBInstanceIdentifier']} ({role})")
 

@@ -182,8 +182,6 @@ class TestGetNetworkMetrics:
         assert "Network metrics error" in captured.out
 
 
-
-
 class TestEstimateMonthlyCost:
     """Tests for _estimate_monthly_cost function."""
 

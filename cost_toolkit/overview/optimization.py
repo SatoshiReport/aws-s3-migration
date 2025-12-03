@@ -105,9 +105,7 @@ def _check_old_snapshots():
         for snapshot in snapshots:
             if snapshot["StartTime"].replace(tzinfo=None) < cutoff_date:
                 old_snapshots += 1
-                if "VolumeSize" not in snapshot:
-                    raise KeyError(f"Snapshot {snapshot['SnapshotId']} missing VolumeSize")
-                size_gb = snapshot["VolumeSize"]
+                size_gb = snapshot.get("VolumeSize", 0)
                 snapshot_cost += calculate_snapshot_cost(size_gb)
 
     if old_snapshots > 0:

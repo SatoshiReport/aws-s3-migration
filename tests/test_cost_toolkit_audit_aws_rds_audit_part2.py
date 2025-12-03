@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 from botocore.exceptions import ClientError
@@ -11,6 +10,12 @@ from cost_toolkit.scripts.audit.aws_rds_audit import (
     _audit_region_databases,
     audit_rds_databases,
     main,
+)
+from tests.rds_audit_test_utils import (
+    AURORA_MYSQL_CLUSTER,
+    AURORA_POSTGRES_CLUSTER,
+    DB_INSTANCE_SUMMARY,
+    run_audit_with_mock_clients,
 )
 
 
@@ -92,19 +97,7 @@ class TestAuditRegionDatabasesBasic:
         mock_rds = MagicMock()
         mock_rds.describe_db_instances.return_value = {"DBInstances": []}
         mock_rds.describe_db_clusters.return_value = {
-            "DBClusters": [
-                {
-                    "DBClusterIdentifier": "aurora-1",
-                    "Engine": "aurora-postgresql",
-                    "EngineVersion": "14.6",
-                    "Status": "available",
-                    "DatabaseName": "mydb",
-                    "MasterUsername": "admin",
-                    "MultiAZ": True,
-                    "StorageEncrypted": True,
-                    "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
-                }
-            ]
+            "DBClusters": [{**AURORA_POSTGRES_CLUSTER, "DBClusterIdentifier": "aurora-1"}]
         }
 
         with patch("boto3.client", return_value=mock_rds):
@@ -127,29 +120,17 @@ class TestAuditRegionDatabasesInstances:
         mock_rds = MagicMock()
         mock_rds.describe_db_instances.return_value = {
             "DBInstances": [
-                {
-                    "DBInstanceIdentifier": "db-1",
-                    "Engine": "postgres",
-                    "EngineVersion": "14.5",
-                    "DBInstanceClass": "db.t3.micro",
-                    "DBInstanceStatus": "available",
-                    "AllocatedStorage": 20,
-                    "StorageType": "gp3",
-                    "MultiAZ": False,
-                    "PubliclyAccessible": False,
-                    "InstanceCreateTime": datetime(2024, 1, 15, 10, 30),
-                },
+                {"DBInstanceIdentifier": "db-1", **DB_INSTANCE_SUMMARY},
                 {
                     "DBInstanceIdentifier": "db-2",
+                    **DB_INSTANCE_SUMMARY,
                     "Engine": "mysql",
                     "EngineVersion": "8.0",
                     "DBInstanceClass": "db.t3.small",
-                    "DBInstanceStatus": "available",
                     "AllocatedStorage": 50,
                     "StorageType": "gp2",
                     "MultiAZ": True,
                     "PubliclyAccessible": True,
-                    "InstanceCreateTime": datetime(2024, 1, 15, 10, 30),
                 },
             ]
         }
@@ -171,36 +152,9 @@ class TestAuditRegionDatabasesInstances:
         """Test auditing region with both instances and clusters."""
         mock_rds = MagicMock()
         mock_rds.describe_db_instances.return_value = {
-            "DBInstances": [
-                {
-                    "DBInstanceIdentifier": "standalone-db",
-                    "Engine": "postgres",
-                    "EngineVersion": "14.5",
-                    "DBInstanceClass": "db.t3.micro",
-                    "DBInstanceStatus": "available",
-                    "AllocatedStorage": 20,
-                    "StorageType": "gp3",
-                    "MultiAZ": False,
-                    "PubliclyAccessible": False,
-                    "InstanceCreateTime": datetime(2024, 1, 15, 10, 30),
-                }
-            ]
+            "DBInstances": [{"DBInstanceIdentifier": "standalone-db", **DB_INSTANCE_SUMMARY}]
         }
-        mock_rds.describe_db_clusters.return_value = {
-            "DBClusters": [
-                {
-                    "DBClusterIdentifier": "aurora-cluster",
-                    "Engine": "aurora-mysql",
-                    "EngineVersion": "8.0",
-                    "Status": "available",
-                    "DatabaseName": "prod",
-                    "MasterUsername": "dbadmin",
-                    "MultiAZ": False,
-                    "StorageEncrypted": True,
-                    "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
-                }
-            ]
-        }
+        mock_rds.describe_db_clusters.return_value = {"DBClusters": [AURORA_MYSQL_CLUSTER]}
 
         with patch("boto3.client", return_value=mock_rds):
             instances, clusters, cost = _audit_region_databases("us-west-1")
@@ -251,30 +205,8 @@ class TestAuditRdsDatabasesBasic:
         mock_rds = MagicMock()
         mock_rds.describe_db_instances.return_value = {
             "DBInstances": [
-                {
-                    "DBInstanceIdentifier": "db-1",
-                    "Engine": "postgres",
-                    "EngineVersion": "14.5",
-                    "DBInstanceClass": "db.t3.micro",
-                    "DBInstanceStatus": "available",
-                    "AllocatedStorage": 20,
-                    "StorageType": "gp3",
-                    "MultiAZ": False,
-                    "PubliclyAccessible": False,
-                    "InstanceCreateTime": datetime(2024, 1, 15, 10, 30),
-                },
-                {
-                    "DBInstanceIdentifier": "db-2",
-                    "Engine": "mysql",
-                    "EngineVersion": "8.0",
-                    "DBInstanceClass": "db.t3.micro",
-                    "DBInstanceStatus": "available",
-                    "AllocatedStorage": 20,
-                    "StorageType": "gp3",
-                    "MultiAZ": False,
-                    "PubliclyAccessible": False,
-                    "InstanceCreateTime": datetime(2024, 1, 15, 10, 30),
-                },
+                {"DBInstanceIdentifier": "db-1", **DB_INSTANCE_SUMMARY},
+                {"DBInstanceIdentifier": "db-2", **DB_INSTANCE_SUMMARY, "Engine": "mysql"},
             ]
         }
         mock_rds.describe_db_clusters.return_value = {"DBClusters": []}
@@ -304,50 +236,17 @@ class TestAuditRdsDatabasesMultiRegion:  # pylint: disable=too-few-public-method
             mock_rds = MagicMock()
             if region == "us-east-1":
                 mock_rds.describe_db_instances.return_value = {
-                    "DBInstances": [
-                        {
-                            "DBInstanceIdentifier": "prod-db",
-                            "Engine": "postgres",
-                            "EngineVersion": "14.5",
-                            "DBInstanceClass": "db.t3.micro",
-                            "DBInstanceStatus": "available",
-                            "AllocatedStorage": 20,
-                            "StorageType": "gp3",
-                            "MultiAZ": False,
-                            "PubliclyAccessible": False,
-                            "InstanceCreateTime": datetime(2024, 1, 15, 10, 30),
-                        }
-                    ]
+                    "DBInstances": [{"DBInstanceIdentifier": "prod-db", **DB_INSTANCE_SUMMARY}]
                 }
                 mock_rds.describe_db_clusters.return_value = {"DBClusters": []}
             else:
                 mock_rds.describe_db_instances.return_value = {"DBInstances": []}
                 mock_rds.describe_db_clusters.return_value = {
-                    "DBClusters": [
-                        {
-                            "DBClusterIdentifier": "aurora-cluster",
-                            "Engine": "aurora-postgresql",
-                            "EngineVersion": "14.6",
-                            "Status": "available",
-                            "DatabaseName": "mydb",
-                            "MasterUsername": "admin",
-                            "MultiAZ": True,
-                            "StorageEncrypted": True,
-                            "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
-                        }
-                    ]
+                    "DBClusters": [AURORA_POSTGRES_CLUSTER]
                 }
             return mock_rds
 
-        with patch("boto3.client") as mock_client:
-
-            def client_side_effect(service, **kwargs):
-                if service == "ec2":
-                    return mock_ec2
-                return create_rds_client(kwargs.get("region_name"))
-
-            mock_client.side_effect = client_side_effect
-            audit_rds_databases()
+        run_audit_with_mock_clients(mock_ec2, create_rds_client)
 
         captured = capsys.readouterr()
         assert "AWS RDS Database Audit" in captured.out

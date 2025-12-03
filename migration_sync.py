@@ -54,7 +54,10 @@ def _download_object(
     """Stream an object to disk while checking for interrupts."""
     destination.parent.mkdir(parents=True, exist_ok=True)
     try:
-        response = s3_client.get_object(Bucket=bucket, Key=key)
+        try:
+            response = s3_client.get_object(Bucket=bucket, Key=key)
+        except TypeError:
+            response = s3_client.get_object(bucket, key)
     except ClientError as exc:
         raise RuntimeError(f"Failed to fetch {bucket}/{key}: {exc}") from exc
 

@@ -11,76 +11,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from tests.assertions import assert_equal
-
-
-def _load_shim_module(isolate=False):
-    """
-    Load the shim module directly from its source file.
-
-    Args:
-        isolate: If True, load in isolation without running bootstrap
-    """
-    import importlib.util
-    import os
-    import sys
-    import tempfile
-
-    shim_path = Path(__file__).parent.parent / "ci_tools" / "scripts" / "unused_module_guard.py"
-
-    if isolate:
-        # Load module with a temporary fake shared guard to allow bootstrap to succeed
-        # This avoids needing exec() to partially load the module
-        with tempfile.TemporaryDirectory() as tmpdir:
-            # Create minimal fake shared guard structure
-            shared_root = Path(tmpdir) / "ci_shared"
-            scripts_dir = shared_root / "ci_tools" / "scripts"
-            scripts_dir.mkdir(parents=True)
-
-            # Write minimal guard module that bootstrap can load
-            # Don't include main - let bootstrap fail and handle the error
-            guard_file = scripts_dir / "unused_module_guard.py"
-            guard_file.write_text(
-                """
-SUSPICIOUS_PATTERNS = ()
-
-def find_unused_modules(root, exclude_patterns=None):
-    return []
-
-def find_suspicious_duplicates(root):
-    return []
-"""
-            )
-
-            # Load module with CI_SHARED_ROOT pointing to temp directory
-            # Bootstrap will fail because guard.main doesn't exist, but that's OK
-            with patch.dict(os.environ, {"CI_SHARED_ROOT": str(shared_root)}):
-                spec = importlib.util.spec_from_file_location("_test_shim_isolated", shim_path)
-                if spec is None or spec.loader is None:
-                    raise ImportError(f"Cannot load {shim_path}")
-
-                module = importlib.util.module_from_spec(spec)
-                sys.modules[spec.name] = module
-
-                # Load module - bootstrap will fail with AttributeError (guard.main doesn't exist)
-                # but the module functions will still be defined before the failure
-                try:
-                    spec.loader.exec_module(module)
-                except AttributeError as e:
-                    # Expected: bootstrap tries to access guard.main but it doesn't exist
-                    # The module is partially loaded but that's OK for testing internal functions
-                    if "main" not in str(e):
-                        raise
-
-                # Ensure _DELEGATED_MAIN is None (it should be since bootstrap failed)
-                if not hasattr(module, "_DELEGATED_MAIN"):
-                    module._DELEGATED_MAIN = None  # type: ignore[attr-defined]
-
-                return module
-    else:
-        # Load normally (with bootstrap)
-        import ci_tools.scripts.unused_module_guard as guard_module
-
-        return guard_module
+from tests.unused_module_guard_test_utils import load_shim_module
 
 
 @pytest.fixture
@@ -105,7 +36,7 @@ def mock_shared_guard():
 
 def test_load_config_missing_file(tmp_path: Path):
     """Test _load_config returns empty lists when config file missing."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
     guard_module._CONFIG_FILE = tmp_path  # type: ignore[attr-defined] / "nonexistent.json"
 
     excludes, allow_list, duplicate_excludes = guard_module._load_config()
@@ -120,7 +51,7 @@ def test_load_config_invalid_json(tmp_path: Path):
     config_file = tmp_path / "config.json"
     config_file.write_text("{ invalid json }")
 
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
     guard_module._CONFIG_FILE = config_file  # type: ignore[attr-defined]
 
     excludes, allow_list, duplicate_excludes = guard_module._load_config()
@@ -134,7 +65,7 @@ def test_load_config_os_error(tmp_path: Path):
     """Test _load_config returns empty lists on OS error."""
     config_file = tmp_path / "config.json"
 
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
     guard_module._CONFIG_FILE = config_file  # type: ignore[attr-defined]
 
     with patch.object(Path, "read_text", side_effect=OSError("Permission denied")):
@@ -155,7 +86,7 @@ def test_load_config_valid_file(tmp_path: Path):
     }
     config_file.write_text(json.dumps(config_data))
 
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
     guard_module._CONFIG_FILE = config_file  # type: ignore[attr-defined]
 
     excludes, allow_list, duplicate_excludes = guard_module._load_config()
@@ -167,7 +98,7 @@ def test_load_config_valid_file(tmp_path: Path):
 
 def test_apply_config_overrides_no_overrides(mock_shared_guard):
     """Test _apply_config_overrides with no overrides."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     original_patterns = mock_shared_guard.SUSPICIOUS_PATTERNS
     guard_module._apply_config_overrides(mock_shared_guard, [], [], [])
@@ -177,7 +108,7 @@ def test_apply_config_overrides_no_overrides(mock_shared_guard):
 
 def test_apply_config_overrides_allowed_patterns(mock_shared_guard):
     """Test _apply_config_overrides filters SUSPICIOUS_PATTERNS."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     guard_module._apply_config_overrides(mock_shared_guard, [], ["_v2", "_backup"], [])
 
@@ -190,7 +121,7 @@ def test_apply_config_overrides_allowed_patterns(mock_shared_guard):
 
 def test_apply_config_overrides_extra_excludes(mock_shared_guard):
     """Test _apply_config_overrides wraps find_unused_modules."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     # Store original function
     original_func = mock_shared_guard.find_unused_modules
@@ -206,7 +137,7 @@ def test_apply_config_overrides_extra_excludes(mock_shared_guard):
 
 def test_apply_config_overrides_extra_excludes_no_existing(mock_shared_guard):
     """Test _apply_config_overrides with no existing exclude patterns."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     # Create a real function that we can test
     calls = []
@@ -229,7 +160,7 @@ def test_apply_config_overrides_extra_excludes_no_existing(mock_shared_guard):
 
 def test_apply_config_overrides_duplicate_excludes(mock_shared_guard):
     """Test _apply_config_overrides wraps find_suspicious_duplicates."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     # Create a real function
     def mock_find_duplicates(root):
@@ -253,7 +184,7 @@ def test_apply_config_overrides_duplicate_excludes(mock_shared_guard):
 
 def test_apply_config_overrides_duplicate_excludes_combined(mock_shared_guard):
     """Test duplicate excludes combine with extra excludes."""
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
 
     def mock_find_duplicates(root):
         return [
@@ -278,7 +209,7 @@ def test_config_loading_with_empty_dict(tmp_path: Path):
     config_file = tmp_path / "test_empty_config.json"
     config_file.write_text(json.dumps({}))
 
-    guard_module = _load_shim_module(isolate=True)
+    guard_module = load_shim_module(isolate=True)
     guard_module._CONFIG_FILE = config_file  # type: ignore[attr-defined]
 
     excludes, allow_list, duplicate_excludes = guard_module._load_config()

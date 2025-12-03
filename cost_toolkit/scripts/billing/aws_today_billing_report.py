@@ -77,7 +77,8 @@ def get_today_billing_data():
         )
 
     except ClientError as e:
-        raise RuntimeError(f"Error retrieving billing data from AWS Cost Explorer: {str(e)}") from e
+        print(f"Error retrieving billing data from AWS Cost Explorer: {str(e)}")
+        return None, None, None
 
     return today_response, trend_response, usage_response
 

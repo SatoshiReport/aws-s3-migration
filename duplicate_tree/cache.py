@@ -70,11 +70,16 @@ def load_cached_report(
                 "rows": rows,
                 "total_files": str(row["total_files"]),
             }
-        except json.JSONDecodeError as exc:
-            raise RuntimeError(
-                f"Cached report has corrupted JSON payload. "
-                f"Clear cache and rescan. Generated at: {row['generated_at']}"
-            ) from exc
+        except json.JSONDecodeError:
+            print(
+                f"⚠️  Cached report has corrupted JSON payload. Generated at: {row['generated_at']}"
+            )
+            return {
+                "generated_at": row["generated_at"],
+                "rows": [],
+                "total_files": str(row["total_files"]),
+                "report": payload,
+            }
     finally:
         conn.close()
 

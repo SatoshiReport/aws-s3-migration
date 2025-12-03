@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from cost_toolkit.scripts.audit.aws_rds_audit import (
     _process_aurora_cluster,
     _process_rds_instance,
-    audit_rds_databases,
+)
+from tests.rds_audit_test_utils import (
+    DB_INSTANCE_SUMMARY,
+    SERVERLESS_V1_CLUSTER,
+    run_audit_with_mock_clients,
 )
 
 
@@ -80,18 +84,9 @@ class TestEdgeCasesClusters:
 
     def test_serverless_cluster_missing_scaling_info(self, capsys):
         """Test serverless cluster without scaling configuration."""
-        cluster = {
-            "DBClusterIdentifier": "serverless-no-config",
-            "Engine": "aurora-mysql",
-            "EngineVersion": "5.7",
-            "Status": "available",
-            "DatabaseName": "testdb",
-            "MasterUsername": "admin",
-            "MultiAZ": False,
-            "StorageEncrypted": True,
-            "ClusterCreateTime": datetime(2024, 1, 15, 10, 30),
-            "EngineMode": "serverless",
-        }
+        cluster = dict(SERVERLESS_V1_CLUSTER)
+        cluster["DBClusterIdentifier"] = "serverless-no-config"
+        cluster.pop("ScalingConfigurationInfo", None)
 
         _process_aurora_cluster(cluster)
 
@@ -115,20 +110,7 @@ class TestEdgeCasesClusters:
             mock_rds = MagicMock()
             if region == "us-east-1":
                 mock_rds.describe_db_instances.return_value = {
-                    "DBInstances": [
-                        {
-                            "DBInstanceIdentifier": "db-east",
-                            "Engine": "postgres",
-                            "EngineVersion": "14.5",
-                            "DBInstanceClass": "db.t3.micro",
-                            "DBInstanceStatus": "available",
-                            "AllocatedStorage": 20,
-                            "StorageType": "gp3",
-                            "MultiAZ": False,
-                            "PubliclyAccessible": False,
-                            "InstanceCreateTime": datetime(2024, 1, 15, 10, 30),
-                        }
-                    ]
+                    "DBInstances": [{"DBInstanceIdentifier": "db-east", **DB_INSTANCE_SUMMARY}]
                 }
                 mock_rds.describe_db_clusters.return_value = {"DBClusters": []}
             else:
@@ -136,15 +118,7 @@ class TestEdgeCasesClusters:
                 mock_rds.describe_db_clusters.return_value = {"DBClusters": []}
             return mock_rds
 
-        with patch("boto3.client") as mock_client:
-
-            def client_side_effect(service, **kwargs):
-                if service == "ec2":
-                    return mock_ec2
-                return create_rds_client(kwargs.get("region_name"))
-
-            mock_client.side_effect = client_side_effect
-            audit_rds_databases()
+        run_audit_with_mock_clients(mock_ec2, create_rds_client)
 
         captured = capsys.readouterr()
         assert "Total RDS Instances: 1" in captured.out

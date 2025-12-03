@@ -13,6 +13,7 @@ from duplicate_tree.cli import (
     parse_args,
 )
 from tests.assertions import assert_equal
+from tests.state_db_reset_test_utils import build_reset_context
 
 
 def _write_sample_db(tmp_path: Path) -> Path:
@@ -86,11 +87,7 @@ def test_confirm_state_db_reset_with_skip_prompt():
 
 def test_handle_state_db_reset_no_reset():
     """Test handle_state_db_reset when should_reset is False."""
-    db_path = Path("/tmp/test.db")
-    base_path = Path("/tmp/base")
-
-    def mock_reseed(_bp, dp):
-        return dp, 100, 1000
+    base_path, db_path, mock_reseed = build_reset_context()
 
     result = handle_state_db_reset(
         base_path, db_path, should_reset=False, skip_prompt=False, reseed_function=mock_reseed

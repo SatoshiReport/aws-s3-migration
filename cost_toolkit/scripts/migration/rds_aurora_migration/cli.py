@@ -47,8 +47,9 @@ def _select_instance_for_migration(instances, instance_identifier, region):
             choice = int(input("\nSelect instance to migrate (number): ")) - 1
             _validate_choice(choice, len(instances))
             return instances[choice]
-        except (InvalidSelectionError, ValueError, IndexError) as e:
-            raise InvalidSelectionError() from e
+        except (InvalidSelectionError, ValueError, IndexError):
+            print("Invalid selection. Please enter a valid number.")
+            return None
 
     for instance in instances:
         if instance["identifier"] == instance_identifier and (

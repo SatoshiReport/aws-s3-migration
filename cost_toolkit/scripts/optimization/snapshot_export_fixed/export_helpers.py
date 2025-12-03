@@ -32,15 +32,22 @@ class MonitoringState:
 
 
 @dataclass
+class S3Info:
+    """S3 related context information."""
+
+    bucket_name: str
+    s3_key: str
+    snapshot_size_gb: float
+
+
+@dataclass
 class ExportContext:
     """Context data for export monitoring operations."""
 
     ec2_client: object
     s3_client: object
     export_task_id: str
-    s3_key: str
-    bucket_name: str
-    snapshot_size_gb: float
+    s3_info: S3Info
     elapsed_hours: float
     current_time: float
 
@@ -67,7 +74,7 @@ def _handle_task_deletion_recovery(s3_client, bucket_name, s3_key, snapshot_size
             "Export completed successfully despite task deletion"
         )
         print(f"   📏 Final file size: {s3_result['size_gb']:.2f} GB")
-    except (BotoCoreError, ClientError, constants.S3FileValidationException) as s3_error:
+    except (BotoCoreError, ClientError, constants.S3FileValidationException, Exception) as s3_error:
         print("   ❌ Cannot retrieve export results - task no longer exists")
         raise ExportTaskDeletedException(  # noqa: TRY003
             f"Export task deleted and no valid S3 file found: {s3_error}"
@@ -149,13 +156,19 @@ def _process_task_status(task, state, export_context):
     current_progress = int(task_progress) if task_progress != "N/A" else 0
     _track_progress_change(state, current_progress, export_context.current_time)
 
-    is_terminal, terminal_type = _check_terminal_state_fixed(task, task["Status"], export_context.elapsed_hours)
+    is_terminal, terminal_type = _check_terminal_state_fixed(
+        task, task["Status"], export_context.elapsed_hours
+    )
     if is_terminal:
         if terminal_type == "completed":
-            return False, (True, export_context.s3_key)
+            return False, (True, export_context.s3_info.s3_key)
         if terminal_type == "deleted":
             return False, _handle_task_deletion_recovery(
-                export_context.s3_client, export_context.bucket_name, export_context.s3_key, export_context.snapshot_size_gb, export_context.elapsed_hours
+                export_context.s3_client,
+                export_context.s3_info.bucket_name,
+                export_context.s3_info.s3_key,
+                export_context.s3_info.snapshot_size_gb,
+                export_context.elapsed_hours,
             )
 
     return True, None
@@ -193,9 +206,11 @@ def monitor_export_with_recovery(
             ec2_client=ec2_client,
             s3_client=s3_client,
             export_task_id=export_task_id,
-            s3_key=s3_key,
-            bucket_name=bucket_name,
-            snapshot_size_gb=snapshot_size_gb,
+            s3_info=S3Info(
+                bucket_name=bucket_name,
+                s3_key=s3_key,
+                snapshot_size_gb=snapshot_size_gb,
+            ),
             elapsed_hours=elapsed_hours,
             current_time=current_time,
         )

@@ -13,29 +13,18 @@ from cost_toolkit.scripts.management.ebs_manager.utils import (
     get_volume_tags,
 )
 from tests.assertions import assert_equal
+from tests.aws_region_test_utils import assert_regions_success
 
 
 @patch("cost_toolkit.common.aws_common.create_ec2_client")
 def test_get_all_aws_regions(mock_create_client, monkeypatch):
     """Test get_all_aws_regions returns list of regions."""
-    monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
-    mock_ec2 = MagicMock()
-    mock_create_client.return_value = mock_ec2
-    mock_ec2.describe_regions.return_value = {
-        "Regions": [
-            {"RegionName": "us-east-1"},
-            {"RegionName": "us-west-2"},
-            {"RegionName": "eu-west-1"},
-        ]
-    }
-
-    result = get_all_aws_regions()
+    result = assert_regions_success(get_all_aws_regions, mock_create_client, monkeypatch)
 
     assert_equal(result, ["us-east-1", "us-west-2", "eu-west-1"])
     mock_create_client.assert_called_once_with(
         region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None
     )
-    mock_ec2.describe_regions.assert_called_once()
 
 
 @patch("cost_toolkit.common.aws_common.get_all_aws_regions")

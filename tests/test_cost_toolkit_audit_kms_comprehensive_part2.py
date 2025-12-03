@@ -15,6 +15,7 @@ from cost_toolkit.scripts.audit.aws_kms_audit import (
     audit_kms_keys,
     main,
 )
+from tests.kms_test_utils import build_kms_client
 
 
 class TestAuditRegionKmsKeys:
@@ -23,19 +24,9 @@ class TestAuditRegionKmsKeys:
     def test_audit_region_with_keys(self, capsys):
         """Test auditing region with customer keys."""
         with patch("boto3.client") as mock_client:
-            mock_kms = MagicMock()
+            mock_kms = build_kms_client()
             mock_client.return_value = mock_kms
             mock_kms.list_keys.return_value = {"Keys": [{"KeyId": "key-1"}, {"KeyId": "key-2"}]}
-            mock_kms.describe_key.return_value = {
-                "KeyMetadata": {
-                    "KeyManager": "CUSTOMER",
-                    "Description": "Test",
-                    "KeyState": "Enabled",
-                    "CreationDate": "2024-01-01",
-                }
-            }
-            mock_kms.list_aliases.return_value = {"Aliases": []}
-            mock_kms.list_grants.return_value = {"Grants": []}
 
             region_keys, region_cost = _audit_region_kms_keys("us-east-1")
 

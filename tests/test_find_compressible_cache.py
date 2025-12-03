@@ -7,10 +7,9 @@ from unittest.mock import MagicMock, patch
 
 from cost_toolkit.common.cli_utils import confirm_reset_state_db
 from cost_toolkit.common.format_utils import format_bytes
-from find_compressible.cache import (
-    handle_state_db_reset,
-)
+from find_compressible.cache import handle_state_db_reset
 from tests.assertions import assert_equal
+from tests.state_db_reset_test_utils import build_magic_reseed, build_reset_context
 
 
 def test_format_size_bytes():
@@ -74,11 +73,7 @@ def test_confirm_state_db_reset_with_user_rejection():
 
 def test_handle_state_db_reset_no_reset():
     """Test handle_state_db_reset when should_reset is False."""
-    db_path = Path("/tmp/test.db")
-    base_path = Path("/tmp/base")
-
-    def mock_reseed(_bp, dp):
-        return dp, 100, 1000
+    base_path, db_path, mock_reseed = build_reset_context()
 
     result = handle_state_db_reset(
         base_path, db_path, should_reset=False, skip_prompt=False, reseed_function=mock_reseed
@@ -88,11 +83,8 @@ def test_handle_state_db_reset_no_reset():
 
 def test_handle_state_db_reset_cancelled(tmp_path, capsys):
     """Test handle_state_db_reset when user cancels."""
-    db_path = tmp_path / "test.db"
-    base_path = tmp_path / "base"
-    base_path.mkdir()
-
-    mock_reseed = MagicMock(return_value=(db_path, 1000, 1024 * 1024 * 1024))
+    base_path, db_path, _ = build_reset_context(tmp_path)
+    mock_reseed = build_magic_reseed(db_path)
 
     with patch("builtins.input", return_value="n"):
         result = handle_state_db_reset(

@@ -54,7 +54,7 @@ def _display_backup_rules(rules):
     """Display backup plan rules."""
     for rule in rules:
         rule_name = rule.get("RuleName")
-        schedule = rule.get("ScheduleExpression")
+        schedule = rule.get("ScheduleExpression") or "No schedule"
         lifecycle = rule.get("Lifecycle")
 
         print(f"    Rule: {rule_name}")
@@ -177,7 +177,7 @@ def _display_rule_details(events_client, rule):
     rule_name = rule["Name"]
     description = rule.get("Description")
     state = _require_field(rule, "State", "EventBridge rule")
-    schedule = rule.get("ScheduleExpression")
+    schedule = rule.get("ScheduleExpression") or "Event-driven"
 
     print(f"  Rule: {rule_name}")
     print(f"    Description: {description}")

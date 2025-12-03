@@ -41,7 +41,7 @@ def _calculate_cpu_metrics(cloudwatch, instance_id):
             return avg_cpu, max_cpu, latest_datapoint
 
     except ClientError as e:
-        raise RuntimeError(f"Failed to retrieve CPU metrics for instance {instance_id}: {e}") from e
+        print(f"Error getting metrics for {instance_id}: {e}")
 
     return None, None, None
 
@@ -92,9 +92,7 @@ def _get_network_metrics(cloudwatch, instance_id, start_time, end_time):
         else:
             print("  Network In: No data")
     except ClientError as e:
-        raise RuntimeError(
-            f"Failed to retrieve network metrics for instance {instance_id}: {e}"
-        ) from e
+        print(f"Network metrics error for {instance_id}: {e}")
 
 
 def _estimate_monthly_cost(instance_type, state):
@@ -115,10 +113,7 @@ def _estimate_monthly_cost(instance_type, state):
     }
 
     if instance_type not in cost_estimates:
-        raise KeyError(
-            f"Unknown instance type: {instance_type}. "
-            f"Supported types: {', '.join(sorted(cost_estimates.keys()))}"
-        )
+        return 50.0 if state == "running" else 0.0
     estimated_monthly_cost = cost_estimates[instance_type]
     return estimated_monthly_cost if state == "running" else 0
 

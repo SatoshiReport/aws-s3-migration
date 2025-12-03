@@ -69,6 +69,12 @@ def create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key):
     return ec2_client, s3_client
 
 
+def list_elastic_ip_addresses(ec2_client) -> list[dict]:
+    """Return Elastic IP address metadata for a given EC2 client."""
+    response = ec2_client.describe_addresses()
+    return response.get("Addresses", [])
+
+
 def get_instance_name(ec2_client, instance_id: str) -> Optional[str]:
     """
     Get the Name tag of an EC2 instance.

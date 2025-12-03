@@ -83,7 +83,7 @@ def verify_dns_resolution(domain):
         www_ip = socket.gethostbyname(www_domain)
         print(f"  ✅ {www_domain} resolves to: {www_ip}")
 
-    except socket.gaierror as e:
+    except (socket.gaierror, OSError) as e:
         print(f"  ❌ DNS resolution failed: {e}")
         return False, None
 

@@ -11,34 +11,32 @@ from cost_toolkit.common.credential_utils import setup_aws_credentials
 
 # Constants
 EXPECTED_ORPHANED_INTERFACES_COUNT = 2
+ORPHANED_INTERFACES = [
+    {
+        "region": "us-east-1",
+        "interface_id": "eni-0a369310199dd8b96",
+        "description": "RDSNetworkInterface",
+        "public_ip": "18.213.133.185",
+    },
+    {
+        "region": "us-east-1",
+        "interface_id": "eni-01c2a771086939fe3",
+        "description": "RDSNetworkInterface",
+        "public_ip": "34.195.43.187",
+    },
+]
 
 
 def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_key):
     """Delete orphaned RDS network interfaces"""
 
-    # Target orphaned RDS network interfaces identified in audit
-    orphaned_interfaces = [
-        {
-            "region": "us-east-1",
-            "interface_id": "eni-0a369310199dd8b96",
-            "description": "RDSNetworkInterface",
-            "public_ip": "18.213.133.185",
-        },
-        {
-            "region": "us-east-1",
-            "interface_id": "eni-01c2a771086939fe3",
-            "description": "RDSNetworkInterface",
-            "public_ip": "34.195.43.187",
-        },
-    ]
-
-    print(f"🎯 Target: {len(orphaned_interfaces)} orphaned RDS network interfaces")
+    print(f"🎯 Target: {len(ORPHANED_INTERFACES)} orphaned RDS network interfaces")
     print()
 
     deleted_interfaces = []
     failed_deletions = []
 
-    for interface in orphaned_interfaces:
+    for interface in ORPHANED_INTERFACES:
         region = interface["region"]
         interface_id = interface["interface_id"]
 
@@ -55,14 +53,15 @@ def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_
             print(f"   Description: {interface['description']}")
 
             # Verify it's still orphaned before deletion
-            response = ec2.describe_network_interfaces(NetworkInterfaceIds=[interface_id])
-            eni = response["NetworkInterfaces"][0]
+            eni = ec2.describe_network_interfaces(NetworkInterfaceIds=[interface_id])[
+                "NetworkInterfaces"
+            ][0]
 
             # Check if it has any attachments
             attachment = eni.get("Attachment", {})
-            attachment_instance_id = attachment.get("InstanceId", None)
-            if attachment and attachment_instance_id:
-                print(f"   ⚠️  Interface is now attached to {attachment_instance_id} - skipping")
+            instance_id = attachment.get("InstanceId", None)
+            if attachment and instance_id:
+                print(f"   ⚠️  Interface is now attached to {instance_id} - skipping")
                 continue
 
             # Delete the network interface
@@ -73,7 +72,6 @@ def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_
 
         except ec2.exceptions.ClientError as e:
             error_code = e.response["Error"]["Code"]
-            error_message = e.response["Error"]["Message"]
 
             if error_code == "InvalidNetworkInterfaceID.NotFound":
                 print(f"   ℹ️  Interface {interface_id} already deleted")
@@ -82,8 +80,9 @@ def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_
                 print(f"   ⚠️  Interface {interface_id} is in use - cannot delete")
                 failed_deletions.append({"interface": interface, "reason": "In use"})
             else:
-                print(f"   ❌ Failed to delete {interface_id}: {error_message}")
-                failed_deletions.append({"interface": interface, "reason": error_message})
+                message = e.response["Error"]["Message"]
+                print(f"   ❌ Failed to delete {interface_id}: {message}")
+                failed_deletions.append({"interface": interface, "reason": message})
 
         except ClientError as e:
             print(f"   ❌ Unexpected error deleting {interface_id}: {str(e)}")

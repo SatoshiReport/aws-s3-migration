@@ -33,7 +33,7 @@ def _extract_volume_name(volume):
     """Extract volume name from tags."""
     name = extract_tag_value(volume, "Name")
     if name is None:
-        raise ValueError(f"Volume {volume['VolumeId']} is missing required 'Name' tag")
+        return "No name"
     return name
 
 

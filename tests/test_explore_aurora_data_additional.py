@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-from cost_toolkit.scripts.rds.explore_aurora_data import explore_aurora_database, main
+from cost_toolkit.scripts.rds.explore_aurora_data import explore_aurora_database
+from tests.explore_aurora_data_fixtures import (
+    assert_main_invokes_explore,
+    run_basic_aurora_exploration,
+)
 
 pytest_plugins = ["tests.explore_aurora_data_fixtures"]
 
@@ -36,54 +40,26 @@ def test_explore_aurora_database_connection_timeout_parameter(mock_psycopg2):
 
 def test_main_calls_explore_aurora_database():
     """Test main function calls explore_aurora_database."""
-    with patch(
-        "cost_toolkit.scripts.rds.explore_aurora_data.explore_aurora_database"
-    ) as mock_explore:
-        main()
-        mock_explore.assert_called_once()
+    assert_main_invokes_explore()
 
 
 def test_explore_aurora_database_with_tables_but_no_rows(capsys, mock_psycopg2):
     """Test explore_aurora_database with tables that have no rows."""
-    mock_conn = MagicMock()
-    mock_cursor = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-    mock_psycopg2.connect.return_value = mock_conn
-
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
-        with patch(
-            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
-            mock_psycopg2,
-            create=True,
-        ):
-            with patch.dict(
-                "os.environ",
-                {"AURORA_PORT": "5432", "AURORA_PASSWORD": "dummy_password"},
-                clear=True,
-            ):
-                with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables"):
-                    with patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-                    ) as mock_analyze:
-                        mock_analyze.return_value = 0  # Tables exist but have 0 rows
-                        explore_aurora_database()
+    run_basic_aurora_exploration(
+        mock_psycopg2,
+        env_overrides={"AURORA_PORT": "5432", "AURORA_PASSWORD": "dummy_password"},
+        list_tables_return=[],
+        analyze_return=0,
+    )
 
     captured = capsys.readouterr()
     # Should still show empty cluster message even if tables exist
     assert "Aurora Serverless v2 cluster is EMPTY" in captured.out
 
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
-        with patch(
-            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
-            mock_psycopg2,
-            create=True,
-        ):
-            with patch.dict(
-                "os.environ",
-                {"AURORA_PORT": "5432", "AURORA_PASSWORD": "dummy_password"},
-                clear=True,
-            ):
-                explore_aurora_database()
+    run_basic_aurora_exploration(
+        mock_psycopg2,
+        env_overrides={"AURORA_PORT": "5432", "AURORA_PASSWORD": "dummy_password"},
+    )
 
     captured = capsys.readouterr()
     assert "Connecting to Aurora Serverless v2 cluster..." in captured.out
@@ -91,27 +67,7 @@ def test_explore_aurora_database_with_tables_but_no_rows(capsys, mock_psycopg2):
 
 def test_explore_aurora_database_prints_database_info_header(capsys, mock_psycopg2):
     """Test explore_aurora_database prints database info header."""
-    mock_conn = MagicMock()
-    mock_cursor = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-    mock_psycopg2.connect.return_value = mock_conn
-
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
-        with patch(
-            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
-            mock_psycopg2,
-            create=True,
-        ):
-            with patch("os.environ.get", return_value="dummy_password"):
-                with patch(
-                    "cost_toolkit.scripts.rds.explore_aurora_data.list_tables"
-                ) as mock_tables:
-                    mock_tables.return_value = []
-                    with patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-                    ) as mock_analyze:
-                        mock_analyze.return_value = 0
-                        explore_aurora_database()
+    run_basic_aurora_exploration(mock_psycopg2)
 
     captured = capsys.readouterr()
     assert "AURORA SERVERLESS V2 DATABASE INFORMATION:" in captured.out
@@ -119,29 +75,7 @@ def test_explore_aurora_database_prints_database_info_header(capsys, mock_psycop
 
 def test_explore_aurora_database_no_user_tables_message(capsys, mock_psycopg2):
     """Test explore_aurora_database shows message when no user tables found."""
-    mock_conn = MagicMock()
-    mock_cursor = MagicMock()
-    mock_conn.cursor.return_value = mock_cursor
-    mock_psycopg2.connect.return_value = mock_conn
-
-    with patch("cost_toolkit.scripts.rds.explore_aurora_data.PSYCOPG2_AVAILABLE", True):
-        with patch(
-            "cost_toolkit.scripts.rds.explore_aurora_data.psycopg2",
-            mock_psycopg2,
-            create=True,
-        ):
-            with patch.dict(
-                "os.environ",
-                {"AURORA_PORT": "5432", "AURORA_PASSWORD": "dummy_password"},
-                clear=True,
-            ):
-                with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list:
-                    mock_list.return_value = []
-                    with patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-                    ) as mock_analyze:
-                        mock_analyze.return_value = 0
-                        explore_aurora_database()
+    run_basic_aurora_exploration(mock_psycopg2)
 
     captured = capsys.readouterr()
     assert "No user tables found - Aurora cluster appears to be empty" in captured.out

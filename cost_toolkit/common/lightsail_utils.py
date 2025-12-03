@@ -68,3 +68,14 @@ def estimate_database_cost(bundle_id: str) -> float:
     if bundle_id not in DATABASE_BUNDLE_COSTS:
         raise UnknownBundleError(f"Unknown Lightsail database bundle: {bundle_id}")
     return DATABASE_BUNDLE_COSTS[bundle_id]
+
+
+def load_lightsail_resources(lightsail_client) -> tuple[list[dict], list[dict]]:
+    """
+    Fetch Lightsail instances and databases in a single call site.
+
+    This keeps client request handling consistent across cleanup scripts.
+    """
+    instances = lightsail_client.get_instances().get("instances", [])
+    databases = lightsail_client.get_relational_databases().get("relationalDatabases", [])
+    return instances, databases

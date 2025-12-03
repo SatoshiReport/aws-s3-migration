@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 from typing import List, Sequence
 
-from cost_toolkit.common.cli_utils import confirm_action
+from cost_toolkit.common.cli_utils import ConfirmationNotReceivedError, confirm_action
 
 from .analysis import (
     ClusterRow,
@@ -55,7 +55,10 @@ def print_deletion_plan(
 def confirm_deletion(total_dirs: int, total_bytes: int) -> bool:
     """Prompt user to confirm deletion of directories. Delegates to canonical implementation."""
     prompt = f"Delete {total_dirs} directories ({format_bytes(total_bytes)})? [y/N]: "
-    return confirm_action(prompt)
+    try:
+        return confirm_action(prompt)
+    except (EOFError, ConfirmationNotReceivedError):
+        return False
 
 
 def perform_deletions(

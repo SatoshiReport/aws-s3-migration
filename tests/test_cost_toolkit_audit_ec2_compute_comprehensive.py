@@ -16,6 +16,7 @@ from cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit import (
     get_all_regions,
     get_instance_hourly_cost,
 )
+from tests.aws_region_test_utils import assert_regions_error, assert_regions_success
 
 
 class TestGetAllRegions:
@@ -24,38 +25,12 @@ class TestGetAllRegions:
     @patch("cost_toolkit.common.aws_common.create_ec2_client")
     def test_get_regions_success(self, mock_create_client, monkeypatch):
         """Test successful retrieval of regions."""
-        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
-        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
-        mock_ec2 = MagicMock()
-        mock_create_client.return_value = mock_ec2
-        mock_ec2.describe_regions.return_value = {
-            "Regions": [
-                {"RegionName": "us-east-1"},
-                {"RegionName": "us-west-2"},
-                {"RegionName": "eu-west-1"},
-            ]
-        }
-
-        regions = get_all_regions()
-
-        assert len(regions) == 3
-        assert "us-east-1" in regions
-        assert "us-west-2" in regions
-        assert "eu-west-1" in regions
+        assert_regions_success(get_all_regions, mock_create_client, monkeypatch)
 
     @patch("cost_toolkit.common.aws_common.create_ec2_client")
     def test_get_regions_client_error(self, mock_create_client, monkeypatch):
         """Test error handling when getting regions fails."""
-        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
-        monkeypatch.delenv("COST_TOOLKIT_STATIC_AWS_REGIONS", raising=False)
-        mock_ec2 = MagicMock()
-        mock_ec2.describe_regions.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "describe_regions"
-        )
-        mock_create_client.return_value = mock_ec2
-
-        with pytest.raises(ClientError):
-            get_all_regions()
+        assert_regions_error(get_all_regions, mock_create_client, monkeypatch)
 
 
 class TestBuildInstanceInfo:

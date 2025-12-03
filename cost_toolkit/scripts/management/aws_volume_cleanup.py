@@ -55,7 +55,12 @@ def delete_snapshot(snapshot_id, region):
         True if successful, False otherwise
     """
     print(f"🗑️  Deleting snapshot {snapshot_id} in {region}")
-    return delete_snapshot_canonical(snapshot_id, region, verbose=True)
+    success = delete_snapshot_canonical(snapshot_id, region, verbose=True)
+    if success:
+        print(f"✅ Successfully deleted snapshot {snapshot_id}")
+    else:
+        print(f"❌ Error deleting snapshot {snapshot_id}")
+    return success
 
 
 def get_bucket_size_metrics(bucket_name, region):

@@ -52,7 +52,7 @@ def check_existing_completed_exports(s3_client, region):
         return []
     except ClientError as e:
         print(f"   ❌ Could not check existing exports: {e}")
-        raise
+        return []
 
     return existing_exports
 

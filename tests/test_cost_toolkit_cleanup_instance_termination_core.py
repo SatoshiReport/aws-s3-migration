@@ -13,6 +13,10 @@ from cost_toolkit.scripts.cleanup.aws_instance_termination import (
     main,
     terminate_instance_safely,
 )
+from tests.ec2_instance_test_utils import (
+    build_describe_empty_client,
+    build_describe_not_found_client,
+)
 
 
 class TestTerminateInstanceSafely:
@@ -150,11 +154,7 @@ class TestGetInstanceDetails:
     def test_get_instance_details_client_error(self):
         """Test error handling in get_instance_details - raises ClientError (fail-fast)."""
         with patch("boto3.client") as mock_client:
-            mock_ec2 = MagicMock()
-            mock_ec2.describe_instances.side_effect = ClientError(
-                {"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances"
-            )
-            mock_client.return_value = mock_ec2
+            mock_client.return_value = build_describe_not_found_client()
 
             with pytest.raises(ClientError):
                 get_instance_details("i-notfound", "us-east-1")
@@ -162,9 +162,7 @@ class TestGetInstanceDetails:
     def test_get_instance_details_no_reservations(self):
         """Test get_instance_details when no reservations returned."""
         with patch("boto3.client") as mock_client:
-            mock_ec2 = MagicMock()
-            mock_ec2.describe_instances.return_value = {"Reservations": []}
-            mock_client.return_value = mock_ec2
+            mock_client.return_value = build_describe_empty_client()
 
             details = get_instance_details("i-123", "us-east-1")
 

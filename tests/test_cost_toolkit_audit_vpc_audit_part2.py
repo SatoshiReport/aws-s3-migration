@@ -10,6 +10,7 @@ from cost_toolkit.scripts.audit.aws_vpc_audit import (
     audit_nat_gateways_in_region,
     main,
 )
+from tests.aws_region_test_utils import ELASTIC_IP_RESPONSE
 
 
 class TestAuditNatGatewaysInRegion:
@@ -139,24 +140,7 @@ def test_main_integration(capsys):
         mock_ec2 = MagicMock()
         mock_client.return_value = mock_ec2
 
-        mock_ec2.describe_addresses.return_value = {
-            "Addresses": [
-                {
-                    "PublicIp": "54.123.45.67",
-                    "AllocationId": "eipalloc-123",
-                    "AssociationId": "eipassoc-456",
-                    "InstanceId": "i-123",
-                    "Domain": "vpc",
-                    "Tags": [],
-                },
-                {
-                    "PublicIp": "54.123.45.68",
-                    "AllocationId": "eipalloc-456",
-                    "Domain": "vpc",
-                    "Tags": [],
-                },
-            ]
-        }
+        mock_ec2.describe_addresses.return_value = ELASTIC_IP_RESPONSE
 
         mock_ec2.describe_nat_gateways.return_value = {
             "NatGateways": [

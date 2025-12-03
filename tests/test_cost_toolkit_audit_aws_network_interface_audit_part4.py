@@ -2,11 +2,35 @@
 
 from __future__ import annotations
 
+from contextlib import ExitStack
 from unittest.mock import patch
 
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.audit.aws_network_interface_audit import main
+from tests.network_interface_test_utils import build_attached_interfaces
+
+
+def _run_main_with_region_data(region_data, regions=None):
+    """Execute main with patched dependencies returning provided region data."""
+    module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
+    with ExitStack() as stack:
+        stack.enter_context(
+            patch(
+                f"{module_path}.setup_aws_credentials",
+                return_value=("test-key", "test-secret"),
+            )
+        )
+        stack.enter_context(
+            patch(f"{module_path}.get_all_regions", return_value=regions or ["us-east-1"])
+        )
+        stack.enter_context(
+            patch(
+                f"{module_path}.audit_network_interfaces_in_region",
+                return_value=region_data,
+            )
+        )
+        main()
 
 
 class TestMainNoInterfaces:  # pylint: disable=too-few-public-methods
@@ -95,20 +119,7 @@ class TestMainWithUnusedInterfaces:  # pylint: disable=too-few-public-methods
             "interface_details": [],
         }
 
-        module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
-        with patch(
-            f"{module_path}.setup_aws_credentials",
-            return_value=("test-key", "test-secret"),
-        ):
-            with patch(
-                f"{module_path}.get_all_regions",
-                return_value=["us-east-1"],
-            ):
-                with patch(
-                    f"{module_path}.audit_network_interfaces_in_region",
-                    return_value=region_data,
-                ):
-                    main()
+        _run_main_with_region_data(region_data)
 
         captured = capsys.readouterr()
         assert "Total network interfaces: 3" in captured.out
@@ -130,45 +141,13 @@ class TestMainOnlyAttached:  # pylint: disable=too-few-public-methods
             "region": "us-west-2",
             "total_interfaces": 2,
             "unused_interfaces": [],
-            "attached_interfaces": [
-                {
-                    "interface_id": "eni-1",
-                    "name": "interface-1",
-                    "type": "interface",
-                    "attached_to": "i-1",
-                    "status": "in-use",
-                    "vpc_id": "vpc-1",
-                    "private_ip": "10.0.0.1",
-                    "public_ip": "1.1.1.1",
-                },
-                {
-                    "interface_id": "eni-2",
-                    "name": "interface-2",
-                    "type": "interface",
-                    "attached_to": "i-2",
-                    "status": "in-use",
-                    "vpc_id": "vpc-1",
-                    "private_ip": "10.0.0.2",
-                    "public_ip": "None",
-                },
-            ],
+            "attached_interfaces": build_attached_interfaces(
+                overrides={1: {"attached_to": "i-2", "public_ip": "None"}}
+            ),
             "interface_details": [],
         }
 
-        module_path = "cost_toolkit.scripts.audit.aws_network_interface_audit"
-        with patch(
-            f"{module_path}.setup_aws_credentials",
-            return_value=("test-key", "test-secret"),
-        ):
-            with patch(
-                f"{module_path}.get_all_regions",
-                return_value=["us-west-2"],
-            ):
-                with patch(
-                    f"{module_path}.audit_network_interfaces_in_region",
-                    return_value=region_data,
-                ):
-                    main()
+        _run_main_with_region_data(region_data, regions=["us-west-2"])
 
         captured = capsys.readouterr()
         assert "No unused network interfaces found!" in captured.out
