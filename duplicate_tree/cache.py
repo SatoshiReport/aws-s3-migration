@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime, timezone
-from typing import Dict, Optional, Sequence, TypedDict, cast
+from typing import Optional, Sequence, TypedDict, cast
 
 from duplicate_tree.analysis import (
     MIN_REPORT_BYTES,
@@ -33,15 +33,21 @@ EXACT_TOLERANCE = 1.0
 
 
 class CachedReportBase(TypedDict):
+    """Common metadata for cached duplicate analysis reports."""
+
     generated_at: str
     total_files: str
 
 
 class CachedRowsReport(CachedReportBase):
+    """Cached report containing parsed cluster rows."""
+
     rows: list[ClusterRow]
 
 
 class CachedRawReport(CachedReportBase):
+    """Cached report containing the raw JSON payload."""
+
     rows: list[ClusterRow]
     report: str
 

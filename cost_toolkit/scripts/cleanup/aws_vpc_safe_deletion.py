@@ -3,11 +3,25 @@
 
 from threading import Event
 
+import boto3
 from botocore.exceptions import ClientError
 
-from cost_toolkit.common.vpc_cleanup_utils import delete_vpc_and_dependencies
+from cost_toolkit.common import vpc_cleanup_utils
 
-_WAIT_EVENT = Event()
+WAIT_EVENT = Event()
+
+
+def delete_vpc_and_dependencies(vpc_id, region_name):
+    """Create an EC2 client and delegate deletion to the shared implementation."""
+    try:
+        ec2_client = boto3.client("ec2", region_name=region_name)
+    except ClientError as exc:
+        print(f"❌ Error during VPC deletion process: {exc}")
+        return False
+
+    return vpc_cleanup_utils.delete_vpc_and_dependencies(
+        vpc_id, region_name=region_name, ec2_client=ec2_client
+    )
 
 
 def delete_vpc_and_dependencies_with_logging(vpc_id, region_name):
@@ -30,7 +44,7 @@ def delete_vpc_and_dependencies_with_logging(vpc_id, region_name):
     return bool(result)
 
 
-def _get_safe_vpcs():
+def get_safe_vpcs():
     """Return list of VPCs safe to delete."""
     return [
         ("vpc-05df0c91efb98a80a", "us-east-1"),
@@ -40,7 +54,7 @@ def _get_safe_vpcs():
     ]
 
 
-def _delete_vpcs(safe_vpcs):
+def delete_vpcs(safe_vpcs):
     """Delete all VPCs and return results."""
     deletion_results = []
 
@@ -57,12 +71,12 @@ def _delete_vpcs(safe_vpcs):
         else:
             print(f"❌ VPC {vpc_id} deletion failed")
 
-        _WAIT_EVENT.wait(2)
+        WAIT_EVENT.wait(2)
 
     return deletion_results
 
 
-def _print_vpc_deletion_summary(deletion_results):
+def print_vpc_deletion_summary(deletion_results):
     """Print VPC deletion summary."""
     print("\n" + "=" * 80)
     print("🎯 DELETION SUMMARY")
@@ -93,9 +107,9 @@ def main():
     print("=" * 80)
     print("Deleting VPCs that have no blocking resources...")
 
-    safe_vpcs = _get_safe_vpcs()
-    deletion_results = _delete_vpcs(safe_vpcs)
-    _print_vpc_deletion_summary(deletion_results)
+    safe_vpcs = get_safe_vpcs()
+    deletion_results = delete_vpcs(safe_vpcs)
+    print_vpc_deletion_summary(deletion_results)
 
     print("\n📋 REMAINING TASKS:")
     print("  1. Remove public IP from instance i-00c39b1ba0eba3e2d (requires stop/start)")

@@ -6,7 +6,9 @@ Common S3 operations used across multiple scripts.
 
 import logging
 
-from cost_toolkit.scripts.aws_s3_operations import get_bucket_location
+from cost_toolkit.scripts import aws_s3_operations
+
+get_bucket_location = aws_s3_operations.get_bucket_location
 
 
 def get_bucket_region(bucket_name, verbose=True, location_getter=None):
@@ -30,10 +32,7 @@ def get_bucket_region(bucket_name, verbose=True, location_getter=None):
     if not bucket_name:
         raise ValueError("bucket_name is required")
 
-    if location_getter is not None:
-        resolver = location_getter
-    else:
-        resolver = get_bucket_location
+    resolver = location_getter or get_bucket_location
 
     region = resolver(bucket_name)
 

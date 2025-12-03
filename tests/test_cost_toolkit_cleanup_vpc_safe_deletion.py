@@ -34,7 +34,7 @@ def test_delete_vpc_and_dependencies_with_logging_handles_error(mock_delete):
 
 
 def test_delete_vpcs_collects_results(monkeypatch):
-    """_delete_vpcs should aggregate success/failure results."""
+    """delete_vpcs should aggregate success/failure results."""
     calls = []
 
     def fake_delete(vpc_id, region):
@@ -44,10 +44,10 @@ def test_delete_vpcs_collects_results(monkeypatch):
     monkeypatch.setattr(
         aws_vpc_safe_deletion, "delete_vpc_and_dependencies_with_logging", fake_delete
     )
-    monkeypatch.setattr(aws_vpc_safe_deletion._WAIT_EVENT, "wait", lambda *_: None)
+    monkeypatch.setattr(aws_vpc_safe_deletion.WAIT_EVENT, "wait", lambda *_: None)
 
     safe_vpcs = [("vpc-success", "us-east-1"), ("vpc-fail", "us-west-2")]
-    results = aws_vpc_safe_deletion._delete_vpcs(safe_vpcs)
+    results = aws_vpc_safe_deletion.delete_vpcs(safe_vpcs)
 
     assert calls == safe_vpcs
     assert results == [
@@ -57,8 +57,8 @@ def test_delete_vpcs_collects_results(monkeypatch):
 
 
 def test_get_safe_vpcs_returns_expected_shape():
-    """_get_safe_vpcs should return a list of region tuples."""
-    safe_vpcs = aws_vpc_safe_deletion._get_safe_vpcs()
+    """get_safe_vpcs should return a list of region tuples."""
+    safe_vpcs = aws_vpc_safe_deletion.get_safe_vpcs()
     assert safe_vpcs
     for item in safe_vpcs:
         assert isinstance(item, tuple)
@@ -66,10 +66,10 @@ def test_get_safe_vpcs_returns_expected_shape():
 
 
 def test_print_vpc_deletion_summary_outputs(capsys):
-    """_print_vpc_deletion_summary should summarize successes and failures."""
+    """print_vpc_deletion_summary should summarize successes and failures."""
     results = [("vpc-1", "us-east-1", True), ("vpc-2", "us-west-2", False)]
 
-    aws_vpc_safe_deletion._print_vpc_deletion_summary(results)
+    aws_vpc_safe_deletion.print_vpc_deletion_summary(results)
 
     captured = capsys.readouterr().out
     assert "DELETION SUMMARY" in captured
@@ -79,12 +79,16 @@ def test_print_vpc_deletion_summary_outputs(capsys):
 
 def test_main_runs_with_patched_helpers(monkeypatch, capsys):
     """Main should orchestrate deletion and summary when helpers are patched."""
-    monkeypatch.setattr(aws_vpc_safe_deletion, "_get_safe_vpcs", lambda: [("vpc-1", "us-east-1")])
+    monkeypatch.setattr(aws_vpc_safe_deletion, "get_safe_vpcs", lambda: [("vpc-1", "us-east-1")])
     monkeypatch.setattr(
-        aws_vpc_safe_deletion, "_delete_vpcs", lambda safe_vpcs: [(safe_vpcs[0][0], safe_vpcs[0][1], True)]
+        aws_vpc_safe_deletion,
+        "delete_vpcs",
+        lambda safe_vpcs: [(safe_vpcs[0][0], safe_vpcs[0][1], True)],
     )
     monkeypatch.setattr(
-        aws_vpc_safe_deletion, "_print_vpc_deletion_summary", lambda results: print(f"summary {results}")
+        aws_vpc_safe_deletion,
+        "print_vpc_deletion_summary",
+        lambda results: print(f"summary {results}"),
     )
 
     aws_vpc_safe_deletion.main()

@@ -7,11 +7,11 @@ from unittest.mock import MagicMock, patch
 from botocore.exceptions import ClientError
 
 from cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion import (
-    _delete_vpcs,
-    _get_safe_vpcs,
-    _print_vpc_deletion_summary,
     delete_vpc_and_dependencies,
+    delete_vpcs,
+    get_safe_vpcs,
     main,
+    print_vpc_deletion_summary,
 )
 
 
@@ -74,7 +74,7 @@ class TestDeleteVpcAndDependencies:
 
 def test_get_safe_vpcs_returns_list():
     """Test that function returns list of VPCs."""
-    result = _get_safe_vpcs()
+    result = get_safe_vpcs()
 
     assert isinstance(result, list)
     assert len(result) > 0
@@ -84,7 +84,7 @@ def test_get_safe_vpcs_returns_list():
 
 
 class TestDeleteVpcs:
-    """Tests for _delete_vpcs function."""
+    """Tests for delete_vpcs function."""
 
     def test_delete_vpcs_all_success(self, capsys):
         """Test deleting all VPCs successfully."""
@@ -93,10 +93,10 @@ class TestDeleteVpcs:
         with patch(
             "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpc_and_dependencies"
         ) as mock_delete:
-            with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion._WAIT_EVENT.wait"):
+            with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.WAIT_EVENT.wait"):
                 mock_delete.return_value = True
 
-                result = _delete_vpcs(safe_vpcs)
+                result = delete_vpcs(safe_vpcs)
 
                 assert len(result) == 2
                 assert all(success for _, _, success in result)
@@ -110,10 +110,10 @@ class TestDeleteVpcs:
         with patch(
             "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpc_and_dependencies"
         ) as mock_delete:
-            with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion._WAIT_EVENT.wait"):
+            with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.WAIT_EVENT.wait"):
                 mock_delete.side_effect = [True, False]
 
-                result = _delete_vpcs(safe_vpcs)
+                result = delete_vpcs(safe_vpcs)
 
                 assert len(result) == 2
                 assert result[0][2] is True
@@ -123,7 +123,7 @@ class TestDeleteVpcs:
 
 
 class TestPrintVpcDeletionSummary:
-    """Tests for _print_vpc_deletion_summary function."""
+    """Tests for print_vpc_deletion_summary function."""
 
     def test_print_all_successful(self, capsys):
         """Test summary with all successful deletions."""
@@ -132,7 +132,7 @@ class TestPrintVpcDeletionSummary:
             ("vpc-2", "us-west-2", True),
         ]
 
-        _print_vpc_deletion_summary(deletion_results)
+        print_vpc_deletion_summary(deletion_results)
 
         captured = capsys.readouterr()
         assert "Successfully deleted VPCs: 2" in captured.out
@@ -148,7 +148,7 @@ class TestPrintVpcDeletionSummary:
             ("vpc-3", "us-east-2", False),
         ]
 
-        _print_vpc_deletion_summary(deletion_results)
+        print_vpc_deletion_summary(deletion_results)
 
         captured = capsys.readouterr()
         assert "Successfully deleted VPCs: 1" in captured.out
@@ -156,7 +156,7 @@ class TestPrintVpcDeletionSummary:
 
     def test_print_empty_results(self, capsys):
         """Test summary with no results."""
-        _print_vpc_deletion_summary([])
+        print_vpc_deletion_summary([])
 
         captured = capsys.readouterr()
         assert "Successfully deleted VPCs: 0" in captured.out
@@ -168,10 +168,10 @@ class TestMain:
     def test_main_execution(self, capsys):
         """Test main function execution."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion._get_safe_vpcs"
+            "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.get_safe_vpcs"
         ) as mock_get_vpcs:
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion._delete_vpcs"
+                "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpcs"
             ) as mock_delete:
                 mock_get_vpcs.return_value = [("vpc-1", "us-east-1")]
                 mock_delete.return_value = [("vpc-1", "us-east-1", True)]
@@ -185,10 +185,10 @@ class TestMain:
     def test_main_calls_delete_vpcs(self):
         """Test that main calls _delete_vpcs."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion._get_safe_vpcs"
+            "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.get_safe_vpcs"
         ) as mock_get_vpcs:
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion._delete_vpcs"
+                "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpcs"
             ) as mock_delete:
                 mock_get_vpcs.return_value = [("vpc-1", "us-east-1")]
                 mock_delete.return_value = []

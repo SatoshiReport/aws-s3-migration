@@ -165,7 +165,9 @@ def test_require_public_access_config_missing_config(mock_warning):
 @patch("cost_toolkit.scripts.audit.s3_audit.bucket_analysis.logging.warning")
 def test_require_public_access_config_fills_missing_fields(mock_warning):
     """Fill in any missing public access fields."""
-    result = _require_public_access_config({"PublicAccessBlockConfiguration": {"BlockPublicAcls": True}})
+    result = _require_public_access_config(
+        {"PublicAccessBlockConfiguration": {"BlockPublicAcls": True}}
+    )
 
     assert result["BlockPublicAcls"] is True
     assert result["IgnorePublicAcls"] is False
@@ -218,27 +220,40 @@ def test_analyze_bucket_objects_happy_path(monkeypatch):
     """analyze_bucket_objects should process pages and return analysis."""
 
     class FakePaginator:
+        """Simple paginator stub that returns predefined pages."""
+
         def __init__(self, pages):
             self.pages = pages
 
-        def paginate(self, Bucket):
-            assert Bucket == "bucket"
+        def paginate(self, **kwargs):
+            """Return the configured page sequence for the requested bucket."""
+            assert kwargs["Bucket"] == "bucket"
             return self.pages
 
     class FakeClient:
+        """S3 client stub that returns deterministic metadata."""
+
         def __init__(self):
             self.called = []
 
-        def get_bucket_versioning(self, Bucket):
+        def get_bucket_versioning(self, **kwargs):
+            """Simulate versioning enabled."""
+            _ = kwargs["Bucket"]
             return {"Status": "Enabled"}
 
-        def get_bucket_lifecycle_configuration(self, Bucket):
+        def get_bucket_lifecycle_configuration(self, **kwargs):
+            """Return an empty lifecycle configuration."""
+            _ = kwargs["Bucket"]
             return {"Rules": []}
 
-        def get_bucket_encryption(self, Bucket):
+        def get_bucket_encryption(self, **kwargs):
+            """Return an empty encryption configuration."""
+            _ = kwargs["Bucket"]
             return {"ServerSideEncryptionConfiguration": {"Rules": []}}
 
-        def get_public_access_block(self, Bucket):
+        def get_public_access_block(self, **kwargs):
+            """Return a fully restricted public access block."""
+            _ = kwargs["Bucket"]
             return {
                 "PublicAccessBlockConfiguration": {
                     "BlockPublicAcls": True,
@@ -249,6 +264,7 @@ def test_analyze_bucket_objects_happy_path(monkeypatch):
             }
 
         def get_paginator(self, name):
+            """Return a paginator configured with one page of object metadata."""
             assert name == "list_objects_v2"
             return FakePaginator(
                 [
@@ -286,7 +302,8 @@ def test_analyze_bucket_objects_handles_errors(monkeypatch):
         raise error
 
     monkeypatch.setattr(
-        "cost_toolkit.scripts.audit.s3_audit.bucket_analysis.boto3.client", lambda *args, **kwargs: raise_client()
+        "cost_toolkit.scripts.audit.s3_audit.bucket_analysis.boto3.client",
+        lambda *args, **kwargs: raise_client(),
     )
 
     result = analyze_bucket_objects("missing", "us-east-1")
