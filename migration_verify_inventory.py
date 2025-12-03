@@ -42,14 +42,16 @@ def _scan_local_directory(base_path: Path, bucket: str, expected_files: int) -> 
     for root, _, files in os.walk(base_str):
         for file_name in files:
             file_path = Path(root) / file_name
-            relative_str = os.path.relpath(str(file_path), base_str)
-            s3_key = relative_str.replace("\\", "/")
+            s3_key = os.path.relpath(file_path, base_str).replace("\\", "/")
             local_files[s3_key] = file_path
             scan_count += 1
             if progress.should_update() or scan_count % 10000 == 0:
-                pct = (scan_count / expected_files * 100) if expected_files > 0 else 0
-                status = f"Scanned: {scan_count:,} files ({pct:.1f}%)  "
-                print(f"\r  {status}", end="", flush=True)
+                percentage = (scan_count / expected_files * 100) if expected_files > 0 else 0
+                print(
+                    f"\r  Scanned: {scan_count:,} files ({percentage:.1f}%)  ",
+                    end="",
+                    flush=True,
+                )
     print(f"\r  Found {len(local_files):,} local files" + " " * 30)
     print()
     return local_files

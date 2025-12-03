@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-import boto3
 from botocore.exceptions import ClientError
 
 from cost_toolkit.common.aws_client_factory import create_ec2_client

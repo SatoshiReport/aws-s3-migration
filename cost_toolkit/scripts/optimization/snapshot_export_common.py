@@ -56,11 +56,12 @@ def setup_s3_bucket_versioning(s3_client, bucket_name):
         s3_client.put_bucket_versioning(
             Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
         )
-        print(f"   ✅ Enabled versioning for {bucket_name}")
-        return True
     except ClientError as exc:
         print(f"   ❌ Failed to enable versioning: {exc}")
         return False
+
+    print(f"   ✅ Enabled versioning for {bucket_name}")
+    return True
 
 
 def create_ami_from_snapshot(

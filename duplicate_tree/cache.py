@@ -5,11 +5,12 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime, timezone
-from typing import Dict, Optional, Sequence
+from typing import Dict, Optional, Sequence, TypedDict, cast
 
 from duplicate_tree.analysis import (
     MIN_REPORT_BYTES,
     MIN_REPORT_FILES,
+    ClusterRow,
     ScanFingerprint,
     cache_key,
     clusters_to_rows,
@@ -31,6 +32,23 @@ CREATE TABLE IF NOT EXISTS duplicate_tree_cache (
 EXACT_TOLERANCE = 1.0
 
 
+class CachedReportBase(TypedDict):
+    generated_at: str
+    total_files: str
+
+
+class CachedRowsReport(CachedReportBase):
+    rows: list[ClusterRow]
+
+
+class CachedRawReport(CachedReportBase):
+    rows: list[ClusterRow]
+    report: str
+
+
+CachedReport = CachedRowsReport | CachedRawReport
+
+
 def ensure_cache_table(conn: sqlite3.Connection):
     """Create cache table if it doesn't exist."""
     conn.execute(CACHE_TABLE_SQL)
@@ -43,7 +61,7 @@ def load_cached_report(
     base_path: str,
     min_files: int = MIN_REPORT_FILES,
     min_bytes: int = MIN_REPORT_BYTES,
-) -> Optional[Dict[str, str]]:
+) -> Optional[CachedReport]:
     """Return cached report metadata if it matches the current snapshot."""
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -64,7 +82,7 @@ def load_cached_report(
             return None
         payload = row["report"]
         try:
-            rows = json.loads(payload)
+            rows = cast(list[ClusterRow], json.loads(payload))
             return {
                 "generated_at": row["generated_at"],
                 "rows": rows,

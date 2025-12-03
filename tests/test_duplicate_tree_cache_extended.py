@@ -5,7 +5,12 @@ from __future__ import annotations
 import json
 import sqlite3
 
-from duplicate_tree.analysis import ScanFingerprint, cache_key
+from duplicate_tree.analysis import (
+    MIN_REPORT_BYTES,
+    MIN_REPORT_FILES,
+    ScanFingerprint,
+    cache_key,
+)
 from duplicate_tree.cache import (
     EXACT_TOLERANCE,
     ensure_cache_table,
@@ -89,6 +94,34 @@ def test_load_cached_report_invalid_json(tmp_path):
     assert result is not None
     assert "report" in result
     assert result["report"] == "INVALID JSON"
+
+
+def test_load_cached_report_valid_payload(tmp_path):
+    """Test load_cached_report returns parsed rows on valid payload."""
+    db_path = tmp_path / "cache.db"
+    conn = sqlite3.connect(str(db_path))
+    ensure_cache_table(conn)
+
+    fingerprint = ScanFingerprint(total_files=2, checksum="good")
+    key = cache_key(fingerprint, min_files=MIN_REPORT_FILES, min_bytes=MIN_REPORT_BYTES)
+    payload = '[{"total_files": 2, "total_size": 10, "nodes": []}]'
+
+    conn.execute(
+        """
+        INSERT INTO duplicate_tree_cache (
+            fingerprint, tolerance, base_path, total_files, generated_at, report
+        ) VALUES (?, ?, ?, ?, ?, ?)
+        """,
+        (key, EXACT_TOLERANCE, "/base/path", 2, "2024-01-02T00:00:00", payload),
+    )
+    conn.commit()
+    conn.close()
+
+    result = load_cached_report(str(db_path), fingerprint, "/base/path")
+
+    assert result is not None
+    assert result["rows"] == [{"total_files": 2, "total_size": 10, "nodes": []}]
+    assert result["total_files"] == "2"
 
 
 def test_store_cached_report_with_clusters(tmp_path):

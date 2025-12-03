@@ -11,30 +11,14 @@ import signal
 
 import pytest
 
-from migrate_v2 import MigrationComponents, S3MigrationV2
 from migration_state_v2 import Phase
 
 
 class TestS3MigrationV2Initialization:
     """Tests for S3MigrationV2 initialization."""
 
-    def _create_migrator(self, mock_dependencies):
-        """Helper to build a migrator with shared dependency wiring."""
-        components = MigrationComponents(
-            drive_checker=mock_dependencies["drive_checker"],
-            scanner=mock_dependencies["scanner"],
-            glacier_restorer=mock_dependencies["glacier_restorer"],
-            glacier_waiter=mock_dependencies["glacier_waiter"],
-            migration_orchestrator=mock_dependencies["migration_orchestrator"],
-            bucket_migrator=mock_dependencies["bucket_migrator"],
-            status_reporter=mock_dependencies["status_reporter"],
-        )
-        return S3MigrationV2(mock_dependencies["state"], components)
-
-    def test_dependencies_are_wired(self, mock_dependencies):
+    def test_dependencies_are_wired(self, migrator, mock_dependencies):
         """S3MigrationV2 stores the provided dependencies unchanged."""
-        migrator = self._create_migrator(mock_dependencies)
-
         expected_mappings = {
             "state": "state",
             "drive_checker": "drive_checker",
@@ -49,9 +33,8 @@ class TestS3MigrationV2Initialization:
         for attr_name, dependency_key in expected_mappings.items():
             assert getattr(migrator, attr_name) == mock_dependencies[dependency_key]
 
-    def test_initial_interrupted_flag_is_false(self, mock_dependencies):
+    def test_initial_interrupted_flag_is_false(self, migrator):
         """S3MigrationV2 starts in a non-interrupted state."""
-        migrator = self._create_migrator(mock_dependencies)
         assert migrator.interrupted is False
 
 

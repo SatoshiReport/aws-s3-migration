@@ -9,12 +9,11 @@ from datetime import datetime, timedelta, timezone
 
 import boto3
 from botocore.exceptions import ClientError
+from cost_toolkit.scripts import aws_s3_operations
 
 
 def get_bucket_location(bucket_name: str):
     """Expose bucket location resolver for reuse in utilities and tests."""
-    from cost_toolkit.scripts import aws_s3_operations
-
     return aws_s3_operations.get_bucket_location(bucket_name)
 
 

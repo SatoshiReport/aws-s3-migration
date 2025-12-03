@@ -4,7 +4,6 @@
 from threading import Event
 
 from botocore.exceptions import ClientError
-import boto3
 
 from cost_toolkit.common.vpc_cleanup_utils import delete_vpc_and_dependencies
 
