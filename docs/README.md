@@ -6,7 +6,7 @@ This repository provides a hardened toolkit for discovering, migrating, and secu
 
 ## 1. Getting Started
 - **Python version**: 3.10+ (tested on macOS with Python 3.11)
-- **Core dependencies**: `boto3`, `botocore` (install via `pip install boto3`)
+- **Core dependencies**: `boto3`, `botocore` (installed via `python -m pip install -e .`)
 - **AWS credentials**: Exported environment variables, AWS CLI profile, or an attached IAM role with S3/STS/IAM privileges
 - **Local storage**: Ensure the destination path specified in `config.py` has enough space for a full copy of every source bucket
 - **Required tools**: AWS CLI (for fast downloads), SQLite CLI (`sqlite3`) for ad-hoc inspections
@@ -16,7 +16,8 @@ This repository provides a hardened toolkit for discovering, migrating, and secu
 # 1. Install dependencies (inside a virtual environment if desired)
 python -m venv .venv
 source .venv/bin/activate
-pip install --upgrade pip boto3
+python -m pip install --upgrade pip
+python -m pip install -e .
 
 # 2. Configure destination paths and runtime settings
 # Create config_local.py with your personal settings
@@ -41,8 +42,14 @@ python migrate_v2.py status
 | `README.md` | High-level overview and quick usage summary |
 | `config.py` | Default configuration settings (committed to git) |
 | `config_local.py` | Personal settings override (NOT in git - create this file) |
-| `migrate_v2.py` | Primary migration orchestrator using AWS CLI for fast downloads |
+| `migrate_v2.py` | Primary migration entrypoint (phase controller + smoke test hook) |
+| `migration_scanner.py` | Phase 1-3 scanning, Glacier restore requests, and polling |
+| `migration_orchestrator.py` | Bucket-by-bucket sync → verify → delete pipeline |
+| `migration_sync.py` | AWS CLI sync wrapper with destination safety checks |
+| `migration_verify_bucket.py` | Inventory + checksum verification for a bucket |
 | `migration_state_v2.py` | Phase-aware SQLite state tracking |
+| `migration_state_managers.py` | File/bucket state helpers used by the orchestrator |
+| `migration_utils.py` | Common utilities (ETag hashing, progress tracking, time helpers) |
 | `aws_utils.py` | Shared AWS helpers (STS/IAM identity, policy generation, S3 helpers) |
 | `aws_info.py` | Convenience CLI for showing account metadata and bucket list |
 | `block_s3.py` | Generates restrictive bucket policies per bucket or fleet-wide |
@@ -84,49 +91,34 @@ python migrate_v2.py status
 
 ### SQLite Database (`s3_migration_state.db`)
 - Created automatically on first scan; lives beside the scripts by default
-- `files` table tracks every object with metadata, lifecycle state, errors, and local paths
-- `scanned_buckets` table (V1) records bucket-level inventory summary
-- `bucket_status` table (V2) tracks phase completion per bucket (scan → sync → verify → delete)
+- `files` table tracks every object with metadata, ETag, storage class, and Glacier restore timestamps
+- `bucket_status` table tracks inventory totals plus verification metrics (local file count, size-verified count, checksum-verified count, total bytes verified) and phase completion flags (scan → sync → verify → delete)
 - `migration_metadata` captures process milestones (e.g., current phase, start timestamps)
 
-### File Lifecycle (`migration_state.FileState`)
-`discovered → glacier_restore_requested → glacier_restoring → downloading → downloaded → verified → deleted`  
-`error` flags require operator review or `retry-errors`. States are idempotent so interrupted runs can resume safely.
-
-### V2 Phases (`migration_state_v2.Phase`)
-`scanning → glacier_restore → glacier_wait → syncing → verifying → deleting → complete`  
-Each phase can be resumed independently; bucket-level completion markers protect prior progress.
+### Migration Phases (`migration_state_v2.Phase`)
+- **scanning** → **glacier_restore** → **glacier_wait** → **syncing/verifying/deleting** → **complete**
+- Phase markers are persisted, so re-running `python migrate_v2.py` resumes the next required step
+- Bucket-level sync/verify/delete flags ensure you never repeat completed work on already-migrated buckets
 
 ---
 
 ## 5. Migration Engines
 
-### 5.1 `migrate_s3.py` — Python Native Engine
-**Use when** you need full control from Python with integrated verification and throttling awareness.
-
-- **Scan (`scan`)**: Enumerates all buckets (or a supplied subset) and builds the object inventory. Respects `EXCLUDED_BUCKETS` and skips already-tracked buckets.
-- **Migrate (`migrate`)**: Concurrently downloads files, verifies size checks, and deletes from S3 only after success. Automatically handles Glacier/Deep Archive restores by invoking `GlacierHandler`.
-- **Status (`status`)**: Rich progress dashboard showing elapsed time, throughput, per-state counts, and Glacier backlog.
-- **Glacier (`glacier`)**: Manually trigger Glacier restore requests/status checks (usually called automatically by the migration loop).
-- **Errors (`errors`)**: Lists failed files with contextual metadata.
-- **Retry Errors (`retry-errors`)**: Resets error-state files to `discovered` so the next migrate run retries them.
-- **Reset (`reset`)**: Prompts before deleting the SQLite database to start fresh.
-- **Flags**: `--buckets` limits scanning to named buckets.
-
-**Runtime behavior**
-- Thread pool downloads with exponential backoff when the AWS API returns `SlowDown` or `RequestLimitExceeded`
-- Local filesystem layout mirrors S3 hierarchy: `<LOCAL_BASE_PATH>/<bucket>/<key>`
-- Verification is primarily size-based; boto3 transfer manager handles checksum validation during download
-- Safe to interrupt (`Ctrl+C`); state transitions prevent data loss or double-deletion
-
-### 5.2 `migrate_v2.py` — AWS CLI Accelerated Engine
-**Use when** you want to leverage `aws s3 sync` for higher throughput while keeping the same safety rails.
-
-- **Phases**: `phase1_scanning` → `phase2_glacier_restore` → `phase3_glacier_wait` → `phase4_sync` → `phase5_verify` → `phase6_delete`
-- **AWS CLI integration**: Runs targeted `aws s3 sync` per bucket after Glacier restores complete
-- **Bucket gating**: Requires manual confirmation before deletions, ensuring an extra review step
-- **Resumability**: Checks current phase on every invocation, so re-running `python migrate_v2.py` continues where it left off
-- **Schema upgrades**: Prior to V2 usage, run `python migrate_database.py` to seed bucket-level status if migrating from the original schema
+### `migrate_v2.py` — AWS CLI Accelerated Engine
+- **Phases**:
+  1. Scan every bucket and record objects in SQLite
+  2. Request Glacier restores (tier chosen from `config.py`, with Deep Archive forced to `Bulk`)
+  3. Poll restores until clear
+  4. For each bucket: `aws s3 sync` to local storage → verify inventory and checksums → prompt before deleting from S3
+- **Verification**: `migration_verify_bucket.py` recomputes sizes and checksums for every expected key, stores verification counts in `bucket_status`, and re-runs verification if metrics are missing.
+- **Resumability**: Phase and bucket flags live in the DB, so re-running the command resumes exactly where it stopped. Per-bucket deletion always requires a fresh confirmation prompt.
+- **Commands**:
+  ```bash
+  python migrate_v2.py           # Run/resume migration
+  python migrate_v2.py status    # Show phase/bucket progress from SQLite
+  python migrate_v2.py reset     # Recreate the state DB (prompts before deleting)
+  python migrate_v2.py --test    # Local smoke test for the sync/verify pipeline
+  ```
 
 ---
 
@@ -151,7 +143,9 @@ Each phase can be resumed independently; bucket-level completion markers protect
 
 ## 7. Diagnostics & Operational Helpers
 
-- **`migration_state_v2.py`**: SQLite-backed phase and bucket state tracking for the migration workflow.
+- **Status view**: `python migrate_v2.py status` reads SQLite to print bucket-by-bucket sync/verify/delete completion plus totals.
+- **Verification tooling**: `migration_verify_inventory.py` (expected vs local keys) and `migration_verify_checksums.py` (size + checksum validation) underpin the bucket verifier.
+- **State helpers**: `migration_state_v2.py` + `migration_state_managers.py` centralize all DB interactions so orchestration code stays small.
 - **AWS CLI**: `migrate_v2.py` leverages `aws s3 sync` for optimized bulk transfers.
 
 ---
@@ -159,7 +153,7 @@ Each phase can be resumed independently; bucket-level completion markers protect
 ## 8. Operational Best Practices
 
 - **Credentials**: Run with an IAM principal that has explicit S3 and Glacier privileges, plus `iam:GetUser` (for policy generation) and `sts:GetCallerIdentity`.
-- **Backups & verification**: Keep local copies until confidence is established; `deleted` state indicates an S3 delete has occurred.
+- **Verification first**: Keep local copies until a bucket shows `delete_complete=1` and verification metrics are recorded.
 - **Glacier restores**: Expect up to several hours for `DEEP_ARCHIVE` restores. The tooling limits outstanding restore submissions via `MAX_GLACIER_RESTORES`.
 - **Throttling**: AWS CLI handles throttling automatically with built-in retry logic.
 - **Interruptions**: It is safe to stop processes mid-run; rerun `python migrate_v2.py` to resume.
@@ -173,7 +167,7 @@ Each phase can be resumed independently; bucket-level completion markers protect
 - **Linting/formatting**: The codebase favors readable, comment-light Python. Align with existing style (PEP 8 spacing, docstrings on modules/classes).
 - **Extending commands**: Add argparse subcommands within `migrate_v2.py` when introducing new workflows. Keep docstrings up to date.
 - **Database migrations**: If schema changes are required, preserve existing data and document upgrades.
-- **Testing ideas**: Stand up a test account with disposable buckets; seed sample objects (STANDARD + GLACIER). Validate both migration engines end-to-end before production use.
+- **Testing ideas**: Stand up a test account with disposable buckets; seed sample objects (STANDARD + GLACIER). Validate the `migrate_v2.py` flow end-to-end before production use.
 
 ---
 
@@ -192,9 +186,9 @@ Each phase can be resumed independently; bucket-level completion markers protect
 ## 11. Additional Reading
 
 - `README.md` — concise overview and primary workflows
-- `MIGRATION_GUIDE.md` — historical notes on moving between migration strategies
-- `BUGFIXES.md` — recorded fixes with context (useful when auditing behavior)
+- `MIGRATION_GUIDE.md` — step-by-step quick start for the current migration workflow
 - `SECURITY.md` — security posture and remediation practices
+- `docs/FIXES_APPLIED.md` — log of remediation work captured during past hardening efforts
 - AWS official docs on [S3 Lifecycle and Storage Classes](https://docs.aws.amazon.com/AmazonS3/latest/dev/storage-class-intro.html) and [Glacier Restore](https://docs.aws.amazon.com/AmazonS3/latest/userguide/restoring-objects.html)
 
 ---

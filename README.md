@@ -29,12 +29,17 @@ Tunable defaults (Glacier options, DB paths, concurrency) live in `config.py`.
 ## Usage
 
 - **S3 migration (`migrate_v2.py`)**
-  - Phase-aware workflow: scan → Glacier restore → wait → sync → verify → delete.
+  - Four-phase flow that resumes on reruns:
+    1. Scan all buckets and record inventory in SQLite (`bucket_status`, `files` tables)
+    2. Request Glacier restores for archived objects and wait until completion
+    3. For each bucket: `aws s3 sync` to local storage, re-verify file inventory and checksums, then delete after an explicit confirmation prompt
+    4. Mark the bucket complete before moving on
   - Commands:
     ```bash
     python migrate_v2.py           # Run/resume migration
     python migrate_v2.py status    # Show current phase and per-bucket progress
     python migrate_v2.py reset     # Rebuild state (prompts before wiping the DB)
+    python migrate_v2.py --test    # Run the local smoke test harness
     ```
   - Progress is tracked in SQLite (`s3_migration_state.db`) so runs are resumable; deletions require confirmation after verification.
 
@@ -67,12 +72,19 @@ Tunable defaults (Glacier options, DB paths, concurrency) live in `config.py`.
 ```
 aws/
 ├── migrate_v2.py              # Migration orchestrator using AWS CLI
-├── migration_state_v2.py      # SQLite state management
+├── migration_scanner.py       # Scan buckets, request Glacier restores, and wait
+├── migration_orchestrator.py  # Bucket sync → verify → delete loop with prompts
+├── migration_sync.py          # AWS CLI sync wrapper with safety checks
+├── migration_verify_bucket.py # Full inventory + checksum verification
+├── migration_state_v2.py      # SQLite state management + helpers
+├── migration_state_managers.py # Bucket/file state manager implementations
 ├── config.py                  # Configuration defaults
 ├── config_local.py            # Personal overrides (create locally; ignored)
 ├── aws_info.py                # Display AWS account info and buckets
 ├── block_s3.py                # Generate bucket policies
 ├── apply_block.py             # Apply generated policies
+├── migration_utils.py         # Shared migration helpers (ETag, checksums, progress)
+├── migration_verify_*.py      # Inventory/checksum verification utilities
 ├── duplicate_tree_report.py   # Duplicate directory tree diagnostics
 ├── aws_utils.py               # Shared AWS helpers
 ├── docs/                      # Full operator + contributor docs

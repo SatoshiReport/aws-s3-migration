@@ -2,262 +2,83 @@
 
 ## Overview
 
-This tool safely migrates all your S3 buckets to local storage. It's designed to be simple, resilient, and safe.
+- `migrate_v2.py` runs the entire migration: inventory, Glacier restores, `aws s3 sync`, full verification, then an explicit delete prompt per bucket.
+- Four persisted phases: **scanning** → **glacier_restore** → **glacier_wait** → **bucket migration (sync → verify → delete)** → **complete**.
+- State lives in `s3_migration_state.db` (`files`, `bucket_status`, `migration_metadata` tables), so reruns are safe after interruptions.
 
 ## Setup
 
-### 1. Configure Destination
+1. **Environment**: Python 3.10+, AWS CLI v2 on PATH, and valid AWS credentials (env vars, CLI profile, or IAM role).
+2. **Install** (repo root):
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate
+   python -m pip install --upgrade pip
+   python -m pip install -e .
+   ```
+3. **Configure**: create `config_local.py` (git-ignored) for your paths/filters:
+   ```python
+   LOCAL_BASE_PATH = "/path/to/your/backup/directory"
+   EXCLUDED_BUCKETS = []  # optional skips
+   ```
+   Tunables such as `STATE_DB_PATH`, `GLACIER_RESTORE_DAYS`, and `GLACIER_RESTORE_TIER` are in `config.py`.
 
-Edit `config.py` and set your local destination path:
-
-```python
-LOCAL_BASE_PATH = os.path.expanduser("~/s3_backup")  # Change this!
-```
-
-### 2. Ensure AWS Credentials
-
-Make sure your AWS credentials are configured:
-```bash
-aws configure
-# or set environment variables:
-# export AWS_ACCESS_KEY_ID=...
-# export AWS_SECRET_ACCESS_KEY=...
-```
-
-## Migration Steps
-
-### Step 1: Run Migration
-
-Start the migration process:
+## Run the Migration
 
 ```bash
-python migrate_v2.py
+python migrate_v2.py        # run/resume
+python migrate_v2.py status # view progress
+python migrate_v2.py reset  # rebuild state DB (prompts)
+python migrate_v2.py --test # local smoke test harness
 ```
 
-**That's it!** The migration handles everything automatically in phases:
+What happens on `python migrate_v2.py`:
+1. **Scan**: enumerate buckets (excluding any in `EXCLUDED_BUCKETS`), record every key/size/ETag/storage class in SQLite.
+2. **Glacier restore**: submit restores for archived objects (Deep Archive uses `Bulk` automatically).
+3. **Glacier wait**: poll restore completion every five minutes until clear.
+4. **Bucket pipeline** (one bucket at a time):
+   - Sync via `aws s3 sync` to `LOCAL_BASE_PATH/<bucket>`
+   - Verify inventory and checksums for every expected key
+   - Show a verification summary and prompt `Delete this bucket from S3? (yes/no)`
+   - Mark the bucket complete only after deletion succeeds
 
-**Phase 1 - Scanning:**
-- Discovers all files across all buckets
-- Identifies Glacier/Deep Archive files
+## Checking Progress & State
 
-**Phase 2 - Glacier Restore:**
-- Requests restores for all Glacier files
+- `python migrate_v2.py status` prints the current phase, totals, and per-bucket sync/verify/delete flags.
+- SQLite is human-readable; quick queries:
+  ```bash
+  sqlite3 s3_migration_state.db "SELECT bucket, file_count, total_size, sync_complete, verify_complete, delete_complete, verified_file_count FROM bucket_status;"
+  sqlite3 s3_migration_state.db "SELECT COUNT(*) FROM files WHERE glacier_restored_at IS NULL AND storage_class LIKE 'GLACIER%';"
+  ```
+- Verification metrics (`size_verified_count`, `checksum_verified_count`, `total_bytes_verified`, `local_file_count`) live in `bucket_status` after a bucket finishes verification.
 
-**Phase 3 - Glacier Wait:**
-- Checks restore status every 60 seconds
-- Waits for all restores to complete
+## Verification Details
 
-**Phase 4 - Migrate Buckets:**
-- For each bucket (one at a time):
-  - Downloads using AWS CLI `aws s3 sync` (fast!)
-  - Verifies all files (size + integrity checks)
-  - Deletes from S3 after manual confirmation
-  - Marks bucket complete before moving to next
+- Inventory: `migration_verify_inventory.py` ensures the local file list exactly matches the recorded S3 keys (no missing or extra files; system files like `.DS_Store` are ignored in counts).
+- Checksums: `migration_verify_checksums.py` recomputes sizes and MD5/ETag (or SHA for multipart uploads), updates verification counters, and raises if any mismatch is found.
+- If verification metrics are missing, the verifier re-runs even when `verify_complete` was previously set, ensuring consistent records before deletion.
 
-**You can interrupt this at any time (Ctrl+C) and resume later!**
+## Resuming & Safety
 
-The script runs continuously through all phases, automatically handling Glacier restores.
-
-### Check Status
-
-View current progress:
-
-```bash
-python migrate_v2.py status
-```
-
-Shows:
-- Current phase
-- Completed buckets
-- Total files and size
-- Glacier restore progress
-
-### Glacier Restore Times
-
-If you have Glacier files, the migration will automatically wait for them:
-- **Standard**: 3-5 hours (default)
-- **Expedited**: 1-5 minutes (more expensive, configure in config.py)
-- **Bulk**: 5-12 hours (cheaper, configure in config.py)
-
-The script checks every 60 seconds for completed restores and downloads them as they become available.
-
-## Resuming After Interruption
-
-The migration is fully resumable. Just run:
-
-```bash
-python migrate_v2.py
-```
-
-It will pick up exactly where it left off. State is saved after each phase and after each bucket completion.
-
-## Progress Display
-
-While migrating, you'll see phase-specific progress:
-
-**Phase 1-3 (Scanning & Glacier):**
-```
-Phase: scanning
-Buckets scanned: 5/10
-Files discovered: 1,234
-Glacier files: 234
-```
-
-**Phase 4 (Migrating Buckets):**
-```
-Phase: migrate_buckets
-Current bucket: my-bucket-name
-Status: syncing (downloading files via AWS CLI)
-Completed buckets: 3/10
-```
-
-## Migration Phases
-
-The migration progresses through these phases:
-
-1. **scanning** - Discovering all files across all buckets
-2. **glacier_restore** - Requesting Glacier restores
-3. **glacier_wait** - Waiting for all restores to complete
-4. **migrate_buckets** - Downloading, verifying, and deleting bucket-by-bucket
-5. **complete** - All buckets migrated successfully
-
-Each bucket in Phase 4 goes through:
-- **pending** - Waiting to be processed
-- **syncing** - Downloading via AWS CLI
-- **verifying** - Checking file integrity
-- **deleting** - Removing from S3 (after confirmation)
-- **completed** - Bucket fully migrated
-
-## Safety Features
-
-1. **Verification Before Deletion**: Files are only deleted from S3 after:
-   - Successful download
-   - Checksum verification passes
-   - Local file exists and matches
-
-2. **Corruption Detection**: If verification fails:
-   - Local file is deleted
-   - State is marked as error
-   - File can be retried
-
-3. **State Persistence**: All progress saved to SQLite:
-   - No in-memory state
-   - Survives crashes/interruptions
-   - Fast startup on resume
-
-## File Organization
-
-Files are organized locally as:
-```
-~/s3_backup/
-├── bucket1/
-│   ├── file1.txt
-│   └── folder/
-│       └── file2.txt
-├── bucket2/
-│   └── data.csv
-└── bucket3/
-    └── images/
-        └── photo.jpg
-```
-
-Each bucket becomes a directory, preserving the S3 key structure.
+- Safe to interrupt with `Ctrl+C`; rerun `python migrate_v2.py` to continue from the recorded phase.
+- Bucket-level flags prevent re-syncing or re-deleting completed buckets.
+- Deletion always requires a fresh `yes` confirmation after showing verification results.
 
 ## Troubleshooting
 
-### Check Status Anytime
-```bash
-python migrate_v2.py status
-```
+- **Drive issues**: If the destination drive is missing or unwritable, the run stops and prints instructions. Reconnect/mount the drive and rerun.
+- **Restore backlog**: Use the SQLite query above to see remaining Glacier files.
+- **Verification failures**: The verifier reports the exact key; fix the local path or re-sync the bucket, then rerun `python migrate_v2.py`.
+- **Fresh start**: `python migrate_v2.py reset` recreates the DB without touching local files.
 
-### View State Database
-```bash
-sqlite3 s3_migration_state.db
-sqlite> SELECT phase FROM migration_state;
-sqlite> SELECT bucket_name, status FROM bucket_states;
-```
+## Cost & Timing Notes
 
-### Reset Migration
-To start completely over:
-```bash
-python migrate_v2.py reset
-```
+- Glacier restores incur retrieval costs; Deep Archive restores use `Bulk` by design and can take many hours.
+- Data transfer and API request charges follow standard S3 pricing.
+- Sync/verify performance depends on network and disk throughput; checksum verification reads every byte.
 
-## Configuration Options
+## More Info
 
-In `config.py`:
-
-```python
-# Local destination directory
-LOCAL_BASE_PATH = os.path.expanduser("~/s3_backup")
-
-# Glacier restore settings
-GLACIER_RESTORE_DAYS = 1              # Days to keep restored
-GLACIER_RESTORE_TIER = "Standard"      # Expedited, Standard, or Bulk
-
-# Progress update interval
-PROGRESS_UPDATE_INTERVAL = 2           # Seconds
-
-# Verification method
-VERIFICATION_METHOD = "etag"           # 'etag' or 'md5'
-
-# Max concurrent Glacier restores
-MAX_GLACIER_RESTORES = 100
-
-# Download chunk size
-DOWNLOAD_CHUNK_SIZE = 8 * 1024 * 1024  # 8MB
-```
-
-## Best Practices
-
-1. **Test First**: Try with a small bucket first to verify setup
-2. **Monitor Disk Space**: Ensure enough space for all data
-3. **Check Status Regularly**: Run `status` command to monitor progress
-4. **Keep Database Safe**: Back up `s3_migration_state.db` periodically
-5. **Verify Results**: After completion, spot-check some files
-6. **Let It Run**: The migrate command handles everything automatically - just let it run
-
-## Glacier Timeline
-
-Typical timeline for migration with Glacier files:
-
-**Day 1:**
-- Phase 1: Scanning (minutes)
-- Phase 2: Request Glacier restores (minutes)
-- Phase 3: Wait for restores (begins)
-
-**Day 2-3:**
-- Phase 3: Standard tier Glacier restores complete
-- Phase 4: Migrate buckets (begins)
-
-**Day 4+:**
-- Phase 4: All buckets migrated
-- S3 buckets empty (files deleted after verification)
-- Migration complete!
-
-**Note:** You don't need to babysit the migration. Run `python migrate_v2.py` once and it handles everything. You can interrupt and resume anytime.
-
-## Performance
-
-Expected throughput varies based on:
-- Network speed
-- File sizes (many small files = slower)
-- S3 region
-- Local disk speed
-
-Typical speeds:
-- Fast connection: 50-100 MB/s
-- Normal connection: 10-30 MB/s
-- Slow connection: 1-10 MB/s
-
-## Cost Considerations
-
-- **Glacier Restores**: Cost per GB restored (varies by tier)
-- **Data Transfer**: S3 egress charges apply
-- **API Requests**: LIST, GET, DELETE operations (minimal cost)
-
-Expedited retrievals cost more but are faster. Standard tier is usually sufficient.
-
-## Questions?
-
-Check `README.md` or `CLAUDE.md` for more details on architecture and implementation.
+- `README.md` for a high-level overview
+- `docs/README.md` for architecture details and component map
+- `SECURITY.md` for data-handling guidance
