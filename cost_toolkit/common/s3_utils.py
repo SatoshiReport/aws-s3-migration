@@ -8,7 +8,19 @@ import logging
 
 from cost_toolkit.scripts import aws_s3_operations
 
-get_bucket_location = aws_s3_operations.get_bucket_location
+
+def get_bucket_location(
+    bucket_name: str, aws_access_key_id: str | None = None, aws_secret_access_key: str | None = None
+):
+    """Proxy to the shared get_bucket_location for easier patching."""
+    if aws_access_key_id is None and aws_secret_access_key is None:
+        return aws_s3_operations.get_bucket_location(bucket_name)
+
+    return aws_s3_operations.get_bucket_location(
+        bucket_name,
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+    )
 
 
 def get_bucket_region(bucket_name, verbose=True, location_getter=None):
