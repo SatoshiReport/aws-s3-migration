@@ -155,7 +155,7 @@ typeCheckingMode = "basic"
 
 [tool.pytest.ini_options]
 addopts = [
-    "-qq",
+    "-q",
     "--tb=no",
     "--strict-markers",
     "--strict-config",
