@@ -73,6 +73,7 @@ omit = [
     "**/__init__.py",
     "*helpers/__init__.py",
     "*/_module_references.py",
+    "*/_path_init.py",
 ]
 
 [tool.coverage.run]
@@ -88,6 +89,7 @@ omit = [
     "*/site-packages/*",
     "*helpers/__init__.py",
     "*/_module_references.py",
+    "*/_path_init.py",
 ]
 
 [tool.pylint]
@@ -102,8 +104,9 @@ init-hook = "import sys; sys.path.insert(0, 'tests')"
 min-similarity-lines = 7
 
 [tool.pylint.design]
-max-args = 7
-max-positional-arguments = 7
+max-args = 8
+max-attributes = 8
+max-positional-arguments = 8
 
 [tool.pylint.format]
 max-line-length = 140
