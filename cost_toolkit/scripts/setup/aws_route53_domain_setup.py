@@ -68,9 +68,7 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
             for ns in nameserver_list:
                 print(f"    - {ns['Name']}")
 
-            response = route53domains.update_domain_nameservers(
-                DomainName=domain_name, Nameservers=nameserver_list
-            )
+            response = route53domains.update_domain_nameservers(DomainName=domain_name, Nameservers=nameserver_list)
 
             operation_id = response.get("OperationId", None)
             print(f"  ✅ Nameserver update initiated (Operation ID: {operation_id})")
@@ -83,10 +81,7 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
                 print("     New nameservers:")
                 for ns in nameservers:
                     print(f"       - {ns}")
-                print(
-                    "  💡 Log into your domain registrar (GoDaddy, Namecheap, etc.) "
-                    "and update the nameservers"
-                )
+                print("  💡 Log into your domain registrar (GoDaddy, Namecheap, etc.) " "and update the nameservers")
                 return False
             raise
         return True  # noqa: TRY300

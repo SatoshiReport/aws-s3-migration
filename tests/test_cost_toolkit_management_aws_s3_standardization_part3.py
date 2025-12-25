@@ -112,12 +112,8 @@ class TestMoveObjectsToStandardStorageErrors:
 
         mock_paginator = MagicMock()
         mock_s3_client.get_paginator.return_value = mock_paginator
-        mock_paginator.paginate.return_value = [
-            {"Contents": [{"Key": "file1.txt", "StorageClass": "GLACIER"}]}
-        ]
-        mock_s3_client.copy_object.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "copy_object"
-        )
+        mock_paginator.paginate.return_value = [{"Contents": [{"Key": "file1.txt", "StorageClass": "GLACIER"}]}]
+        mock_s3_client.copy_object.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "copy_object")
 
         result = move_objects_to_standard_storage("test-bucket", "us-east-1")
 
@@ -133,9 +129,7 @@ class TestMoveObjectsToStandardStorageErrors:
 
         mock_paginator = MagicMock()
         mock_s3_client.get_paginator.return_value = mock_paginator
-        mock_paginator.paginate.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchBucket"}}, "list_objects_v2"
-        )
+        mock_paginator.paginate.side_effect = ClientError({"Error": {"Code": "NoSuchBucket"}}, "list_objects_v2")
 
         result = move_objects_to_standard_storage("non-existent", "us-east-1")
 

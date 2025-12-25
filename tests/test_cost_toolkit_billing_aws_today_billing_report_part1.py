@@ -73,9 +73,7 @@ class TestGetTodayBillingData:
                 "ResultsByTime": [
                     {
                         "TimePeriod": {"Start": "2025-11-13", "End": "2025-11-14"},
-                        "Groups": [
-                            {"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "10.50"}}}
-                        ],
+                        "Groups": [{"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "10.50"}}}],
                     }
                 ]
             }
@@ -112,9 +110,7 @@ class TestGetTodayBillingData:
 
             mock_ce_client = MagicMock()
             mock_boto3_client.return_value = mock_ce_client
-            mock_ce_client.get_cost_and_usage.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "get_cost_and_usage"
-            )
+            mock_ce_client.get_cost_and_usage.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "get_cost_and_usage")
 
             today_data, trend_data, usage_data = get_today_billing_data()
 
@@ -157,11 +153,7 @@ class TestProcessTodayData:
 
     def test_process_today_data_unknown_service(self):
         """Test processing data with unknown service."""
-        today_data = {
-            "ResultsByTime": [
-                {"Groups": [{"Keys": [], "Metrics": {"BlendedCost": {"Amount": "1.00"}}}]}
-            ]
-        }
+        today_data = {"ResultsByTime": [{"Groups": [{"Keys": [], "Metrics": {"BlendedCost": {"Amount": "1.00"}}}]}]}
 
         result = _process_today_data(today_data)
 

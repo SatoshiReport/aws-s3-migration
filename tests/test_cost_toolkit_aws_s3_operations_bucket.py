@@ -29,9 +29,7 @@ def test_get_bucket_location_us_east_1(mock_create_client):
 
     result = get_bucket_location("test-bucket")
 
-    mock_create_client.assert_called_once_with(
-        region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None)
     mock_s3.get_bucket_location.assert_called_once_with(Bucket="test-bucket")
     assert_equal(result, "us-east-1")
 
@@ -56,9 +54,7 @@ def test_get_bucket_location_with_credentials(mock_create_client):
     mock_create_client.return_value = mock_s3
     mock_s3.get_bucket_location.return_value = {"LocationConstraint": "eu-west-1"}
 
-    result = get_bucket_location(
-        "test-bucket", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    result = get_bucket_location("test-bucket", aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
     mock_create_client.assert_called_once_with(
         region="us-east-1",
@@ -94,9 +90,7 @@ def test_create_bucket_us_east_1_success(mock_print, mock_create_client):
 
     result = create_bucket("test-bucket", "us-east-1")
 
-    mock_create_client.assert_called_once_with(
-        region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None)
     mock_s3.create_bucket.assert_called_once_with(Bucket="test-bucket")
     assert_equal(result, True)
     mock_print.assert_called_once_with("✅ Created S3 bucket: test-bucket in us-east-1")
@@ -111,9 +105,7 @@ def test_create_bucket_other_region_success(mock_print, mock_create_client):
 
     result = create_bucket("test-bucket-west", "us-west-2")
 
-    mock_create_client.assert_called_once_with(
-        region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None)
     mock_s3.create_bucket.assert_called_once_with(
         Bucket="test-bucket-west",
         CreateBucketConfiguration={"LocationConstraint": "us-west-2"},
@@ -175,9 +167,7 @@ def test_list_buckets_success(mock_create_client):
 
     result = list_buckets()
 
-    mock_create_client.assert_called_once_with(
-        region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None)
     mock_s3.list_buckets.assert_called_once()
     assert_equal(result, buckets)
 
@@ -219,9 +209,7 @@ def test_get_bucket_versioning_enabled(mock_create_client):
 
     result = get_bucket_versioning("test-bucket", "us-west-2")
 
-    mock_create_client.assert_called_once_with(
-        region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None)
     mock_s3.get_bucket_versioning.assert_called_once_with(Bucket="test-bucket")
     assert_equal(result, versioning)
 
@@ -268,9 +256,7 @@ def test_get_bucket_tagging_success(mock_create_client):
 
     result = get_bucket_tagging("test-bucket", "us-west-2")
 
-    mock_create_client.assert_called_once_with(
-        region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None)
     mock_s3.get_bucket_tagging.assert_called_once_with(Bucket="test-bucket")
     assert_equal(result, tags)
 

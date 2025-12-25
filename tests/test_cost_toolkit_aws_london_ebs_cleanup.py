@@ -197,9 +197,7 @@ def test_delete_volumes_with_failures(_mock_print):
 def test_delete_volumes_all_fail(_mock_print):
     """Test volume deletion when all fail."""
     mock_ec2 = MagicMock()
-    mock_ec2.delete_volume.side_effect = ClientError(
-        {"Error": {"Code": "UnauthorizedOperation"}}, "DeleteVolume"
-    )
+    mock_ec2.delete_volume.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "DeleteVolume")
     volumes = [
         {"id": "vol-123", "name": "Vol 1", "size": "100 GB", "savings": "$8/month"},
     ]
@@ -337,9 +335,7 @@ def test_show_remaining_volumes_no_tags(_mock_print):
 def test_show_remaining_volumes_client_error(_mock_print):
     """Test showing remaining volumes with client error."""
     mock_ec2 = MagicMock()
-    mock_ec2.describe_volumes.side_effect = ClientError(
-        {"Error": {"Code": "UnauthorizedOperation"}}, "DescribeVolumes"
-    )
+    mock_ec2.describe_volumes.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "DescribeVolumes")
 
     _show_remaining_volumes(mock_ec2)
 
@@ -362,25 +358,13 @@ def test_cleanup_london_ebs_volumes_success():
     """Test successful EBS cleanup."""
     with (
         patch("builtins.print"),
-        patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_cleanup.aws_utils.setup_aws_credentials"
-        ) as mock_setup,
+        patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup.aws_utils.setup_aws_credentials") as mock_setup,
         patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup.boto3") as mock_boto3,
-        patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_cleanup._print_volumes_to_delete"
-        ) as mock_print_vols,
-        patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_cleanup._detach_volume"
-        ) as mock_detach,
-        patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_cleanup._delete_volumes"
-        ) as mock_delete,
-        patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_cleanup._print_cleanup_summary"
-        ) as mock_summary,
-        patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_cleanup._show_remaining_volumes"
-        ) as mock_show,
+        patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup._print_volumes_to_delete") as mock_print_vols,
+        patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup._detach_volume") as mock_detach,
+        patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup._delete_volumes") as mock_delete,
+        patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup._print_cleanup_summary") as mock_summary,
+        patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup._show_remaining_volumes") as mock_show,
     ):
 
         mock_ec2 = MagicMock()
@@ -402,9 +386,7 @@ def test_cleanup_london_ebs_volumes_success():
 @patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup._print_volumes_to_delete")
 @patch("cost_toolkit.scripts.migration.aws_london_ebs_cleanup.boto3")
 @patch("builtins.print")
-def test_cleanup_london_ebs_volumes_detach_error(
-    _mock_print, mock_boto3, mock_print_vols, mock_detach
-):
+def test_cleanup_london_ebs_volumes_detach_error(_mock_print, mock_boto3, mock_print_vols, mock_detach):
     """Test EBS cleanup with detach error."""
     mock_ec2 = MagicMock()
     mock_boto3.client.return_value = mock_ec2

@@ -110,9 +110,7 @@ class TestCheckVPCStatusErrors:
         """Test VPC status raises ServiceCheckError with region access errors."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            error = botocore.exceptions.ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_addresses"
-            )
+            error = botocore.exceptions.ClientError({"Error": {"Code": "AccessDenied"}}, "describe_addresses")
             mock_ec2.describe_addresses.side_effect = error
             mock_client.return_value = mock_ec2
             with pytest.raises(ServiceCheckError) as exc_info:
@@ -138,9 +136,7 @@ class TestCheckVPCStatusErrors:
             def describe_with_error():
                 call_count[0] += 1
                 if call_count[0] == 1:
-                    raise botocore.exceptions.ClientError(
-                        {"Error": {"Code": "AccessDenied"}}, "describe_addresses"
-                    )
+                    raise botocore.exceptions.ClientError({"Error": {"Code": "AccessDenied"}}, "describe_addresses")
                 return {"Addresses": [{"AllocationId": "eipalloc-123"}]}
 
             mock_ec2.describe_addresses.side_effect = describe_with_error

@@ -18,9 +18,7 @@ class TestPrintZoneRecords:
     def test_print_zone_records_with_a_records(self, capsys):
         """Test printing zone records with A records."""
         mock_route53 = MagicMock()
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.list_resource_record_sets"
-        ) as mock_list:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.list_resource_record_sets") as mock_list:
             mock_list.return_value = [
                 {
                     "Name": "example.com.",
@@ -48,9 +46,7 @@ class TestPrintZoneRecords:
     def test_print_zone_records_with_alias(self, capsys):
         """Test printing zone records with alias targets."""
         mock_route53 = MagicMock()
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.list_resource_record_sets"
-        ) as mock_list:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.list_resource_record_sets") as mock_list:
             mock_list.return_value = [
                 {
                     "Name": "alias.example.com.",
@@ -68,9 +64,7 @@ class TestPrintZoneRecords:
     def test_print_zone_records_skip_ns_soa(self, capsys):
         """Test that NS and SOA records are skipped."""
         mock_route53 = MagicMock()
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.list_resource_record_sets"
-        ) as mock_list:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.list_resource_record_sets") as mock_list:
             mock_list.return_value = [
                 {"Name": "example.com.", "Type": "NS", "TTL": 172800},
                 {"Name": "example.com.", "Type": "SOA", "TTL": 900},
@@ -87,12 +81,8 @@ class TestPrintZoneRecords:
     def test_print_zone_records_client_error(self, capsys):
         """Test error handling when listing records fails."""
         mock_route53 = MagicMock()
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.list_resource_record_sets"
-        ) as mock_list:
-            mock_list.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "list_resource_record_sets"
-            )
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.list_resource_record_sets") as mock_list:
+            mock_list.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_resource_record_sets")
 
             _print_zone_records(mock_route53, "Z123456789")
 
@@ -127,12 +117,8 @@ class TestAuditRoute53HostedZones:
 
     def test_audit_hosted_zones_with_zones(self, capsys):
         """Test auditing hosted zones with zones present."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client"
-        ) as mock_client:
-            with patch(
-                "cost_toolkit.scripts.audit.aws_route53_audit.list_hosted_zones"
-            ) as mock_list:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client") as mock_client:
+            with patch("cost_toolkit.scripts.audit.aws_route53_audit.list_hosted_zones") as mock_list:
                 with patch("cost_toolkit.scripts.audit.aws_route53_audit._print_zone_records"):
                     mock_route53 = MagicMock()
                     mock_client.return_value = mock_route53
@@ -163,9 +149,7 @@ class TestAuditRoute53HostedZones:
     def test_audit_hosted_zones_no_zones(self, capsys):
         """Test auditing when no hosted zones exist."""
         with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client"):
-            with patch(
-                "cost_toolkit.scripts.audit.aws_route53_audit.list_hosted_zones"
-            ) as mock_list:
+            with patch("cost_toolkit.scripts.audit.aws_route53_audit.list_hosted_zones") as mock_list:
                 mock_list.return_value = []
 
                 zones = audit_route53_hosted_zones()
@@ -177,12 +161,8 @@ class TestAuditRoute53HostedZones:
     def test_audit_hosted_zones_client_error(self, capsys):
         """Test error handling when auditing zones fails."""
         with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client"):
-            with patch(
-                "cost_toolkit.scripts.audit.aws_route53_audit.list_hosted_zones"
-            ) as mock_list:
-                mock_list.side_effect = ClientError(
-                    {"Error": {"Code": "AccessDenied"}}, "list_hosted_zones"
-                )
+            with patch("cost_toolkit.scripts.audit.aws_route53_audit.list_hosted_zones") as mock_list:
+                mock_list.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_hosted_zones")
 
                 zones = audit_route53_hosted_zones()
 

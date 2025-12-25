@@ -29,9 +29,7 @@ def test_ensure_cache_table_idempotent(tmp_path):
     ensure_cache_table(conn)
     ensure_cache_table(conn)
 
-    cursor = conn.execute(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name='duplicate_tree_cache'"
-    )
+    cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='duplicate_tree_cache'")
     result = cursor.fetchone()
     assert result is not None
     conn.close()

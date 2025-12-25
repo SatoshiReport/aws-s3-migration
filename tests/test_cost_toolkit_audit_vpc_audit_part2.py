@@ -97,9 +97,7 @@ class TestAuditNatGatewaysInRegionErrors:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_client.return_value = mock_ec2
-            mock_ec2.describe_nat_gateways.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_nat_gateways"
-            )
+            mock_ec2.describe_nat_gateways.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_nat_gateways")
             result = audit_nat_gateways_in_region("us-east-1")
         assert len(result) == 0
         captured = capsys.readouterr()

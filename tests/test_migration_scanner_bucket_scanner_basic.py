@@ -58,9 +58,7 @@ def test_scan_all_buckets_handles_empty_bucket(scanner, s3_mock, state_mock):
     scanner.scan_all_buckets()
 
     state_mock.add_file.assert_not_called()
-    state_mock.save_bucket_status.assert_called_once_with(
-        "empty-bucket", 0, 0, {}, scan_complete=True
-    )
+    state_mock.save_bucket_status.assert_called_once_with("empty-bucket", 0, 0, {}, scan_complete=True)
 
 
 def test_scan_all_buckets_filters_excluded_buckets(scanner, s3_mock, capsys):

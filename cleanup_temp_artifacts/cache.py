@@ -86,9 +86,7 @@ def load_cache(
         raise CacheReadError(f"Failed to read cache {cache_path}: {exc}") from exc
     payload_version = payload.get("version")
     if payload_version != CACHE_VERSION:
-        raise CacheValidationError(
-            f"Cache version mismatch: expected {CACHE_VERSION}, got {payload_version}"
-        )
+        raise CacheValidationError(f"Cache version mismatch: expected {CACHE_VERSION}, got {payload_version}")
     payload_scan_params = payload.get("scan_params")
     if payload_scan_params != scan_params:
         raise CacheValidationError("Cache scan parameters don't match current parameters")
@@ -180,8 +178,6 @@ def cache_is_valid(
             generated_dt = datetime.fromisoformat(generated_at)
             age = (datetime.now(timezone.utc) - generated_dt).total_seconds()
         except ValueError as exc:
-            raise CacheValidationError(
-                f"Cache has malformed 'generated_at' timestamp: {generated_at}"
-            ) from exc
+            raise CacheValidationError(f"Cache has malformed 'generated_at' timestamp: {generated_at}") from exc
         return age <= ttl_seconds
     return True

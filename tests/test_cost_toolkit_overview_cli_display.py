@@ -277,9 +277,7 @@ class TestPrintServiceRecommendations:
     def test_print_service_recommendations_calls_get_service_recommendations(self):
         """Test _print_service_recommendations calls get_service_recommendations."""
         service_costs = {"Amazon EC2": 100.00}
-        with patch(
-            "cost_toolkit.overview.cli.get_service_recommendations", return_value=[]
-        ) as mock_get:
+        with patch("cost_toolkit.overview.cli.get_service_recommendations", return_value=[]) as mock_get:
             _print_service_recommendations(service_costs)
             mock_get.assert_called_once_with(service_costs)
 
@@ -307,9 +305,7 @@ class TestPrintServiceRecommendations:
         """Test _print_service_recommendations with multiple recommendations."""
         service_costs = {"Amazon EC2": 100.00}
         recommendations = ["Rec 1", "Rec 2", "Rec 3"]
-        with patch(
-            "cost_toolkit.overview.cli.get_service_recommendations", return_value=recommendations
-        ):
+        with patch("cost_toolkit.overview.cli.get_service_recommendations", return_value=recommendations):
             _print_service_recommendations(service_costs)
             captured = capsys.readouterr()
             for rec in recommendations:

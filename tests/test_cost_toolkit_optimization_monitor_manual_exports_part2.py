@@ -81,9 +81,7 @@ class TestCheckSpecificAmi:
         mock_s3 = MagicMock()
         mock_boto_client.return_value = mock_s3
         mock_check_status.return_value = []
-        mock_s3.list_objects_v2.side_effect = ClientError(
-            {"Error": {"Code": "Error"}}, "list_objects_v2"
-        )
+        mock_s3.list_objects_v2.side_effect = ClientError({"Error": {"Code": "Error"}}, "list_objects_v2")
 
         check_specific_ami("us-east-1", "ami-error")
 
@@ -104,9 +102,7 @@ class TestMain:
     @patch("cost_toolkit.scripts.optimization.monitor_manual_exports.check_specific_ami")
     def test_main_specific_ami(self, mock_check_ami):
         """Test main with specific AMI."""
-        with patch(
-            "sys.argv", ["monitor_manual_exports.py", "--region", "us-east-1", "--ami", "ami-test"]
-        ):
+        with patch("sys.argv", ["monitor_manual_exports.py", "--region", "us-east-1", "--ami", "ami-test"]):
             main()
         mock_check_ami.assert_called_once_with("us-east-1", "ami-test")
 

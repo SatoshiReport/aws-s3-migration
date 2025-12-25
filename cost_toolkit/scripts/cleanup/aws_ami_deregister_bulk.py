@@ -175,9 +175,7 @@ def bulk_deregister_unused_amis():
     print("🚨 Proceeding with bulk AMI deregistration...")
     print("=" * 80)
 
-    successful, failed, savings = process_ami_deregistrations(
-        amis_to_deregister, aws_access_key_id, aws_secret_access_key
-    )
+    successful, failed, savings = process_ami_deregistrations(amis_to_deregister, aws_access_key_id, aws_secret_access_key)
 
     print_deregistration_summary(successful, failed, savings)
 

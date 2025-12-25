@@ -236,9 +236,7 @@ class TestBucketDeleterMultipartCleanup:
         version_paginator.paginate.return_value = []
 
         uploads_paginator = mock.Mock()
-        uploads_paginator.paginate.return_value = [
-            {"Uploads": [{"Key": "file1.txt", "UploadId": "upload-1"}]}
-        ]
+        uploads_paginator.paginate.return_value = [{"Uploads": [{"Key": "file1.txt", "UploadId": "upload-1"}]}]
 
         final_check_paginator = mock.Mock()
         final_check_paginator.paginate.return_value = [{}]
@@ -252,9 +250,7 @@ class TestBucketDeleterMultipartCleanup:
         deleter = BucketDeleter(mock_s3, mock_state)
         deleter.delete_bucket("test-bucket")
 
-        mock_s3.abort_multipart_upload.assert_called_once_with(
-            Bucket="test-bucket", Key="file1.txt", UploadId="upload-1"
-        )
+        mock_s3.abort_multipart_upload.assert_called_once_with(Bucket="test-bucket", Key="file1.txt", UploadId="upload-1")
         mock_s3.delete_bucket.assert_called_once_with(Bucket="test-bucket")
 
     def test_delete_bucket_raises_when_objects_remain(self):
@@ -270,9 +266,7 @@ class TestBucketDeleterMultipartCleanup:
         uploads_paginator.paginate.return_value = []
 
         leftover_paginator = mock.Mock()
-        leftover_paginator.paginate.return_value = [
-            {"Versions": [{"Key": "file1.txt", "VersionId": "v1"}]}
-        ]
+        leftover_paginator.paginate.return_value = [{"Versions": [{"Key": "file1.txt", "VersionId": "v1"}]}]
 
         mock_s3.get_paginator.side_effect = [
             version_paginator,

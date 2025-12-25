@@ -16,9 +16,7 @@ from migration_state_v2 import MigrationStateV2, Phase
 
 
 @pytest.fixture
-def mock_block_s3_dependencies(
-    mock_aws_identity, sample_policy
-):  # pylint: disable=redefined-outer-name
+def mock_block_s3_dependencies(mock_aws_identity, sample_policy):  # pylint: disable=redefined-outer-name
     """Common mocks for block_s3.py tests (context manager)."""
 
     class MockContext:  # pylint: disable=too-many-instance-attributes
@@ -29,12 +27,8 @@ def mock_block_s3_dependencies(
             self.identity_mock = self.policy_mock = self.save_mock = None
 
         def __enter__(self):
-            self.identity_patch = mock.patch(
-                "block_s3.get_aws_identity", return_value=mock_aws_identity
-            )
-            self.policy_patch = mock.patch(
-                "block_s3.generate_restrictive_bucket_policy", return_value=sample_policy
-            )
+            self.identity_patch = mock.patch("block_s3.get_aws_identity", return_value=mock_aws_identity)
+            self.policy_patch = mock.patch("block_s3.generate_restrictive_bucket_policy", return_value=sample_policy)
             self.save_patch = mock.patch("block_s3.save_policy_to_file")
             self.identity_mock = self.identity_patch.__enter__()
             self.policy_mock = self.policy_patch.__enter__()
@@ -103,9 +97,7 @@ def mock_aws_info_context(mock_aws_info_identity):  # pylint: disable=redefined-
             return self
 
         def __enter__(self):
-            self.identity_patch = mock.patch(
-                "aws_info.get_aws_identity", return_value=self.identity
-            )
+            self.identity_patch = mock.patch("aws_info.get_aws_identity", return_value=self.identity)
             self.buckets_patch = mock.patch("aws_info.list_s3_buckets", return_value=self.buckets)
             self.print_patch = mock.patch("builtins.print")
             self.identity_mock = self.identity_patch.__enter__()
@@ -154,12 +146,8 @@ def mock_block_s3_context(mock_aws_identity):  # pylint: disable=redefined-outer
             return self
 
         def __enter__(self):
-            self.identity_patch = mock.patch(
-                "block_s3.get_aws_identity", return_value=self.identity
-            )
-            self.policy_patch = mock.patch(
-                "block_s3.generate_restrictive_bucket_policy", return_value=self.policy
-            )
+            self.identity_patch = mock.patch("block_s3.get_aws_identity", return_value=self.identity)
+            self.policy_patch = mock.patch("block_s3.generate_restrictive_bucket_policy", return_value=self.policy)
             self.save_policy_patch = mock.patch("block_s3.save_policy_to_file")
             self.identity_mock = self.identity_patch.__enter__()
             self.policy_mock = self.policy_patch.__enter__()
@@ -369,9 +357,7 @@ def create_mock_process():
     def _create_process(stdout_lines, returncodes):
         """Create mock process with specified stdout lines and return codes."""
         mock_process = mock.Mock()
-        mock_process.stdout.readline.side_effect = [
-            line.encode() if line else b"" for line in stdout_lines
-        ]
+        mock_process.stdout.readline.side_effect = [line.encode() if line else b"" for line in stdout_lines]
         mock_process.poll.side_effect = returncodes
         return mock_process
 

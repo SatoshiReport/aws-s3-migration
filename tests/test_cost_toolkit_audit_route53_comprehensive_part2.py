@@ -29,9 +29,7 @@ class TestAuditRoute53HealthChecksSuccess:
 
     def test_audit_health_checks_with_checks(self, capsys):
         """Test auditing health checks with checks present."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client") as mock_client:
             mock_route53 = MagicMock()
             mock_route53.list_health_checks.return_value = {
                 "HealthChecks": [
@@ -62,9 +60,7 @@ class TestAuditRoute53HealthChecksSuccess:
 
     def test_audit_health_checks_http(self, capsys):
         """Test auditing HTTP health checks."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client") as mock_client:
             mock_route53 = MagicMock()
             mock_route53.list_health_checks.return_value = {
                 "HealthChecks": [
@@ -86,9 +82,7 @@ class TestAuditRoute53HealthChecksSuccess:
 
     def test_audit_health_checks_no_checks(self, capsys):
         """Test auditing when no health checks exist."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client") as mock_client:
             mock_route53 = MagicMock()
             mock_route53.list_health_checks.return_value = {"HealthChecks": []}
             mock_client.return_value = mock_route53
@@ -102,9 +96,7 @@ def test_audit_health_checks_client_error(capsys):
     """Test error handling when auditing health checks fails."""
     with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53_client") as mock_client:
         mock_route53 = MagicMock()
-        mock_route53.list_health_checks.side_effect = ClientError(
-            {"Error": {"Code": "Throttling"}}, "list_health_checks"
-        )
+        mock_route53.list_health_checks.side_effect = ClientError({"Error": {"Code": "Throttling"}}, "list_health_checks")
         mock_client.return_value = mock_route53
         health_checks = audit_route53_health_checks()
     assert len(health_checks) == 0

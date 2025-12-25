@@ -70,9 +70,7 @@ class TestDeleteHealthCheck:
         """Test deleting health check when details unavailable."""
         with patch("boto3.client") as mock_client:
             mock_r53 = MagicMock()
-            mock_r53.get_health_check.side_effect = ClientError(
-                {"Error": {"Code": "NotFound"}}, "get_health_check"
-            )
+            mock_r53.get_health_check.side_effect = ClientError({"Error": {"Code": "NotFound"}}, "get_health_check")
             mock_client.return_value = mock_r53
 
             result = delete_health_check("hc-789")
@@ -85,12 +83,8 @@ class TestDeleteHealthCheck:
         """Test error when deleting health check."""
         with patch("boto3.client") as mock_client:
             mock_r53 = MagicMock()
-            mock_r53.get_health_check.return_value = {
-                "HealthCheck": {"HealthCheckConfig": {"Type": "TCP"}}
-            }
-            mock_r53.delete_health_check.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "delete_health_check"
-            )
+            mock_r53.get_health_check.return_value = {"HealthCheck": {"HealthCheckConfig": {"Type": "TCP"}}}
+            mock_r53.delete_health_check.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_health_check")
             mock_client.return_value = mock_r53
 
             result = delete_health_check("hc-error")
@@ -150,9 +144,7 @@ class TestDeleteHostedZone:
         """Test error when deleting DNS records."""
         with patch("boto3.client") as mock_client:
             mock_r53 = MagicMock()
-            mock_r53.list_resource_record_sets.return_value = {
-                "ResourceRecordSets": [{"Type": "A", "Name": "www.example.com."}]
-            }
+            mock_r53.list_resource_record_sets.return_value = {"ResourceRecordSets": [{"Type": "A", "Name": "www.example.com."}]}
             mock_r53.change_resource_record_sets.side_effect = ClientError(
                 {"Error": {"Code": "ServiceError"}}, "change_resource_record_sets"
             )
@@ -168,9 +160,7 @@ class TestDeleteHostedZone:
         """Test error when deleting hosted zone."""
         with patch("boto3.client") as mock_client:
             mock_r53 = MagicMock()
-            mock_r53.list_resource_record_sets.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "list_resource_record_sets"
-            )
+            mock_r53.list_resource_record_sets.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_resource_record_sets")
             mock_client.return_value = mock_r53
 
             result = delete_hosted_zone("example.com.", "Z123")
@@ -254,9 +244,7 @@ class TestDeleteZones:
         """Test successful zone deletions."""
         zones = [("example.com.", "Z123"), ("test.com.", "Z456")]
 
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_route53_cleanup.delete_hosted_zone", return_value=True
-        ):
+        with patch("cost_toolkit.scripts.cleanup.aws_route53_cleanup.delete_hosted_zone", return_value=True):
             with patch("cost_toolkit.scripts.cleanup.aws_route53_cleanup._WAIT_EVENT.wait"):
                 results = _delete_zones(zones)
 

@@ -60,9 +60,7 @@ def test_try_load_from_cache_valid(tmp_path, capsys):
     }
 
     with patch("cleanup_temp_artifacts.db_loader.build_cache_key", return_value="test"):
-        with patch(
-            "cleanup_temp_artifacts.db_loader.load_cache", return_value=([candidate], metadata)
-        ):
+        with patch("cleanup_temp_artifacts.db_loader.load_cache", return_value=([candidate], metadata)):
             with patch("cleanup_temp_artifacts.db_loader.cache_is_valid", return_value=True):
                 cache_path, cache_used, candidates = _try_load_from_cache(
                     cache_config,
@@ -110,9 +108,7 @@ def test_try_load_from_cache_cache_invalid_validation_failed(tmp_path):
     }
 
     with patch("cleanup_temp_artifacts.db_loader.build_cache_key", return_value="test"):
-        with patch(
-            "cleanup_temp_artifacts.db_loader.load_cache", return_value=([candidate], metadata)
-        ):
+        with patch("cleanup_temp_artifacts.db_loader.load_cache", return_value=([candidate], metadata)):
             with patch("cleanup_temp_artifacts.db_loader.cache_is_valid", return_value=False):
                 cache_path, cache_used, candidates = _try_load_from_cache(
                     cache_config,

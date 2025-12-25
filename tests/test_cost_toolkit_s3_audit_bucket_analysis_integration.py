@@ -80,9 +80,7 @@ def test_analyze_bucket_objects_empty_bucket():
         mock_boto.client.return_value = mock_client
 
         # Mock metadata calls
-        mock_client.get_bucket_versioning.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning"
-        )
+        mock_client.get_bucket_versioning.side_effect = ClientError({"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning")
         mock_client.get_bucket_lifecycle_configuration.side_effect = ClientError(
             {"Error": {"Code": "NoSuchLifecycleConfiguration"}},
             "GetBucketLifecycleConfiguration",
@@ -186,9 +184,7 @@ def test_analyze_bucket_objects_with_large_and_old_objects():
         mock_boto.client.return_value = mock_client
 
         # Mock metadata calls
-        mock_client.get_bucket_versioning.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning"
-        )
+        mock_client.get_bucket_versioning.side_effect = ClientError({"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning")
         mock_client.get_bucket_lifecycle_configuration.side_effect = ClientError(
             {"Error": {"Code": "NoSuchLifecycleConfiguration"}},
             "GetBucketLifecycleConfiguration",
@@ -243,9 +239,7 @@ def test_analyze_bucket_objects_multiple_pages():
         mock_boto.client.return_value = mock_client
 
         # Mock metadata calls
-        mock_client.get_bucket_versioning.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning"
-        )
+        mock_client.get_bucket_versioning.side_effect = ClientError({"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning")
         mock_client.get_bucket_lifecycle_configuration.side_effect = ClientError(
             {"Error": {"Code": "NoSuchLifecycleConfiguration"}},
             "GetBucketLifecycleConfiguration",

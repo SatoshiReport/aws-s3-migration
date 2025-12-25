@@ -125,9 +125,7 @@ class TestExtractClusterInfo:
         assert result["vpc_id"] == "vpc-456"
         assert result["subnet_group"] == "aurora-subnet-group"
         assert result["endpoint"] == "aurora-cluster.cluster-xyz.us-east-1.rds.amazonaws.com"
-        assert (
-            result["reader_endpoint"] == "aurora-cluster.cluster-ro-xyz.us-east-1.rds.amazonaws.com"
-        )
+        assert result["reader_endpoint"] == "aurora-cluster.cluster-ro-xyz.us-east-1.rds.amazonaws.com"
         assert result["port"] == 5432
 
     def _assert_cluster_scaling_fields(self, result):

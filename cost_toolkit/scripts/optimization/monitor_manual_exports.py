@@ -28,10 +28,7 @@ def check_export_status(region, ami_id=None):
             tasks = response["ExportImageTasks"]
 
         if not tasks:
-            print(
-                f"   📭 No export tasks found in {region}"
-                + (f" for AMI {ami_id}" if ami_id else "")
-            )
+            print(f"   📭 No export tasks found in {region}" + (f" for AMI {ami_id}" if ami_id else ""))
             return []
 
         print(f"   📊 Export tasks in {region}:")
@@ -204,9 +201,7 @@ def main():
     parser = argparse.ArgumentParser(description="Monitor manual AWS export tasks")
     parser.add_argument("--region", help="Specific region to check")
     parser.add_argument("--ami", help="Specific AMI ID to check")
-    parser.add_argument(
-        "--watch", action="store_true", help="Continuously monitor (refresh every 2 minutes)"
-    )
+    parser.add_argument("--watch", action="store_true", help="Continuously monitor (refresh every 2 minutes)")
 
     args = parser.parse_args()
 

@@ -42,10 +42,7 @@ def release_public_ip_from_instance(instance_id, region_name):
 
                 # Ask if we should also release the Elastic IP
                 print(f"⚠️  Elastic IP {current_public_ip} is now idle and will cost $3.60/month")
-                print(
-                    f"To release it completely, run: aws ec2 release-address "
-                    f"--allocation-id {allocation_id} --region {region_name}"
-                )
+                print(f"To release it completely, run: aws ec2 release-address " f"--allocation-id {allocation_id} --region {region_name}")
                 return True
             print("✅ Elastic IP is already disassociated")
             return True
@@ -55,10 +52,7 @@ def release_public_ip_from_instance(instance_id, region_name):
 
         # For auto-assigned IPs, we need to modify the instance
         # This requires stopping and starting the instance
-        print(
-            "⚠️  To remove auto-assigned public IP, "
-            "the instance needs to be stopped and reconfigured"
-        )
+        print("⚠️  To remove auto-assigned public IP, " "the instance needs to be stopped and reconfigured")
         print("This will cause downtime. Proceed? (This script will not auto-proceed)")
     except ClientError as e:
         print(f"❌ Error releasing public IP: {e}")
@@ -122,9 +116,7 @@ def _check_vpc_ec2_instances(ec2, vpc_id, analysis):
 
 def _check_vpc_igws(ec2, vpc_id, analysis):
     """Check for attached Internet Gateways in a VPC"""
-    igw_response = ec2.describe_internet_gateways(
-        Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
-    )
+    igw_response = ec2.describe_internet_gateways(Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}])
     igws = igw_response.get("InternetGateways", [])
     if igws:
         analysis["dependencies"].append(f"{len(igws)} Internet Gateways")
@@ -142,9 +134,7 @@ def _check_vpc_nat_gateways(ec2, vpc_id, analysis):
 
 def _check_vpc_endpoints(ec2, vpc_id, analysis):
     """Check for VPC Endpoints in a VPC"""
-    endpoints_response = ec2.describe_vpc_endpoints(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )
+    endpoints_response = ec2.describe_vpc_endpoints(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
     vpc_endpoints = endpoints_response.get("VpcEndpoints", [])
     endpoints = [ep for ep in vpc_endpoints if ep["State"] != "deleted"]
     if endpoints:
@@ -186,11 +176,7 @@ def _check_vpc_rds_instances(region_name, vpc_id, analysis):
         vpc_dbs = []
         for db in db_instances:
             db_subnet_group = db.get("DBSubnetGroup")
-            if (
-                db_subnet_group
-                and "VpcId" in db_subnet_group
-                and db_subnet_group["VpcId"] == vpc_id
-            ):
+            if db_subnet_group and "VpcId" in db_subnet_group and db_subnet_group["VpcId"] == vpc_id:
                 vpc_dbs.append(db)
         if vpc_dbs:
             analysis["blocking_resources"].append(f"{len(vpc_dbs)} RDS instances")
@@ -274,28 +260,19 @@ def _print_vpc_recommendations(deletable_vpcs, non_deletable_vpcs):
     if deletable_vpcs:
         print(f"\n✅ VPCs that CAN be safely deleted ({len(deletable_vpcs)}):")
         for region, vpc_id, analysis in deletable_vpcs:
-            deps = (
-                ", ".join(analysis["dependencies"])
-                if analysis["dependencies"]
-                else "No dependencies"
-            )
+            deps = ", ".join(analysis["dependencies"]) if analysis["dependencies"] else "No dependencies"
             print(f"  {vpc_id} ({region}) - {deps}")
 
     if non_deletable_vpcs:
         print(f"\n❌ VPCs that CANNOT be deleted ({len(non_deletable_vpcs)}):")
         for region, vpc_id, analysis in non_deletable_vpcs:
-            reasons = analysis["blocking_resources"] + (
-                ["Default VPC"] if analysis["is_default"] else []
-            )
+            reasons = analysis["blocking_resources"] + (["Default VPC"] if analysis["is_default"] else [])
             print(f"  {vpc_id} ({region}) - Blocked by: {', '.join(reasons)}")
 
     print("\n💡 NEXT STEPS:")
     if deletable_vpcs:
         print(f"  1. You can safely delete {len(deletable_vpcs)} VPCs")
-        print(
-            "  2. This will also remove their associated subnets, "
-            "route tables, and security groups"
-        )
+        print("  2. This will also remove their associated subnets, " "route tables, and security groups")
         print("  3. Internet Gateways will be detached and can then be deleted")
 
 
@@ -344,10 +321,7 @@ def main():
     _print_vpc_recommendations(deletable_vpcs, non_deletable_vpcs)
 
     if non_deletable_vpcs:
-        print(
-            f"  4. {len(non_deletable_vpcs)} VPCs have blocking resources "
-            "that must be removed first"
-        )
+        print(f"  4. {len(non_deletable_vpcs)} VPCs have blocking resources " "that must be removed first")
         print("  5. Consider if the blocking resources are still needed")
 
 

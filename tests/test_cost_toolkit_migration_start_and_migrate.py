@@ -60,9 +60,7 @@ class TestStartEc2Instance:
 
         mock_ec2.start_instances.assert_called_once_with(InstanceIds=["i-123456"])
         mock_ec2.get_waiter.assert_called_once_with("instance_running")
-        mock_waiter.wait.assert_called_once_with(
-            InstanceIds=["i-123456"], WaiterConfig={"Delay": 15, "MaxAttempts": 40}
-        )
+        mock_waiter.wait.assert_called_once_with(InstanceIds=["i-123456"], WaiterConfig={"Delay": 15, "MaxAttempts": 40})
         captured = capsys.readouterr()
         assert "STARTING EC2 INSTANCE" in captured.out
         assert "Starting instance: i-123456" in captured.out
@@ -228,9 +226,7 @@ class TestMonitorMigrationProgress:
         }
 
         with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
-            with patch(
-                "cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"
-            ) as mock_print:
+            with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output") as mock_print:
                 _monitor_migration_progress(mock_ssm, "i-123", "cmd-123")
 
         mock_ssm.get_command_invocation.assert_called_with(CommandId="cmd-123", InstanceId="i-123")
@@ -248,9 +244,7 @@ class TestMonitorMigrationProgress:
         }
 
         with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
-            with patch(
-                "cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"
-            ) as mock_print:
+            with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output") as mock_print:
                 _monitor_migration_progress(mock_ssm, "i-123", "cmd-123")
 
         mock_print.assert_called_once()
@@ -264,9 +258,7 @@ class TestMonitorMigrationProgress:
         ]
 
         with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
-            with patch(
-                "cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"
-            ):
+            with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"):
                 _monitor_migration_progress(mock_ssm, "i-123", "cmd-123")
 
         assert mock_ssm.get_command_invocation.call_count == 2
@@ -277,9 +269,7 @@ class TestMonitorMigrationProgress:
         mock_ssm.get_command_invocation.return_value = {"Status": "InProgress"}
 
         with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
-            with patch(
-                "cost_toolkit.scripts.migration.aws_start_and_migrate.MAX_SSM_MONITOR_SECONDS", 60
-            ):
+            with patch("cost_toolkit.scripts.migration.aws_start_and_migrate.MAX_SSM_MONITOR_SECONDS", 60):
                 _monitor_migration_progress(mock_ssm, "i-123", "cmd-123")
 
         captured = capsys.readouterr()
@@ -294,9 +284,7 @@ class TestMonitorMigrationProgress:
         ]
 
         with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._WAIT_EVENT.wait"):
-            with patch(
-                "cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"
-            ):
+            with patch("cost_toolkit.scripts.migration.aws_start_and_migrate._print_migration_output"):
                 _monitor_migration_progress(mock_ssm, "i-123", "cmd-123")
 
         captured = capsys.readouterr()
@@ -385,9 +373,7 @@ class TestStartInstanceAndMigrate:
         """Test error handling during start and migrate."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.start_instances.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "start_instances"
-            )
+            mock_ec2.start_instances.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "start_instances")
             mock_client.return_value = mock_ec2
 
             start_instance_and_migrate()
@@ -398,8 +384,6 @@ class TestStartInstanceAndMigrate:
 
 def test_main_calls_start_and_migrate():
     """Test main function calls start_instance_and_migrate."""
-    with patch(
-        "cost_toolkit.scripts.migration.aws_start_and_migrate.start_instance_and_migrate"
-    ) as mock_start:
+    with patch("cost_toolkit.scripts.migration.aws_start_and_migrate.start_instance_and_migrate") as mock_start:
         main()
     mock_start.assert_called_once()

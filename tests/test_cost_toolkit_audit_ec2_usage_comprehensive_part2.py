@@ -83,9 +83,7 @@ class TestGetInstanceDetailsInRegion:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_client.return_value = mock_ec2
-            mock_ec2.describe_instances.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_instances"
-            )
+            mock_ec2.describe_instances.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_instances")
 
             result = get_instance_details_in_region("us-east-1")
 

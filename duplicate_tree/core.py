@@ -99,9 +99,7 @@ def find_exact_duplicates(index: DirectoryIndex) -> List[DuplicateCluster]:
         raise
     finally:
         elapsed = time.time() - start_time
-        progress.finish(
-            f"Grouping directories processed {processed:,}/{total:,} entries in {elapsed:.1f}s"
-        )
+        progress.finish(f"Grouping directories processed {processed:,}/{total:,} entries in {elapsed:.1f}s")
     clusters = []
     for signature, sig_nodes in groups.items():
         collapsed_nodes = _collapse_nested_nodes(sig_nodes)

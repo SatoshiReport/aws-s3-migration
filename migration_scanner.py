@@ -44,10 +44,7 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
         key_count = page.get("KeyCount")
         if contents is None:
             if key_count not in (None, 0):
-                raise RuntimeError(
-                    f"list_objects_v2 missing Contents while reporting {key_count} keys"
-                    f" for bucket {bucket}"
-                )
+                raise RuntimeError(f"list_objects_v2 missing Contents while reporting {key_count} keys" f" for bucket {bucket}")
             return []
         return contents
 
@@ -73,13 +70,8 @@ class BucketScanner:  # pylint: disable=too-few-public-methods
             self._print_progress(stats)
 
     def _save_bucket_stats(self, bucket: str, stats: _BucketStats):
-        self.state.save_bucket_status(
-            bucket, stats.file_count, stats.total_size, stats.storage_classes, scan_complete=True
-        )
-        print(
-            f"  Found {stats.file_count:,} files, "
-            f"{format_bytes(stats.total_size, binary_units=False)}" + " " * 20
-        )
+        self.state.save_bucket_status(bucket, stats.file_count, stats.total_size, stats.storage_classes, scan_complete=True)
+        print(f"  Found {stats.file_count:,} files, " f"{format_bytes(stats.total_size, binary_units=False)}" + " " * 20)
 
     def scan_all_buckets(self):
         """Scan all S3 buckets and track in database"""

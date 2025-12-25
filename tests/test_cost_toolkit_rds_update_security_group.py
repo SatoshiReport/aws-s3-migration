@@ -22,10 +22,7 @@ class TestUpdateSecurityGroupSuccess:
         assert call_args["IpPermissions"][0]["FromPort"] == 5432
         assert call_args["IpPermissions"][0]["ToPort"] == 5432
         assert call_args["IpPermissions"][0]["IpRanges"][0]["CidrIp"] == "203.0.113.42/32"
-        assert (
-            call_args["IpPermissions"][0]["IpRanges"][0]["Description"]
-            == "Temporary access for data migration"
-        )
+        assert call_args["IpPermissions"][0]["IpRanges"][0]["Description"] == "Temporary access for data migration"
 
     def _assert_success_output(self, capsys):
         """Helper to assert success output."""
@@ -40,9 +37,7 @@ class TestUpdateSecurityGroupSuccess:
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group._fetch_current_ip")
-    def test_update_security_group_success(
-        self, mock_fetch_ip, mock_setup_creds, mock_boto_client, capsys
-    ):
+    def test_update_security_group_success(self, mock_fetch_ip, mock_setup_creds, mock_boto_client, capsys):
         """Test successfully updating security group."""
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
@@ -60,9 +55,7 @@ class TestUpdateSecurityGroupSuccess:
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group._fetch_current_ip")
-    def test_update_security_group_ip_with_whitespace(
-        self, mock_fetch_ip, _mock_setup_creds, mock_boto_client
-    ):
+    def test_update_security_group_ip_with_whitespace(self, mock_fetch_ip, _mock_setup_creds, mock_boto_client):
         """Test handling IP with whitespace."""
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
@@ -80,14 +73,10 @@ class TestUpdateSecurityGroupErrors:
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group._fetch_current_ip")
-    def test_update_security_group_get_ip_fails(
-        self, mock_fetch_ip, _mock_setup_creds, mock_boto_client, capsys
-    ):
+    def test_update_security_group_get_ip_fails(self, mock_fetch_ip, _mock_setup_creds, mock_boto_client, capsys):
         """Test handling failure to get current IP."""
         mock_boto_client.return_value = MagicMock()
-        mock_fetch_ip.side_effect = ClientError(
-            {"Error": {"Code": "NetworkError", "Message": "Network unreachable"}}, "GetIP"
-        )
+        mock_fetch_ip.side_effect = ClientError({"Error": {"Code": "NetworkError", "Message": "Network unreachable"}}, "GetIP")
 
         update_security_group()
 
@@ -98,9 +87,7 @@ class TestUpdateSecurityGroupErrors:
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group._fetch_current_ip")
-    def test_update_security_group_rule_already_exists(
-        self, mock_fetch_ip, _mock_setup_creds, mock_boto_client, capsys
-    ):
+    def test_update_security_group_rule_already_exists(self, mock_fetch_ip, _mock_setup_creds, mock_boto_client, capsys):
         """Test handling when security group rule already exists."""
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
@@ -118,9 +105,7 @@ class TestUpdateSecurityGroupErrors:
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group._fetch_current_ip")
-    def test_update_security_group_other_error(
-        self, mock_fetch_ip, _mock_setup_creds, mock_boto_client, capsys
-    ):
+    def test_update_security_group_other_error(self, mock_fetch_ip, _mock_setup_creds, mock_boto_client, capsys):
         """Test handling other errors when updating security group."""
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
@@ -138,9 +123,7 @@ class TestUpdateSecurityGroupErrors:
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group._fetch_current_ip")
-    def test_update_security_group_timeout(
-        self, mock_fetch_ip, _mock_setup_creds, mock_boto_client
-    ):
+    def test_update_security_group_timeout(self, mock_fetch_ip, _mock_setup_creds, mock_boto_client):
         """Test that timeout exception propagates (not caught in current code)."""
         mock_boto_client.return_value = MagicMock()
         mock_fetch_ip.side_effect = Exception("Request timeout")
@@ -155,9 +138,7 @@ class TestUpdateSecurityGroupConfiguration:
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group._fetch_current_ip")
-    def test_update_security_group_timeout_parameter(
-        self, mock_fetch_ip, _mock_setup_creds, mock_boto_client
-    ):
+    def test_update_security_group_timeout_parameter(self, mock_fetch_ip, _mock_setup_creds, mock_boto_client):
         """Test that IP request uses correct timeout."""
         mock_boto_client.return_value = MagicMock()
         mock_fetch_ip.return_value = "203.0.113.42"
@@ -169,9 +150,7 @@ class TestUpdateSecurityGroupConfiguration:
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.update_rds_security_group._fetch_current_ip")
-    def test_update_security_group_correct_port(
-        self, mock_fetch_ip, _mock_setup_creds, mock_boto_client
-    ):
+    def test_update_security_group_correct_port(self, mock_fetch_ip, _mock_setup_creds, mock_boto_client):
         """Test that security group rule uses PostgreSQL port 5432."""
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2

@@ -34,9 +34,7 @@ def test_setup_credentials_calls_utils(
 ):
     """check_instance_status should initialize AWS credentials before EC2 calls."""
     mock_ec2 = MagicMock()
-    mock_ec2.describe_instances.return_value = {
-        "Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]
-    }
+    mock_ec2.describe_instances.return_value = {"Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]}
     mock_boto_client.return_value = mock_ec2
 
     check_instance_status()
@@ -120,9 +118,7 @@ class TestCheckUserData:
     def test_check_user_data_handles_error(self, capsys):
         """Test error handling when retrieving user data."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_instance_attribute.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "describe_instance_attribute"
-        )
+        mock_ec2.describe_instance_attribute.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_instance_attribute")
 
         _check_user_data(mock_ec2, "i-123")
 
@@ -217,9 +213,7 @@ class TestCheckSystemLogs:
     def test_check_logs_handles_error(self, capsys):
         """Test error handling when retrieving console output."""
         mock_ec2 = MagicMock()
-        mock_ec2.get_console_output.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "get_console_output"
-        )
+        mock_ec2.get_console_output.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "get_console_output")
 
         _check_system_logs(mock_ec2, "i-123")
 
@@ -298,9 +292,7 @@ class TestCheckInstanceStatusErrors:
         """Test error handling during status check."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_instances.side_effect = ClientError(
-                {"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances"
-            )
+            mock_ec2.describe_instances.side_effect = ClientError({"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances")
             mock_client.return_value = mock_ec2
             check_instance_status()
         captured = capsys.readouterr()
@@ -310,25 +302,13 @@ class TestCheckInstanceStatusErrors:
         """Test all check functions are called."""
         with patch("boto3.client") as mock_client:
             with (
-                patch(
-                    "cost_toolkit.scripts.migration.aws_check_instance_status."
-                    "_print_instance_info"
-                ) as mock_info,
-                patch(
-                    "cost_toolkit.scripts.migration.aws_check_instance_status._check_user_data"
-                ) as mock_user,
-                patch(
-                    "cost_toolkit.scripts.migration.aws_check_instance_status._check_system_logs"
-                ) as mock_logs,
-                patch(
-                    "cost_toolkit.scripts.migration.aws_check_instance_status."
-                    "_print_troubleshooting"
-                ) as mock_trouble,
+                patch("cost_toolkit.scripts.migration.aws_check_instance_status." "_print_instance_info") as mock_info,
+                patch("cost_toolkit.scripts.migration.aws_check_instance_status._check_user_data") as mock_user,
+                patch("cost_toolkit.scripts.migration.aws_check_instance_status._check_system_logs") as mock_logs,
+                patch("cost_toolkit.scripts.migration.aws_check_instance_status." "_print_troubleshooting") as mock_trouble,
             ):
                 mock_ec2 = MagicMock()
-                mock_ec2.describe_instances.return_value = {
-                    "Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]
-                }
+                mock_ec2.describe_instances.return_value = {"Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]}
                 mock_client.return_value = mock_ec2
                 check_instance_status()
         mock_info.assert_called_once()
@@ -339,8 +319,6 @@ class TestCheckInstanceStatusErrors:
 
 def test_main_calls_check_instance_status():
     """Test main function calls check_instance_status."""
-    with patch(
-        "cost_toolkit.scripts.migration.aws_check_instance_status.check_instance_status"
-    ) as mock_check:
+    with patch("cost_toolkit.scripts.migration.aws_check_instance_status.check_instance_status") as mock_check:
         main()
     mock_check.assert_called_once()

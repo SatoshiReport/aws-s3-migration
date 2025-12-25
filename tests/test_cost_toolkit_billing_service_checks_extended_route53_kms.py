@@ -135,9 +135,7 @@ class TestCheckKMSKeyStatus:
     def test_kms_key_not_found(self):
         """Test key not found (already deleted)."""
         mock_client = MagicMock()
-        error = botocore.exceptions.ClientError(
-            {"Error": {"Code": "NotFoundException"}}, "describe_key"
-        )
+        error = botocore.exceptions.ClientError({"Error": {"Code": "NotFoundException"}}, "describe_key")
         mock_client.describe_key.side_effect = error
         result = _check_kms_key_status(mock_client, "key-123")
         assert result is True
@@ -231,9 +229,7 @@ class TestCheckKMSStatus:
         """Test KMS status with region access errors."""
         with patch("boto3.client") as mock_client:
             mock_kms = MagicMock()
-            error = botocore.exceptions.ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_key"
-            )
+            error = botocore.exceptions.ClientError({"Error": {"Code": "AccessDenied"}}, "describe_key")
             mock_kms.describe_key.side_effect = error
             mock_client.return_value = mock_kms
             is_resolved, message = check_kms_status()
@@ -261,9 +257,7 @@ class TestCheckKMSStatus:
                 if call_count[0] == 1:
                     return {"KeyMetadata": {"KeyState": "PendingDeletion"}}
                 if call_count[0] == 2:
-                    raise botocore.exceptions.ClientError(
-                        {"Error": {"Code": "NotFoundException"}}, "describe_key"
-                    )
+                    raise botocore.exceptions.ClientError({"Error": {"Code": "NotFoundException"}}, "describe_key")
                 if call_count[0] == 3:
                     return {"KeyMetadata": {"KeyState": "Enabled"}}
                 return {"KeyMetadata": {"KeyState": "Disabled"}}

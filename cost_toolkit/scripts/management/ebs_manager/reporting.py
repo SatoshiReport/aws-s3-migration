@@ -71,10 +71,7 @@ def print_snapshot_summary(snapshots: List[Dict]) -> None:
     print()
 
     for snapshot in snapshots:
-        print(
-            f"  {snapshot['snapshot_id']} ({snapshot['volume_name']}) - "
-            f"{snapshot['volume_size']} GB"
-        )
+        print(f"  {snapshot['snapshot_id']} ({snapshot['volume_name']}) - " f"{snapshot['volume_size']} GB")
     print()
     print("Snapshots are being created in the background and will be available shortly.")
 

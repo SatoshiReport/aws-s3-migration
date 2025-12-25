@@ -98,9 +98,7 @@ def explore_restored_database():
 
     print("🔍 Connecting to restored RDS instance (contains your original data)...")
 
-    conn, _database = _try_database_connection(
-        host, port, possible_databases, username, possible_passwords
-    )
+    conn, _database = _try_database_connection(host, port, possible_databases, username, possible_passwords)
 
     if not conn:
         print("❌ Could not connect with any combination")

@@ -28,9 +28,7 @@ class TestGetBucketRegion:
     @patch("cost_toolkit.scripts.aws_s3_operations.get_bucket_location")
     def test_get_bucket_region_error_raises(self, mock_get_location):
         """Test bucket region error raises exception (fail-fast)."""
-        mock_get_location.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchBucket"}}, "get_bucket_location"
-        )
+        mock_get_location.side_effect = ClientError({"Error": {"Code": "NoSuchBucket"}}, "get_bucket_location")
 
         with pytest.raises(ClientError):
             get_bucket_region("non-existent-bucket")
@@ -66,9 +64,7 @@ class TestEnsureBucketPrivate:
         """Test securing bucket with no existing policy."""
         mock_s3_client = MagicMock()
         mock_create_client.return_value = mock_s3_client
-        mock_s3_client.delete_bucket_policy.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchBucketPolicy"}}, "delete_bucket_policy"
-        )
+        mock_s3_client.delete_bucket_policy.side_effect = ClientError({"Error": {"Code": "NoSuchBucketPolicy"}}, "delete_bucket_policy")
 
         result = ensure_bucket_private("test-bucket", "us-east-1")
 
@@ -81,9 +77,7 @@ class TestEnsureBucketPrivate:
         """Test warning when policy deletion fails."""
         mock_s3_client = MagicMock()
         mock_create_client.return_value = mock_s3_client
-        mock_s3_client.delete_bucket_policy.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "delete_bucket_policy"
-        )
+        mock_s3_client.delete_bucket_policy.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "delete_bucket_policy")
 
         result = ensure_bucket_private("test-bucket", "us-east-1")
 
@@ -97,9 +91,7 @@ class TestEnsureBucketPrivate:
         """Test error securing bucket."""
         mock_s3_client = MagicMock()
         mock_create_client.return_value = mock_s3_client
-        mock_s3_client.put_public_access_block.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchBucket"}}, "put_public_access_block"
-        )
+        mock_s3_client.put_public_access_block.side_effect = ClientError({"Error": {"Code": "NoSuchBucket"}}, "put_public_access_block")
 
         result = ensure_bucket_private("non-existent", "us-east-1")
 

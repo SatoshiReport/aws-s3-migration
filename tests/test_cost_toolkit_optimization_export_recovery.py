@@ -58,9 +58,7 @@ class TestCheckS3FileExists:
             pass
 
         mock_s3.exceptions.NoSuchKey = NoSuchKey
-        mock_s3.head_object.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "head_object"
-        )
+        mock_s3.head_object.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "head_object")
 
         result = _check_s3_file_exists(mock_s3, "test-bucket", "denied.vmdk")
 
@@ -241,9 +239,7 @@ class TestProcessStuckExportErrors:
             pass
 
         mock_s3.exceptions.NoSuchKey = NoSuchKey
-        mock_s3.head_object.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "head_object"
-        )
+        mock_s3.head_object.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "head_object")
 
         result = _process_stuck_export(task, mock_s3)
 

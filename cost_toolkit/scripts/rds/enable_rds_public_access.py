@@ -18,9 +18,7 @@ def enable_public_access():
 
     try:
         # Modify the instance to be publicly accessible
-        rds.modify_db_instance(
-            DBInstanceIdentifier="simba-db-restored", PubliclyAccessible=True, ApplyImmediately=True
-        )
+        rds.modify_db_instance(DBInstanceIdentifier="simba-db-restored", PubliclyAccessible=True, ApplyImmediately=True)
 
         print("✅ Public access enabled!")
         print("⏳ Waiting for modification to complete...")

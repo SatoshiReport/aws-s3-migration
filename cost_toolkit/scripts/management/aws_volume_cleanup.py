@@ -66,9 +66,7 @@ def delete_snapshot(snapshot_id, region):
 def get_bucket_size_metrics(bucket_name, region):
     """Get bucket size metrics from CloudWatch"""
     try:
-        cloudwatch = boto3.client(
-            "cloudwatch", region_name=region if region != "Unknown" else "us-east-1"
-        )
+        cloudwatch = boto3.client("cloudwatch", region_name=region if region != "Unknown" else "us-east-1")
 
         end_time = datetime.now(timezone.utc)
         start_time = end_time.replace(day=1)
@@ -87,9 +85,7 @@ def get_bucket_size_metrics(bucket_name, region):
         )
 
         if metrics_response["Datapoints"]:
-            sorted_datapoints = sorted(
-                metrics_response["Datapoints"], key=lambda x: x["Timestamp"], reverse=True
-            )
+            sorted_datapoints = sorted(metrics_response["Datapoints"], key=lambda x: x["Timestamp"], reverse=True)
             size_bytes = sorted_datapoints[0]["Average"]
             size_gb = size_bytes / (1024**3)
 

@@ -43,12 +43,8 @@ class TestDeleteInternetGateways:
     def test_delete_igws_with_error_raises(self):
         """Test IGW deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_internet_gateways.return_value = {
-            "InternetGateways": [{"InternetGatewayId": "igw-error"}]
-        }
-        mock_ec2.detach_internet_gateway.side_effect = ClientError(
-            {"Error": {"Code": "DependencyViolation"}}, "detach_internet_gateway"
-        )
+        mock_ec2.describe_internet_gateways.return_value = {"InternetGateways": [{"InternetGatewayId": "igw-error"}]}
+        mock_ec2.detach_internet_gateway.side_effect = ClientError({"Error": {"Code": "DependencyViolation"}}, "detach_internet_gateway")
 
         with pytest.raises(ClientError) as exc_info:
             _delete_internet_gateways(mock_ec2, "vpc-123")
@@ -103,12 +99,8 @@ class TestDeleteVpcEndpoints:
     def test_delete_endpoints_with_error_raises(self):
         """Test endpoint deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_vpc_endpoints.return_value = {
-            "VpcEndpoints": [{"VpcEndpointId": "vpce-error", "State": "available"}]
-        }
-        mock_ec2.delete_vpc_endpoint.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_vpc_endpoint"
-        )
+        mock_ec2.describe_vpc_endpoints.return_value = {"VpcEndpoints": [{"VpcEndpointId": "vpce-error", "State": "available"}]}
+        mock_ec2.delete_vpc_endpoint.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_vpc_endpoint")
 
         with pytest.raises(ClientError) as exc_info:
             _delete_vpc_endpoints(mock_ec2, "vpc-123")
@@ -154,12 +146,8 @@ class TestDeleteNatGateways:
     def test_delete_nat_gateways_with_error_raises(self):
         """Test NAT gateway deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_nat_gateways.return_value = {
-            "NatGateways": [{"NatGatewayId": "nat-error", "State": "available"}]
-        }
-        mock_ec2.delete_nat_gateway.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_nat_gateway"
-        )
+        mock_ec2.describe_nat_gateways.return_value = {"NatGateways": [{"NatGatewayId": "nat-error", "State": "available"}]}
+        mock_ec2.delete_nat_gateway.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_nat_gateway")
 
         with pytest.raises(ClientError) as exc_info:
             _delete_nat_gateways(mock_ec2, "vpc-123")
@@ -190,9 +178,7 @@ class TestDeleteSecurityGroups:
     def test_delete_sgs_skips_default(self):
         """Test that default security group is skipped."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_security_groups.return_value = {
-            "SecurityGroups": [{"GroupId": "sg-default", "GroupName": "default"}]
-        }
+        mock_ec2.describe_security_groups.return_value = {"SecurityGroups": [{"GroupId": "sg-default", "GroupName": "default"}]}
 
         _delete_security_groups(mock_ec2, "vpc-123")
 
@@ -201,12 +187,8 @@ class TestDeleteSecurityGroups:
     def test_delete_sgs_with_error_raises(self):
         """Test security group deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_security_groups.return_value = {
-            "SecurityGroups": [{"GroupId": "sg-error", "GroupName": "error-sg"}]
-        }
-        mock_ec2.delete_security_group.side_effect = ClientError(
-            {"Error": {"Code": "DependencyViolation"}}, "delete_security_group"
-        )
+        mock_ec2.describe_security_groups.return_value = {"SecurityGroups": [{"GroupId": "sg-error", "GroupName": "error-sg"}]}
+        mock_ec2.delete_security_group.side_effect = ClientError({"Error": {"Code": "DependencyViolation"}}, "delete_security_group")
 
         with pytest.raises(ClientError) as exc_info:
             _delete_security_groups(mock_ec2, "vpc-123")
@@ -237,9 +219,7 @@ class TestDeleteNetworkAcls:
     def test_delete_nacls_skips_default(self):
         """Test that default network ACL is skipped."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_network_acls.return_value = {
-            "NetworkAcls": [{"NetworkAclId": "acl-default", "IsDefault": True}]
-        }
+        mock_ec2.describe_network_acls.return_value = {"NetworkAcls": [{"NetworkAclId": "acl-default", "IsDefault": True}]}
 
         _delete_network_acls(mock_ec2, "vpc-123")
 
@@ -248,12 +228,8 @@ class TestDeleteNetworkAcls:
     def test_delete_nacls_with_error_raises(self):
         """Test network ACL deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_network_acls.return_value = {
-            "NetworkAcls": [{"NetworkAclId": "acl-error", "IsDefault": False}]
-        }
-        mock_ec2.delete_network_acl.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_network_acl"
-        )
+        mock_ec2.describe_network_acls.return_value = {"NetworkAcls": [{"NetworkAclId": "acl-error", "IsDefault": False}]}
+        mock_ec2.delete_network_acl.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_network_acl")
 
         with pytest.raises(ClientError) as exc_info:
             _delete_network_acls(mock_ec2, "vpc-123")
@@ -284,9 +260,7 @@ class TestDeleteRouteTables:
     def test_delete_route_tables_skips_main(self):
         """Test that main route table is skipped."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_route_tables.return_value = {
-            "RouteTables": [{"RouteTableId": "rtb-main", "Associations": [{"Main": True}]}]
-        }
+        mock_ec2.describe_route_tables.return_value = {"RouteTables": [{"RouteTableId": "rtb-main", "Associations": [{"Main": True}]}]}
 
         _delete_route_tables(mock_ec2, "vpc-123")
 
@@ -295,12 +269,8 @@ class TestDeleteRouteTables:
     def test_delete_route_tables_with_error_raises(self):
         """Test route table deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_route_tables.return_value = {
-            "RouteTables": [{"RouteTableId": "rtb-error", "Associations": []}]
-        }
-        mock_ec2.delete_route_table.side_effect = ClientError(
-            {"Error": {"Code": "DependencyViolation"}}, "delete_route_table"
-        )
+        mock_ec2.describe_route_tables.return_value = {"RouteTables": [{"RouteTableId": "rtb-error", "Associations": []}]}
+        mock_ec2.delete_route_table.side_effect = ClientError({"Error": {"Code": "DependencyViolation"}}, "delete_route_table")
 
         with pytest.raises(ClientError) as exc_info:
             _delete_route_tables(mock_ec2, "vpc-123")
@@ -314,9 +284,7 @@ class TestDeleteSubnets:
     def test_delete_subnets_success(self, capsys):
         """Test successful subnet deletion."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_subnets.return_value = {
-            "Subnets": [{"SubnetId": "subnet-1"}, {"SubnetId": "subnet-2"}]
-        }
+        mock_ec2.describe_subnets.return_value = {"Subnets": [{"SubnetId": "subnet-1"}, {"SubnetId": "subnet-2"}]}
 
         _delete_subnets(mock_ec2, "vpc-123")
 
@@ -328,9 +296,7 @@ class TestDeleteSubnets:
         """Test subnet deletion with error raises ClientError."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_subnets.return_value = {"Subnets": [{"SubnetId": "subnet-error"}]}
-        mock_ec2.delete_subnet.side_effect = ClientError(
-            {"Error": {"Code": "DependencyViolation"}}, "delete_subnet"
-        )
+        mock_ec2.delete_subnet.side_effect = ClientError({"Error": {"Code": "DependencyViolation"}}, "delete_subnet")
 
         with pytest.raises(ClientError) as exc_info:
             _delete_subnets(mock_ec2, "vpc-123")

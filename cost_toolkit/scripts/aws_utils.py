@@ -37,10 +37,7 @@ def load_aws_credentials(env_path: Optional[str] = None) -> None:
         load_aws_credentials_from_env(env_path)
     except ValueError as exc:
         resolved_path = _resolve_env_path(env_path)
-        msg = (
-            f"AWS credentials not found in {resolved_path}. "
-            "Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_DEFAULT_REGION."
-        )
+        msg = f"AWS credentials not found in {resolved_path}. " "Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and AWS_DEFAULT_REGION."
         raise CredentialLoadError(msg) from exc
 
 

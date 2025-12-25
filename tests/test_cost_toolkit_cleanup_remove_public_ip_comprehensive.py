@@ -130,9 +130,7 @@ class TestRetryWithSubnetModification:
             return_value=mock_instance_final,
         ):
             with patch("time.sleep"):
-                result = retry_with_subnet_modification(
-                    mock_ec2, "i-123", "subnet-123", "us-east-1"
-                )
+                result = retry_with_subnet_modification(mock_ec2, "i-123", "subnet-123", "us-east-1")
         assert result is True
         mock_ec2.modify_subnet_attribute.assert_called_once()
         captured = capsys.readouterr()
@@ -147,9 +145,7 @@ class TestRetryWithSubnetModification:
             return_value=mock_instance_final,
         ):
             with patch("time.sleep"):
-                result = retry_with_subnet_modification(
-                    mock_ec2, "i-123", "subnet-123", "us-east-1"
-                )
+                result = retry_with_subnet_modification(mock_ec2, "i-123", "subnet-123", "us-east-1")
         assert result is False
         captured = capsys.readouterr()
         assert "still has public IP" in captured.out
@@ -157,9 +153,7 @@ class TestRetryWithSubnetModification:
     def test_retry_subnet_modification_error(self, capsys):
         """Test retry when subnet modification fails."""
         mock_ec2 = MagicMock()
-        mock_ec2.modify_subnet_attribute.side_effect = ClientError(
-            {"Error": {"Code": "InvalidSubnetID"}}, "modify_subnet_attribute"
-        )
+        mock_ec2.modify_subnet_attribute.side_effect = ClientError({"Error": {"Code": "InvalidSubnetID"}}, "modify_subnet_attribute")
         result = retry_with_subnet_modification(mock_ec2, "i-123", "subnet-bad", "us-east-1")
         assert result is False
         captured = capsys.readouterr()
@@ -249,9 +243,7 @@ class TestRemovePublicIpFromInstance:
         """Test public IP removal with error."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_instances.side_effect = ClientError(
-                {"Error": {"Code": "InvalidInstanceID"}}, "describe_instances"
-            )
+            mock_ec2.describe_instances.side_effect = ClientError({"Error": {"Code": "InvalidInstanceID"}}, "describe_instances")
             mock_client.return_value = mock_ec2
             result = remove_public_ip_from_instance("i-bad", "us-east-1")
         assert result is False

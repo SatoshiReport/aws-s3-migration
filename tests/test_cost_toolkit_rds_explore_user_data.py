@@ -114,10 +114,8 @@ class TestTryDatabaseConnection:
         explore_user_data.__dict__["psycopg2"] = mock_psycopg2
 
         try:
-            result_conn, result_db = (
-                explore_user_data._try_database_connection(  # pylint: disable=protected-access
-                    "localhost", 5432, ["testdb"], "testuser", ["testpass"]
-                )
+            result_conn, result_db = explore_user_data._try_database_connection(  # pylint: disable=protected-access
+                "localhost", 5432, ["testdb"], "testuser", ["testpass"]
             )
 
             assert result_conn == mock_conn
@@ -142,10 +140,8 @@ class TestTryDatabaseConnection:
         explore_user_data.__dict__["psycopg2"] = mock_psycopg2
 
         try:
-            result_conn, result_db = (
-                explore_user_data._try_database_connection(  # pylint: disable=protected-access
-                    "localhost", 5432, ["testdb"], "testuser", ["testpass"]
-                )
+            result_conn, result_db = explore_user_data._try_database_connection(  # pylint: disable=protected-access
+                "localhost", 5432, ["testdb"], "testuser", ["testpass"]
             )
 
             assert result_conn is None
@@ -175,10 +171,8 @@ class TestTryDatabaseConnection:
         explore_user_data.__dict__["psycopg2"] = mock_psycopg2
 
         try:
-            result_conn, result_db = (
-                explore_user_data._try_database_connection(  # pylint: disable=protected-access
-                    "localhost", 5432, ["db1", "db2"], "testuser", ["pass1", "pass2"]
-                )
+            result_conn, result_db = explore_user_data._try_database_connection(  # pylint: disable=protected-access
+                "localhost", 5432, ["db1", "db2"], "testuser", ["pass1", "pass2"]
             )
 
             assert result_conn == mock_conn
@@ -222,25 +216,15 @@ class TestExploreRestoredDatabase:
     def test_successful_exploration(self, mock_load, capsys):
         """Test successful database exploration."""
         with (
-            patch(
-                "cost_toolkit.scripts.rds.explore_user_data._try_database_connection"
-            ) as mock_try_conn,
-            patch(
-                "cost_toolkit.scripts.rds.explore_user_data.print_database_version_info"
-            ) as mock_print_version,
-            patch(
-                "cost_toolkit.scripts.rds.explore_user_data.list_databases"
-            ) as mock_list_databases,
+            patch("cost_toolkit.scripts.rds.explore_user_data._try_database_connection") as mock_try_conn,
+            patch("cost_toolkit.scripts.rds.explore_user_data.print_database_version_info") as mock_print_version,
+            patch("cost_toolkit.scripts.rds.explore_user_data.list_databases") as mock_list_databases,
             patch("cost_toolkit.scripts.rds.explore_user_data.list_schemas") as mock_list_schemas,
             patch("cost_toolkit.scripts.rds.explore_user_data.list_tables") as mock_list_tables,
             patch("cost_toolkit.scripts.rds.explore_user_data.list_views") as mock_list_views,
             patch("cost_toolkit.scripts.rds.explore_user_data.analyze_tables") as mock_analyze,
-            patch(
-                "cost_toolkit.scripts.rds.explore_user_data.get_database_size"
-            ) as mock_get_db_size,
-            patch(
-                "cost_toolkit.scripts.rds.explore_user_data.list_functions"
-            ) as mock_list_functions,
+            patch("cost_toolkit.scripts.rds.explore_user_data.get_database_size") as mock_get_db_size,
+            patch("cost_toolkit.scripts.rds.explore_user_data.list_functions") as mock_list_functions,
         ):
             mock_conn = MagicMock()
             mock_cursor = MagicMock()
@@ -257,9 +241,7 @@ class TestExploreRestoredDatabase:
             mock_list_schemas.assert_called_once_with(mock_cursor)
             mock_list_tables.assert_called_once_with(mock_cursor)
             mock_list_views.assert_called_once_with(mock_cursor)
-            mock_analyze.assert_called_once_with(
-                mock_cursor, [("public", "users", "postgres")], explore_user_data.MAX_SAMPLE_COLUMNS
-            )
+            mock_analyze.assert_called_once_with(mock_cursor, [("public", "users", "postgres")], explore_user_data.MAX_SAMPLE_COLUMNS)
             mock_get_db_size.assert_called_once_with(mock_cursor)
             mock_list_functions.assert_called_once_with(mock_cursor)
 

@@ -74,9 +74,7 @@ def test_get_db_file_stats_requires_rowid(tmp_path):
     """Test _get_db_file_stats fails when MAX(rowid) cannot be read."""
     db_path = tmp_path / "test.db"
     conn = sqlite3.connect(db_path)
-    conn.execute(
-        "CREATE TABLE files (bucket TEXT PRIMARY KEY, key TEXT, size INTEGER) WITHOUT ROWID"
-    )
+    conn.execute("CREATE TABLE files (bucket TEXT PRIMARY KEY, key TEXT, size INTEGER) WITHOUT ROWID")
     conn.execute("INSERT INTO files VALUES ('b1', 'k1', 100)")
     conn.execute("INSERT INTO files VALUES ('b2', 'k2', 200)")
     conn.execute("INSERT INTO files VALUES ('b3', 'k3', 300)")
@@ -168,9 +166,7 @@ def test_build_cache_and_db_info():
     mock_stat.st_mtime_ns = 123456789
     db_path = Path("/tmp/test.db")
 
-    cache_config, db_info = _build_cache_and_db_info(
-        args, db_path, mock_stat, total_files=100, max_rowid=500
-    )
+    cache_config, db_info = _build_cache_and_db_info(args, db_path, mock_stat, total_files=100, max_rowid=500)
 
     assert_equal(cache_config.enabled, True)
     assert_equal(cache_config.cache_dir, Path("/tmp/cache"))

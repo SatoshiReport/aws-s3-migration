@@ -105,9 +105,7 @@ def test_disable_global_accelerators_handles_deployed(capsys):
             mock_client.return_value = mock_ga
 
             # Patch the wait event to avoid sleeping
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT"
-            ) as mock_event:
+            with patch("cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT") as mock_event:
                 disable_global_accelerators()
                 assert mock_event.wait.call_count > 0
 
@@ -129,9 +127,7 @@ def test_disable_global_accelerators_skips_in_progress(capsys):
             mock_ga = MagicMock()
             mock_ga.list_accelerators.return_value = {"Accelerators": [mock_accelerator]}
             # Return DEPLOYED/False so disable_accelerator loop exits immediately
-            mock_ga.describe_accelerator.return_value = {
-                "Accelerator": {"Status": "DEPLOYED", "Enabled": False}
-            }
+            mock_ga.describe_accelerator.return_value = {"Accelerator": {"Status": "DEPLOYED", "Enabled": False}}
             mock_client.return_value = mock_ga
 
             # Patch wait event just in case
@@ -156,9 +152,7 @@ def test_disable_global_accelerators_skips_disabled(capsys):
             mock_ga = MagicMock()
             mock_ga.list_accelerators.return_value = {"Accelerators": [mock_accelerator]}
             # Describe call returns stable state
-            mock_ga.describe_accelerator.return_value = {
-                "Accelerator": {"Status": "DEPLOYED", "Enabled": False}
-            }
+            mock_ga.describe_accelerator.return_value = {"Accelerator": {"Status": "DEPLOYED", "Enabled": False}}
             mock_client.return_value = mock_ga
 
             with patch("cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT"):
@@ -180,9 +174,7 @@ def test_disable_global_accelerators_handles_update_error(capsys):
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
             mock_ga.list_accelerators.return_value = {"Accelerators": [mock_accelerator]}
-            mock_ga.update_accelerator.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "update_accelerator"
-            )
+            mock_ga.update_accelerator.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "update_accelerator")
             mock_client.return_value = mock_ga
             disable_global_accelerators()
     captured = capsys.readouterr()
@@ -194,9 +186,7 @@ def test_disable_global_accelerators_handles_client_error(capsys):
     with patch("cost_toolkit.scripts.cleanup.aws_cleanup_script.aws_utils.setup_aws_credentials"):
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
-            mock_ga.list_accelerators.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "list_accelerators"
-            )
+            mock_ga.list_accelerators.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_accelerators")
             mock_client.return_value = mock_ga
             disable_global_accelerators()
     captured = capsys.readouterr()
@@ -231,9 +221,7 @@ class TestStopInstance:
     def test_stop_instance_error(self, capsys):
         """Test error stopping instance."""
         mock_client = MagicMock()
-        mock_client.stop_instance.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "stop_instance"
-        )
+        mock_client.stop_instance.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "stop_instance")
         instance = {"name": "test-instance", "state": {"name": "running"}, "bundleId": "nano_2_0"}
         stopped, cost = _stop_instance(mock_client, instance)
         assert stopped == 0

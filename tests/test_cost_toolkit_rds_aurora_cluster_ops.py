@@ -65,9 +65,7 @@ def test_discover_rds_instances_success(_mock_print, mock_setup, mock_boto3, moc
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.boto3")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.setup_aws_credentials")
 @patch("builtins.print")
-def test_discover_rds_instances_skip_cluster_member(
-    _mock_print, _mock_setup, mock_boto3, mock_regions
-):
+def test_discover_rds_instances_skip_cluster_member(_mock_print, _mock_setup, mock_boto3, mock_regions):
     """Test discovering RDS instances skips cluster members."""
     mock_regions.return_value = ["us-east-1"]
     mock_rds = MagicMock()
@@ -114,9 +112,7 @@ def test_discover_rds_instances_client_error(_mock_print, _mock_setup, mock_boto
     mock_regions.return_value = ["us-east-1"]
     mock_rds = MagicMock()
     mock_boto3.client.return_value = mock_rds
-    mock_rds.describe_db_instances.side_effect = ClientError(
-        {"Error": {"Code": "UnauthorizedOperation"}}, "DescribeDBInstances"
-    )
+    mock_rds.describe_db_instances.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "DescribeDBInstances")
 
     result = discover_rds_instances()
 
@@ -127,9 +123,7 @@ def test_discover_rds_instances_client_error(_mock_print, _mock_setup, mock_boto
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.boto3")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cluster_ops.setup_aws_credentials")
 @patch("builtins.print")
-def test_discover_rds_instances_region_not_available(
-    _mock_print, _mock_setup, mock_boto3, mock_regions
-):
+def test_discover_rds_instances_region_not_available(_mock_print, _mock_setup, mock_boto3, mock_regions):
     """Test discovering RDS instances when region not available."""
     mock_regions.return_value = ["us-east-1"]
     mock_rds = MagicMock()
@@ -276,9 +270,7 @@ def test_create_rds_snapshot_success(_mock_print):
 def test_create_rds_snapshot_client_error(_mock_print):
     """Test creating RDS snapshot with client error."""
     mock_rds = MagicMock()
-    mock_rds.create_db_snapshot.side_effect = ClientError(
-        {"Error": {"Code": "SnapshotQuotaExceeded"}}, "CreateDBSnapshot"
-    )
+    mock_rds.create_db_snapshot.side_effect = ClientError({"Error": {"Code": "SnapshotQuotaExceeded"}}, "CreateDBSnapshot")
 
     with pytest.raises(ClientError):
         create_rds_snapshot(mock_rds, "db-1", "us-east-1")
@@ -432,9 +424,7 @@ def test_create_aurora_serverless_cluster_error(_mock_print, mock_build):
     """Test creating Aurora Serverless cluster with error."""
     mock_rds = MagicMock()
     mock_build.return_value = {"DBClusterIdentifier": "cluster-1"}
-    mock_rds.create_db_cluster.side_effect = ClientError(
-        {"Error": {"Code": "ClusterAlreadyExists"}}, "CreateDBCluster"
-    )
+    mock_rds.create_db_cluster.side_effect = ClientError({"Error": {"Code": "ClusterAlreadyExists"}}, "CreateDBCluster")
 
     instance = {"identifier": "db-1"}
 

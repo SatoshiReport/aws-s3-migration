@@ -27,9 +27,7 @@ def add_filter_arguments(parser: argparse.ArgumentParser, categories: dict[str, 
         default=sorted(categories),
         help="Categories to include (default: all).",
     )
-    parser.add_argument(
-        "--older-than", type=int, metavar="DAYS", help="Only include entries older than DAYS."
-    )
+    parser.add_argument("--older-than", type=int, metavar="DAYS", help="Only include entries older than DAYS.")
     parser.add_argument(
         "--min-size",
         type=str,
@@ -59,13 +57,9 @@ def add_action_arguments(parser: argparse.ArgumentParser) -> None:
 
 def add_output_arguments(parser: argparse.ArgumentParser) -> None:
     """Add output and reporting arguments."""
-    parser.add_argument(
-        "--report-json", type=Path, help="Optional path to write the full candidate list as JSON."
-    )
+    parser.add_argument("--report-json", type=Path, help="Optional path to write the full candidate list as JSON.")
     parser.add_argument("--report-csv", type=Path, help="Optional path to write the report as CSV.")
-    parser.add_argument(
-        "--list-categories", action="store_true", help="List available categories and exit."
-    )
+    parser.add_argument("--list-categories", action="store_true", help="List available categories and exit.")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose logging.")
 
 
@@ -80,10 +74,7 @@ def add_cache_arguments(parser: argparse.ArgumentParser) -> None:
         "--cache-ttl",
         type=int,
         default=43200,
-        help=(
-            "Reuse cached scans younger than TTL seconds (default: 43200). "
-            "Set <=0 to disable TTL expiration."
-        ),
+        help=("Reuse cached scans younger than TTL seconds (default: 43200). " "Set <=0 to disable TTL expiration."),
     )
     parser.add_argument(
         "--refresh-cache",
@@ -131,9 +122,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
 
     # Use shared parser factory with cleanup_temp_artifacts-specific args
     parser = create_migration_cli_parser(
-        description=(
-            "Scan backup trees for disposable cache/temp artifacts and optionally delete them."
-        ),
+        description=("Scan backup trees for disposable cache/temp artifacts and optionally delete them."),
         db_path_default=str(DEFAULT_DB_PATH),
         base_path_default=str(DEFAULT_BASE_PATH) if DEFAULT_BASE_PATH else "",
         add_custom_args=lambda p: add_module_specific_args(p, categories),

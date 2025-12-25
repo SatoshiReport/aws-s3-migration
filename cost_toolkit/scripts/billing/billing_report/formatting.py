@@ -70,6 +70,4 @@ def format_combined_billing_report(cost_data, usage_data):
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        "This module is library-only. Run cost_toolkit.scripts.billing.billing_report.cli instead."
-    )
+    raise SystemExit("This module is library-only. Run cost_toolkit.scripts.billing.billing_report.cli instead.")

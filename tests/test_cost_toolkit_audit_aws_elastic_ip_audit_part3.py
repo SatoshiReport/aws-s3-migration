@@ -112,9 +112,7 @@ class TestAuditAllElasticIpsPrintFunctions:
                 ):
                     with patch(f"{module_path}._print_associated_eips") as mock_assoc:
                         with patch(f"{module_path}._print_unassociated_eips") as mock_unassoc:
-                            with patch(
-                                f"{module_path}._print_cleanup_recommendations"
-                            ) as mock_cleanup:
+                            with patch(f"{module_path}._print_cleanup_recommendations") as mock_cleanup:
                                 audit_all_elastic_ips()
 
         assert mock_assoc.call_count == 2
@@ -151,9 +149,7 @@ class TestAuditAllElasticIpsPrintFunctions:
                 ):
                     with patch(f"{module_path}._print_associated_eips"):
                         with patch(f"{module_path}._print_unassociated_eips"):
-                            with patch(
-                                f"{module_path}._print_cleanup_recommendations"
-                            ) as mock_cleanup:
+                            with patch(f"{module_path}._print_cleanup_recommendations") as mock_cleanup:
                                 audit_all_elastic_ips()
 
         mock_cleanup.assert_not_called()
@@ -170,9 +166,7 @@ class TestAuditAllElasticIpsRegionHandling:
         ):
             with patch(
                 "cost_toolkit.scripts.audit.aws_elastic_ip_audit.get_all_regions",
-                side_effect=ClientError(
-                    {"Error": {"Code": "UnauthorizedOperation"}}, "DescribeRegions"
-                ),
+                side_effect=ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "DescribeRegions"),
             ):
                 try:
                     audit_all_elastic_ips()
@@ -227,9 +221,7 @@ class TestMain:
 
     def test_main_success(self):
         """Test successful main execution."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_elastic_ip_audit.audit_all_elastic_ips"
-        ) as mock_audit:
+        with patch("cost_toolkit.scripts.audit.aws_elastic_ip_audit.audit_all_elastic_ips") as mock_audit:
             main()
 
         mock_audit.assert_called_once()

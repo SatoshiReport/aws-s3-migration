@@ -63,9 +63,7 @@ class TestMainSuccess:
             result = main()
 
             assert result == 0
-            mock_create_records.assert_called_once_with(
-                "iwannabenewyork.com", zone_id, "192.168.1.1"
-            )
+            mock_create_records.assert_called_once_with("iwannabenewyork.com", zone_id, "192.168.1.1")
             captured = capsys.readouterr()
             assert "Nameservers updated at registrar" in captured.out
 

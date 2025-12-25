@@ -25,9 +25,7 @@ class TestTerminateInstanceSafely:
     def test_terminate_success(self):
         """Test successful safe termination."""
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_instance_termination.get_instance_details"
-            ) as mock_get:
+            with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.get_instance_details") as mock_get:
                 with patch("time.sleep"):
                     mock_ec2 = MagicMock()
                     mock_client.return_value = mock_ec2
@@ -59,9 +57,7 @@ class TestTerminateInstanceSafely:
     def test_already_terminated(self, capsys):
         """Test termination of already terminated instance."""
         with patch("boto3.client"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_instance_termination.get_instance_details"
-            ) as mock_get:
+            with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.get_instance_details") as mock_get:
                 instance_info = {
                     "instance_id": "i-123",
                     "name": "test",
@@ -91,13 +87,9 @@ class TestTerminateInstanceSafely:
     def test_termination_error(self, capsys):
         """Test error handling during termination."""
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_instance_termination.get_instance_details"
-            ) as mock_get:
+            with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.get_instance_details") as mock_get:
                 mock_ec2 = MagicMock()
-                mock_ec2.terminate_instances.side_effect = ClientError(
-                    {"Error": {"Code": "ServiceError"}}, "terminate_instances"
-                )
+                mock_ec2.terminate_instances.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "terminate_instances")
                 mock_client.return_value = mock_ec2
                 instance_info = {
                     "instance_id": "i-123",
@@ -225,9 +217,7 @@ class TestGetVolumeDetails:
         """Test error handling in get_volume_details."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_volumes.side_effect = ClientError(
-                {"Error": {"Code": "InvalidVolume.NotFound"}}, "describe_volumes"
-            )
+            mock_ec2.describe_volumes.side_effect = ClientError({"Error": {"Code": "InvalidVolume.NotFound"}}, "describe_volumes")
             mock_client.return_value = mock_ec2
 
             details = get_volume_details("vol-notfound", "us-east-1")

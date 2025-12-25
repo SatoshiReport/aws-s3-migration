@@ -170,10 +170,7 @@ def _print_old_snapshots(snapshot_details):
         old_snapshot_cost = sum(snap["monthly_cost"] for snap in old_snapshots)
         count = len(old_snapshots)
         days = OLD_SNAPSHOT_AGE_DAYS
-        print(
-            f"Found {count} snapshots older than {days} days "
-            f"costing ${old_snapshot_cost:.2f}/month"
-        )
+        print(f"Found {count} snapshots older than {days} days " f"costing ${old_snapshot_cost:.2f}/month")
         old_snapshots.sort(key=lambda x: x["monthly_cost"], reverse=True)
         for snap in old_snapshots[:10]:
             region = snap["region"]
@@ -194,17 +191,11 @@ def _print_recommendations(unattached_volumes, old_snapshots):
     if unattached_volumes:
         cost_savings = sum(vol["monthly_cost"] for vol in unattached_volumes)
         count = len(unattached_volumes)
-        print(
-            f"  1. Consider deleting {count} unattached volumes "
-            f"to save ${cost_savings:.2f}/month"
-        )
+        print(f"  1. Consider deleting {count} unattached volumes " f"to save ${cost_savings:.2f}/month")
     if old_snapshots:
         cost_savings = sum(snap["monthly_cost"] for snap in old_snapshots)
         count = len(old_snapshots)
-        print(
-            f"  2. Review {count} old snapshots - delete unnecessary ones "
-            f"to save up to ${cost_savings:.2f}/month"
-        )
+        print(f"  2. Review {count} old snapshots - delete unnecessary ones " f"to save up to ${cost_savings:.2f}/month")
     if not unattached_volumes and not old_snapshots:
         print("  All EBS resources appear to be in active use")
 

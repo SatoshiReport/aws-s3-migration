@@ -99,9 +99,7 @@ def delete_hosted_zone(zone_name, zone_id):
             }
 
             try:
-                change_response = route53.change_resource_record_sets(
-                    HostedZoneId=f"/hostedzone/{zone_id}", ChangeBatch=change_batch
-                )
+                change_response = route53.change_resource_record_sets(HostedZoneId=f"/hostedzone/{zone_id}", ChangeBatch=change_batch)
 
                 change_id = change_response["ChangeInfo"]["Id"]
                 print(f"    Change submitted: {change_id}")

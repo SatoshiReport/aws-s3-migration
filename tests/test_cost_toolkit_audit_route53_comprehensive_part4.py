@@ -64,15 +64,9 @@ class TestPrintCostExplanation:
 
 def test_main_function_main_execution(capsys):
     """Test main function execution."""
-    with patch(
-        "cost_toolkit.scripts.audit.aws_route53_audit.audit_route53_hosted_zones"
-    ) as mock_zones:
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.audit_route53_health_checks"
-        ) as mock_health:
-            with patch(
-                "cost_toolkit.scripts.audit.aws_route53_audit.audit_route53_resolver_endpoints"
-            ) as mock_resolver:
+    with patch("cost_toolkit.scripts.audit.aws_route53_audit.audit_route53_hosted_zones") as mock_zones:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.audit_route53_health_checks") as mock_health:
+            with patch("cost_toolkit.scripts.audit.aws_route53_audit.audit_route53_resolver_endpoints") as mock_resolver:
                 mock_zones.return_value = [
                     {
                         "zone_name": "example.com",

@@ -47,10 +47,7 @@ def _compare_checks_fixed(stability_checks):
     current_check = stability_checks[-1]
 
     if prev_check["size_bytes"] != current_check["size_bytes"]:
-        print(
-            f"   📈 File size changed: {prev_check['size_gb']:.2f} GB → "
-            f"{current_check['size_gb']:.2f} GB"
-        )
+        print(f"   📈 File size changed: {prev_check['size_gb']:.2f} GB → " f"{current_check['size_gb']:.2f} GB")
         print("   ⏳ File still growing, continuing to monitor...")
         return [current_check]
 
@@ -60,14 +57,8 @@ def _compare_checks_fixed(stability_checks):
 
 def _get_stability_config(fast_check):
     """Get stability check configuration based on fast_check mode."""
-    stability_required_minutes = (
-        constants.S3_FAST_CHECK_MINUTES if fast_check else constants.S3_STABILITY_CHECK_MINUTES
-    )
-    check_interval_minutes = (
-        constants.S3_FAST_CHECK_INTERVAL_MINUTES
-        if fast_check
-        else constants.S3_STABILITY_CHECK_INTERVAL_MINUTES
-    )
+    stability_required_minutes = constants.S3_FAST_CHECK_MINUTES if fast_check else constants.S3_STABILITY_CHECK_MINUTES
+    check_interval_minutes = constants.S3_FAST_CHECK_INTERVAL_MINUTES if fast_check else constants.S3_STABILITY_CHECK_INTERVAL_MINUTES
     required_stable_checks = stability_required_minutes // check_interval_minutes
 
     return {
@@ -89,10 +80,7 @@ def _validate_final_size(final_check, expected_size_gb, stability_required_minut
             f"got {final_check['size_gb']:.2f} GB ({variance_percent:.1f}% difference)"
         )
 
-    print(
-        f"   ✅ File stable for {stability_required_minutes} minutes "
-        f"at {final_check['size_gb']:.2f} GB"
-    )
+    print(f"   ✅ File stable for {stability_required_minutes} minutes " f"at {final_check['size_gb']:.2f} GB")
 
 
 def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, fast_check=False):
@@ -107,15 +95,10 @@ def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, f
     stability_checks = []
     for check_num in range(required_stable_checks):
         try:
-            check_data = _perform_s3_stability_check_fixed(
-                s3_client, bucket_name, s3_key, check_num
-            )
+            check_data = _perform_s3_stability_check_fixed(s3_client, bucket_name, s3_key, check_num)
             stability_checks.append(check_data)
 
-            print(
-                f"   📊 Stability check {check_num + 1}/{required_stable_checks}: "
-                f"{check_data['size_gb']:.2f} GB"
-            )
+            print(f"   📊 Stability check {check_num + 1}/{required_stable_checks}: " f"{check_data['size_gb']:.2f} GB")
 
             stability_checks = _compare_checks_fixed(stability_checks)
 
@@ -123,9 +106,7 @@ def check_s3_file_completion(s3_client, bucket_name, s3_key, expected_size_gb, f
             stability_checks = _handle_file_not_found(check_num)
         except (BotoCoreError, ClientError) as exc:
             print(f"   ❌ Error checking S3 file: {exc}")
-            raise S3FileValidationException(
-                f"Failed to check S3 file: {exc}"
-            ) from exc  # noqa: TRY003
+            raise S3FileValidationException(f"Failed to check S3 file: {exc}") from exc  # noqa: TRY003
 
         if check_num < required_stable_checks - 1:
             print(f"   ⏳ Waiting {check_interval_minutes} minutes for next stability check...")
@@ -166,8 +147,7 @@ def verify_s3_export_final(s3_client, bucket_name, s3_key, expected_size_gb):
 
     if not min_expected_gb <= file_size_gb <= max_expected_gb:
         raise S3FileValidationException(  # noqa: TRY003
-            f"Final size validation failed: {file_size_gb:.2f} GB "
-            f"(expected {min_expected_gb:.1f}-{max_expected_gb:.1f} GB)"
+            f"Final size validation failed: {file_size_gb:.2f} GB " f"(expected {min_expected_gb:.1f}-{max_expected_gb:.1f} GB)"
         )
 
     print("   ✅ Size validation passed")

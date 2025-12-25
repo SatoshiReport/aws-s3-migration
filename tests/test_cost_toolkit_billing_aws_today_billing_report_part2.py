@@ -36,11 +36,7 @@ class TestDisplayServiceUsageDetails:
 
     def test_display_service_usage_details_below_threshold(self, capsys):
         """Test not displaying details below cost threshold."""
-        service_usage_details = {
-            "EC2": [
-                {"usage_type": "BoxUsage:t3.micro", "cost": 0.0005, "quantity": 1, "unit": "Hrs"}
-            ]
-        }
+        service_usage_details = {"EC2": [{"usage_type": "BoxUsage:t3.micro", "cost": 0.0005, "quantity": 1, "unit": "Hrs"}]}
 
         _display_service_usage_details("EC2", service_usage_details, 0.0001)
 
@@ -290,9 +286,7 @@ class TestMain:
     @patch("cost_toolkit.scripts.billing.aws_today_billing_report.clear_screen")
     @patch("cost_toolkit.scripts.billing.aws_today_billing_report.check_aws_credentials")
     @patch("cost_toolkit.scripts.billing.aws_today_billing_report.get_today_billing_data")
-    def test_main_failed_data_retrieval(
-        self, mock_get_data, mock_check_creds, _mock_clear_screen, capsys
-    ):
+    def test_main_failed_data_retrieval(self, mock_get_data, mock_check_creds, _mock_clear_screen, capsys):
         """Test main function with failed data retrieval."""
         mock_check_creds.return_value = True
         mock_get_data.return_value = (None, None, None)

@@ -23,9 +23,7 @@ def terminate_instance(instance_id, region_name):
         # Get instance details first using canonical function
         details = get_instance_details(ec2, instance_id)
         if not details:
-            print(
-                f"  ❌ Error terminating instance {instance_id}: Could not retrieve instance details"
-            )
+            print(f"  ❌ Error terminating instance {instance_id}: Could not retrieve instance details")
             return False
 
         instance_type = details["instance_type"]
@@ -267,9 +265,7 @@ def main():
     print("PHASE 2: RENAMING INSTANCE")
     print("=" * 80)
 
-    rename_success = rename_instance(
-        instance_to_rename[0], instance_to_rename[2], instance_to_rename[1]
-    )
+    rename_success = rename_instance(instance_to_rename[0], instance_to_rename[2], instance_to_rename[1])
 
     print("\n" + "=" * 80)
     print("PHASE 3: ANALYZING EU-WEST-2 INSTANCES")

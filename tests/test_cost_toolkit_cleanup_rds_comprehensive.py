@@ -68,9 +68,7 @@ class TestDeleteAuroraInstance:
     def test_delete_instance_other_error(self):
         """Test other deletion errors."""
         mock_client = MagicMock()
-        mock_client.delete_db_instance.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_db_instance"
-        )
+        mock_client.delete_db_instance.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_db_instance")
 
         with pytest.raises(ClientError):
             _delete_aurora_instance(mock_client, "test-instance")
@@ -87,9 +85,7 @@ class TestWaitForInstanceDeletion:
 
         _wait_for_instance_deletion(mock_client, "test-instance")
 
-        mock_waiter.wait.assert_called_once_with(
-            DBInstanceIdentifier="test-instance", WaiterConfig={"Delay": 30, "MaxAttempts": 20}
-        )
+        mock_waiter.wait.assert_called_once_with(DBInstanceIdentifier="test-instance", WaiterConfig={"Delay": 30, "MaxAttempts": 20})
         captured = capsys.readouterr()
         assert "deleted successfully" in captured.out
 
@@ -115,9 +111,7 @@ class TestDeleteAuroraCluster:
 
         _delete_aurora_cluster(mock_client, "test-cluster")
 
-        mock_client.delete_db_cluster.assert_called_once_with(
-            DBClusterIdentifier="test-cluster", SkipFinalSnapshot=True
-        )
+        mock_client.delete_db_cluster.assert_called_once_with(DBClusterIdentifier="test-cluster", SkipFinalSnapshot=True)
         captured = capsys.readouterr()
         assert "deletion initiated" in captured.out
         assert "Will save" in captured.out
@@ -125,9 +119,7 @@ class TestDeleteAuroraCluster:
     def test_delete_cluster_not_found(self, capsys):
         """Test deleting cluster that doesn't exist."""
         mock_client = MagicMock()
-        mock_client.delete_db_cluster.side_effect = ClientError(
-            {"Error": {"Code": "DBClusterNotFound"}}, "delete_db_cluster"
-        )
+        mock_client.delete_db_cluster.side_effect = ClientError({"Error": {"Code": "DBClusterNotFound"}}, "delete_db_cluster")
 
         _delete_aurora_cluster(mock_client, "test-cluster")
 
@@ -137,9 +129,7 @@ class TestDeleteAuroraCluster:
     def test_delete_cluster_error(self, capsys):
         """Test other cluster deletion errors."""
         mock_client = MagicMock()
-        mock_client.delete_db_cluster.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_db_cluster"
-        )
+        mock_client.delete_db_cluster.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_db_cluster")
 
         _delete_aurora_cluster(mock_client, "test-cluster")
 
@@ -157,12 +147,8 @@ class TestCleanupAuroraCluster:
                 "cost_toolkit.scripts.cleanup.aws_rds_cleanup._delete_aurora_instance",
                 return_value=True,
             ):
-                with patch(
-                    "cost_toolkit.scripts.cleanup.aws_rds_cleanup._wait_for_instance_deletion"
-                ):
-                    with patch(
-                        "cost_toolkit.scripts.cleanup.aws_rds_cleanup._delete_aurora_cluster"
-                    ):
+                with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup._wait_for_instance_deletion"):
+                    with patch("cost_toolkit.scripts.cleanup.aws_rds_cleanup._delete_aurora_cluster"):
                         _cleanup_aurora_cluster()
 
         captured = capsys.readouterr()
@@ -170,9 +156,7 @@ class TestCleanupAuroraCluster:
 
     def test_cleanup_aurora_client_error(self, capsys):
         """Test Aurora cleanup with client error."""
-        with patch(
-            "boto3.client", side_effect=ClientError({"Error": {"Code": "AccessDenied"}}, "client")
-        ):
+        with patch("boto3.client", side_effect=ClientError({"Error": {"Code": "AccessDenied"}}, "client")):
             _cleanup_aurora_cluster()
 
         captured = capsys.readouterr()
@@ -185,9 +169,7 @@ class TestStopMariadbInstance:
     def test_stop_available_instance(self, capsys):
         """Test stopping available instance."""
         mock_client = MagicMock()
-        mock_client.describe_db_instances.return_value = {
-            "DBInstances": [{"DBInstanceStatus": "available"}]
-        }
+        mock_client.describe_db_instances.return_value = {"DBInstances": [{"DBInstanceStatus": "available"}]}
 
         _stop_mariadb_instance(mock_client, "test-db")
 
@@ -199,9 +181,7 @@ class TestStopMariadbInstance:
     def test_stop_already_stopped(self, capsys):
         """Test instance already stopped."""
         mock_client = MagicMock()
-        mock_client.describe_db_instances.return_value = {
-            "DBInstances": [{"DBInstanceStatus": "stopped"}]
-        }
+        mock_client.describe_db_instances.return_value = {"DBInstances": [{"DBInstanceStatus": "stopped"}]}
 
         _stop_mariadb_instance(mock_client, "test-db")
 
@@ -212,9 +192,7 @@ class TestStopMariadbInstance:
     def test_stop_invalid_state(self, capsys):
         """Test stopping instance in invalid state."""
         mock_client = MagicMock()
-        mock_client.describe_db_instances.return_value = {
-            "DBInstances": [{"DBInstanceStatus": "creating"}]
-        }
+        mock_client.describe_db_instances.return_value = {"DBInstances": [{"DBInstanceStatus": "creating"}]}
 
         _stop_mariadb_instance(mock_client, "test-db")
 
@@ -225,9 +203,7 @@ class TestStopMariadbInstance:
     def test_stop_instance_not_found(self, capsys):
         """Test stopping non-existent instance."""
         mock_client = MagicMock()
-        mock_client.describe_db_instances.side_effect = ClientError(
-            {"Error": {"Code": "DBInstanceNotFound"}}, "describe_db_instances"
-        )
+        mock_client.describe_db_instances.side_effect = ClientError({"Error": {"Code": "DBInstanceNotFound"}}, "describe_db_instances")
 
         _stop_mariadb_instance(mock_client, "test-db")
 
@@ -249,9 +225,7 @@ class TestCleanupMariadbInstance:
 
     def test_cleanup_mariadb_error(self, capsys):
         """Test MariaDB cleanup with error."""
-        with patch(
-            "boto3.client", side_effect=ClientError({"Error": {"Code": "AccessDenied"}}, "client")
-        ):
+        with patch("boto3.client", side_effect=ClientError({"Error": {"Code": "AccessDenied"}}, "client")):
             _cleanup_mariadb_instance()
 
         captured = capsys.readouterr()
@@ -299,9 +273,7 @@ class TestMain:
     def test_stop_instance_other_error(self, capsys):
         """Test other errors when stopping instance."""
         mock_client = MagicMock()
-        mock_client.describe_db_instances.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "describe_db_instances"
-        )
+        mock_client.describe_db_instances.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_db_instances")
 
         _stop_mariadb_instance(mock_client, "test-db")
 

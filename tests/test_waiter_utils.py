@@ -16,6 +16,4 @@ def test_wait_ami_available():
     waiter_utils.wait_ami_available(client, "ami-123")
 
     client.get_waiter.assert_called_once_with("image_available")
-    waiter.wait.assert_called_once_with(
-        ImageIds=["ami-123"], WaiterConfig={"Delay": 15, "MaxAttempts": 40}
-    )
+    waiter.wait.assert_called_once_with(ImageIds=["ami-123"], WaiterConfig={"Delay": 15, "MaxAttempts": 40})

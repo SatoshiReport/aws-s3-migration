@@ -65,9 +65,7 @@ class TestLoadAuroraSettings:
             "AURORA_PASSWORD": "password123",
         }
         with patch.dict("os.environ", env):
-            host, port, database, username, password = (
-                explore_aurora_data._load_aurora_settings()  # pylint: disable=protected-access
-            )
+            host, port, database, username, password = explore_aurora_data._load_aurora_settings()  # pylint: disable=protected-access
             assert host == "aurora.example.com"
             assert port == 5432
             assert database == "testdb"
@@ -241,9 +239,7 @@ class TestExploreWithData:
         with patch(f"{EXPLORE_MODULE}.print_database_version_info"):
             with patch(f"{EXPLORE_MODULE}.list_databases"):
                 with patch(f"{EXPLORE_MODULE}.list_schemas"):
-                    with patch(
-                        f"{EXPLORE_MODULE}.list_tables", return_value=[{"name": "test_table"}]
-                    ):
+                    with patch(f"{EXPLORE_MODULE}.list_tables", return_value=[{"name": "test_table"}]):
                         with patch(f"{EXPLORE_MODULE}.list_views"):
                             with patch(f"{EXPLORE_MODULE}.analyze_tables", return_value=100):
                                 with patch(f"{EXPLORE_MODULE}.get_database_size"):

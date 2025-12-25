@@ -31,9 +31,7 @@ class TestDisableTerminationProtectionAndTerminate:
             assert "Terminating instance..." in captured.out
             assert "Instance i-123 termination initiated" in captured.out
             assert "This will stop EBS storage charges" in captured.out
-            mock_ec2.modify_instance_attribute.assert_called_once_with(
-                InstanceId="i-123", DisableApiTermination={"Value": False}
-            )
+            mock_ec2.modify_instance_attribute.assert_called_once_with(InstanceId="i-123", DisableApiTermination={"Value": False})
             mock_ec2.terminate_instances.assert_called_once_with(InstanceIds=["i-123"])
 
     def test_disable_and_terminate_modify_error(self, capsys):
@@ -114,8 +112,7 @@ class TestMain:
     def test_main_success(self, capsys):
         """Test successful main execution."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection."
-            "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = True
             main()
@@ -123,17 +120,14 @@ class TestMain:
             assert "AWS Fix Termination Protection" in captured.out
             assert "Fixing termination protection for mufasa instance" in captured.out
             assert "RESULT:" in captured.out
-            assert (
-                "Successfully disabled protection and terminated i-0cfce47f50e3c34f" in captured.out
-            )
+            assert "Successfully disabled protection and terminated i-0cfce47f50e3c34f" in captured.out
             assert "Additional monthly savings: $0.64 (8GB EBS volume)" in captured.out
             mock_disable.assert_called_once_with("i-0cfce47f50e3c34f", "us-east-1")
 
     def test_main_failure(self, capsys):
         """Test main execution with failure."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection."
-            "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = False
             main()
@@ -145,8 +139,7 @@ class TestMain:
     def test_main_hardcoded_values(self):
         """Test that main uses correct hardcoded instance ID and region."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection."
-            "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = True
             main()
@@ -155,8 +148,7 @@ class TestMain:
     def test_main_prints_header(self, capsys):
         """Test that main prints proper header."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection."
-            "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = True
             main()
@@ -167,8 +159,7 @@ class TestMain:
     def test_main_displays_savings(self, capsys):
         """Test that main displays cost savings information."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection."
-            "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = True
             main()

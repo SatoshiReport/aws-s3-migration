@@ -57,9 +57,7 @@ def _list_remaining_volumes(ec2):
         response = ec2.describe_volumes()
 
         london_volumes = [
-            _build_volume_info(volume)
-            for volume in response["Volumes"]
-            if volume["AvailabilityZone"].startswith("eu-west-2")
+            _build_volume_info(volume) for volume in response["Volumes"] if volume["AvailabilityZone"].startswith("eu-west-2")
         ]
 
         london_volumes.sort(key=lambda x: x["created"], reverse=True)

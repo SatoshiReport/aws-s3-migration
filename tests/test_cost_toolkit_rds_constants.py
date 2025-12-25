@@ -38,9 +38,7 @@ class TestCreatePublicSubnetGroup:
         mock_rds.create_db_subnet_group.assert_called_once()
         call_args = mock_rds.create_db_subnet_group.call_args[1]
         assert call_args["DBSubnetGroupName"] == "test-subnet-group"
-        assert (
-            call_args["DBSubnetGroupDescription"] == "Public subnets only for RDS internet access"
-        )
+        assert call_args["DBSubnetGroupDescription"] == "Public subnets only for RDS internet access"
         assert call_args["SubnetIds"] == PUBLIC_SUBNETS
         assert call_args["Tags"] == [{"Key": "Purpose", "Value": "Public RDS access"}]
 
@@ -53,9 +51,7 @@ class TestCreatePublicSubnetGroup:
         mock_rds = MagicMock()
         mock_rds.create_db_subnet_group.return_value = {}
 
-        create_public_subnet_group(
-            mock_rds, "custom-group", description="Custom description for testing"
-        )
+        create_public_subnet_group(mock_rds, "custom-group", description="Custom description for testing")
 
         call_args = mock_rds.create_db_subnet_group.call_args[1]
         assert call_args["DBSubnetGroupDescription"] == "Custom description for testing"
@@ -98,9 +94,7 @@ class TestCreatePublicSubnetGroup:
         create_public_subnet_group(mock_rds, "test-group", description=None)
 
         call_args = mock_rds.create_db_subnet_group.call_args[1]
-        assert (
-            call_args["DBSubnetGroupDescription"] == "Public subnets only for RDS internet access"
-        )
+        assert call_args["DBSubnetGroupDescription"] == "Public subnets only for RDS internet access"
 
     def test_create_subnet_group_empty_description(self):
         """Test creating subnet group with empty description."""

@@ -72,9 +72,7 @@ def _delete_database(lightsail_client, database):
 
     try:
         print(f"🗑️  Deleting database: {db_name}")
-        lightsail_client.delete_relational_database(
-            relationalDatabaseName=db_name, skipFinalSnapshot=True
-        )
+        lightsail_client.delete_relational_database(relationalDatabaseName=db_name, skipFinalSnapshot=True)
         print(f"✅ Successfully deleted database: {db_name}")
         if monthly_cost > 0:
             print(f"💰 Monthly savings: ${monthly_cost:.2f}")
@@ -162,9 +160,7 @@ def delete_lightsail_instances():
     _print_summary(total_instances_deleted, total_databases_deleted, total_savings)
 
     if total_instances_deleted > 0 or total_databases_deleted > 0:
-        record_cleanup_action(
-            "lightsail", total_instances_deleted + total_databases_deleted, total_savings
-        )
+        record_cleanup_action("lightsail", total_instances_deleted + total_databases_deleted, total_savings)
 
     return total_instances_deleted, total_databases_deleted, total_savings
 
@@ -214,9 +210,7 @@ def main():
     print("=" * 80)
 
     # Confirmation prompt
-    response = input(
-        "\nAre you sure you want to delete ALL Lightsail resources? (type 'DELETE' to confirm): "
-    )
+    response = input("\nAre you sure you want to delete ALL Lightsail resources? (type 'DELETE' to confirm): ")
 
     if response != "DELETE":
         print("❌ Cleanup cancelled. No resources were deleted.")

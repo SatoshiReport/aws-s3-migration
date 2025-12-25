@@ -15,9 +15,7 @@ def disable_termination_protection_and_terminate(instance_id, region_name):
 
         # First, disable termination protection
         print("  Disabling termination protection...")
-        ec2.modify_instance_attribute(
-            InstanceId=instance_id, DisableApiTermination={"Value": False}
-        )
+        ec2.modify_instance_attribute(InstanceId=instance_id, DisableApiTermination={"Value": False})
         print("  ✅ Termination protection disabled")
 
         # Now terminate the instance

@@ -175,9 +175,7 @@ def test_report_lightsail_cost_breakdown_error(capsys):
     """Test report_lightsail_cost_breakdown handles errors."""
     with patch("boto3.client") as mock_client:
         mock_ce = MagicMock()
-        mock_ce.get_cost_and_usage.side_effect = ClientError(
-            {"Error": {"Code": "TestError"}}, "test"
-        )
+        mock_ce.get_cost_and_usage.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
         mock_client.return_value = mock_ce
 
         report_lightsail_cost_breakdown()

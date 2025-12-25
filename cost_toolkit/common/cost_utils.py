@@ -9,9 +9,7 @@ across audit and optimization scripts.
 GP3_DEFAULT_THROUGHPUT_MBS = 125  # Default throughput for gp3 volumes
 
 
-def calculate_ebs_volume_cost(
-    size_gb: int, volume_type: str, iops: int = 0, throughput: int = 0
-) -> float:
+def calculate_ebs_volume_cost(size_gb: int, volume_type: str, iops: int = 0, throughput: int = 0) -> float:
     """
     Calculate monthly cost for an EBS volume based on type, size, IOPS, and throughput.
 
@@ -47,10 +45,7 @@ def calculate_ebs_volume_cost(
 
     # Calculate base storage cost
     if volume_type not in cost_per_gb:
-        raise ValueError(
-            f"Unknown volume type: {volume_type}. "
-            f"Supported types: {', '.join(sorted(cost_per_gb.keys()))}"
-        )
+        raise ValueError(f"Unknown volume type: {volume_type}. " f"Supported types: {', '.join(sorted(cost_per_gb.keys()))}")
     rate = cost_per_gb[volume_type]
     base_cost = size_gb * rate
 

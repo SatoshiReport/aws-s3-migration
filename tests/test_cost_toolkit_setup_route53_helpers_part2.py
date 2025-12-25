@@ -122,9 +122,7 @@ class TestApplyDnsChangesBasic:
         mock_now = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         mock_datetime.now.return_value = mock_now
 
-        mock_route53.change_resource_record_sets.return_value = {
-            "ChangeInfo": {"Id": "/change/C123456789"}
-        }
+        mock_route53.change_resource_record_sets.return_value = {"ChangeInfo": {"Id": "/change/C123456789"}}
 
         mock_waiter = MagicMock()
         mock_route53.get_waiter.return_value = mock_waiter
@@ -160,9 +158,7 @@ class TestApplyDnsChangesBasic:
         mock_now = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         mock_datetime.now.return_value = mock_now
 
-        mock_route53.change_resource_record_sets.return_value = {
-            "ChangeInfo": {"Id": "/change/C123456789"}
-        }
+        mock_route53.change_resource_record_sets.return_value = {"ChangeInfo": {"Id": "/change/C123456789"}}
 
         mock_waiter = MagicMock()
         mock_route53.get_waiter.return_value = mock_waiter
@@ -204,9 +200,7 @@ class TestApplyDnsChangesPropagation:
         mock_now = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         mock_datetime.now.return_value = mock_now
 
-        mock_route53.change_resource_record_sets.return_value = {
-            "ChangeInfo": {"Id": "/change/C123456789"}
-        }
+        mock_route53.change_resource_record_sets.return_value = {"ChangeInfo": {"Id": "/change/C123456789"}}
 
         mock_waiter = MagicMock()
         mock_route53.get_waiter.return_value = mock_waiter
@@ -224,9 +218,7 @@ class TestApplyDnsChangesPropagation:
         _apply_dns_changes(mock_route53, "Z123456789ABC", changes)
 
         mock_route53.get_waiter.assert_called_once_with("resource_record_sets_changed")
-        mock_waiter.wait.assert_called_once_with(
-            Id="/change/C123456789", WaiterConfig={"Delay": 10, "MaxAttempts": 30}
-        )
+        mock_waiter.wait.assert_called_once_with(Id="/change/C123456789", WaiterConfig={"Delay": 10, "MaxAttempts": 30})
 
     @patch("cost_toolkit.scripts.setup.route53_helpers.datetime")
     def test_apply_changes_includes_comment(self, mock_datetime):
@@ -235,9 +227,7 @@ class TestApplyDnsChangesPropagation:
         mock_now = datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc)
         mock_datetime.now.return_value = mock_now
 
-        mock_route53.change_resource_record_sets.return_value = {
-            "ChangeInfo": {"Id": "/change/C123456789"}
-        }
+        mock_route53.change_resource_record_sets.return_value = {"ChangeInfo": {"Id": "/change/C123456789"}}
 
         mock_waiter = MagicMock()
         mock_route53.get_waiter.return_value = mock_waiter

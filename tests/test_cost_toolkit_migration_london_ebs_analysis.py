@@ -190,9 +190,7 @@ class TestStartStoppedInstance:
         _start_stopped_instance(mock_ec2, "i-12345")
 
         mock_ec2.start_instances.assert_called_once_with(InstanceIds=["i-12345"])
-        mock_waiter.wait.assert_called_once_with(
-            InstanceIds=["i-12345"], WaiterConfig={"Delay": 15, "MaxAttempts": 20}
-        )
+        mock_waiter.wait.assert_called_once_with(InstanceIds=["i-12345"], WaiterConfig={"Delay": 15, "MaxAttempts": 20})
         captured = capsys.readouterr()
         assert "Instance is now running" in captured.out
         assert "Public IP: 203.0.113.1" in captured.out
@@ -205,11 +203,7 @@ class TestStartStoppedInstance:
         mock_waiter = MagicMock()
         mock_ec2.get_waiter.return_value = mock_waiter
 
-        instance_data = {
-            "Reservations": [
-                {"Instances": [{"InstanceId": "i-12345", "PrivateIpAddress": "10.0.0.1"}]}
-            ]
-        }
+        instance_data = {"Reservations": [{"Instances": [{"InstanceId": "i-12345", "PrivateIpAddress": "10.0.0.1"}]}]}
         mock_ec2.describe_instances.return_value = instance_data
 
         _start_stopped_instance(mock_ec2, "i-12345")

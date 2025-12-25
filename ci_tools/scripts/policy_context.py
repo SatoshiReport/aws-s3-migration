@@ -68,9 +68,7 @@ class SharedPolicyContextError(RuntimeError):
     """Raised when the shared policy_context module cannot be loaded."""
 
     def __init__(self, path: Path) -> None:
-        super().__init__(
-            f"Shared policy_context not found at {path}. Clone ci_shared or set CI_SHARED_ROOT."
-        )
+        super().__init__(f"Shared policy_context not found at {path}. Clone ci_shared or set CI_SHARED_ROOT.")
 
 
 def _load_shared_context() -> ModuleType:  # pragma: no cover - exercised indirectly

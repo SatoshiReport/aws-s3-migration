@@ -21,9 +21,7 @@ class TestDeleteOrphanedRDSNetworkInterfacesSuccess:
         """Test successful deletion of all orphaned interfaces."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_network_interfaces.return_value = {
-                "NetworkInterfaces": [{"Attachment": {}}]
-            }
+            mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"Attachment": {}}]}
             mock_ec2.delete_network_interface.return_value = {}
             mock_client.return_value = mock_ec2
             deleted, failed = delete_orphaned_rds_network_interfaces("key_id", "secret_key")
@@ -51,14 +49,10 @@ class TestDeleteOrphanedRDSNetworkInterfacesSuccess:
                     },
                     "delete_network_interface",
                 )
-                error.response = {
-                    "Error": {"Code": "InvalidNetworkInterfaceID.NotFound", "Message": "Not found"}
-                }
+                error.response = {"Error": {"Code": "InvalidNetworkInterfaceID.NotFound", "Message": "Not found"}}
                 raise error
 
-            mock_ec2.describe_network_interfaces.return_value = {
-                "NetworkInterfaces": [{"Attachment": {}}]
-            }
+            mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"Attachment": {}}]}
             mock_ec2.delete_network_interface.side_effect = delete_side_effect
             mock_ec2.exceptions = MagicMock()
             mock_ec2.exceptions.ClientError = ClientError
@@ -71,9 +65,7 @@ class TestDeleteOrphanedRDSNetworkInterfacesSuccess:
         """Test that provided credentials are used correctly."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_network_interfaces.return_value = {
-                "NetworkInterfaces": [{"Attachment": {}}]
-            }
+            mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"Attachment": {}}]}
             mock_ec2.delete_network_interface.return_value = {}
             mock_client.return_value = mock_ec2
             delete_orphaned_rds_network_interfaces("my_key_id", "my_secret_key")
@@ -90,16 +82,12 @@ class TestDeleteOrphanedRDSNetworkInterfacesErrors:
         """Test handling of interfaces already deleted."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_network_interfaces.return_value = {
-                "NetworkInterfaces": [{"Attachment": {}}]
-            }
+            mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"Attachment": {}}]}
             error = ClientError(
                 {"Error": {"Code": "InvalidNetworkInterfaceID.NotFound", "Message": "Not found"}},
                 "delete_network_interface",
             )
-            error.response = {
-                "Error": {"Code": "InvalidNetworkInterfaceID.NotFound", "Message": "Not found"}
-            }
+            error.response = {"Error": {"Code": "InvalidNetworkInterfaceID.NotFound", "Message": "Not found"}}
             mock_ec2.delete_network_interface.side_effect = error
             mock_ec2.exceptions = MagicMock()
             mock_ec2.exceptions.ClientError = ClientError
@@ -114,16 +102,12 @@ class TestDeleteOrphanedRDSNetworkInterfacesErrors:
         """Test handling of interfaces still in use."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_network_interfaces.return_value = {
-                "NetworkInterfaces": [{"Attachment": {}}]
-            }
+            mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"Attachment": {}}]}
             error = ClientError(
                 {"Error": {"Code": "InvalidNetworkInterface.InUse", "Message": "In use"}},
                 "delete_network_interface",
             )
-            error.response = {
-                "Error": {"Code": "InvalidNetworkInterface.InUse", "Message": "In use"}
-            }
+            error.response = {"Error": {"Code": "InvalidNetworkInterface.InUse", "Message": "In use"}}
             mock_ec2.delete_network_interface.side_effect = error
             mock_ec2.exceptions = MagicMock()
             mock_ec2.exceptions.ClientError = ClientError
@@ -139,9 +123,7 @@ class TestDeleteOrphanedRDSNetworkInterfacesErrors:
         """Test handling of generic deletion errors."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_network_interfaces.return_value = {
-                "NetworkInterfaces": [{"Attachment": {}}]
-            }
+            mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"Attachment": {}}]}
             error = ClientError(
                 {"Error": {"Code": "GenericError", "Message": "Something went wrong"}},
                 "delete_network_interface",
@@ -163,9 +145,7 @@ def test_delete_interfaces_attached_to_instance(capsys):
     """Test skipping interfaces now attached to instances."""
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
-        mock_ec2.describe_network_interfaces.return_value = {
-            "NetworkInterfaces": [{"Attachment": {"InstanceId": "i-123"}}]
-        }
+        mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"Attachment": {"InstanceId": "i-123"}}]}
         mock_client.return_value = mock_ec2
         deleted, failed = delete_orphaned_rds_network_interfaces("key_id", "secret_key")
         assert len(deleted) == 0
@@ -181,10 +161,7 @@ class TestMain:
     def test_main_user_cancels(self, capsys):
         """Test main when user cancels operation."""
         with patch("builtins.input", return_value="NO"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup."
-                "setup_aws_credentials"
-            ) as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup." "setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key_id", "secret_key")
                 main()
                 captured = capsys.readouterr()
@@ -193,16 +170,11 @@ class TestMain:
     def test_main_success(self, capsys):
         """Test successful main execution."""
         with patch("builtins.input", return_value="DELETE ORPHANED RDS INTERFACES"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup."
-                "setup_aws_credentials"
-            ) as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup." "setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key_id", "secret_key")
                 with patch("boto3.client") as mock_client:
                     mock_ec2 = MagicMock()
-                    mock_ec2.describe_network_interfaces.return_value = {
-                        "NetworkInterfaces": [{"Attachment": {}}]
-                    }
+                    mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"Attachment": {}}]}
                     mock_ec2.delete_network_interface.return_value = {}
                     mock_client.return_value = mock_ec2
                     main()
@@ -214,10 +186,7 @@ class TestMain:
     def test_main_partial_success(self, capsys):
         """Test main with partial success."""
         with patch("builtins.input", return_value="DELETE ORPHANED RDS INTERFACES"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup."
-                "setup_aws_credentials"
-            ) as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup." "setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key_id", "secret_key")
                 with patch("boto3.client") as mock_client:
                     mock_ec2 = MagicMock()
@@ -236,14 +205,10 @@ class TestMain:
                             },  # noqa: E501
                             "delete_network_interface",
                         )
-                        error.response = {
-                            "Error": {"Code": "InvalidNetworkInterface.InUse", "Message": "In use"}
-                        }
+                        error.response = {"Error": {"Code": "InvalidNetworkInterface.InUse", "Message": "In use"}}
                         raise error
 
-                    mock_ec2.describe_network_interfaces.return_value = {
-                        "NetworkInterfaces": [{"Attachment": {}}]
-                    }
+                    mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"Attachment": {}}]}
                     mock_ec2.delete_network_interface.side_effect = delete_side_effect
                     mock_ec2.exceptions = MagicMock()
                     mock_ec2.exceptions.ClientError = ClientError
@@ -257,13 +222,8 @@ class TestMain:
     def test_main_critical_error(self, capsys):
         """Test main with critical error during execution."""
         with patch("builtins.input", return_value="DELETE ORPHANED RDS INTERFACES"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup."
-                "setup_aws_credentials"
-            ) as mock_load:
-                error = ClientError(
-                    {"Error": {"Code": "ServiceUnavailable"}}, "setup_aws_credentials"
-                )
+            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup." "setup_aws_credentials") as mock_load:
+                error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "setup_aws_credentials")
                 mock_load.side_effect = error
                 with pytest.raises(ClientError):
                     main()

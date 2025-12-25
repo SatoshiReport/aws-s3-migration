@@ -19,9 +19,7 @@ def delete_vpc_and_dependencies(vpc_id, region_name):
         print(f"❌ Error during VPC deletion process: {exc}")
         return False
 
-    return vpc_cleanup_utils.delete_vpc_and_dependencies(
-        vpc_id, region_name=region_name, ec2_client=ec2_client
-    )
+    return vpc_cleanup_utils.delete_vpc_and_dependencies(vpc_id, region_name=region_name, ec2_client=ec2_client)
 
 
 def delete_vpc_and_dependencies_with_logging(vpc_id, region_name):

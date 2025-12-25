@@ -59,9 +59,7 @@ class TestMainCostRetrieval:
         with (
             patch("cost_toolkit.overview.cli._print_header"),
             patch("cost_toolkit.overview.cli.setup_aws_credentials"),
-            patch(
-                "cost_toolkit.overview.cli.get_current_month_costs", return_value=({}, 0.0)
-            ) as mock_costs,
+            patch("cost_toolkit.overview.cli.get_current_month_costs", return_value=({}, 0.0)) as mock_costs,
             patch("cost_toolkit.overview.cli._print_current_costs"),
             patch("cost_toolkit.overview.cli.analyze_optimization_opportunities", return_value=[]),
             patch("cost_toolkit.overview.cli._print_optimization_opportunities"),
@@ -109,9 +107,7 @@ class TestMainOptimizationAnalysis:
             patch("cost_toolkit.overview.cli.setup_aws_credentials"),
             patch("cost_toolkit.overview.cli.get_current_month_costs", return_value=({}, 0.0)),
             patch("cost_toolkit.overview.cli._print_current_costs"),
-            patch(
-                "cost_toolkit.overview.cli.analyze_optimization_opportunities", return_value=[]
-            ) as mock_analyze,
+            patch("cost_toolkit.overview.cli.analyze_optimization_opportunities", return_value=[]) as mock_analyze,
             patch("cost_toolkit.overview.cli._print_optimization_opportunities"),
             patch("cost_toolkit.overview.cli._print_service_recommendations"),
             patch("cost_toolkit.overview.cli.run_quick_audit"),
@@ -246,9 +242,7 @@ class TestMainExecutionOrder:
 
         with (
             patch("cost_toolkit.overview.cli._print_header", side_effect=track_call("header")),
-            patch(
-                "cost_toolkit.overview.cli.setup_aws_credentials", side_effect=track_call("setup")
-            ),
+            patch("cost_toolkit.overview.cli.setup_aws_credentials", side_effect=track_call("setup")),
             patch(
                 "cost_toolkit.overview.cli.get_current_month_costs",
                 side_effect=lambda: (call_order.append("get_costs"), ({}, 0.0))[1],

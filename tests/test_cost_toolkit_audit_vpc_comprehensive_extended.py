@@ -123,9 +123,7 @@ class TestAuditVpcResourcesInRegion:
         """Test error handling when auditing region."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_vpcs.side_effect = ClientError(
-                {"Error": {"Code": "UnauthorizedOperation"}}, "describe_vpcs"
-            )
+            mock_ec2.describe_vpcs.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "describe_vpcs")
             mock_client.return_value = mock_ec2
 
             result = audit_vpc_resources_in_region("eu-west-1", "test-key", "test-secret")

@@ -174,27 +174,21 @@ class TestFormatLightsailStatus:
 
     def test_partial_stopped(self):
         """Test formatting when some resources stopped."""
-        is_resolved, message = _format_lightsail_status(
-            total_resources=10, stopped_resources=6, stopped_instances=4, stopped_databases=2
-        )
+        is_resolved, message = _format_lightsail_status(total_resources=10, stopped_resources=6, stopped_instances=4, stopped_databases=2)
         assert is_resolved is True
         assert "PARTIAL" in message
         assert "6/10" in message
 
     def test_all_active(self):
         """Test formatting when all resources active."""
-        is_resolved, message = _format_lightsail_status(
-            total_resources=5, stopped_resources=0, stopped_instances=0, stopped_databases=0
-        )
+        is_resolved, message = _format_lightsail_status(total_resources=5, stopped_resources=0, stopped_instances=0, stopped_databases=0)
         assert is_resolved is False
         assert "ACTIVE" in message
         assert "5 Lightsail resources still running" in message
 
     def test_no_resources(self):
         """Test formatting when no resources exist."""
-        is_resolved, message = _format_lightsail_status(
-            total_resources=0, stopped_resources=0, stopped_instances=0, stopped_databases=0
-        )
+        is_resolved, message = _format_lightsail_status(total_resources=0, stopped_resources=0, stopped_instances=0, stopped_databases=0)
         assert is_resolved is True
         assert "No Lightsail resources found" in message
 
@@ -203,9 +197,7 @@ def test_check_lightsail_status_lightsail_status():
     """Test checking Lightsail status across regions."""
     with patch("boto3.client") as mock_client:
         mock_ls = MagicMock()
-        mock_ls.get_instances.return_value = {
-            "instances": [{"name": "inst1", "state": {"name": "stopped"}}]
-        }
+        mock_ls.get_instances.return_value = {"instances": [{"name": "inst1", "state": {"name": "stopped"}}]}
         mock_ls.get_relational_databases.return_value = {
             "relationalDatabases": [
                 {

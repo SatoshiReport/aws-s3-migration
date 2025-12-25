@@ -160,9 +160,7 @@ def main():
 
         for region in regions:
             print(f"🔍 Checking region: {region}")
-            region_data = audit_network_interfaces_in_region(
-                region, aws_access_key_id, aws_secret_access_key
-            )
+            region_data = audit_network_interfaces_in_region(region, aws_access_key_id, aws_secret_access_key)
 
             if region_data:
                 regions_with_interfaces.append(region_data)

@@ -120,9 +120,7 @@ def get_network_interfaces_in_region(region_name, aws_access_key_id, aws_secret_
         )
 
         # Get network interfaces with RDS description
-        response = ec2.describe_network_interfaces(
-            Filters=[{"Name": "description", "Values": ["RDSNetworkInterface"]}]
-        )
+        response = ec2.describe_network_interfaces(Filters=[{"Name": "description", "Values": ["RDSNetworkInterface"]}])
 
         return response["NetworkInterfaces"]
 
@@ -136,9 +134,7 @@ def _scan_region_resources(region, aws_access_key_id, aws_secret_access_key):
     print(f"🔍 Checking region: {region}")
 
     rds_data = audit_rds_instances_in_region(region, aws_access_key_id, aws_secret_access_key)
-    rds_interfaces = get_network_interfaces_in_region(
-        region, aws_access_key_id, aws_secret_access_key
-    )
+    rds_interfaces = get_network_interfaces_in_region(region, aws_access_key_id, aws_secret_access_key)
 
     interface_info_list = []
     if rds_interfaces:
@@ -255,10 +251,7 @@ def _print_cleanup_recommendations(total_rds_interfaces, total_instances, total_
         print("   • Safe to delete for cost savings and hygiene")
     elif total_rds_interfaces > (total_instances + total_clusters):
         print("⚠️  EXCESS RDS NETWORK INTERFACES DETECTED!")
-        print(
-            f"   • Found {total_rds_interfaces} RDS interfaces but only "
-            f"{total_instances + total_clusters} RDS resources"
-        )
+        print(f"   • Found {total_rds_interfaces} RDS interfaces but only " f"{total_instances + total_clusters} RDS resources")
         print("   • Some interfaces may be orphaned")
     elif total_instances > 0 and total_clusters > 0:
         print("ℹ️  MIXED RDS DEPLOYMENT DETECTED")
@@ -293,9 +286,7 @@ def main():
         rds_network_interfaces = []
 
         for region in regions:
-            rds_data, rds_interfaces, interface_info_list = _scan_region_resources(
-                region, aws_access_key_id, aws_secret_access_key
-            )
+            rds_data, rds_interfaces, interface_info_list = _scan_region_resources(region, aws_access_key_id, aws_secret_access_key)
 
             _print_region_scan_results(rds_data, rds_interfaces)
 

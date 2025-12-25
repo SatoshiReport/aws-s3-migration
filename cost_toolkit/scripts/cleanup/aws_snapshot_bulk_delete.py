@@ -41,9 +41,7 @@ def get_snapshot_details(snapshot_id, region):
     required_fields = ["VolumeSize", "State", "StartTime", "Encrypted"]
     missing_fields = [field for field in required_fields if field not in snapshot]
     if missing_fields:
-        raise KeyError(
-            f"Snapshot {snapshot_id} missing required fields: {', '.join(missing_fields)}"
-        )
+        raise KeyError(f"Snapshot {snapshot_id} missing required fields: {', '.join(missing_fields)}")
 
     return {
         "snapshot_id": snapshot.get("SnapshotId", snapshot_id),

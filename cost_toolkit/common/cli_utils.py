@@ -110,8 +110,7 @@ def confirm_action(message, skip_prompt=False, exact_match=None):
         response = input(message).strip()
     except EOFError as exc:
         raise ConfirmationNotReceivedError(
-            "Confirmation required but running in non-interactive mode. "
-            "Use --yes flag to skip confirmation."
+            "Confirmation required but running in non-interactive mode. " "Use --yes flag to skip confirmation."
         ) from exc
 
     if exact_match is not None:
@@ -156,14 +155,7 @@ def confirm_reset_state_db(db_path, skip_prompt=False):
     """
     if skip_prompt:
         return True
-    resp = (
-        input(
-            f"Reset migrate_v2 state database at {db_path}? "
-            "This deletes cached migration metadata. [y/N] "
-        )
-        .strip()
-        .lower()
-    )
+    resp = input(f"Reset migrate_v2 state database at {db_path}? " "This deletes cached migration metadata. [y/N] ").strip().lower()
     return resp in {"y", "yes"}
 
 
@@ -200,8 +192,5 @@ def handle_state_db_reset(
 
     new_db_path, file_count, total_bytes = reseed_function(base_path, db_path)
     size_summary = format_bytes(total_bytes, use_comma_separators=True)
-    print(
-        f"✓ Recreated migrate_v2 state database at {new_db_path} "
-        f"({file_count:,} files, {size_summary}). Continuing."
-    )
+    print(f"✓ Recreated migrate_v2 state database at {new_db_path} " f"({file_count:,} files, {size_summary}). Continuing.")
     return new_db_path

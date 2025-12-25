@@ -122,9 +122,7 @@ def test_export_snapshots_to_s3_fixed_fails_on_client_error(
 ):
     """Test export_snapshots_to_s3_fixed fails on client error."""
     mock_load_creds.return_value = ("access_key", "secret_key")
-    mock_get_snapshots.return_value = [
-        {"snapshot_id": "snap-1", "region": "us-east-1", "size_gb": 50, "description": "Test 1"}
-    ]
+    mock_get_snapshots.return_value = [{"snapshot_id": "snap-1", "region": "us-east-1", "size_gb": 50, "description": "Test 1"}]
     mock_calculate_savings.return_value = {
         "monthly_savings": 5.00,
         "annual_savings": 60.00,
@@ -132,9 +130,7 @@ def test_export_snapshots_to_s3_fixed_fails_on_client_error(
         "s3_cost": 1.15,
         "savings_percentage": 54.0,
     }
-    mock_export_single.side_effect = ClientError(
-        {"Error": {"Code": "InternalError"}}, "ExportImage"
-    )
+    mock_export_single.side_effect = ClientError({"Error": {"Code": "InternalError"}}, "ExportImage")
 
     with pytest.raises(ExportTaskFailedException):
         export_snapshots_to_s3_fixed()

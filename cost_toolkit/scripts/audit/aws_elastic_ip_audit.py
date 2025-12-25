@@ -136,10 +136,7 @@ def _print_unassociated_eips(region_data):
             tag_names = [f"{tag['Key']}:{tag['Value']}" for tag in eip["tags"]]
             tags_str = f" (Tags: {', '.join(tag_names)})"
 
-        print(
-            f"   • {eip['public_ip']} (ID: {eip['allocation_id']}) - "
-            f"${eip['monthly_cost']:.2f}/month{tags_str}"
-        )
+        print(f"   • {eip['public_ip']} (ID: {eip['allocation_id']}) - " f"${eip['monthly_cost']:.2f}/month{tags_str}")
 
 
 def _print_cleanup_recommendations(regions_with_eips, total_monthly_cost):
@@ -154,10 +151,7 @@ def _print_cleanup_recommendations(regions_with_eips, total_monthly_cost):
     for region_data in regions_with_eips:
         if region_data["unassociated_eips"]:
             for eip in region_data["unassociated_eips"]:
-                print(
-                    f"   aws ec2 release-address --allocation-id {eip['allocation_id']} "
-                    f"--region {region_data['region']}"
-                )
+                print(f"   aws ec2 release-address --allocation-id {eip['allocation_id']} " f"--region {region_data['region']}")
     print()
     print(f"💰 Total potential monthly savings: ${total_monthly_cost:.2f}")
     print(f"💰 Total potential annual savings: ${total_monthly_cost * 12:.2f}")

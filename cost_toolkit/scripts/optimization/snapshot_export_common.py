@@ -38,9 +38,7 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region, enable_versio
             create_s3_bucket_with_region(s3_client, bucket_name, region)
 
             if enable_versioning:
-                s3_client.put_bucket_versioning(
-                    Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
-                )
+                s3_client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"})
                 print(f"   ✅ Enabled versioning for {bucket_name}")
 
         except ClientError as e:
@@ -53,9 +51,7 @@ def create_s3_bucket_if_not_exists(s3_client, bucket_name, region, enable_versio
 def setup_s3_bucket_versioning(s3_client, bucket_name):
     """Enable S3 bucket versioning for data protection"""
     try:
-        s3_client.put_bucket_versioning(
-            Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"}
-        )
+        s3_client.put_bucket_versioning(Bucket=bucket_name, VersioningConfiguration={"Status": "Enabled"})
     except ClientError as exc:
         print(f"   ❌ Failed to enable versioning: {exc}")
         return False
@@ -107,9 +103,7 @@ def create_ami_from_snapshot(
     return ami_id
 
 
-def _register_ami(
-    ec2_client, snapshot_id, description, *, volume_type, boot_mode, ena_support, attempt_suffix
-):
+def _register_ami(ec2_client, snapshot_id, description, *, volume_type, boot_mode, ena_support, attempt_suffix):
     """Register AMI from snapshot and return AMI ID"""
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     ami_name = f"export-{snapshot_id}-{timestamp}{attempt_suffix}"
@@ -189,16 +183,10 @@ def print_export_status(status, progress, status_msg, elapsed_hours):
         elapsed_hours: Hours elapsed since export started
     """
     if status_msg:
-        print(
-            f"   📊 AWS Status: {status} | Progress: {progress}% | "
-            f"Message: {status_msg} | Elapsed: {elapsed_hours:.1f}h"
-        )
+        print(f"   📊 AWS Status: {status} | Progress: {progress}% | " f"Message: {status_msg} | Elapsed: {elapsed_hours:.1f}h")
     else:
         print(f"   📊 AWS Status: {status} | Progress: {progress}% | Elapsed: {elapsed_hours:.1f}h")
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        "This module is library-only. "
-        "Import functions from cost_toolkit.scripts.optimization.snapshot_export_common."
-    )
+    raise SystemExit("This module is library-only. " "Import functions from cost_toolkit.scripts.optimization.snapshot_export_common.")

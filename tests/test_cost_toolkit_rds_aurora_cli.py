@@ -231,45 +231,20 @@ def test_migrate_rds_to_aurora_serverless_success():
     """Test successful migration workflow."""
     with (
         patch("builtins.print"),
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.setup_aws_credentials"
-        ) as mock_setup,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.discover_rds_instances"
-        ) as mock_discover,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
-            "_select_instance_for_migration"
-        ) as mock_select,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
-            "validate_migration_compatibility"
-        ) as mock_validate,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli._print_cost_analysis"
-        ) as mock_cost,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli._confirm_migration"
-        ) as mock_confirm,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.setup_aws_credentials") as mock_setup,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.discover_rds_instances") as mock_discover,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli." "_select_instance_for_migration") as mock_select,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli." "validate_migration_compatibility") as mock_validate,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli._print_cost_analysis") as mock_cost,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli._confirm_migration") as mock_confirm,
         patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.boto3"),
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.create_rds_snapshot"
-        ) as mock_snapshot,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
-            "create_aurora_serverless_cluster"
-        ) as mock_create_cluster,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.print_migration_results"
-        ) as mock_print_results,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.record_migration_action"
-        ) as mock_record,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.create_rds_snapshot") as mock_snapshot,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli." "create_aurora_serverless_cluster") as mock_create_cluster,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.print_migration_results") as mock_print_results,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.record_migration_action") as mock_record,
     ):
 
-        mock_discover.return_value = [
-            {"identifier": "db-1", "region": "us-east-1", "engine": "mysql"}
-        ]
+        mock_discover.return_value = [{"identifier": "db-1", "region": "us-east-1", "engine": "mysql"}]
         mock_select.return_value = {"identifier": "db-1", "region": "us-east-1", "engine": "mysql"}
         mock_validate.return_value = (True, "aurora-mysql")
         mock_cost.return_value = (120.0, 43.0)
@@ -304,9 +279,7 @@ def test_migrate_rds_to_aurora_serverless_no_instances(_mock_print, mock_setup, 
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.discover_rds_instances")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.setup_aws_credentials")
 @patch("builtins.print")
-def test_migrate_rds_to_aurora_serverless_no_selection(
-    _mock_print, _mock_setup, mock_discover, mock_select
-):
+def test_migrate_rds_to_aurora_serverless_no_selection(_mock_print, _mock_setup, mock_discover, mock_select):
     """Test migration when no instance selected."""
     mock_discover.return_value = [{"identifier": "db-1"}]
     mock_select.return_value = None
@@ -321,9 +294,7 @@ def test_migrate_rds_to_aurora_serverless_no_selection(
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.discover_rds_instances")
 @patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.setup_aws_credentials")
 @patch("builtins.print")
-def test_migrate_rds_to_aurora_serverless_incompatible(
-    _mock_print, _mock_setup, mock_discover, mock_select, mock_validate
-):
+def test_migrate_rds_to_aurora_serverless_incompatible(_mock_print, _mock_setup, mock_discover, mock_select, mock_validate):
     """Test migration when instance is incompatible."""
     mock_discover.return_value = [{"identifier": "db-1"}]
     mock_select.return_value = {"identifier": "db-1", "region": "us-east-1"}
@@ -361,27 +332,13 @@ def test_migrate_rds_to_aurora_serverless_snapshot_error():
     with (
         patch("builtins.print"),
         patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.setup_aws_credentials"),
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.discover_rds_instances"
-        ) as mock_discover,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
-            "_select_instance_for_migration"
-        ) as mock_select,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli."
-            "validate_migration_compatibility"
-        ) as mock_validate,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli._print_cost_analysis"
-        ) as mock_cost,
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli._confirm_migration"
-        ) as mock_confirm,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.discover_rds_instances") as mock_discover,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli." "_select_instance_for_migration") as mock_select,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli." "validate_migration_compatibility") as mock_validate,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli._print_cost_analysis") as mock_cost,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli._confirm_migration") as mock_confirm,
         patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.boto3"),
-        patch(
-            "cost_toolkit.scripts.migration.rds_aurora_migration.cli.create_rds_snapshot"
-        ) as mock_snapshot,
+        patch("cost_toolkit.scripts.migration.rds_aurora_migration.cli.create_rds_snapshot") as mock_snapshot,
     ):
 
         mock_discover.return_value = [{"identifier": "db-1"}]

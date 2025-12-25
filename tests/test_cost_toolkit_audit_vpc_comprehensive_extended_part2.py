@@ -136,10 +136,7 @@ class TestAuditComprehensiveVpc:
     def test_audit_with_resources(self, capsys):
         """Test comprehensive VPC audit with resources."""
         with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_creds:
-            with patch(
-                "cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit."
-                "audit_vpc_resources_in_region"
-            ) as mock_audit:
+            with patch("cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit." "audit_vpc_resources_in_region") as mock_audit:
                 mock_creds.return_value = ("test-key", "test-secret")
                 mock_audit.return_value = {
                     "region": "us-east-1",
@@ -187,10 +184,7 @@ class TestAuditComprehensiveVpc:
     def test_audit_no_resources(self, capsys):
         """Test comprehensive VPC audit with no resources."""
         with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_creds:
-            with patch(
-                "cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit."
-                "audit_vpc_resources_in_region"
-            ) as mock_audit:
+            with patch("cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit." "audit_vpc_resources_in_region") as mock_audit:
                 mock_creds.return_value = ("test-key", "test-secret")
                 mock_audit.return_value = None
 
@@ -211,9 +205,7 @@ def test_main_function_main_execution(capsys):
 
 def test_main_client_error_main_error(capsys):
     """Test main function with client error."""
-    with patch(
-        "cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit.audit_comprehensive_vpc"
-    ) as mock_audit:
+    with patch("cost_toolkit.scripts.audit.aws_comprehensive_vpc_audit.audit_comprehensive_vpc") as mock_audit:
         mock_audit.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_vpcs")
 
         with pytest.raises(SystemExit) as exc_info:

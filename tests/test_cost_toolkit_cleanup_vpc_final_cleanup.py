@@ -30,9 +30,7 @@ class TestReleaseElasticIPSuccess:
         """Test successful release of single Elastic IP."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_addresses.return_value = {
-                "Addresses": [{"AllocationId": "eipalloc-123", "PublicIp": "1.2.3.4"}]
-            }
+            mock_ec2.describe_addresses.return_value = {"Addresses": [{"AllocationId": "eipalloc-123", "PublicIp": "1.2.3.4"}]}
             mock_ec2.release_address.return_value = {}
             mock_client.return_value = mock_ec2
             result = release_remaining_elastic_ip()
@@ -126,9 +124,7 @@ class TestReleaseElasticIPErrorHandling:
         """Test releasing Elastic IP that is locked by AWS."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_addresses.return_value = {
-                "Addresses": [{"AllocationId": "eipalloc-123", "PublicIp": "1.2.3.4"}]
-            }
+            mock_ec2.describe_addresses.return_value = {"Addresses": [{"AllocationId": "eipalloc-123", "PublicIp": "1.2.3.4"}]}
             error = ClientError(
                 {
                     "Error": {
@@ -150,9 +146,7 @@ class TestReleaseElasticIPErrorHandling:
         """Test handling of generic error during release."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_addresses.return_value = {
-                "Addresses": [{"AllocationId": "eipalloc-123", "PublicIp": "1.2.3.4"}]
-            }
+            mock_ec2.describe_addresses.return_value = {"Addresses": [{"AllocationId": "eipalloc-123", "PublicIp": "1.2.3.4"}]}
             error = ClientError(
                 {"Error": {"Code": "GenericError", "Message": "Something went wrong"}},
                 "release_address",
@@ -214,9 +208,7 @@ class TestReleaseElasticIPFailures:
                     {"AllocationId": "eipalloc-456", "PublicIp": "5.6.7.8"},
                 ]
             }
-            error = ClientError(
-                {"Error": {"Code": "GenericError", "Message": "Error"}}, "release_address"
-            )
+            error = ClientError({"Error": {"Code": "GenericError", "Message": "Error"}}, "release_address")
             mock_ec2.release_address.side_effect = error
             mock_client.return_value = mock_ec2
             result = release_remaining_elastic_ip()
@@ -231,9 +223,7 @@ class TestMain:
 
     def test_main_success(self, capsys):
         """Test successful main execution."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_final_cleanup.release_remaining_elastic_ip"
-        ) as mock_release:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_final_cleanup.release_remaining_elastic_ip") as mock_release:
             mock_release.return_value = True
             main()
             captured = capsys.readouterr()
@@ -244,9 +234,7 @@ class TestMain:
 
     def test_main_partial_success(self, capsys):
         """Test main execution with partial success."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_final_cleanup.release_remaining_elastic_ip"
-        ) as mock_release:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_final_cleanup.release_remaining_elastic_ip") as mock_release:
             mock_release.return_value = False
             main()
             captured = capsys.readouterr()
@@ -258,9 +246,7 @@ class TestMain:
 
     def test_main_calls_release_function(self):
         """Test that main calls the release function."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_final_cleanup.release_remaining_elastic_ip"
-        ) as mock_release:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_final_cleanup.release_remaining_elastic_ip") as mock_release:
             mock_release.return_value = True
             main()
             mock_release.assert_called_once()

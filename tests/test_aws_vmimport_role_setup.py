@@ -22,17 +22,13 @@ from cost_toolkit.scripts.setup.aws_vmimport_role_setup import (
 def test_load_aws_credentials_success(tmp_path, monkeypatch):
     """Test successful loading of AWS credentials from .env file."""
     env_file = tmp_path / ".env"
-    env_file.write_text(
-        "AWS_ACCESS_KEY_ID=TESTKEY123\nAWS_SECRET_ACCESS_KEY=TESTSECRET456\n", encoding="utf-8"
-    )
+    env_file.write_text("AWS_ACCESS_KEY_ID=TESTKEY123\nAWS_SECRET_ACCESS_KEY=TESTSECRET456\n", encoding="utf-8")
 
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
     monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
 
-    with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser"
-    ) as mock_expand:
+    with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser") as mock_expand:
         mock_expand.return_value = str(env_file)
         key_id, secret_key = setup_aws_credentials()
 
@@ -49,9 +45,7 @@ def test_load_aws_credentials_missing_key_id(tmp_path, monkeypatch):
     monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
     monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
 
-    with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser"
-    ) as mock_expand:
+    with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser") as mock_expand:
         mock_expand.return_value = str(env_file)
         with pytest.raises(ValueError, match="AWS credentials not found"):
             setup_aws_credentials()
@@ -66,9 +60,7 @@ def test_load_aws_credentials_missing_secret_key(tmp_path, monkeypatch):
     monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
     monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
 
-    with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser"
-    ) as mock_expand:
+    with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser") as mock_expand:
         mock_expand.return_value = str(env_file)
         with pytest.raises(ValueError, match="AWS credentials not found"):
             setup_aws_credentials()
@@ -123,9 +115,7 @@ def test_create_new_role_with_policy_success(capsys):
     """Test successful creation of vmimport role and policy."""
     mock_iam = MagicMock()
     mock_iam.create_role.return_value = {"Role": {"Arn": "arn:aws:iam::123456789012:role/vmimport"}}
-    mock_iam.create_policy.return_value = {
-        "Policy": {"Arn": "arn:aws:iam::123456789012:policy/vmimport-policy"}
-    }
+    mock_iam.create_policy.return_value = {"Policy": {"Arn": "arn:aws:iam::123456789012:policy/vmimport-policy"}}
 
     trust_policy = get_trust_policy()
     vmimport_policy = get_vmimport_policy()
@@ -147,9 +137,7 @@ def test_create_new_role_with_policy_success(capsys):
     )
 
     # Verify policy attachment
-    mock_iam.attach_role_policy.assert_called_once_with(
-        RoleName="vmimport", PolicyArn="arn:aws:iam::123456789012:policy/vmimport-policy"
-    )
+    mock_iam.attach_role_policy.assert_called_once_with(RoleName="vmimport", PolicyArn="arn:aws:iam::123456789012:policy/vmimport-policy")
 
     captured = capsys.readouterr()
     assert "Created vmimport role" in captured.out
@@ -179,9 +167,7 @@ def test_create_vmimport_role_already_exists(capsys):
         }
     }
 
-    with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.setup_aws_credentials"
-    ) as mock_load:
+    with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.setup_aws_credentials") as mock_load:
         mock_load.return_value = ("TESTKEY", "TESTSECRET")
         with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.boto3.client") as mock_boto:
             mock_boto.return_value = mock_iam
@@ -199,13 +185,9 @@ def test_create_vmimport_role_creates_new_role():
     mock_iam.exceptions.NoSuchEntityException = type("NoSuchEntityException", (Exception,), {})
     mock_iam.get_role.side_effect = mock_iam.exceptions.NoSuchEntityException()
     mock_iam.create_role.return_value = {"Role": {"Arn": "arn:aws:iam::123456789012:role/vmimport"}}
-    mock_iam.create_policy.return_value = {
-        "Policy": {"Arn": "arn:aws:iam::123456789012:policy/vmimport-policy"}
-    }
+    mock_iam.create_policy.return_value = {"Policy": {"Arn": "arn:aws:iam::123456789012:policy/vmimport-policy"}}
 
-    with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.setup_aws_credentials"
-    ) as mock_load:
+    with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.setup_aws_credentials") as mock_load:
         mock_load.return_value = ("TESTKEY", "TESTSECRET")
         with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.boto3.client") as mock_boto:
             mock_boto.return_value = mock_iam
@@ -226,13 +208,9 @@ def test_create_vmimport_role_client_error(capsys):
     mock_iam.exceptions.NoSuchEntityException = type("NoSuchEntityException", (Exception,), {})
 
     # First get_role call raises ClientError (not NoSuchEntity)
-    mock_iam.get_role.side_effect = ClientError(
-        {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "GetRole"
-    )
+    mock_iam.get_role.side_effect = ClientError({"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "GetRole")
 
-    with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.setup_aws_credentials"
-    ) as mock_load:
+    with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.setup_aws_credentials") as mock_load:
         mock_load.return_value = ("TESTKEY", "TESTSECRET")
         with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.boto3.client") as mock_boto:
             mock_boto.return_value = mock_iam
@@ -246,9 +224,7 @@ def test_create_vmimport_role_client_error(capsys):
 
 def test_main_success():
     """Test main function succeeds."""
-    with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.create_vmimport_role"
-    ) as mock_create:
+    with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.create_vmimport_role") as mock_create:
         mock_create.return_value = True
         main()
 
@@ -257,12 +233,8 @@ def test_main_success():
 
 def test_main_client_error_exit():
     """Test main function exits on ClientError."""
-    with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.create_vmimport_role"
-    ) as mock_create:
-        mock_create.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "GetRole"
-        )
+    with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.create_vmimport_role") as mock_create:
+        mock_create.side_effect = ClientError({"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "GetRole")
         with pytest.raises(SystemExit) as exc_info:
             main()
 
@@ -272,17 +244,13 @@ def test_main_client_error_exit():
 def test_load_aws_credentials_prints_success_message(tmp_path, monkeypatch, capsys):
     """Test setup_aws_credentials prints success message."""
     env_file = tmp_path / ".env"
-    env_file.write_text(
-        "AWS_ACCESS_KEY_ID=TESTKEY\nAWS_SECRET_ACCESS_KEY=TESTSECRET\n", encoding="utf-8"
-    )
+    env_file.write_text("AWS_ACCESS_KEY_ID=TESTKEY\nAWS_SECRET_ACCESS_KEY=TESTSECRET\n", encoding="utf-8")
 
     monkeypatch.setenv("HOME", str(tmp_path))
     monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
     monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
 
-    with patch(
-        "cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser"
-    ) as mock_expand:
+    with patch("cost_toolkit.scripts.setup.aws_vmimport_role_setup.os.path.expanduser") as mock_expand:
         mock_expand.return_value = str(env_file)
         setup_aws_credentials()
 

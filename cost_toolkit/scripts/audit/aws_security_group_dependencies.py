@@ -22,9 +22,7 @@ from cost_toolkit.common.security_group_constants import ALL_CIRCULAR_SECURITY_G
 
 def _collect_network_interface_deps(ec2_client, group_id):
     """Collect network interfaces using the security group."""
-    eni_response = ec2_client.describe_network_interfaces(
-        Filters=[{"Name": "group-id", "Values": [group_id]}]
-    )
+    eni_response = ec2_client.describe_network_interfaces(Filters=[{"Name": "group-id", "Values": [group_id]}])
     network_interfaces = []
     eni_list = []
     if "NetworkInterfaces" in eni_response:
@@ -45,9 +43,7 @@ def _collect_network_interface_deps(ec2_client, group_id):
 
 def _collect_instance_deps(ec2_client, group_id):
     """Collect instances using the security group."""
-    instances_response = ec2_client.describe_instances(
-        Filters=[{"Name": "instance.group-id", "Values": [group_id]}]
-    )
+    instances_response = ec2_client.describe_instances(Filters=[{"Name": "instance.group-id", "Values": [group_id]}])
     instances = []
     for reservation in instances_response["Reservations"]:
         for instance in reservation["Instances"]:
@@ -169,9 +165,7 @@ def _collect_rds_deps(group_id, region, aws_access_key_id, aws_secret_access_key
     return rds_instances
 
 
-def check_security_group_dependencies(
-    ec2_client, group_id, region, aws_access_key_id, aws_secret_access_key
-):
+def check_security_group_dependencies(ec2_client, group_id, region, aws_access_key_id, aws_secret_access_key):
     """Check what's preventing a security group from being deleted"""
     dependencies = {
         "network_interfaces": [],
@@ -186,9 +180,7 @@ def check_security_group_dependencies(
         dependencies["network_interfaces"] = _collect_network_interface_deps(ec2_client, group_id)
         dependencies["instances"] = _collect_instance_deps(ec2_client, group_id)
         dependencies["security_group_rules"] = _collect_sg_rule_refs(ec2_client, group_id)
-        dependencies["rds_instances"] = _collect_rds_deps(
-            group_id, region, aws_access_key_id, aws_secret_access_key
-        )
+        dependencies["rds_instances"] = _collect_rds_deps(group_id, region, aws_access_key_id, aws_secret_access_key)
 
     except ClientError as e:
         print(f"   ❌ Error checking dependencies for {group_id}: {e}")
@@ -227,10 +219,7 @@ def _print_security_group_rules(security_group_rules):
     """Print security group rule dependencies."""
     print(f"🔒 Referenced by Security Group Rules ({len(security_group_rules)}):")
     for rule in security_group_rules:
-        print(
-            f"   • {rule['referencing_sg']} ({rule['referencing_sg_name']}) - "
-            f"{rule['rule_type']} rule"
-        )
+        print(f"   • {rule['referencing_sg']} ({rule['referencing_sg_name']}) - " f"{rule['rule_type']} rule")
         print(f"     Protocol: {rule['protocol']}, Ports: {rule['port_range']}")
 
 
@@ -286,9 +275,7 @@ def audit_security_group_dependencies():
             aws_secret_access_key=aws_secret_access_key,
         )
 
-        dependencies = check_security_group_dependencies(
-            ec2_client, group_id, region, aws_access_key_id, aws_secret_access_key
-        )
+        dependencies = check_security_group_dependencies(ec2_client, group_id, region, aws_access_key_id, aws_secret_access_key)
 
         _print_dependency_details(dependencies)
 

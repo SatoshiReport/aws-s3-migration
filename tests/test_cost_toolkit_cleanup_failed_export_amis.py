@@ -45,9 +45,7 @@ class TestCleanupFailedExportAMIsSuccess:
                 if call_count[0] == 1:
                     return {}
                 if call_count[0] == 2:
-                    raise ClientError(
-                        {"Error": {"Code": "InvalidAMIID.Unavailable"}}, "deregister_image"
-                    )
+                    raise ClientError({"Error": {"Code": "InvalidAMIID.Unavailable"}}, "deregister_image")
                 return {}
 
             mock_ec2.describe_images.side_effect = describe_images_side_effect
@@ -213,9 +211,7 @@ class TestMain:
 
     def test_main_calls_cleanup(self):
         """Test that main calls cleanup_failed_export_amis."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis.cleanup_failed_export_amis"
-        ) as mock_cleanup:
+        with patch("cost_toolkit.scripts.cleanup.aws_cleanup_failed_export_amis.cleanup_failed_export_amis") as mock_cleanup:
             with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key", "secret")
                 try:
@@ -239,9 +235,7 @@ class TestMain:
                     call_count[0] += 1
                     if call_count[0] == 1:
                         return {}
-                    raise ClientError(
-                        {"Error": {"Code": "InvalidAMIID.Unavailable"}}, "deregister_image"
-                    )
+                    raise ClientError({"Error": {"Code": "InvalidAMIID.Unavailable"}}, "deregister_image")
 
                 mock_ec2.describe_images.side_effect = describe_side_effect
                 mock_ec2.deregister_image.side_effect = deregister_side_effect

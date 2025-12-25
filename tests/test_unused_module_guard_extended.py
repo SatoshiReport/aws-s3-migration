@@ -24,9 +24,7 @@ def _import_local_shim():
     return module
 
 
-_local_shim_source = (
-    Path(__file__).parent.parent / "ci_tools" / "scripts" / "unused_module_guard.py"
-).read_text()
+_local_shim_source = (Path(__file__).parent.parent / "ci_tools" / "scripts" / "unused_module_guard.py").read_text()
 
 
 def test_shared_guard_error_classes_exist():

@@ -104,9 +104,7 @@ def _analyze_snapshots(ec2, instance_id, attached_volumes):
         snapshots_response = ec2.describe_snapshots(OwnerIds=["sel"])
         snapshots = snapshots_response.get("Snapshots", [])
 
-        related_snapshots = [
-            snap for snap in snapshots if _is_related_snapshot(snap, instance_id, attached_volumes)
-        ]
+        related_snapshots = [snap for snap in snapshots if _is_related_snapshot(snap, instance_id, attached_volumes)]
 
         if related_snapshots:
             print(f"  Found {len(related_snapshots)} snapshots related to this instance:")

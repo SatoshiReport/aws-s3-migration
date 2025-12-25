@@ -56,9 +56,7 @@ def test_main_creates_policies_directory(setup_test_env, sample_policy, mock_blo
             assert policies_dir.is_dir()
 
 
-def test_main_saves_policy_with_correct_filename(
-    setup_test_env, sample_policy, mock_block_s3_context
-):
+def test_main_saves_policy_with_correct_filename(setup_test_env, sample_policy, mock_block_s3_context):
     """Test that policy files are saved with correct bucket names"""
     _ = setup_test_env  # Used for test isolation
     with mock.patch("sys.argv", ["block_s3.py", "my-bucket"]):

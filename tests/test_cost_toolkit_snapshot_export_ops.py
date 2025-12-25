@@ -33,10 +33,7 @@ def test_create_s3_bucket_new():
     """Test create_s3_bucket_new creates a new bucket."""
     mock_s3 = MagicMock()
 
-    with patch(
-        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_ops."
-        "create_s3_bucket_with_region"
-    ) as mock_create:
+    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.export_ops." "create_s3_bucket_with_region") as mock_create:
         result = create_s3_bucket_new(mock_s3, "new-bucket", "us-west-2")
 
         assert_equal(result, True)

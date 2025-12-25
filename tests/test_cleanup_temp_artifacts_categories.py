@@ -74,18 +74,11 @@ def test_match_generic_dot_cache():
 
 def test_match_vscode_remote():
     """Test _match_vscode_remote matcher."""
-    assert (
-        _match_vscode_remote(Path("/home/user/.vscode-server/extensions/node_modules"), is_dir=True)
-        is True
-    )
-    assert (
-        _match_vscode_remote(Path("/home/user/.vscode-server/data/extensions"), is_dir=True) is True
-    )
+    assert _match_vscode_remote(Path("/home/user/.vscode-server/extensions/node_modules"), is_dir=True) is True
+    assert _match_vscode_remote(Path("/home/user/.vscode-server/data/extensions"), is_dir=True) is True
     assert _match_vscode_remote(Path("/home/user/.vscode-server/bin/server"), is_dir=True) is True
     assert _match_vscode_remote(Path("/home/user/.vscode-server/other"), is_dir=True) is False
-    assert (
-        _match_vscode_remote(Path("/home/user/.vscode-server/node_modules"), is_dir=False) is False
-    )
+    assert _match_vscode_remote(Path("/home/user/.vscode-server/node_modules"), is_dir=False) is False
 
 
 def test_match_go_module_cache():

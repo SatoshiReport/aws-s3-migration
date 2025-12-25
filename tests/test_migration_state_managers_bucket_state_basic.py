@@ -38,9 +38,7 @@ def test_save_bucket_status_inserts_record(bucket_mgr, db_conn):
     )
 
     with db_conn.get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,)).fetchone()
 
     assert row is not None
     assert row["bucket"] == DEFAULT_BUCKET
@@ -70,9 +68,7 @@ def test_save_bucket_status_updates_existing(bucket_mgr, db_conn):
     )
 
     with db_conn.get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,)).fetchone()
 
     assert row["file_count"] == UPDATED_FILE_COUNT
     assert row["total_size"] == UPDATED_TOTAL_SIZE
@@ -150,9 +146,7 @@ def test_mark_bucket_verify_complete(bucket_mgr, db_conn):
     )
 
     with db_conn.get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,)).fetchone()
 
     assert row["verify_complete"] == 1
     assert row["verified_file_count"] == DEFAULT_FILE_COUNT
@@ -178,9 +172,7 @@ def test_mark_bucket_verify_complete_with_partial_data(bucket_mgr, db_conn):
     )
 
     with db_conn.get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,)
-        ).fetchone()
+        row = conn.execute("SELECT * FROM bucket_status WHERE bucket = ?", (DEFAULT_BUCKET,)).fetchone()
 
     assert row["verify_complete"] == 1
     assert row["verified_file_count"] == DEFAULT_FILE_COUNT

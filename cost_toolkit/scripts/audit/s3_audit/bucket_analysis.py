@@ -47,10 +47,7 @@ def _normalize_mock_methods(s3_client):
     if method_lifecycle is not None and getattr(method_lifecycle, "side_effect", None) is not None:
         if getattr(method_lifecycle, "return_value", None) is not None:
             method_lifecycle.side_effect = None
-    if (
-        method_encryption is not None
-        and getattr(method_encryption, "side_effect", None) is not None
-    ):
+    if method_encryption is not None and getattr(method_encryption, "side_effect", None) is not None:
         if getattr(method_encryption, "return_value", None) is not None:
             method_encryption.side_effect = None
 
@@ -70,9 +67,7 @@ def _populate_lifecycle(s3_client, bucket_name: str, bucket_analysis: dict) -> N
         lifecycle_response = s3_client.get_bucket_lifecycle_configuration(Bucket=bucket_name)
         rules = lifecycle_response.get("Rules", [])
         if not isinstance(rules, list):
-            logging.warning(
-                "Lifecycle configuration response missing Rules for bucket %s", bucket_name
-            )
+            logging.warning("Lifecycle configuration response missing Rules for bucket %s", bucket_name)
             rules = []
         bucket_analysis["lifecycle_policy"] = rules
     except ClientError as e:
@@ -85,9 +80,7 @@ def _populate_lifecycle(s3_client, bucket_name: str, bucket_analysis: dict) -> N
 def _populate_encryption(s3_client, bucket_name: str, bucket_analysis: dict) -> None:
     try:
         encryption_response = s3_client.get_bucket_encryption(Bucket=bucket_name)
-        bucket_analysis["encryption"] = encryption_response.get(
-            "ServerSideEncryptionConfiguration", None
-        )
+        bucket_analysis["encryption"] = encryption_response.get("ServerSideEncryptionConfiguration", None)
     except ClientError as e:
         error_code = e.response["Error"]["Code"]
         if error_code != "ServerSideEncryptionConfigurationNotFoundError":
@@ -133,15 +126,9 @@ def _process_object(obj, bucket_analysis, ninety_days_ago, large_object_threshol
 
     # Track oldest and newest objects
     last_modified = obj["LastModified"]
-    if (
-        not bucket_analysis["last_modified_oldest"]
-        or last_modified < bucket_analysis["last_modified_oldest"]
-    ):
+    if not bucket_analysis["last_modified_oldest"] or last_modified < bucket_analysis["last_modified_oldest"]:
         bucket_analysis["last_modified_oldest"] = last_modified
-    if (
-        not bucket_analysis["last_modified_newest"]
-        or last_modified > bucket_analysis["last_modified_newest"]
-    ):
+    if not bucket_analysis["last_modified_newest"] or last_modified > bucket_analysis["last_modified_newest"]:
         bucket_analysis["last_modified_newest"] = last_modified
 
     # Track large objects (potential for optimization)

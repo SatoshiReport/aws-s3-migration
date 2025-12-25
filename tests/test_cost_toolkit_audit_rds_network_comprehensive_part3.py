@@ -67,13 +67,8 @@ class TestGetNetworkInterfacesInRegion:
 
 def test_scan_region_resources_scan_resources(capsys):
     """Test scanning region resources."""
-    with patch(
-        "cost_toolkit.scripts.audit.aws_rds_network_interface_audit.audit_rds_instances_in_region"
-    ) as mock_audit:
-        with patch(
-            "cost_toolkit.scripts.audit.aws_rds_network_interface_audit."
-            "get_network_interfaces_in_region"
-        ) as mock_interfaces:
+    with patch("cost_toolkit.scripts.audit.aws_rds_network_interface_audit.audit_rds_instances_in_region") as mock_audit:
+        with patch("cost_toolkit.scripts.audit.aws_rds_network_interface_audit." "get_network_interfaces_in_region") as mock_interfaces:
             mock_audit.return_value = {
                 "region": "us-east-1",
                 "instances": [],
@@ -93,9 +88,7 @@ def test_scan_region_resources_scan_resources(capsys):
                 }
             ]
 
-            rds_data, rds_interfaces, interface_info = _scan_region_resources(
-                "us-east-1", "test-key", "test-secret"
-            )
+            rds_data, rds_interfaces, interface_info = _scan_region_resources("us-east-1", "test-key", "test-secret")
 
     assert rds_data is not None
     assert len(rds_interfaces) == 1

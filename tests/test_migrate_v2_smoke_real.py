@@ -172,9 +172,7 @@ def testprint_real_report_outputs_sections(capsys, monkeypatch, tmp_path):
     fake_s3 = _FakeS3()
     deps, _ = _make_deps(tmp_path, fake_s3, monkeypatch)
     ctx = real.RealSmokeContext.create(deps)
-    stats = real.RealSmokeStats(
-        files_created=1, dirs_created=1, total_bytes=10, manifest_expected={}
-    )
+    stats = real.RealSmokeStats(files_created=1, dirs_created=1, total_bytes=10, manifest_expected={})
     real.print_real_report(ctx, stats)
     output = capsys.readouterr().out
     assert "SMOKE TEST REPORT" in output

@@ -91,9 +91,7 @@ def test_scan_region_for_unattached_volumes_error():
     """Test _scan_region_for_unattached_volumes raises errors."""
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
-        mock_ec2.describe_volumes.side_effect = ClientError(
-            {"Error": {"Code": "TestError"}}, "test"
-        )
+        mock_ec2.describe_volumes.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
         mock_client.return_value = mock_ec2
 
         with pytest.raises(ClientError):
@@ -103,9 +101,7 @@ def test_scan_region_for_unattached_volumes_error():
 def test_check_unattached_ebs_volumes_with_volumes():
     """Test _check_unattached_ebs_volumes returns recommendation."""
     with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
-        with patch(
-            "cost_toolkit.overview.optimization._scan_region_for_unattached_volumes"
-        ) as mock_scan:
+        with patch("cost_toolkit.overview.optimization._scan_region_for_unattached_volumes") as mock_scan:
             mock_regions.return_value = ["us-east-1"]
             mock_scan.return_value = (5, 50.0)
 
@@ -119,9 +115,7 @@ def test_check_unattached_ebs_volumes_with_volumes():
 def test_check_unattached_ebs_volumes_none_found():
     """Test _check_unattached_ebs_volumes when no unattached volumes exist."""
     with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
-        with patch(
-            "cost_toolkit.overview.optimization._scan_region_for_unattached_volumes"
-        ) as mock_scan:
+        with patch("cost_toolkit.overview.optimization._scan_region_for_unattached_volumes") as mock_scan:
             mock_regions.return_value = ["us-east-1"]
             mock_scan.return_value = (0, 0.0)
 
@@ -132,9 +126,7 @@ def test_check_unattached_ebs_volumes_none_found():
 
 def test_check_unused_elastic_ips_with_unused():
     """Test _check_unused_elastic_ips finds unused IPs."""
-    with patch(
-        "cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]
-    ):
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]):
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_ec2.describe_addresses.return_value = {
@@ -154,9 +146,7 @@ def test_check_unused_elastic_ips_with_unused():
 
 def test_check_unused_elastic_ips_all_used():
     """Test _check_unused_elastic_ips when all IPs are in use."""
-    with patch(
-        "cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]
-    ):
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]):
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_ec2.describe_addresses.return_value = {
@@ -174,14 +164,10 @@ def test_check_unused_elastic_ips_all_used():
 
 def test_check_unused_elastic_ips_error():
     """Test _check_unused_elastic_ips raises errors."""
-    with patch(
-        "cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]
-    ):
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]):
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_addresses.side_effect = ClientError(
-                {"Error": {"Code": "TestError"}}, "test"
-            )
+            mock_ec2.describe_addresses.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
             mock_client.return_value = mock_ec2
 
             with pytest.raises(ClientError):
@@ -199,15 +185,11 @@ def test_check_unattached_ebs_volumes_client_error():
 
 def test_check_unused_elastic_ips_regional_error():
     """Test _check_unused_elastic_ips raises on first regional error."""
-    with patch(
-        "cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]
-    ):
+    with patch("cost_toolkit.overview.optimization.get_all_aws_regions", return_value=["us-east-1"]):
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             # First region fails
-            mock_ec2.describe_addresses.side_effect = ClientError(
-                {"Error": {"Code": "TestError"}}, "test"
-            )
+            mock_ec2.describe_addresses.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
             mock_client.return_value = mock_ec2
 
             with pytest.raises(ClientError):
@@ -265,9 +247,7 @@ def test_check_old_snapshots_regional_error():
     with patch("cost_toolkit.overview.optimization.get_all_aws_regions") as mock_regions:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_snapshots.side_effect = ClientError(
-                {"Error": {"Code": "TestError"}}, "test"
-            )
+            mock_ec2.describe_snapshots.side_effect = ClientError({"Error": {"Code": "TestError"}}, "test")
             mock_client.return_value = mock_ec2
             mock_regions.return_value = ["us-east-1"]
 

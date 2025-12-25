@@ -216,15 +216,7 @@ def test_delete_bucket_updates_progress():
 
     # Create multiple pages to trigger progress updates (list_object_versions format)
     mock_paginator = mock.Mock()
-    pages = [
-        {
-            "Versions": [
-                {"Key": f"file{i}.txt", "VersionId": f"v{i}"}
-                for i in range(j * 1000, (j + 1) * 1000)
-            ]
-        }
-        for j in range(5)
-    ]
+    pages = [{"Versions": [{"Key": f"file{i}.txt", "VersionId": f"v{i}"} for i in range(j * 1000, (j + 1) * 1000)]} for j in range(5)]
     mock_paginator.paginate.return_value = pages
     mock_s3.get_paginator.return_value = mock_paginator
 

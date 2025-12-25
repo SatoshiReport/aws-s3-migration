@@ -32,9 +32,7 @@ def test_create_hosted_zone_minimal_params(mock_create_client):
     result = create_hosted_zone("newdomain.com", "unique-ref-123")
 
     mock_create_client.assert_called_once_with(aws_access_key_id=None, aws_secret_access_key=None)
-    mock_client.create_hosted_zone.assert_called_once_with(
-        Name="newdomain.com", CallerReference="unique-ref-123"
-    )
+    mock_client.create_hosted_zone.assert_called_once_with(Name="newdomain.com", CallerReference="unique-ref-123")
     assert_equal(result["Id"], "/hostedzone/Z1234567890ABC")
     assert_equal(result["Name"], "newdomain.com.")
 
@@ -87,9 +85,7 @@ def test_create_hosted_zone_with_credentials(mock_create_client):
         credentials=("test_key", "test_secret"),
     )
 
-    mock_create_client.assert_called_once_with(
-        aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    mock_create_client.assert_called_once_with(aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
 
 @patch("cost_toolkit.scripts.aws_route53_operations.create_route53_client")
@@ -158,9 +154,7 @@ def test_delete_hosted_zone_with_credentials(mock_create_client):
         aws_secret_access_key="test_secret",
     )
 
-    mock_create_client.assert_called_once_with(
-        aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    mock_create_client.assert_called_once_with(aws_access_key_id="test_key", aws_secret_access_key="test_secret")
     assert_equal(result, True)
 
 

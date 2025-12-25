@@ -71,9 +71,7 @@ def test_describe_security_groups_with_credentials(mock_create_client):
     mock_create_client.return_value = mock_ec2
     mock_ec2.describe_security_groups.return_value = {"SecurityGroups": []}
 
-    describe_security_groups(
-        "us-west-1", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    describe_security_groups("us-west-1", aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
     mock_create_client.assert_called_once_with(
         region="us-west-1",
@@ -215,9 +213,7 @@ def test_describe_snapshots_with_both_filters(mock_create_client):
 
     describe_snapshots("us-east-1", owner_ids=owner_ids, snapshot_ids=snapshot_ids)
 
-    mock_ec2.describe_snapshots.assert_called_once_with(
-        OwnerIds=owner_ids, SnapshotIds=snapshot_ids
-    )
+    mock_ec2.describe_snapshots.assert_called_once_with(OwnerIds=owner_ids, SnapshotIds=snapshot_ids)
 
 
 @patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client")
@@ -239,9 +235,7 @@ def test_describe_snapshots_with_credentials(mock_create_client):
     mock_create_client.return_value = mock_ec2
     mock_ec2.describe_snapshots.return_value = {"Snapshots": []}
 
-    describe_snapshots(
-        "ap-northeast-2", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    describe_snapshots("ap-northeast-2", aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
     mock_create_client.assert_called_once_with(
         region="ap-northeast-2",

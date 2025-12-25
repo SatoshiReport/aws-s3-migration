@@ -268,9 +268,7 @@ def list_domains(
     # Note: This requires route53domains client, not route53
     # For now, fail fast so the caller knows this path is not implemented.
     _ = (aws_access_key_id, aws_secret_access_key)  # Reserved for future use
-    raise NotImplementedError(
-        "Route53Domains listing is not implemented; use boto3 route53domains client directly."
-    )
+    raise NotImplementedError("Route53Domains listing is not implemented; use boto3 route53domains client directly.")
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point

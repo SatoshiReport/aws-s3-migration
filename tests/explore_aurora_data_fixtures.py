@@ -20,9 +20,7 @@ def mock_psycopg2():
 
 def assert_main_invokes_explore():
     """Ensure the CLI entrypoint delegates to explore_aurora_database."""
-    with patch(
-        "cost_toolkit.scripts.rds.explore_aurora_data.explore_aurora_database"
-    ) as mock_explore:
+    with patch("cost_toolkit.scripts.rds.explore_aurora_data.explore_aurora_database") as mock_explore:
         main()
         mock_explore.assert_called_once()
 
@@ -55,13 +53,9 @@ def run_basic_aurora_exploration(
             create=True,
         ):
             with env_context:
-                with patch(
-                    "cost_toolkit.scripts.rds.explore_aurora_data.list_tables"
-                ) as mock_tables:
+                with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables:
                     mock_tables.return_value = list_tables_return or []
-                    with patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-                    ) as mock_analyze:
+                    with patch("cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables") as mock_analyze:
                         mock_analyze.return_value = analyze_return
                         explore_aurora_database()
                         if post_run is not None:

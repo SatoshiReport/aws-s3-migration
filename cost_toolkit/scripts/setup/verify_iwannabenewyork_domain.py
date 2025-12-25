@@ -101,10 +101,7 @@ def verify_http_connectivity(domain):
 
         location_header = response.headers.get("Location", "")
         if response.status_code == HTTP_STATUS_MOVED_PERMANENTLY and "https://" in location_header:
-            print(
-                f"  ✅ HTTP redirects to HTTPS ({HTTP_STATUS_MOVED_PERMANENTLY}): "
-                f"{response.headers['Location']}"
-            )
+            print(f"  ✅ HTTP redirects to HTTPS ({HTTP_STATUS_MOVED_PERMANENTLY}): " f"{response.headers['Location']}")
         else:
             print(f"  ⚠️  HTTP response: {response.status_code}")
 

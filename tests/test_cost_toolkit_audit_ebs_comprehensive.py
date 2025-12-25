@@ -50,9 +50,7 @@ def test_calculate_volume_cost_calculate_volume_costs():
 
 def test_get_attachment_info_get_attachment_info():
     """Test getting attachment info for various scenarios."""
-    assert (
-        _get_attachment_info({"Attachments": [{"InstanceId": "i-123456"}]}) == "Instance: i-123456"
-    )
+    assert _get_attachment_info({"Attachments": [{"InstanceId": "i-123456"}]}) == "Instance: i-123456"
     assert _get_attachment_info({"Attachments": []}) == "Not attached"
     assert _get_attachment_info({}) == "Not attached"
 
@@ -306,9 +304,7 @@ def test_audit_ebs_volumes_audit_volumes(capsys):
                             "cost_toolkit.scripts.audit.aws_ebs_audit._print_old_snapshots",
                             return_value=[],
                         ):
-                            with patch(
-                                "cost_toolkit.scripts.audit.aws_ebs_audit._print_recommendations"
-                            ):
+                            with patch("cost_toolkit.scripts.audit.aws_ebs_audit._print_recommendations"):
                                 mock_audit.return_value = (
                                     [{"monthly_cost": 8.0}],
                                     [{"monthly_cost": 5.0}],
@@ -331,12 +327,8 @@ def test_audit_ebs_volumes_audit_volumes(capsys):
                         "cost_toolkit.scripts.audit.aws_ebs_audit._print_old_snapshots",
                         return_value=[],
                     ):
-                        with patch(
-                            "cost_toolkit.scripts.audit.aws_ebs_audit._print_recommendations"
-                        ):
-                            mock_audit.side_effect = ClientError(
-                                {"Error": {"Code": "AccessDenied"}}, "describe_volumes"
-                            )
+                        with patch("cost_toolkit.scripts.audit.aws_ebs_audit._print_recommendations"):
+                            mock_audit.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_volumes")
                             audit_ebs_volumes()
     captured = capsys.readouterr()
     assert "Error auditing" in captured.out

@@ -107,9 +107,7 @@ def test_check_kms_key_status_states(state, expected):
 def test_check_kms_key_status_not_found():
     """Confirm missing keys are considered resolved for cleanup."""
     mock_client = MagicMock()
-    error = botocore.exceptions.ClientError(
-        {"Error": {"Code": "NotFoundException"}}, "describe_key"
-    )
+    error = botocore.exceptions.ClientError({"Error": {"Code": "NotFoundException"}}, "describe_key")
     mock_client.describe_key.side_effect = error
     assert svc_ext._check_kms_key_status(mock_client, "missing") is True
 

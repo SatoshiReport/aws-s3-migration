@@ -78,9 +78,7 @@ def print_deletion_warning(snapshots_to_delete):
     print(f"🎯 Target: {len(snapshots_to_delete)} freed snapshots for deletion")
     print()
 
-    total_potential_savings = sum(
-        calculate_snapshot_cost(snap["size_gb"]) for snap in snapshots_to_delete
-    )
+    total_potential_savings = sum(calculate_snapshot_cost(snap["size_gb"]) for snap in snapshots_to_delete)
 
     print("⚠️  FINAL WARNING: This will permanently delete these snapshots!")
     print("   - All snapshot data will be lost")
@@ -166,9 +164,7 @@ def delete_freed_snapshots():
     print("🚨 Proceeding with freed snapshot deletion...")
     print("=" * 80)
 
-    successful, failed, savings = process_snapshot_deletions(
-        snapshots_to_delete, aws_access_key_id, aws_secret_access_key
-    )
+    successful, failed, savings = process_snapshot_deletions(snapshots_to_delete, aws_access_key_id, aws_secret_access_key)
 
     print_cleanup_summary(successful, failed, savings)
 

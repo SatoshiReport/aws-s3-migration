@@ -11,11 +11,7 @@ from .utils import calculate_monthly_cost
 
 def _create_ia_recommendation(old_objects):
     """Create recommendation for moving objects to Standard-IA"""
-    old_standard_objects = [
-        obj
-        for obj in old_objects
-        if obj["storage_class"] == "STANDARD" and obj["age_days"] > DAYS_THRESHOLD_IA
-    ]
+    old_standard_objects = [obj for obj in old_objects if obj["storage_class"] == "STANDARD" and obj["age_days"] > DAYS_THRESHOLD_IA]
     if not old_standard_objects:
         return None
 
@@ -27,10 +23,7 @@ def _create_ia_recommendation(old_objects):
     size_str = format_bytes(old_size, binary_units=False)
     return {
         "type": "storage_class_optimization",
-        "description": (
-            f"Move {len(old_standard_objects)} objects ({size_str}) older than 30 days "
-            "to Standard-IA"
-        ),
+        "description": (f"Move {len(old_standard_objects)} objects ({size_str}) older than 30 days " "to Standard-IA"),
         "potential_savings": savings,
         "action": "Create lifecycle policy to transition to Standard-IA after 30 days",
     }
@@ -39,10 +32,7 @@ def _create_ia_recommendation(old_objects):
 def _create_glacier_recommendation(old_objects):
     """Create recommendation for archiving objects to Glacier"""
     very_old_objects = [
-        obj
-        for obj in old_objects
-        if obj["storage_class"] in ["STANDARD", "STANDARD_IA"]
-        and obj["age_days"] > DAYS_THRESHOLD_GLACIER
+        obj for obj in old_objects if obj["storage_class"] in ["STANDARD", "STANDARD_IA"] and obj["age_days"] > DAYS_THRESHOLD_GLACIER
     ]
     if not very_old_objects:
         return None
@@ -55,9 +45,7 @@ def _create_glacier_recommendation(old_objects):
     size_str = format_bytes(old_size, binary_units=False)
     return {
         "type": "archival_optimization",
-        "description": (
-            f"Archive {len(very_old_objects)} objects ({size_str}) older than 90 days " "to Glacier"
-        ),
+        "description": (f"Archive {len(very_old_objects)} objects ({size_str}) older than 90 days " "to Glacier"),
         "potential_savings": savings,
         "action": "Create lifecycle policy to transition to Glacier after 90 days",
     }
@@ -93,9 +81,7 @@ def _check_lifecycle_and_versioning(bucket_analysis):
                 "type": "lifecycle_policy",
                 "description": "No lifecycle policy configured",
                 "potential_savings": 0,
-                "action": (
-                    "Consider implementing lifecycle policies for automatic cost optimization"
-                ),
+                "action": ("Consider implementing lifecycle policies for automatic cost optimization"),
             }
         )
 

@@ -38,9 +38,7 @@ def build_deletion_groups(
     return deletion_groups, total_bytes, total_dirs
 
 
-def print_deletion_plan(
-    deletion_groups: Sequence[tuple[int, NodeRow, List[NodeRow]]], base_path: Path
-):
+def print_deletion_plan(deletion_groups: Sequence[tuple[int, NodeRow, List[NodeRow]]], base_path: Path):
     """Display deletion plan showing which directories will be kept and deleted."""
     print("\nDeletion plan (keeping the first directory shown per cluster):")
     for cluster_idx, keep_node, delete_nodes in deletion_groups:
@@ -61,9 +59,7 @@ def confirm_deletion(total_dirs: int, total_bytes: int) -> bool:
         return False
 
 
-def perform_deletions(
-    deletion_groups: Sequence[tuple[int, NodeRow, List[NodeRow]]], base_path: Path
-) -> List[tuple[Path, Exception]]:
+def perform_deletions(deletion_groups: Sequence[tuple[int, NodeRow, List[NodeRow]]], base_path: Path) -> List[tuple[Path, Exception]]:
     """Execute deletion of duplicate directories, returning any errors encountered."""
     errors: List[tuple[Path, Exception]] = []
     for _, _, delete_nodes in deletion_groups:

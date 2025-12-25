@@ -70,9 +70,7 @@ def _check_subnet_configuration(ec2, subnet_id):
     print("\n🌐 SUBNET CONFIGURATION:")
     print(f"  Subnet auto-assigns public IP: {map_public_ip}")
 
-    rt_response = ec2.describe_route_tables(
-        Filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}]
-    )
+    rt_response = ec2.describe_route_tables(Filters=[{"Name": "association.subnet-id", "Values": [subnet_id]}])
 
     has_internet_route = False
     if rt_response["RouteTables"]:
@@ -112,9 +110,7 @@ def _check_ssm_availability(instance_id, region_name):
     """Check if SSM is available for the instance."""
     try:
         ssm = create_client("ssm", region=region_name)
-        ssm_response = ssm.describe_instance_information(
-            Filters=[{"Key": "InstanceIds", "Values": [instance_id]}]
-        )
+        ssm_response = ssm.describe_instance_information(Filters=[{"Key": "InstanceIds", "Values": [instance_id]}])
 
         if ssm_response["InstanceInformationList"]:
             ssm_info = ssm_response["InstanceInformationList"][0]
@@ -197,9 +193,7 @@ def main():
         else:
             print("❌ Instance has no public connectivity")
             print("   Use AWS Systems Manager Session Manager for access")
-            print(
-                "   Command: aws ssm start-session --target i-00c39b1ba0eba3e2d --region us-east-2"
-            )
+            print("   Command: aws ssm start-session --target i-00c39b1ba0eba3e2d --region us-east-2")
 
 
 if __name__ == "__main__":

@@ -19,9 +19,7 @@ from cost_toolkit.scripts.cleanup.public_ip_common import (
 def _get_instance_details(_ec2, instance_id, region_name):
     """Get current instance details."""
     print("Step 1: Getting instance details...")
-    details = fetch_instance_network_details(
-        instance_id, region_name, instance_fetcher=get_instance_info
-    )
+    details = fetch_instance_network_details(instance_id, region_name, instance_fetcher=get_instance_info)
     if not details.current_eni_id:
         raise RuntimeError("Instance has no primary network interface; cannot remove public IP.")
 
@@ -76,9 +74,7 @@ def _replace_eni(ec2, instance_id, current_eni, new_eni_id):
 
     print("Step 5: Attaching new network interface...")
     try:
-        ec2.attach_network_interface(
-            NetworkInterfaceId=new_eni_id, InstanceId=instance_id, DeviceIndex=0
-        )
+        ec2.attach_network_interface(NetworkInterfaceId=new_eni_id, InstanceId=instance_id, DeviceIndex=0)
         print(f"  ✅ Attached new ENI {new_eni_id}")
         delay(10)
     except ClientError as e:
@@ -206,10 +202,7 @@ def main():
 
     instance_id, region_name, using_default = basic_remove.parse_args()  # Reuse standard CLI
     if using_default:
-        print(
-            "⚠️  Using defaults from config/public_ip_defaults.json; "
-            "provide --instance-id/--region to override."
-        )
+        print("⚠️  Using defaults from config/public_ip_defaults.json; " "provide --instance-id/--region to override.")
 
     aws_utils.setup_aws_credentials()
 

@@ -29,9 +29,7 @@ def test_enable_public_access_success(_mock_setup_creds, mock_create_client, cap
     )
 
     mock_rds.get_waiter.assert_called_once_with("db_instance_available")
-    mock_waiter.wait.assert_called_once_with(
-        DBInstanceIdentifier="simba-db-restored", WaiterConfig={"Delay": 30, "MaxAttempts": 10}
-    )
+    mock_waiter.wait.assert_called_once_with(DBInstanceIdentifier="simba-db-restored", WaiterConfig={"Delay": 30, "MaxAttempts": 10})
 
     captured = capsys.readouterr()
     assert "Enabling public access to restored RDS instance..." in captured.out
@@ -79,9 +77,7 @@ class TestEnablePublicAccessErrors:
 
     @patch("cost_toolkit.scripts.rds.enable_rds_public_access.create_rds_client")
     @patch("cost_toolkit.scripts.rds.enable_rds_public_access.setup_aws_credentials")
-    def test_enable_public_access_instance_not_found(
-        self, _mock_setup_creds, mock_create_client, capsys
-    ):
+    def test_enable_public_access_instance_not_found(self, _mock_setup_creds, mock_create_client, capsys):
         """Test handling when instance is not found."""
         mock_rds = MagicMock()
         mock_create_client.return_value = mock_rds
@@ -97,9 +93,7 @@ class TestEnablePublicAccessErrors:
 
     @patch("cost_toolkit.scripts.rds.enable_rds_public_access.create_rds_client")
     @patch("cost_toolkit.scripts.rds.enable_rds_public_access.setup_aws_credentials")
-    def test_enable_public_access_insufficient_permissions(
-        self, _mock_setup_creds, mock_create_client, capsys
-    ):
+    def test_enable_public_access_insufficient_permissions(self, _mock_setup_creds, mock_create_client, capsys):
         """Test handling when user lacks permissions."""
         mock_rds = MagicMock()
         mock_create_client.return_value = mock_rds

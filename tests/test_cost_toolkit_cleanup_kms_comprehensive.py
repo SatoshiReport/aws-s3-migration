@@ -47,9 +47,7 @@ class TestScheduleKeyDeletion:
         result = schedule_key_deletion(mock_client, "key-123", "Enabled")
 
         assert result is True
-        mock_client.schedule_key_deletion.assert_called_once_with(
-            KeyId="key-123", PendingWindowInDays=7
-        )
+        mock_client.schedule_key_deletion.assert_called_once_with(KeyId="key-123", PendingWindowInDays=7)
         captured = capsys.readouterr()
         assert "Scheduled for deletion" in captured.out
 
@@ -99,9 +97,7 @@ class TestScheduleKeyDeletion:
     def test_schedule_other_error(self, capsys):
         """Test handling other errors."""
         mock_client = MagicMock()
-        mock_client.schedule_key_deletion.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "schedule_key_deletion"
-        )
+        mock_client.schedule_key_deletion.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "schedule_key_deletion")
 
         result = schedule_key_deletion(mock_client, "key-123", "Enabled")
 
@@ -141,9 +137,7 @@ class TestProcessSingleKey:
 
         with patch("boto3.client") as mock_client:
             mock_kms = MagicMock()
-            mock_kms.describe_key.side_effect = ClientError(
-                {"Error": {"Code": "NotFoundException"}}, "describe_key"
-            )
+            mock_kms.describe_key.side_effect = ClientError({"Error": {"Code": "NotFoundException"}}, "describe_key")
             mock_client.return_value = mock_kms
 
             result = process_single_key(key_info)
@@ -164,9 +158,7 @@ class TestCleanupKmsKeys:
                 {"region": "us-west-2", "key_id": "key-2", "description": "Key 2"},
             ]
 
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_kms_cleanup.process_single_key", return_value=True
-            ):
+            with patch("cost_toolkit.scripts.cleanup.aws_kms_cleanup.process_single_key", return_value=True):
                 cleanup_kms_keys()
 
         captured = capsys.readouterr()
@@ -190,9 +182,7 @@ class TestCleanupKmsKeys:
 
     def test_cleanup_no_keys(self, capsys):
         """Test cleanup with no keys to process."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_kms_cleanup.get_keys_to_remove", return_value=[]
-        ):
+        with patch("cost_toolkit.scripts.cleanup.aws_kms_cleanup.get_keys_to_remove", return_value=[]):
             cleanup_kms_keys()
 
         captured = capsys.readouterr()

@@ -195,9 +195,7 @@ def test_bucket_has_contents_with_delete_markers():
     """Test bucket with delete markers returns True"""
     mock_s3 = mock.Mock()
     mock_paginator = mock.Mock()
-    mock_paginator.paginate.return_value = [
-        {"DeleteMarkers": [{"Key": "file.txt", "VersionId": "d1"}]}
-    ]
+    mock_paginator.paginate.return_value = [{"DeleteMarkers": [{"Key": "file.txt", "VersionId": "d1"}]}]
     mock_s3.get_paginator.return_value = mock_paginator
 
     result = _bucket_has_contents(mock_s3, "bucket-with-delete-markers")

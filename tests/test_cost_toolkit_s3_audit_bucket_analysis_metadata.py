@@ -77,9 +77,7 @@ def test_get_bucket_metadata_versioning_disabled():
 def test_get_bucket_metadata_with_lifecycle_policy():
     """Test _get_bucket_metadata collects lifecycle policy."""
     mock_client = build_bucket_metadata_client(public_access=False)
-    mock_client.get_bucket_versioning.side_effect = ClientError(
-        {"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning"
-    )
+    mock_client.get_bucket_versioning.side_effect = ClientError({"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning")
     lifecycle_rules = [
         {
             "Id": "rule1",
@@ -97,18 +95,12 @@ def test_get_bucket_metadata_with_lifecycle_policy():
 def test_get_bucket_metadata_with_encryption():
     """Test _get_bucket_metadata collects encryption configuration."""
     mock_client = build_bucket_metadata_client(public_access=False)
-    mock_client.get_bucket_versioning.side_effect = ClientError(
-        {"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning"
-    )
+    mock_client.get_bucket_versioning.side_effect = ClientError({"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning")
     mock_client.get_bucket_lifecycle_configuration.side_effect = ClientError(
         {"Error": {"Code": "NoSuchLifecycleConfiguration"}}, "GetBucketLifecycleConfiguration"
     )
-    encryption_config = {
-        "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
-    }
-    mock_client.get_bucket_encryption.return_value = {
-        "ServerSideEncryptionConfiguration": encryption_config
-    }
+    encryption_config = {"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]}
+    mock_client.get_bucket_encryption.return_value = {"ServerSideEncryptionConfiguration": encryption_config}
     mock_client.get_public_access_block.side_effect = ClientError(
         {"Error": {"Code": "NoSuchPublicAccessBlockConfiguration"}}, "GetPublicAccessBlock"
     )
@@ -122,9 +114,7 @@ def test_get_bucket_metadata_with_encryption():
 def test_get_bucket_metadata_public_access_partial_block():
     """Test _get_bucket_metadata detects partial public access blocking."""
     mock_client = MagicMock()
-    mock_client.get_bucket_versioning.side_effect = ClientError(
-        {"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning"
-    )
+    mock_client.get_bucket_versioning.side_effect = ClientError({"Error": {"Code": "NoSuchConfiguration"}}, "GetBucketVersioning")
     mock_client.get_bucket_lifecycle_configuration.side_effect = ClientError(
         {"Error": {"Code": "NoSuchLifecycleConfiguration"}}, "GetBucketLifecycleConfiguration"
     )
@@ -165,9 +155,7 @@ def test_require_public_access_config_missing_config(mock_warning):
 @patch("cost_toolkit.scripts.audit.s3_audit.bucket_analysis.logging.warning")
 def test_require_public_access_config_fills_missing_fields(mock_warning):
     """Fill in any missing public access fields."""
-    result = _require_public_access_config(
-        {"PublicAccessBlockConfiguration": {"BlockPublicAcls": True}}
-    )
+    result = _require_public_access_config({"PublicAccessBlockConfiguration": {"BlockPublicAcls": True}})
 
     assert result["BlockPublicAcls"] is True
     assert result["IgnorePublicAcls"] is False

@@ -86,9 +86,7 @@ def _check_detached_eni(eni):
     return "detached"
 
 
-def investigate_network_interface(
-    region_name, interface_id, aws_access_key_id, aws_secret_access_key
-):
+def investigate_network_interface(region_name, interface_id, aws_access_key_id, aws_secret_access_key):
     """Deep investigation of a specific network interface"""
     try:
         ec2 = boto3.client(
@@ -146,9 +144,7 @@ def main():
             region = interface["region"]
             eni_id = interface["id"]
 
-            result = investigate_network_interface(
-                region, eni_id, aws_access_key_id, aws_secret_access_key
-            )
+            result = investigate_network_interface(region, eni_id, aws_access_key_id, aws_secret_access_key)
 
             if result in ["orphaned", "detached"]:
                 cleanup_candidates.append({"region": region, "id": eni_id, "reason": result})

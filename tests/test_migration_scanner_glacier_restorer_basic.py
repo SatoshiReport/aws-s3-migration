@@ -26,9 +26,7 @@ def test_request_all_restores_no_glacier_files(restorer, state_mock, capsys):
 
 def test_request_all_restores_with_files(restorer, s3_mock, state_mock):
     """Test requesting restores for Glacier files"""
-    state_mock.get_glacier_files_needing_restore.return_value = [
-        {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
-    ]
+    state_mock.get_glacier_files_needing_restore.return_value = [{"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}]
 
     restorer.request_all_restores()
 

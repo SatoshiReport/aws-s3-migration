@@ -54,9 +54,7 @@ def test_list_hosted_zones_with_credentials(mock_create_client):
 
     result = list_hosted_zones(aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
-    mock_create_client.assert_called_once_with(
-        aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    mock_create_client.assert_called_once_with(aws_access_key_id="test_key", aws_secret_access_key="test_secret")
     assert_equal(result, [])
 
 
@@ -125,9 +123,7 @@ def test_get_hosted_zone_with_credentials(mock_create_client):
         aws_secret_access_key="test_secret",
     )
 
-    mock_create_client.assert_called_once_with(
-        aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    mock_create_client.assert_called_once_with(aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
 
 @patch("cost_toolkit.scripts.aws_route53_operations.create_route53_client")
@@ -191,9 +187,7 @@ def test_list_resource_record_sets_with_credentials(mock_create_client):
         aws_secret_access_key="test_secret",
     )
 
-    mock_create_client.assert_called_once_with(
-        aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    mock_create_client.assert_called_once_with(aws_access_key_id="test_key", aws_secret_access_key="test_secret")
     assert_equal(result, [])
 
 
@@ -240,9 +234,7 @@ def test_change_resource_record_sets_with_credentials(mock_create_client):
         aws_secret_access_key="test_secret",
     )
 
-    mock_create_client.assert_called_once_with(
-        aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    mock_create_client.assert_called_once_with(aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
 
 @patch("cost_toolkit.scripts.aws_route53_operations.create_route53_client")
@@ -296,9 +288,7 @@ def test_get_change_with_credentials(mock_create_client):
         aws_secret_access_key="test_secret",
     )
 
-    mock_create_client.assert_called_once_with(
-        aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    mock_create_client.assert_called_once_with(aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
 
 @patch("cost_toolkit.scripts.aws_route53_operations.create_route53_client")

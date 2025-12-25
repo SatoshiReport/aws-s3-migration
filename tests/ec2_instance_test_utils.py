@@ -10,9 +10,7 @@ from botocore.exceptions import ClientError
 def build_describe_not_found_client():
     """Return boto3.client mock that raises InvalidInstanceID.NotFound."""
     mock_ec2 = MagicMock()
-    mock_ec2.describe_instances.side_effect = ClientError(
-        {"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances"
-    )
+    mock_ec2.describe_instances.side_effect = ClientError({"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances")
     return mock_ec2
 
 

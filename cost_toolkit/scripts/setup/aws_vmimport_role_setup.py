@@ -104,10 +104,7 @@ def print_alternative_setup_instructions():
     )
     print()
     print("2. Create the role:")
-    print(
-        "   aws iam create-role --role-name vmimport "
-        "--assume-role-policy-document file://trust-policy.json"
-    )
+    print("   aws iam create-role --role-name vmimport " "--assume-role-policy-document file://trust-policy.json")
     print()
     print("3. Create policy file:")
     print(
@@ -115,10 +112,7 @@ def print_alternative_setup_instructions():
     )
     print()
     print("4. Attach policy:")
-    print(
-        "   aws iam put-role-policy --role-name vmimport --policy-name vmimport "
-        "--policy-document file://role-policy.json"
-    )
+    print("   aws iam put-role-policy --role-name vmimport --policy-name vmimport " "--policy-document file://role-policy.json")
 
 
 def create_vmimport_role():

@@ -163,9 +163,7 @@ def _calculate_hourly_info(cost, now):
 def _display_service_usage_details(service, service_usage_details, cost):
     """Display detailed usage breakdown for a service."""
     if service in service_usage_details and cost > MINIMUM_COST_THRESHOLD:
-        usage_details = sorted(
-            service_usage_details[service], key=lambda x: x["cost"], reverse=True
-        )
+        usage_details = sorted(service_usage_details[service], key=lambda x: x["cost"], reverse=True)
         for detail in usage_details[:3]:
             usage_type = detail["usage_type"]
             usage_cost = detail["cost"]
@@ -202,9 +200,7 @@ def _display_trend_analysis(daily_trends, today_service_costs):
         print("\n📈 3-DAY COST TRENDS")
         print("-" * 80)
 
-        for service in sorted(
-            today_service_costs.keys(), key=lambda x: today_service_costs[x], reverse=True
-        )[:5]:
+        for service in sorted(today_service_costs.keys(), key=lambda x: today_service_costs[x], reverse=True)[:5]:
             if service in daily_trends:
                 print(f"\n📊 {service}")
                 trends = sorted(daily_trends[service], key=lambda x: x["date"])

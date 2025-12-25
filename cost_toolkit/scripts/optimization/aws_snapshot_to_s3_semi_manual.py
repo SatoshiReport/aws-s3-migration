@@ -40,9 +40,7 @@ def prepare_snapshot_for_export(snapshot_info, aws_access_key_id, aws_secret_acc
     print(f"\n🔍 Preparing {snapshot_id} ({size_gb} GB) in {region}...")
 
     # Create clients
-    ec2_client, s3_client = create_ec2_and_s3_clients(
-        region, aws_access_key_id, aws_secret_access_key
-    )
+    ec2_client, s3_client = create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key)
 
     # Create S3 bucket
     bucket_name = f"ebs-snapshot-archive-{region}-{datetime.now().strftime('%Y%m%d')}"
@@ -131,10 +129,7 @@ def _print_monitoring_commands(prepared_snapshots):
     for prep in prepared_snapshots:
         bucket_name = prep["bucket_name"]
         ami_id = prep["ami_id"]
-        print(
-            f"aws s3api head-object --bucket {bucket_name} "
-            f"--key ebs-snapshots/{ami_id}/{ami_id}.vmdk"
-        )
+        print(f"aws s3api head-object --bucket {bucket_name} " f"--key ebs-snapshots/{ami_id}/{ami_id}.vmdk")
     print()
 
 
@@ -205,9 +200,7 @@ def _prepare_all_snapshots(snapshots, aws_access_key_id, aws_secret_access_key):
     prepared_snapshots = []
     for snapshot in snapshots:
         try:
-            prepared = prepare_snapshot_for_export(
-                snapshot, aws_access_key_id, aws_secret_access_key
-            )
+            prepared = prepare_snapshot_for_export(snapshot, aws_access_key_id, aws_secret_access_key)
             prepared_snapshots.append(prepared)
         except (BotoCoreError, ClientError) as exc:
             print(f"   ❌ Failed to prepare {snapshot['snapshot_id']}: {exc}")
@@ -262,9 +255,7 @@ def main():
 
     prepared_snapshots = _prepare_all_snapshots(snapshots, aws_access_key_id, aws_secret_access_key)
 
-    export_commands, monitor_commands, cleanup_commands = generate_manual_commands(
-        prepared_snapshots
-    )
+    export_commands, monitor_commands, cleanup_commands = generate_manual_commands(prepared_snapshots)
 
     _save_commands_to_file(prepared_snapshots, export_commands, monitor_commands, cleanup_commands)
 

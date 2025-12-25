@@ -180,9 +180,7 @@ def test_process_object_updates_oldest_and_newest():
     _process_object(obj3, bucket_analysis, ninety_days_ago, large_object_threshold)
 
     assert_equal(bucket_analysis["last_modified_oldest"], datetime(2024, 1, 1, tzinfo=timezone.utc))
-    assert_equal(
-        bucket_analysis["last_modified_newest"], datetime(2024, 11, 1, tzinfo=timezone.utc)
-    )
+    assert_equal(bucket_analysis["last_modified_newest"], datetime(2024, 11, 1, tzinfo=timezone.utc))
     assert_equal(bucket_analysis["total_objects"], 3)
 
 

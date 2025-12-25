@@ -75,9 +75,7 @@ def test_handle_state_db_reset_no_reset():
     """Test handle_state_db_reset when should_reset is False."""
     base_path, db_path, mock_reseed = build_reset_context()
 
-    result = handle_state_db_reset(
-        base_path, db_path, should_reset=False, skip_prompt=False, reseed_function=mock_reseed
-    )
+    result = handle_state_db_reset(base_path, db_path, should_reset=False, skip_prompt=False, reseed_function=mock_reseed)
     assert_equal(result, db_path)
 
 
@@ -87,9 +85,7 @@ def test_handle_state_db_reset_cancelled(tmp_path, capsys):
     mock_reseed = build_magic_reseed(db_path)
 
     with patch("builtins.input", return_value="n"):
-        result = handle_state_db_reset(
-            base_path, db_path, should_reset=True, skip_prompt=False, reseed_function=mock_reseed
-        )
+        result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=False, reseed_function=mock_reseed)
         assert_equal(result, db_path)
         captured = capsys.readouterr().out
         assert "cancelled" in captured
@@ -104,9 +100,7 @@ def test_handle_state_db_reset_confirmed(tmp_path, capsys):
     mock_reseed = MagicMock(return_value=(db_path, 1000, 1024 * 1024 * 1024))
 
     with patch("builtins.input", return_value="y"):
-        result = handle_state_db_reset(
-            base_path, db_path, should_reset=True, skip_prompt=False, reseed_function=mock_reseed
-        )
+        result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=False, reseed_function=mock_reseed)
         assert_equal(result, db_path)
         captured = capsys.readouterr().out
         assert "Recreated" in captured
@@ -121,9 +115,7 @@ def test_handle_state_db_reset_with_skip_prompt(tmp_path, capsys):
 
     mock_reseed = MagicMock(return_value=(db_path, 500, 512 * 1024 * 1024))
 
-    result = handle_state_db_reset(
-        base_path, db_path, should_reset=True, skip_prompt=True, reseed_function=mock_reseed
-    )
+    result = handle_state_db_reset(base_path, db_path, should_reset=True, skip_prompt=True, reseed_function=mock_reseed)
     assert_equal(result, db_path)
     captured = capsys.readouterr().out
     assert "Recreated" in captured

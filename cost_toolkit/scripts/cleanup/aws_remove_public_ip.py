@@ -50,9 +50,7 @@ def get_instance_network_info(instance_id, region_name):
         IndexError: If instance has no network interfaces
     """
     print("Step 1: Getting instance details...")
-    details = fetch_instance_network_details(
-        instance_id, region_name, instance_fetcher=get_instance_info
-    )
+    details = fetch_instance_network_details(instance_id, region_name, instance_fetcher=get_instance_info)
     network_interface_id = details.current_eni_id
     if not network_interface_id:
         raise RuntimeError("Instance has no primary network interface; cannot remove public IP.")
@@ -160,9 +158,7 @@ def remove_public_ip_from_instance(instance_id, region_name):
     try:
         ec2 = create_client("ec2", region=region_name)
 
-        _instance, current_state, current_public_ip, network_interface_id = (
-            get_instance_network_info(instance_id, region_name)
-        )
+        _instance, current_state, current_public_ip, network_interface_id = get_instance_network_info(instance_id, region_name)
 
         if not current_public_ip:
             print(f"✅ Instance {instance_id} already has no public IP")
@@ -201,14 +197,8 @@ def _resolve_default_target(
     if instance_id and region_name:
         return instance_id, region_name
     if testing:
-        raise ValueError(
-            "Test mode requires explicit instance_id and region_name via args, "
-            "environment variables, or config file"
-        )
-    raise SystemExit(
-        "Populate default_instance_id/default_region in config/public_ip_defaults.json "
-        "or provide --instance-id/--region."
-    )
+        raise ValueError("Test mode requires explicit instance_id and region_name via args, " "environment variables, or config file")
+    raise SystemExit("Populate default_instance_id/default_region in config/public_ip_defaults.json " "or provide --instance-id/--region.")
 
 
 def _resolve_target(
@@ -218,9 +208,7 @@ def _resolve_target(
     testing: bool,
 ) -> tuple[str, str, bool]:
     if args.use_default_target:
-        resolved_instance_id, resolved_region = _resolve_default_target(
-            args, config_instance_id, config_region, testing
-        )
+        resolved_instance_id, resolved_region = _resolve_default_target(args, config_instance_id, config_region, testing)
         return resolved_instance_id, resolved_region, True
     if args.instance_id and args.region:
         return args.instance_id, args.region, False
@@ -261,10 +249,7 @@ def main(argv=None):
     instance_id, region_name, using_default = parse_args(argv)
 
     if using_default:
-        print(
-            f"⚠️  Using defaults from {DEFAULTS_PATH.name}; "
-            "provide --instance-id/--region to override."
-        )
+        print(f"⚠️  Using defaults from {DEFAULTS_PATH.name}; " "provide --instance-id/--region to override.")
 
     print(f"\n⚠️  WARNING: This will cause downtime for instance {instance_id}")
     print("The instance will be stopped and restarted to remove the public IP.")

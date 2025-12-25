@@ -191,9 +191,7 @@ def test_display_bucket_summary_full_features_basic():
         "total_size_bytes": 10 * 1024**3,
         "versioning_enabled": True,
         "lifecycle_policy": [{"id": "rule1"}, {"id": "rule2"}],
-        "encryption": {
-            "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
-        },
+        "encryption": {"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]},
         "public_access": True,
         "storage_classes": {
             "STANDARD": {"count": 300, "size_bytes": 5 * 1024**3},
@@ -222,9 +220,7 @@ def test_display_bucket_summary_full_features_policies():
         "total_size_bytes": 10 * 1024**3,
         "versioning_enabled": True,
         "lifecycle_policy": [{"id": "rule1"}, {"id": "rule2"}],
-        "encryption": {
-            "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
-        },
+        "encryption": {"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]},
         "public_access": True,
         "storage_classes": {
             "STANDARD": {"count": 300, "size_bytes": 5 * 1024**3},
@@ -253,9 +249,7 @@ def test_display_bucket_summary_full_features_storage():
         "total_size_bytes": 10 * 1024**3,
         "versioning_enabled": True,
         "lifecycle_policy": [{"id": "rule1"}, {"id": "rule2"}],
-        "encryption": {
-            "Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]
-        },
+        "encryption": {"Rules": [{"ApplyServerSideEncryptionByDefault": {"SSEAlgorithm": "AES256"}}]},
         "public_access": True,
         "storage_classes": {
             "STANDARD": {"count": 300, "size_bytes": 5 * 1024**3},
@@ -290,9 +284,7 @@ def test_print_overall_summary():
     total_monthly_cost = 250.00
 
     with patch("sys.stdout", new_callable=StringIO) as mock_stdout:
-        print_overall_summary(
-            all_bucket_analyses, total_objects, total_size_bytes, total_monthly_cost
-        )
+        print_overall_summary(all_bucket_analyses, total_objects, total_size_bytes, total_monthly_cost)
         output = mock_stdout.getvalue()
 
         assert "OVERALL S3 SUMMARY" in output

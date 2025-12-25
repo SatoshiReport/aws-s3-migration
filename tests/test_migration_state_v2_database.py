@@ -56,9 +56,7 @@ def test_schema_bucket_status_table_created(tmp_path: Path):
     db_conn = DatabaseConnection(str(db_path))
 
     with db_conn.get_connection() as conn:
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='bucket_status'"
-        )
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='bucket_status'")
         assert cursor.fetchone() is not None
 
 
@@ -68,9 +66,7 @@ def test_schema_migration_metadata_table_created(tmp_path: Path):
     db_conn = DatabaseConnection(str(db_path))
 
     with db_conn.get_connection() as conn:
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' AND name='migration_metadata'"
-        )
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='migration_metadata'")
         assert cursor.fetchone() is not None
 
 

@@ -20,9 +20,7 @@ class TestReleasePublicIpFromInstance:
 
     def test_no_public_ip(self, capsys):
         """Test instance with no public IP."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info"
-        ) as mock_get_info:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info") as mock_get_info:
             mock_get_info.return_value = {"InstanceId": "i-123"}
 
             with patch("boto3.client"):
@@ -34,9 +32,7 @@ class TestReleasePublicIpFromInstance:
 
     def test_elastic_ip_with_association(self, capsys):
         """Test instance with Elastic IP."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info"
-        ) as mock_get_info:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info") as mock_get_info:
             mock_get_info.return_value = {
                 "InstanceId": "i-123",
                 "PublicIpAddress": "1.2.3.4",
@@ -64,9 +60,7 @@ class TestReleasePublicIpFromInstance:
 
     def test_elastic_ip_already_disassociated(self, capsys):
         """Test instance with Elastic IP already disassociated."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info"
-        ) as mock_get_info:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info") as mock_get_info:
             mock_get_info.return_value = {
                 "InstanceId": "i-123",
                 "PublicIpAddress": "1.2.3.4",
@@ -82,9 +76,7 @@ class TestReleasePublicIpFromInstance:
 
     def test_auto_assigned_public_ip(self, capsys):
         """Test instance with auto-assigned public IP."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info"
-        ) as mock_get_info:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info") as mock_get_info:
             mock_get_info.return_value = {
                 "InstanceId": "i-123",
                 "PublicIpAddress": "1.2.3.4",
@@ -101,12 +93,8 @@ class TestReleasePublicIpFromInstance:
 
     def test_client_error(self, capsys):
         """Test client error handling."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info"
-        ) as mock_get_info:
-            mock_get_info.side_effect = ClientError(
-                {"Error": {"Code": "InstanceNotFound"}}, "describe_instances"
-            )
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.get_instance_info") as mock_get_info:
+            mock_get_info.side_effect = ClientError({"Error": {"Code": "InstanceNotFound"}}, "describe_instances")
 
             result = release_public_ip_from_instance("i-notfound", "us-east-1")
 
@@ -123,9 +111,7 @@ class TestRemoveDetachedInternetGateway:
         with patch("boto3.client") as mock_boto3:
             mock_ec2 = MagicMock()
             mock_boto3.return_value = mock_ec2
-            mock_ec2.describe_internet_gateways.return_value = {
-                "InternetGateways": [{"InternetGatewayId": "igw-123", "Attachments": []}]
-            }
+            mock_ec2.describe_internet_gateways.return_value = {"InternetGateways": [{"InternetGatewayId": "igw-123", "Attachments": []}]}
 
             result = remove_detached_internet_gateway("igw-123", "us-east-1")
 
@@ -248,9 +234,7 @@ class TestCheckVpcNetworkResources:
     def test_check_with_igw(self):
         """Test checking VPC with Internet Gateway."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_internet_gateways.return_value = {
-            "InternetGateways": [{"InternetGatewayId": "igw-123"}]
-        }
+        mock_ec2.describe_internet_gateways.return_value = {"InternetGateways": [{"InternetGatewayId": "igw-123"}]}
         mock_ec2.describe_nat_gateways.return_value = {"NatGateways": []}
         mock_ec2.describe_vpc_endpoints.return_value = {"VpcEndpoints": []}
 
@@ -281,9 +265,7 @@ class TestCheckVpcNetworkResources:
         """Test that deleted NAT Gateways are excluded."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_internet_gateways.return_value = {"InternetGateways": []}
-        mock_ec2.describe_nat_gateways.return_value = {
-            "NatGateways": [{"NatGatewayId": "nat-1", "State": "deleted"}]
-        }
+        mock_ec2.describe_nat_gateways.return_value = {"NatGateways": [{"NatGatewayId": "nat-1", "State": "deleted"}]}
         mock_ec2.describe_vpc_endpoints.return_value = {"VpcEndpoints": []}
 
         analysis = {"can_delete": True, "blocking_resources": [], "dependencies": []}
@@ -314,9 +296,7 @@ class TestCheckVpcNetworkResources:
         mock_ec2 = MagicMock()
         mock_ec2.describe_internet_gateways.return_value = {"InternetGateways": []}
         mock_ec2.describe_nat_gateways.return_value = {"NatGateways": []}
-        mock_ec2.describe_vpc_endpoints.return_value = {
-            "VpcEndpoints": [{"VpcEndpointId": "vpce-1", "State": "deleted"}]
-        }
+        mock_ec2.describe_vpc_endpoints.return_value = {"VpcEndpoints": [{"VpcEndpointId": "vpce-1", "State": "deleted"}]}
 
         analysis = {"can_delete": True, "blocking_resources": [], "dependencies": []}
         _check_vpc_network_resources(mock_ec2, "vpc-123", analysis)
@@ -363,9 +343,7 @@ class TestCheckVpcLoadBalancers:
         with patch("boto3.client") as mock_boto3:
             mock_elbv2 = MagicMock()
             mock_boto3.return_value = mock_elbv2
-            mock_elbv2.describe_load_balancers.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_load_balancers"
-            )
+            mock_elbv2.describe_load_balancers.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_load_balancers")
 
             analysis = {"can_delete": True, "blocking_resources": []}
             _check_vpc_load_balancers("us-east-1", "vpc-123", analysis)

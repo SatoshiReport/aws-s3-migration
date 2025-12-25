@@ -17,9 +17,7 @@ def _get_resource_name(tags):
 def _get_active_instances(ec2_client):
     """Get all active instances in the region."""
     instances_response = ec2_client.describe_instances(
-        Filters=[
-            {"Name": "instance-state-name", "Values": ["running", "stopped", "stopping", "pending"]}
-        ]
+        Filters=[{"Name": "instance-state-name", "Values": ["running", "stopped", "stopping", "pending"]}]
     )
     active_instances = []
     for reservation in instances_response["Reservations"]:
@@ -61,9 +59,7 @@ def _collect_vpc_subnets(ec2_client, vpc_id):
 
 def _collect_vpc_security_groups(ec2_client, vpc_id):
     """Collect all security groups for a VPC."""
-    sg_response = ec2_client.describe_security_groups(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )
+    sg_response = ec2_client.describe_security_groups(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
     security_groups = []
     if "SecurityGroups" in sg_response:
         for sg in sg_response["SecurityGroups"]:
@@ -107,9 +103,7 @@ def _collect_vpc_route_tables(ec2_client, vpc_id):
 
 def _collect_vpc_internet_gateways(ec2_client, vpc_id):
     """Collect all internet gateways attached to a VPC."""
-    igw_response = ec2_client.describe_internet_gateways(
-        Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
-    )
+    igw_response = ec2_client.describe_internet_gateways(Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}])
     internet_gateways = []
     if "InternetGateways" in igw_response:
         for igw in igw_response["InternetGateways"]:
@@ -134,9 +128,7 @@ def _collect_vpc_internet_gateways(ec2_client, vpc_id):
 
 def _collect_vpc_nat_gateways(ec2_client, vpc_id):
     """Collect all NAT gateways in a VPC."""
-    nat_response = ec2_client.describe_nat_gateways(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )
+    nat_response = ec2_client.describe_nat_gateways(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
     nat_gateways = []
     if "NatGateways" in nat_response:
         for nat in nat_response["NatGateways"]:
@@ -161,9 +153,7 @@ def _collect_unused_security_groups(ec2_client):
     if "SecurityGroups" in all_sgs_response:
         for sg in all_sgs_response["SecurityGroups"]:
             if sg["GroupName"] != "default":
-                sg_instances = ec2_client.describe_instances(
-                    Filters=[{"Name": "instance.group-id", "Values": [sg["GroupId"]]}]
-                )
+                sg_instances = ec2_client.describe_instances(Filters=[{"Name": "instance.group-id", "Values": [sg["GroupId"]]}])
                 if not sg_instances["Reservations"]:
                     unused_security_groups.append(
                         {
@@ -179,9 +169,7 @@ def _collect_unused_security_groups(ec2_client):
 def _collect_unused_network_interfaces(ec2_client):
     """Collect unattached network interfaces."""
     unused_interfaces = []
-    eni_response = ec2_client.describe_network_interfaces(
-        Filters=[{"Name": "status", "Values": ["available"]}]
-    )
+    eni_response = ec2_client.describe_network_interfaces(Filters=[{"Name": "status", "Values": ["available"]}])
     if "NetworkInterfaces" in eni_response:
         for eni in eni_response["NetworkInterfaces"]:
             if "Attachment" not in eni:

@@ -52,9 +52,7 @@ class TestStopCanaryIfRunning:
     def test_stop_canary_error(self, capsys):
         """Test error when stopping canary."""
         mock_client = MagicMock()
-        mock_client.stop_canary.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "stop_canary"
-        )
+        mock_client.stop_canary.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "stop_canary")
         _stop_canary_if_running(mock_client, "test-canary", "RUNNING")
         captured = capsys.readouterr()
         assert "Error stopping canary" in captured.out
@@ -83,9 +81,7 @@ class TestDeleteSingleCanary:
     def test_delete_canary_error(self, capsys):
         """Test error when deleting canary."""
         mock_client = MagicMock()
-        mock_client.delete_canary.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_canary"
-        )
+        mock_client.delete_canary.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_canary")
         canary = {"Name": "test-canary", "Status": {"State": "STOPPED"}}
         _delete_single_canary(mock_client, canary)
         captured = capsys.readouterr()
@@ -127,24 +123,16 @@ class TestDeleteCloudwatchCanaries:
 
     def test_delete_canaries_multiple_regions(self, capsys):
         """Test deleting canaries across regions."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
-        ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region"
-            ):
+        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"):
+            with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region"):
                 delete_cloudwatch_canaries()
         captured = capsys.readouterr()
         assert "Checking CloudWatch Synthetics canaries" in captured.out
 
     def test_delete_canaries_service_not_available(self, capsys):
         """Test when Synthetics not available in region."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
-        ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region"
-            ) as mock_process:
+        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"):
+            with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region") as mock_process:
                 mock_process.side_effect = ClientError(
                     {"Error": {"Code": "InvalidAction", "Message": "not available"}},
                     "describe_canaries",
@@ -242,9 +230,7 @@ class TestDisableAlarmsInRegion:
                     }
                 ]
             }
-            mock_cw.disable_alarm_actions.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "disable_alarm_actions"
-            )
+            mock_cw.disable_alarm_actions.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "disable_alarm_actions")
             mock_client.return_value = mock_cw
             _disable_alarms_in_region("us-east-1")
         captured = capsys.readouterr()
@@ -253,9 +239,7 @@ class TestDisableAlarmsInRegion:
 
 def test_disable_cloudwatch_alarms_disable_alarms_multiple_regions(capsys):
     """Test disabling alarms across regions."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
-    ):
+    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"):
         with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._disable_alarms_in_region"):
             disable_cloudwatch_alarms()
     captured = capsys.readouterr()
@@ -264,15 +248,9 @@ def test_disable_cloudwatch_alarms_disable_alarms_multiple_regions(capsys):
 
 def test_disable_cloudwatch_alarms_with_client_error(capsys):
     """Test disabling alarms with ClientError."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
-    ):
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._disable_alarms_in_region"
-        ) as mock_disable:
-            mock_disable.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_alarms"
-            )
+    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"):
+        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._disable_alarms_in_region") as mock_disable:
+            mock_disable.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_alarms")
             disable_cloudwatch_alarms()
     captured = capsys.readouterr()
     assert "Error accessing CloudWatch" in captured.out
@@ -280,15 +258,9 @@ def test_disable_cloudwatch_alarms_with_client_error(capsys):
 
 def test_delete_canaries_with_generic_error(capsys):
     """Test delete canaries with generic ClientError."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
-    ):
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region"
-        ) as mock_process:
-            mock_process.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError", "Message": "Some error"}}, "describe_canaries"
-            )
+    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"):
+        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._process_canaries_in_region") as mock_process:
+            mock_process.side_effect = ClientError({"Error": {"Code": "ServiceError", "Message": "Some error"}}, "describe_canaries")
             delete_cloudwatch_canaries()
     captured = capsys.readouterr()
     assert "Error accessing CloudWatch Synthetics" in captured.out

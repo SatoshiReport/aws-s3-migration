@@ -22,9 +22,7 @@ def test_get_all_aws_regions(mock_create_client, monkeypatch):
     result = assert_regions_success(get_all_aws_regions, mock_create_client, monkeypatch)
 
     assert_equal(result, ["us-east-1", "us-west-2", "eu-west-1"])
-    mock_create_client.assert_called_once_with(
-        region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-east-1", aws_access_key_id=None, aws_secret_access_key=None)
 
 
 @patch("cost_toolkit.common.aws_common.get_all_aws_regions")
@@ -35,9 +33,7 @@ def test_find_volume_region_found(mock_create_client, mock_get_regions):
 
     # First region: volume not found
     mock_ec2_1 = MagicMock()
-    mock_ec2_1.describe_volumes.side_effect = ClientError(
-        {"Error": {"Code": "InvalidVolume.NotFound"}}, "DescribeVolumes"
-    )
+    mock_ec2_1.describe_volumes.side_effect = ClientError({"Error": {"Code": "InvalidVolume.NotFound"}}, "DescribeVolumes")
 
     # Second region: volume found
     mock_ec2_2 = MagicMock()
@@ -58,9 +54,7 @@ def test_find_volume_region_not_found(mock_create_client, mock_get_regions):
     mock_get_regions.return_value = ["us-east-1", "us-west-2"]
 
     mock_ec2 = MagicMock()
-    mock_ec2.describe_volumes.side_effect = ClientError(
-        {"Error": {"Code": "InvalidVolume.NotFound"}}, "DescribeVolumes"
-    )
+    mock_ec2.describe_volumes.side_effect = ClientError({"Error": {"Code": "InvalidVolume.NotFound"}}, "DescribeVolumes")
 
     mock_create_client.return_value = mock_ec2
 

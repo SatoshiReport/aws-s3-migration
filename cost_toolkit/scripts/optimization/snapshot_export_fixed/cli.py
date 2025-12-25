@@ -54,9 +54,7 @@ def _setup_s3_bucket_for_export(s3_client, region):
     return bucket_name
 
 
-def _build_export_result(
-    snapshot_id, ami_id, bucket_name, *, s3_key, export_task_id, size_gb, savings
-):
+def _build_export_result(snapshot_id, ami_id, bucket_name, *, s3_key, export_task_id, size_gb, savings):
     """Build export result dictionary."""
     return {
         "snapshot_id": snapshot_id,
@@ -85,9 +83,7 @@ def export_single_snapshot_to_s3(snapshot_info, aws_access_key_id, aws_secret_ac
     ami_id = create_ami_from_snapshot(ec2_client, snapshot_id, description)
 
     try:
-        export_task_id, s3_key = export_ami_to_s3_with_recovery(
-            ec2_client, s3_client, ami_id, bucket_name, region, size_gb
-        )
+        export_task_id, s3_key = export_ami_to_s3_with_recovery(ec2_client, s3_client, ami_id, bucket_name, region, size_gb)
 
         verify_s3_export_final(s3_client, bucket_name, s3_key, size_gb)
 
@@ -157,11 +153,7 @@ def _print_final_summary_fixed(successful_exports, export_results, snapshots_to_
     print()
     print("🔧 Delete Original Snapshots (after verifying S3 exports):")
     for result in export_results:
-        region = next(
-            snap["region"]
-            for snap in snapshots_to_export
-            if snap["snapshot_id"] == result["snapshot_id"]
-        )
+        region = next(snap["region"] for snap in snapshots_to_export if snap["snapshot_id"] == result["snapshot_id"])
         print(f"   aws ec2 delete-snapshot --snapshot-id {result['snapshot_id']} --region {region}")
 
 
@@ -193,24 +185,18 @@ def export_snapshots_to_s3_fixed():
 
     for snap_info in snapshots_to_export:
         try:
-            result = export_single_snapshot_to_s3(
-                snap_info, aws_access_key_id, aws_secret_access_key
-            )
+            result = export_single_snapshot_to_s3(snap_info, aws_access_key_id, aws_secret_access_key)
             export_results.append(result)
 
         except (ExportTaskDeletedException, ExportTaskStuckException) as e:
             print(f"   ❌ Failed to export {snap_info['snapshot_id']}: {e}")
-            print(
-                "   💡 This is a known AWS export service issue - continuing with next snapshot..."
-            )
+            print("   💡 This is a known AWS export service issue - continuing with next snapshot...")
             print("   🔄 Continuing with next snapshot...")
             continue
 
         except ClientError as e:
             print(f"   ❌ Failed to export {snap_info['snapshot_id']}: {e}")
-            raise ExportTaskFailedException(  # noqa: TRY003
-                f"Export failed for {snap_info['snapshot_id']}: {e}"
-            ) from e
+            raise ExportTaskFailedException(f"Export failed for {snap_info['snapshot_id']}: {e}") from e  # noqa: TRY003
         print()
 
     _print_final_summary_fixed(len(export_results), export_results, snapshots_to_export)

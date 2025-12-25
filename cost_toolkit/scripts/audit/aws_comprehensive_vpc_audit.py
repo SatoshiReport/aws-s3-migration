@@ -207,16 +207,12 @@ def audit_comprehensive_vpc():
     for region in regions:
         print(f"🔍 Auditing region: {region}")
 
-        region_data = audit_vpc_resources_in_region(
-            region, aws_access_key_id, aws_secret_access_key
-        )
+        region_data = audit_vpc_resources_in_region(region, aws_access_key_id, aws_secret_access_key)
 
         if _has_region_resources(region_data):
             regions_with_resources.append(region_data)
             total_vpcs += len(region_data["vpcs"])
-            total_unused_resources += len(region_data["unused_security_groups"]) + len(
-                region_data["unused_network_interfaces"]
-            )
+            total_unused_resources += len(region_data["unused_security_groups"]) + len(region_data["unused_network_interfaces"])
             _print_region_summary(region_data)
         else:
             print("   ✅ No VPC resources found")

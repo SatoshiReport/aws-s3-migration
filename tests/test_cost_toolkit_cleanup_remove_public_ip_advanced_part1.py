@@ -25,9 +25,7 @@ class TestGetInstanceDetails:
             "VpcId": "vpc-123",
             "SubnetId": "subnet-123",
             "SecurityGroups": [{"GroupId": "sg-123"}, {"GroupId": "sg-456"}],
-            "NetworkInterfaces": [
-                {"NetworkInterfaceId": "eni-123", "Attachment": {"AttachmentId": "attach-123"}}
-            ],
+            "NetworkInterfaces": [{"NetworkInterfaceId": "eni-123", "Attachment": {"AttachmentId": "attach-123"}}],
         }
         with patch(
             "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced.get_instance_info",
@@ -113,9 +111,7 @@ class TestCreateNewEni:
     def test_create_new_eni_success(self, capsys):
         """Test successful ENI creation."""
         mock_ec2 = MagicMock()
-        mock_ec2.create_network_interface.return_value = {
-            "NetworkInterface": {"NetworkInterfaceId": "eni-new123"}
-        }
+        mock_ec2.create_network_interface.return_value = {"NetworkInterface": {"NetworkInterfaceId": "eni-new123"}}
         with patch("time.sleep"):
             eni_id = _create_new_eni(mock_ec2, "subnet-123", ["sg-123"], "i-123")
         assert eni_id == "eni-new123"
@@ -141,9 +137,7 @@ class TestCreateNewEni:
     def test_create_new_eni_multiple_security_groups(self):
         """Test ENI creation with multiple security groups."""
         mock_ec2 = MagicMock()
-        mock_ec2.create_network_interface.return_value = {
-            "NetworkInterface": {"NetworkInterfaceId": "eni-multi"}
-        }
+        mock_ec2.create_network_interface.return_value = {"NetworkInterface": {"NetworkInterfaceId": "eni-multi"}}
         with patch("time.sleep"):
             eni_id = _create_new_eni(mock_ec2, "subnet-123", ["sg-1", "sg-2", "sg-3"], "i-456")
         assert eni_id == "eni-multi"
@@ -164,12 +158,8 @@ class TestReplaceEni:
         with patch("time.sleep"):
             result = _replace_eni(mock_ec2, "i-123", current_eni, "eni-new")
         assert result is True
-        mock_ec2.detach_network_interface.assert_called_once_with(
-            AttachmentId="attach-123", Force=True
-        )
-        mock_ec2.attach_network_interface.assert_called_once_with(
-            NetworkInterfaceId="eni-new", InstanceId="i-123", DeviceIndex=0
-        )
+        mock_ec2.detach_network_interface.assert_called_once_with(AttachmentId="attach-123", Force=True)
+        mock_ec2.attach_network_interface.assert_called_once_with(NetworkInterfaceId="eni-new", InstanceId="i-123", DeviceIndex=0)
         captured = capsys.readouterr()
         assert "Detaching current network interface" in captured.out
         assert "Attaching new network interface" in captured.out

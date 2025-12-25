@@ -21,9 +21,7 @@ def _run_main_with_region_data(region_data, regions=None):
                 return_value=("test-key", "test-secret"),
             )
         )
-        stack.enter_context(
-            patch(f"{module_path}.get_all_regions", return_value=regions or ["us-east-1"])
-        )
+        stack.enter_context(patch(f"{module_path}.get_all_regions", return_value=regions or ["us-east-1"]))
         stack.enter_context(
             patch(
                 f"{module_path}.audit_network_interfaces_in_region",
@@ -141,9 +139,7 @@ class TestMainOnlyAttached:  # pylint: disable=too-few-public-methods
             "region": "us-west-2",
             "total_interfaces": 2,
             "unused_interfaces": [],
-            "attached_interfaces": build_attached_interfaces(
-                overrides={1: {"attached_to": "i-2", "public_ip": "None"}}
-            ),
+            "attached_interfaces": build_attached_interfaces(overrides={1: {"attached_to": "i-2", "public_ip": "None"}}),
             "interface_details": [],
         }
 
@@ -294,9 +290,7 @@ class TestMainSummaryCalculations:  # pylint: disable=too-few-public-methods
             "region": "us-east-1",
             "total_interfaces": 5,
             "unused_interfaces": [unused_eni, {**unused_eni, "interface_id": "eni-2"}],
-            "attached_interfaces": [
-                {**attached_eni, "interface_id": f"eni-attached-{i}"} for i in range(3)
-            ],
+            "attached_interfaces": [{**attached_eni, "interface_id": f"eni-attached-{i}"} for i in range(3)],
             "interface_details": [],
         }
         region_data_2 = {

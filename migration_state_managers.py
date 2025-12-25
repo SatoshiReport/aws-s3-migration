@@ -103,12 +103,7 @@ def get_all_buckets_from_db(conn) -> List[str]:
 
 def get_completed_buckets_for_phase_from_db(conn, phase_field: str) -> List[str]:
     """Get buckets that completed a specific phase"""
-    return [
-        r["bucket"]
-        for r in conn.execute(
-            f"SELECT bucket FROM bucket_status WHERE {phase_field} = 1 ORDER BY bucket"
-        )
-    ]
+    return [r["bucket"] for r in conn.execute(f"SELECT bucket FROM bucket_status WHERE {phase_field} = 1 ORDER BY bucket")]
 
 
 def get_bucket_info_from_db(conn, bucket: str) -> Dict:
@@ -119,9 +114,7 @@ def get_bucket_info_from_db(conn, bucket: str) -> Dict:
 
 def get_storage_class_counts(conn) -> Dict[str, int]:
     """Get storage class counts from database"""
-    cursor = conn.execute(
-        "SELECT storage_class, COUNT(*) as count FROM files GROUP BY storage_class"
-    )
+    cursor = conn.execute("SELECT storage_class, COUNT(*) as count FROM files GROUP BY storage_class")
     return {r["storage_class"]: r["count"] for r in cursor.fetchall()}
 
 
@@ -306,24 +299,17 @@ class PhaseManager:
     def _init_phase(self):
         """Initialize phase if not set"""
         with self.db_conn.get_connection() as conn:
-            cursor = conn.execute(
-                "SELECT value FROM migration_metadata WHERE key = 'current_phase'"
-            )
+            cursor = conn.execute("SELECT value FROM migration_metadata WHERE key = 'current_phase'")
             if not cursor.fetchone():
                 self.set_phase(_PhaseRuntime.SCANNING)
 
     def get_phase(self) -> "Phase":
         """Get current migration phase"""
         with self.db_conn.get_connection() as conn:
-            cursor = conn.execute(
-                "SELECT value FROM migration_metadata WHERE key = 'current_phase'"
-            )
+            cursor = conn.execute("SELECT value FROM migration_metadata WHERE key = 'current_phase'")
             row = cursor.fetchone()
             if not row:
-                raise RuntimeError(
-                    "Migration phase metadata is missing. "
-                    "Reset the state DB to avoid resuming from an unknown phase."
-                )
+                raise RuntimeError("Migration phase metadata is missing. " "Reset the state DB to avoid resuming from an unknown phase.")
             return _PhaseRuntime(row["value"])
 
     def set_phase(self, phase: "Phase"):

@@ -42,8 +42,7 @@ def test_start_export_task_fixed():
     mock_ec2 = MagicMock()
 
     with patch(
-        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers."
-        "start_ami_export_task",
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers." "start_ami_export_task",
         return_value=("export-123", "ebs-snapshots/ami-123/export-123.vmdk"),
     ) as mock_start:
         task_id, s3_key = _start_export_task_fixed(mock_ec2, "ami-123", "test-bucket")
@@ -58,19 +57,14 @@ def test_handle_task_deletion_recovery_success():
     mock_s3 = MagicMock()
 
     with patch(
-        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers."
-        "check_s3_file_completion",
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers." "check_s3_file_completion",
         return_value={"size_gb": 50.0, "size_bytes": 53687091200},
     ) as mock_check:
-        success, key = _handle_task_deletion_recovery(
-            mock_s3, "test-bucket", "test-key.vmdk", 50, 2.5
-        )
+        success, key = _handle_task_deletion_recovery(mock_s3, "test-bucket", "test-key.vmdk", 50, 2.5)
 
         assert_equal(success, True)
         assert_equal(key, "test-key.vmdk")
-        mock_check.assert_called_once_with(
-            mock_s3, "test-bucket", "test-key.vmdk", 50, fast_check=True
-        )
+        mock_check.assert_called_once_with(mock_s3, "test-bucket", "test-key.vmdk", 50, fast_check=True)
 
 
 def test_handle_task_deletion_recovery_failure():
@@ -78,8 +72,7 @@ def test_handle_task_deletion_recovery_failure():
     mock_s3 = MagicMock()
 
     with patch(
-        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers."
-        "check_s3_file_completion",
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers." "check_s3_file_completion",
         side_effect=Exception("S3 file not found"),
     ):
         try:
@@ -96,8 +89,7 @@ def test_fetch_export_task_status():
     mock_task = {"ExportImageTaskId": "export-123", "Status": "active"}
 
     with patch(
-        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers."
-        "validate_export_task_exists",
+        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers." "validate_export_task_exists",
         return_value=mock_task,
     ) as mock_validate:
         task, errors = _fetch_export_task_status(mock_ec2, "export-123")
@@ -164,9 +156,7 @@ def test_check_terminal_state_fixed_failed_no_message():
 
 def test_print_export_status():
     """Test _print_export_status calls print_export_status."""
-    with patch(
-        "cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers.print_export_status"
-    ) as mock_print:
+    with patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.export_helpers.print_export_status") as mock_print:
         _print_export_status("active", 50, "Exporting...", 1.5)
 
         mock_print.assert_called_once_with("active", 50, "Exporting...", 1.5)

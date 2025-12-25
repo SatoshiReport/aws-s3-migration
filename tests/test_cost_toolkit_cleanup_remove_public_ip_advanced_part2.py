@@ -118,9 +118,7 @@ class TestNetworkInterfaceReplacementErrors:
             "VpcId": "vpc-123",
             "SubnetId": "subnet-123",
             "SecurityGroups": [{"GroupId": "sg-123"}],
-            "NetworkInterfaces": [
-                {"NetworkInterfaceId": "eni-old", "Attachment": {"AttachmentId": "attach-123"}}
-            ],
+            "NetworkInterfaces": [{"NetworkInterfaceId": "eni-old", "Attachment": {"AttachmentId": "attach-123"}}],
         }
         with patch(
             "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced.get_instance_info",
@@ -128,9 +126,7 @@ class TestNetworkInterfaceReplacementErrors:
         ):
             with patch("boto3.client") as mock_client:
                 mock_ec2 = MagicMock()
-                mock_ec2.create_network_interface.return_value = {
-                    "NetworkInterface": {"NetworkInterfaceId": "eni-new"}
-                }
+                mock_ec2.create_network_interface.return_value = {"NetworkInterface": {"NetworkInterfaceId": "eni-new"}}
                 mock_ec2.detach_network_interface.side_effect = ClientError(
                     {"Error": {"Code": "InvalidAttachmentID"}}, "detach_network_interface"
                 )
@@ -147,9 +143,7 @@ class TestNetworkInterfaceReplacementErrors:
             "VpcId": "vpc-123",
             "SubnetId": "subnet-123",
             "SecurityGroups": [{"GroupId": "sg-123"}],
-            "NetworkInterfaces": [
-                {"NetworkInterfaceId": "eni-old", "Attachment": {"AttachmentId": "attach-123"}}
-            ],
+            "NetworkInterfaces": [{"NetworkInterfaceId": "eni-old", "Attachment": {"AttachmentId": "attach-123"}}],
         }
         with patch(
             "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced.get_instance_info",
@@ -157,12 +151,8 @@ class TestNetworkInterfaceReplacementErrors:
         ):
             with patch("boto3.client") as mock_client:
                 mock_ec2 = MagicMock()
-                mock_ec2.create_network_interface.return_value = {
-                    "NetworkInterface": {"NetworkInterfaceId": "eni-new"}
-                }
-                mock_ec2.start_instances.side_effect = ClientError(
-                    {"Error": {"Code": "IncorrectInstanceState"}}, "start_instances"
-                )
+                mock_ec2.create_network_interface.return_value = {"NetworkInterface": {"NetworkInterfaceId": "eni-new"}}
+                mock_ec2.start_instances.side_effect = ClientError({"Error": {"Code": "IncorrectInstanceState"}}, "start_instances")
                 mock_client.return_value = mock_ec2
                 with patch("time.sleep"):
                     result = remove_public_ip_by_network_interface_replacement("i-123", "us-east-1")
@@ -225,9 +215,7 @@ class TestSimpleStopStartWithoutPublicIp:
         ):
             with patch("boto3.client") as mock_client:
                 mock_ec2 = MagicMock()
-                mock_ec2.stop_instances.side_effect = ClientError(
-                    {"Error": {"Code": "IncorrectInstanceState"}}, "stop_instances"
-                )
+                mock_ec2.stop_instances.side_effect = ClientError({"Error": {"Code": "IncorrectInstanceState"}}, "stop_instances")
                 mock_client.return_value = mock_ec2
                 result = simple_stop_start_without_public_ip("i-123", "us-east-1")
         assert result is False
@@ -241,8 +229,7 @@ class TestMain:
     def test_main_simple_method_success(self, capsys):
         """Test main when simple method succeeds."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced."
-            "simple_stop_start_without_public_ip",
+            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "simple_stop_start_without_public_ip",
             return_value=True,
         ):
             main()
@@ -252,13 +239,11 @@ class TestMain:
     def test_main_simple_fails_advanced_succeeds(self, capsys):
         """Test main when simple fails but advanced succeeds."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced."
-            "simple_stop_start_without_public_ip",
+            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "simple_stop_start_without_public_ip",
             return_value=False,
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced."
-                "remove_public_ip_by_network_interface_replacement",
+                "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "remove_public_ip_by_network_interface_replacement",
                 return_value=True,
             ):
                 main()
@@ -269,13 +254,11 @@ class TestMain:
     def test_main_both_methods_fail(self, capsys):
         """Test main when both methods fail."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced."
-            "simple_stop_start_without_public_ip",
+            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "simple_stop_start_without_public_ip",
             return_value=False,
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced."
-                "remove_public_ip_by_network_interface_replacement",
+                "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "remove_public_ip_by_network_interface_replacement",
                 return_value=False,
             ):
                 main()

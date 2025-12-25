@@ -113,10 +113,7 @@ def _try_load_from_cache(
     if "generated_at" not in metadata:
         raise CacheValidationError("Cache metadata missing generated_at timestamp")
     generated = metadata["generated_at"]
-    print(
-        f"Using cached results from {generated} "
-        f"(files={db_info.total_files:,}). Use --refresh-cache to rescan.\n"
-    )
+    print(f"Using cached results from {generated} " f"(files={db_info.total_files:,}). Use --refresh-cache to rescan.\n")
     return cache_path, True, cached_candidates
 
 
@@ -134,9 +131,7 @@ def _build_cache_and_db_info(
         refresh_cache=args.refresh_cache,
         cache_ttl=args.cache_ttl,
     )
-    db_info = DatabaseInfo(
-        db_path=db_path, db_stat=db_stat, total_files=total_files, max_rowid=max_rowid
-    )
+    db_info = DatabaseInfo(db_path=db_path, db_stat=db_stat, total_files=total_files, max_rowid=max_rowid)
     return cache_config, db_info
 
 
@@ -149,9 +144,7 @@ def _load_or_scan_candidates(
     scan_ctx: ScanContext,
 ) -> tuple[Path | None, bool, list[Candidate]]:
     """Load candidates from cache or scan database."""
-    cache_path, cache_used, candidates = _try_load_from_cache(
-        cache_config, base_path, db_info, scan_ctx.scan_params, scan_ctx.category_map
-    )
+    cache_path, cache_used, candidates = _try_load_from_cache(cache_config, base_path, db_info, scan_ctx.scan_params, scan_ctx.category_map)
 
     if candidates is None:
         candidates = scan_candidates_from_db(

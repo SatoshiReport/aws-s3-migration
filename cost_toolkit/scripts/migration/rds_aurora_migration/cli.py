@@ -38,10 +38,7 @@ def _select_instance_for_migration(instances, instance_identifier, region):
     if not instance_identifier:
         print("\nAvailable instances for migration:")
         for i, instance in enumerate(instances, 1):
-            print(
-                f"{i}. {instance['identifier']} ({instance['region']}) - "
-                f"{instance['engine']} {instance['instance_class']}"
-            )
+            print(f"{i}. {instance['identifier']} ({instance['region']}) - " f"{instance['engine']} {instance['instance_class']}")
 
         try:
             choice = int(input("\nSelect instance to migrate (number): ")) - 1
@@ -52,9 +49,7 @@ def _select_instance_for_migration(instances, instance_identifier, region):
             return None
 
     for instance in instances:
-        if instance["identifier"] == instance_identifier and (
-            not region or instance["region"] == region
-        ):
+        if instance["identifier"] == instance_identifier and (not region or instance["region"] == region):
             return instance
 
     print(f"❌ Instance '{instance_identifier}' not found.")
@@ -106,10 +101,7 @@ def migrate_rds_to_aurora_serverless(instance_identifier=None, region=None):
     if not selected_instance:
         return
 
-    print(
-        f"\n🎯 Selected for migration: {selected_instance['identifier']} "
-        f"({selected_instance['region']})"
-    )
+    print(f"\n🎯 Selected for migration: {selected_instance['identifier']} " f"({selected_instance['region']})")
 
     is_compatible, target_engine_or_issues = validate_migration_compatibility(selected_instance)
 
@@ -128,21 +120,13 @@ def migrate_rds_to_aurora_serverless(instance_identifier=None, region=None):
     try:
         rds_client = boto3.client("rds", region_name=selected_instance["region"])
 
-        snapshot_id = create_rds_snapshot(
-            rds_client, selected_instance["identifier"], selected_instance["region"]
-        )
+        snapshot_id = create_rds_snapshot(rds_client, selected_instance["identifier"], selected_instance["region"])
 
-        endpoint_info = create_aurora_serverless_cluster(
-            rds_client, selected_instance, target_engine, snapshot_id
-        )
+        endpoint_info = create_aurora_serverless_cluster(rds_client, selected_instance, target_engine, snapshot_id)
 
-        print_migration_results(
-            selected_instance, endpoint_info, current_monthly_cost, estimated_serverless_cost
-        )
+        print_migration_results(selected_instance, endpoint_info, current_monthly_cost, estimated_serverless_cost)
 
-        record_migration_action(
-            selected_instance, endpoint_info, current_monthly_cost - estimated_serverless_cost
-        )
+        record_migration_action(selected_instance, endpoint_info, current_monthly_cost - estimated_serverless_cost)
 
     except (BotoCoreError, ClientError) as exc:
         print(f"❌ Migration failed: {exc}")

@@ -137,9 +137,7 @@ def audit_nat_gateways_in_region(region_name):
             print(f"  VPC: {nat_info['vpc_id']}")
             print(f"  Subnet: {nat_info['subnet_id']}")
             print(f"  Created: {nat_info['create_time']}")
-            print(
-                f"  Estimated monthly cost: ${monthly_cost_estimate:.2f} (base + data processing)"
-            )
+            print(f"  Estimated monthly cost: ${monthly_cost_estimate:.2f} (base + data processing)")
 
             if nat_info["tags"]:
                 print("  Tags:")
@@ -199,10 +197,7 @@ def main():
     if idle_ips:
         print("\n💰 COST OPTIMIZATION OPPORTUNITY:")
         total_savings = sum(ip["monthly_cost_estimate"] for ip in idle_ips)
-        print(
-            f"  Releasing {len(idle_ips)} idle Elastic IPs "
-            f"could save ~${total_savings:.2f}/month"
-        )
+        print(f"  Releasing {len(idle_ips)} idle Elastic IPs " f"could save ~${total_savings:.2f}/month")
         print("  These IPs are not associated with any resources and are just costing money.")
 
     print("\n📋 RECOMMENDATIONS:")

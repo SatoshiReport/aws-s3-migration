@@ -221,9 +221,7 @@ def test_match_service_type_generic():
 def test_route_to_service_handler_storage():
     """Test _route_to_service_handler routes to storage handler."""
     recommendations = []
-    _route_to_service_handler(
-        "S3", recommendations, "S3", cost=100.0, percentage=20.0, completed_cleanups=set()
-    )
+    _route_to_service_handler("S3", recommendations, "S3", cost=100.0, percentage=20.0, completed_cleanups=set())
 
     assert len(recommendations) == 3
     assert "Glacier" in recommendations[2]
@@ -232,9 +230,7 @@ def test_route_to_service_handler_storage():
 def test_route_to_service_handler_ec2():
     """Test _route_to_service_handler routes to EC2 handler."""
     recommendations = []
-    _route_to_service_handler(
-        "EC2", recommendations, "EC2", cost=200.0, percentage=40.0, completed_cleanups=set()
-    )
+    _route_to_service_handler("EC2", recommendations, "EC2", cost=200.0, percentage=40.0, completed_cleanups=set())
 
     assert len(recommendations) == 3
     assert "Reserved" in recommendations[1] or "Savings Plans" in recommendations[1]
@@ -243,9 +239,7 @@ def test_route_to_service_handler_ec2():
 def test_route_to_service_handler_database():
     """Test _route_to_service_handler routes to database handler."""
     recommendations = []
-    _route_to_service_handler(
-        "RDS", recommendations, "RDS", cost=150.0, percentage=30.0, completed_cleanups=set()
-    )
+    _route_to_service_handler("RDS", recommendations, "RDS", cost=150.0, percentage=30.0, completed_cleanups=set())
 
     assert len(recommendations) == 3
 
@@ -283,9 +277,7 @@ def test_route_to_service_handler_accelerator():
 def test_route_to_service_handler_vpc():
     """Test _route_to_service_handler routes to VPC handler."""
     recommendations = []
-    _route_to_service_handler(
-        "VPC", recommendations, "VPC", cost=30.0, percentage=6.0, completed_cleanups=set()
-    )
+    _route_to_service_handler("VPC", recommendations, "VPC", cost=30.0, percentage=6.0, completed_cleanups=set())
 
     assert len(recommendations) == 3
 

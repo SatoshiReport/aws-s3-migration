@@ -39,9 +39,7 @@ def test_main_displays_user_arn(mock_aws_info_context):
 
         # Verify user ARN is printed
         call_args = [str(call) for call in mock_aws_info_context.print_mock.call_args_list]
-        assert any(
-            "User ARN: arn:aws:iam::123456789012:user/test-user" in str(call) for call in call_args
-        )
+        assert any("User ARN: arn:aws:iam::123456789012:user/test-user" in str(call) for call in call_args)
 
 
 def test_main_displays_identity_in_correct_order(mock_aws_info_context):
@@ -79,9 +77,7 @@ def test_main_with_long_username(mock_aws_info_context):
     mock_identity = {
         "account_id": "123456789012",
         "username": "very-long-username-with-many-characters-and-dashes",
-        "user_arn": (
-            "arn:aws:iam::123456789012:user/" "very-long-username-with-many-characters-and-dashes"
-        ),
+        "user_arn": ("arn:aws:iam::123456789012:user/" "very-long-username-with-many-characters-and-dashes"),
     }
 
     # Override the default identity for this test
@@ -91,9 +87,7 @@ def test_main_with_long_username(mock_aws_info_context):
         aws_info.main()
 
         call_args = [str(call) for call in mock_aws_info_context.print_mock.call_args_list]
-        assert any(
-            "very-long-username-with-many-characters-and-dashes" in str(call) for call in call_args
-        )
+        assert any("very-long-username-with-many-characters-and-dashes" in str(call) for call in call_args)
 
 
 def test_main_with_various_arn_formats(mock_aws_info_context):

@@ -172,10 +172,7 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         print()
         if shutil.which("aws") is None:
             print("✗ AWS CLI not found on PATH. Install AWS CLI v2 and retry.")
-            print(
-                "Download: https://docs.aws.amazon.com/cli/latest/userguide/"
-                "getting-started-install.html"
-            )
+            print("Download: https://docs.aws.amazon.com/cli/latest/userguide/" "getting-started-install.html")
             sys.exit(1)
         self.drive_checker.check_available()
         current_phase = self.state.get_current_phase()
@@ -232,9 +229,7 @@ def create_migrator() -> S3MigrationV2:
     glacier_restorer = GlacierRestorer(s3, state)
     glacier_waiter = GlacierWaiter(s3, state)
     bucket_migrator = BucketMigrator(s3, state, base_path)
-    migration_orchestrator = BucketMigrationOrchestrator(
-        s3, state, base_path, drive_checker, bucket_migrator
-    )
+    migration_orchestrator = BucketMigrationOrchestrator(s3, state, base_path, drive_checker, bucket_migrator)
     status_reporter = StatusReporter(state)
     components = MigrationComponents(
         drive_checker=drive_checker,

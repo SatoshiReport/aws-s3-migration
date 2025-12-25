@@ -87,10 +87,7 @@ def _process_hourly_data(hourly_data, current_hour):
 def _display_current_hour_section(current_hour_costs, current_hour, now, daily_service_costs):
     """Display current hour active services section."""
     if current_hour_costs:
-        print(
-            f"\n🔥 ACTIVE SERVICES IN CURRENT HOUR "
-            f"({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})"
-        )
+        print(f"\n🔥 ACTIVE SERVICES IN CURRENT HOUR " f"({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})")
         print("-" * 80)
 
         current_hour_total = 0
@@ -111,10 +108,7 @@ def _display_current_hour_section(current_hour_costs, current_hour, now, daily_s
 
         print(f"\n   📊 Current Hour Total: ${current_hour_total:.6f}")
     else:
-        print(
-            f"\n✅ NO ACTIVE SERVICES IN CURRENT HOUR "
-            f"({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})"
-        )
+        print(f"\n✅ NO ACTIVE SERVICES IN CURRENT HOUR " f"({current_hour.strftime('%H:00')} - {now.strftime('%H:%M')})")
 
 
 def _display_daily_summary(daily_service_costs, hourly_service_costs):

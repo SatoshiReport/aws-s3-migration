@@ -29,9 +29,7 @@ class TestStopDatabase:
         stopped, cost = _stop_database(mock_client, database)
         assert stopped == 1
         assert cost == 15.0
-        mock_client.stop_relational_database.assert_called_once_with(
-            relationalDatabaseName="test-db"
-        )
+        mock_client.stop_relational_database.assert_called_once_with(relationalDatabaseName="test-db")
         captured = capsys.readouterr()
         assert "Stopped database" in captured.out
 
@@ -53,9 +51,7 @@ class TestStopDatabase:
     def test_stop_database_error(self, capsys):
         """Test error stopping database."""
         mock_client = MagicMock()
-        mock_client.stop_relational_database.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "stop_relational_database"
-        )
+        mock_client.stop_relational_database.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "stop_relational_database")
         database = {
             "name": "test-db",
             "state": "available",
@@ -223,9 +219,7 @@ class TestStopLightsailInstances:
         with patch("cost_toolkit.common.credential_utils.setup_aws_credentials"):
             with patch("boto3.client") as mock_client:
                 mock_ls = MagicMock()
-                mock_ls.get_instances.side_effect = ClientError(
-                    {"Error": {"Code": "UnauthorizedOperation"}}, "get_instances"
-                )
+                mock_ls.get_instances.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "get_instances")
                 mock_client.return_value = mock_ls
                 instances, databases, savings = stop_lightsail_instances()
         assert instances == 0

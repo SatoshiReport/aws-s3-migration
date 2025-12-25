@@ -39,9 +39,7 @@ def test_delete_lambda_functions_no_functions(mock_create_client, _, __, mock_wa
 def test_delete_lambda_functions_with_failures(mock_create_client, _, __, mock_wait, capsys):
     """Ensure failures are reported and successes confirmed."""
     mock_lambda = MagicMock()
-    mock_lambda.list_functions.return_value = {
-        "Functions": [{"FunctionName": "fn-1"}, {"FunctionName": "fn-2"}]
-    }
+    mock_lambda.list_functions.return_value = {"Functions": [{"FunctionName": "fn-1"}, {"FunctionName": "fn-2"}]}
 
     def delete_side_effect(*_args, **kwargs):
         if kwargs["FunctionName"] == "fn-1":

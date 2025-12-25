@@ -78,9 +78,7 @@ class TestTerminateInstance:
         """Test error during termination."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_instances.side_effect = ClientError(
-                {"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances"
-            )
+            mock_ec2.describe_instances.side_effect = ClientError({"Error": {"Code": "InvalidInstanceID.NotFound"}}, "describe_instances")
             mock_client.return_value = mock_ec2
             result = terminate_instance("i-notfound", "us-east-1")
         assert result is False
@@ -98,9 +96,7 @@ class TestRenameInstance:
             mock_client.return_value = mock_ec2
             result = rename_instance("i-123", "new-name", "us-east-1")
         assert result is True
-        mock_ec2.create_tags.assert_called_once_with(
-            Resources=["i-123"], Tags=[{"Key": "Name", "Value": "new-name"}]
-        )
+        mock_ec2.create_tags.assert_called_once_with(Resources=["i-123"], Tags=[{"Key": "Name", "Value": "new-name"}])
         captured = capsys.readouterr()
         assert "renamed to 'new-name'" in captured.out
 
@@ -108,9 +104,7 @@ class TestRenameInstance:
         """Test error during renaming."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.create_tags.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "create_tags"
-            )
+            mock_ec2.create_tags.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "create_tags")
             mock_client.return_value = mock_ec2
             result = rename_instance("i-123", "new-name", "us-east-1")
         assert result is False
@@ -172,9 +166,7 @@ class TestGetLastActivityFromMetrics:
     def test_get_activity_error(self, capsys):
         """Test error when retrieving metrics."""
         mock_cw = MagicMock()
-        mock_cw.get_metric_statistics.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "get_metric_statistics"
-        )
+        mock_cw.get_metric_statistics.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "get_metric_statistics")
         _get_last_activity_from_metrics(mock_cw, "i-123")
         captured = capsys.readouterr()
         assert "Could not retrieve metrics" in captured.out
@@ -230,10 +222,7 @@ class TestGetInstanceDetailedInfo:
                 ]
             }
             mock_client.side_effect = [mock_ec2, mock_cw]
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup."
-                "_get_last_activity_from_metrics"
-            ):
+            with patch("cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup." "_get_last_activity_from_metrics"):
                 result = get_instance_detailed_info("i-123", "us-east-1")
         assert result is not None
         assert result["instance_id"] == "i-123"
@@ -244,9 +233,7 @@ class TestGetInstanceDetailedInfo:
         """Test error when getting detailed info."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_instances.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_instances"
-            )
+            mock_ec2.describe_instances.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_instances")
             mock_client.return_value = mock_ec2
             result = get_instance_detailed_info("i-123", "us-east-1")
         assert result is None
@@ -383,18 +370,10 @@ class TestPrintSummary:
 
 def test_main_main_function(capsys):
     """Test main function execution."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._terminate_instances"
-    ) as mock_term:
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup.rename_instance"
-        ) as mock_rename:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._analyze_instances"
-            ) as mock_analyze:
-                with patch(
-                    "cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._print_summary"
-                ) as mock_summary:
+    with patch("cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._terminate_instances") as mock_term:
+        with patch("cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup.rename_instance") as mock_rename:
+            with patch("cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._analyze_instances") as mock_analyze:
+                with patch("cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._print_summary") as mock_summary:
                     mock_term.return_value = ([], 0)
                     mock_rename.return_value = True
                     mock_analyze.return_value = []

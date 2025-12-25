@@ -28,9 +28,7 @@ def _build_instance_info(instance, region_name, hourly_cost, monthly_cost):
     }
 
 
-def _print_instance_details(
-    instance_id, instance_type, state, instance_info, *, hourly_cost, monthly_cost
-):
+def _print_instance_details(instance_id, instance_type, state, instance_info, *, hourly_cost, monthly_cost):
     """Print detailed instance information"""
     print(f"Instance: {instance_id}")
     print(f"  Type: {instance_type}")
@@ -94,9 +92,7 @@ def analyze_ec2_instances_in_region(region_name):
                 hourly_cost = get_instance_hourly_cost(instance_type, region_name)
                 monthly_cost = hourly_cost * 24 * 30
 
-                instance_info = _build_instance_info(
-                    instance, region_name, hourly_cost, monthly_cost
-                )
+                instance_info = _build_instance_info(instance, region_name, hourly_cost, monthly_cost)
                 _print_instance_details(
                     instance_id,
                     instance_type,
@@ -188,17 +184,11 @@ def get_instance_hourly_cost(instance_type, region_name):
     }
 
     if instance_type not in pricing_map:
-        raise ValueError(
-            f"Unknown instance type: {instance_type}. "
-            f"Add pricing for this instance type to the pricing_map."
-        )
+        raise ValueError(f"Unknown instance type: {instance_type}. " f"Add pricing for this instance type to the pricing_map.")
     base_cost = pricing_map[instance_type]
 
     if region_name not in regional_multipliers:
-        raise ValueError(
-            f"Unknown region: {region_name}. "
-            f"Add pricing multiplier for this region to regional_multipliers."
-        )
+        raise ValueError(f"Unknown region: {region_name}. " f"Add pricing multiplier for this region to regional_multipliers.")
     regional_multiplier = regional_multipliers[region_name]
 
     return base_cost * regional_multiplier
@@ -218,9 +208,7 @@ def _process_single_volume(volume):
     attachments = []
     if "Attachments" in volume:
         attachments = volume["Attachments"]
-    attached_to = (
-        attachments[0]["InstanceId"] if attachments and "InstanceId" in attachments[0] else None
-    )
+    attached_to = attachments[0]["InstanceId"] if attachments and "InstanceId" in attachments[0] else None
 
     print(f"Volume: {volume_id}")
     print(f"  Type: {volume_type}")
@@ -291,10 +279,7 @@ def _print_instance_summary(running_instances, stopped_instances, total_compute_
     if running_instances:
         print("\n  Running instance details:")
         for instance in running_instances:
-            print(
-                f"    {instance['instance_id']} ({instance['instance_type']}) - "
-                f"${instance['monthly_cost']:.2f}/month"
-            )
+            print(f"    {instance['instance_id']} ({instance['instance_type']}) - " f"${instance['monthly_cost']:.2f}/month")
 
 
 def _print_storage_summary(all_volumes, total_storage_cost):
@@ -325,9 +310,7 @@ def _print_billing_explanation():
     print("    6. Load balancer costs (if any)")
 
 
-def _print_optimization_recommendations(
-    stopped_instances, running_instances, total_storage_cost, total_compute_cost
-):
+def _print_optimization_recommendations(stopped_instances, running_instances, total_storage_cost, total_compute_cost):
     """Print cost optimization recommendations"""
     print("\n💡 COST OPTIMIZATION OPPORTUNITIES:")
 
@@ -404,9 +387,7 @@ def main():
     _print_storage_summary(all_volumes, total_storage_cost)
     _print_cost_breakdown(total_compute_cost, total_storage_cost)
     _print_billing_explanation()
-    _print_optimization_recommendations(
-        stopped_instances, running_instances, total_storage_cost, total_compute_cost
-    )
+    _print_optimization_recommendations(stopped_instances, running_instances, total_storage_cost, total_compute_cost)
 
 
 if __name__ == "__main__":

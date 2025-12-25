@@ -300,9 +300,7 @@ class TestInvestigateNetworkInterfaceRunningInstances:  # pylint: disable=too-fe
             ]
         }
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client") as mock_client:
             mock_client.return_value = mock_ec2
             result = investigate_network_interface(
                 "us-east-1",
@@ -323,9 +321,7 @@ class TestInvestigateNetworkInterfaceRunningInstances:  # pylint: disable=too-fe
             aws_access_key_id="test-key",
             aws_secret_access_key="test-secret",
         )
-        mock_ec2.describe_network_interfaces.assert_called_once_with(
-            NetworkInterfaceIds=["eni-12345"]
-        )
+        mock_ec2.describe_network_interfaces.assert_called_once_with(NetworkInterfaceIds=["eni-12345"])
 
 
 class TestInvestigateNetworkInterfaceDetached:
@@ -346,9 +342,7 @@ class TestInvestigateNetworkInterfaceDetached:
             ]
         }
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client") as mock_client:
             mock_client.return_value = mock_ec2
             result = investigate_network_interface(
                 "us-east-1",
@@ -381,9 +375,7 @@ class TestInvestigateNetworkInterfaceDetached:
             ]
         }
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client") as mock_client:
             mock_client.return_value = mock_ec2
             result = investigate_network_interface(
                 "us-east-1",

@@ -99,9 +99,7 @@ class TestAnalyzeEbsVolumes:
         """Test error handling when analyzing volumes."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_volumes.side_effect = ClientError(
-                {"Error": {"Code": "UnauthorizedOperation"}}, "describe_volumes"
-            )
+            mock_ec2.describe_volumes.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "describe_volumes")
             mock_client.return_value = mock_ec2
 
             volumes = analyze_ebs_volumes_in_region("eu-west-1")

@@ -54,9 +54,7 @@ def _get_primary_interface(instance_id: str, instance: dict) -> tuple[dict, str]
 
     primary_interface = network_interfaces[0]
     if "NetworkInterfaceId" not in primary_interface:
-        raise MissingNetworkInterfacesError(
-            f"Instance {instance_id} primary interface missing NetworkInterfaceId"
-        )
+        raise MissingNetworkInterfacesError(f"Instance {instance_id} primary interface missing NetworkInterfaceId")
     return primary_interface, primary_interface["NetworkInterfaceId"]
 
 

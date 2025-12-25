@@ -134,9 +134,7 @@ def audit_s3_comprehensive():
         ) = _process_all_buckets(buckets)
 
         # Print overall summary and recommendations
-        print_overall_summary(
-            all_bucket_analyses, total_objects, total_size_bytes, total_monthly_cost
-        )
+        print_overall_summary(all_bucket_analyses, total_objects, total_size_bytes, total_monthly_cost)
         print_storage_class_breakdown(storage_class_summary, total_size_bytes)
         print_optimization_recommendations(all_recommendations)
         print_cleanup_opportunities(all_bucket_analyses)

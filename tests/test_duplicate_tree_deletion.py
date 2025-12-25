@@ -46,9 +46,7 @@ def test_build_deletion_groups_filters_small_clusters():
     cluster_with_one_node = _create_cluster_row(["dirA"], [1000])
     cluster_with_two_nodes = _create_cluster_row(["dirB", "dirC"], [2000, 2000])
 
-    deletion_groups, total_bytes, total_dirs = build_deletion_groups(
-        [cluster_with_one_node, cluster_with_two_nodes]
-    )
+    deletion_groups, total_bytes, total_dirs = build_deletion_groups([cluster_with_one_node, cluster_with_two_nodes])
 
     assert_equal(len(deletion_groups), 1)  # Only the cluster with 2+ nodes
     assert_equal(total_dirs, 1)  # Only dirC gets deleted
@@ -66,9 +64,7 @@ def test_build_deletion_groups_empty():
 
 def test_print_deletion_plan(tmp_path, capsys):
     """Test print_deletion_plan output."""
-    cluster = _create_cluster_row(
-        [("bucket", "dirA"), ("bucket", "dirB")], [1024 * 1024, 1024 * 1024]
-    )
+    cluster = _create_cluster_row([("bucket", "dirA"), ("bucket", "dirB")], [1024 * 1024, 1024 * 1024])
     deletion_groups, _, _ = build_deletion_groups([cluster])
 
     print_deletion_plan(deletion_groups, tmp_path)

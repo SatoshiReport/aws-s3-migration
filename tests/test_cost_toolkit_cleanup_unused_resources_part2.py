@@ -78,9 +78,7 @@ class TestCollectUsedSubnetsFromRds:
         with patch("boto3.client") as mock_boto3:
             mock_rds = MagicMock()
             mock_boto3.return_value = mock_rds
-            mock_rds.describe_db_subnet_groups.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_db_subnet_groups"
-            )
+            mock_rds.describe_db_subnet_groups.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_db_subnet_groups")
 
             result = _collect_used_subnets_from_rds("us-east-1")
 
@@ -118,9 +116,7 @@ class TestCollectUsedSubnetsFromElb:
         with patch("boto3.client") as mock_boto3:
             mock_elbv2 = MagicMock()
             mock_boto3.return_value = mock_elbv2
-            mock_elbv2.describe_load_balancers.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_load_balancers"
-            )
+            mock_elbv2.describe_load_balancers.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_load_balancers")
 
             result = _collect_used_subnets_from_elb("us-east-1")
 
@@ -188,13 +184,11 @@ class TestAnalyzeSecurityGroupsUsage:
             mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": []}
 
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_cleanup_unused_resources."
-                "_collect_used_sgs_from_rds",
+                "cost_toolkit.scripts.cleanup.aws_cleanup_unused_resources." "_collect_used_sgs_from_rds",
                 return_value=set(),
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_cleanup_unused_resources."
-                    "_collect_used_sgs_from_elb",
+                    "cost_toolkit.scripts.cleanup.aws_cleanup_unused_resources." "_collect_used_sgs_from_elb",
                     return_value=set(),
                 ):
                     result = analyze_security_groups_usage("us-east-1")
@@ -210,9 +204,7 @@ class TestAnalyzeSecurityGroupsUsage:
         with patch("boto3.client") as mock_boto3:
             mock_ec2 = MagicMock()
             mock_boto3.return_value = mock_ec2
-            mock_ec2.describe_security_groups.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_security_groups"
-            )
+            mock_ec2.describe_security_groups.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_security_groups")
 
             result = analyze_security_groups_usage("us-east-1")
 
@@ -246,21 +238,17 @@ class TestAnalyzeSubnetUsage:
                 ]
             }
             mock_ec2.describe_instances.return_value = {
-                "Reservations": [
-                    {"Instances": [{"State": {"Name": "running"}, "SubnetId": "subnet-used"}]}
-                ]
+                "Reservations": [{"Instances": [{"State": {"Name": "running"}, "SubnetId": "subnet-used"}]}]
             }
             mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": []}
             mock_ec2.describe_nat_gateways.return_value = {"NatGateways": []}
 
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_cleanup_unused_resources."
-                "_collect_used_subnets_from_rds",
+                "cost_toolkit.scripts.cleanup.aws_cleanup_unused_resources." "_collect_used_subnets_from_rds",
                 return_value=set(),
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_cleanup_unused_resources."
-                    "_collect_used_subnets_from_elb",
+                    "cost_toolkit.scripts.cleanup.aws_cleanup_unused_resources." "_collect_used_subnets_from_elb",
                     return_value=set(),
                 ):
                     result = analyze_subnet_usage("us-east-1")
@@ -275,9 +263,7 @@ class TestAnalyzeSubnetUsage:
         with patch("boto3.client") as mock_boto3:
             mock_ec2 = MagicMock()
             mock_boto3.return_value = mock_ec2
-            mock_ec2.describe_subnets.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_subnets"
-            )
+            mock_ec2.describe_subnets.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_subnets")
 
             result = analyze_subnet_usage("us-east-1")
 
@@ -340,9 +326,7 @@ class TestDeleteUnusedSecurityGroups:
     def test_delete_with_client_error(self, capsys):
         """Test deletion with client error."""
         with patch("boto3.client") as mock_boto3:
-            mock_boto3.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "create_client"
-            )
+            mock_boto3.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "create_client")
 
             result = delete_unused_security_groups([{"GroupId": "sg-1"}], "us-east-1")
 

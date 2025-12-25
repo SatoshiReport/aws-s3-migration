@@ -21,13 +21,7 @@ def test_find_exact_duplicates_groups_identical_directories():
     clusters = find_exact_duplicates(index)
 
     match = next(
-        (
-            cluster
-            for cluster in clusters
-            if {("bucket", "dirA"), ("bucket", "dirB")}.issubset(
-                {node.path for node in cluster.nodes}
-            )
-        ),
+        (cluster for cluster in clusters if {("bucket", "dirA"), ("bucket", "dirB")}.issubset({node.path for node in cluster.nodes})),
         None,
     )
     assert match is not None

@@ -22,19 +22,14 @@ class TestListAccelerators:
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
             mock_ga.list_accelerators.return_value = {
-                "Accelerators": [
-                    {"AcceleratorArn": "arn:aws:globalaccelerator::123456789012:accelerator/abc123"}
-                ]
+                "Accelerators": [{"AcceleratorArn": "arn:aws:globalaccelerator::123456789012:accelerator/abc123"}]
             }
             mock_client.return_value = mock_ga
 
             result = list_accelerators()
 
             assert len(result) == 1
-            assert (
-                result[0]["AcceleratorArn"]
-                == "arn:aws:globalaccelerator::123456789012:accelerator/abc123"
-            )
+            assert result[0]["AcceleratorArn"] == "arn:aws:globalaccelerator::123456789012:accelerator/abc123"
             mock_client.assert_called_once_with("globalaccelerator", region_name="us-west-2")
 
     def test_list_accelerators_empty(self):
@@ -52,9 +47,7 @@ class TestListAccelerators:
         """Test error handling when listing fails."""
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
-            mock_ga.list_accelerators.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "list_accelerators"
-            )
+            mock_ga.list_accelerators.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_accelerators")
             mock_client.return_value = mock_ga
 
             result = list_accelerators()
@@ -77,9 +70,7 @@ class TestDisableAccelerator:
             ]
             mock_client.return_value = mock_ga
 
-            result = disable_accelerator(
-                "arn:aws:globalaccelerator::123456789012:accelerator/abc123"
-            )
+            result = disable_accelerator("arn:aws:globalaccelerator::123456789012:accelerator/abc123")
 
             assert result is True
             mock_ga.update_accelerator.assert_called_once()
@@ -96,9 +87,7 @@ class TestDisableAccelerator:
             ]
             mock_client.return_value = mock_ga
 
-            result = disable_accelerator(
-                "arn:aws:globalaccelerator::123456789012:accelerator/abc123"
-            )
+            result = disable_accelerator("arn:aws:globalaccelerator::123456789012:accelerator/abc123")
 
             assert result is True
             captured = capsys.readouterr()
@@ -107,23 +96,16 @@ class TestDisableAccelerator:
     def test_disable_timeout_waiting(self, capsys):
         """Test timeout when waiting for stable state."""
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT.wait"
-            ):
+            with patch("cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT.wait"):
                 mock_ga = MagicMock()
-                mock_ga.describe_accelerator.return_value = {
-                    "Accelerator": {"Status": "IN_PROGRESS", "Enabled": False}
-                }
+                mock_ga.describe_accelerator.return_value = {"Accelerator": {"Status": "IN_PROGRESS", "Enabled": False}}
                 mock_client.return_value = mock_ga
 
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup."
-                    "MAX_ACCELERATOR_WAIT_SECONDS",
+                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup." "MAX_ACCELERATOR_WAIT_SECONDS",
                     1,
                 ):
-                    result = disable_accelerator(
-                        "arn:aws:globalaccelerator::123456789012:accelerator/abc123"
-                    )
+                    result = disable_accelerator("arn:aws:globalaccelerator::123456789012:accelerator/abc123")
 
                 assert result is False
                 captured = capsys.readouterr()
@@ -133,14 +115,10 @@ class TestDisableAccelerator:
         """Test error handling when disabling fails."""
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
-            mock_ga.describe_accelerator.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_accelerator"
-            )
+            mock_ga.describe_accelerator.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_accelerator")
             mock_client.return_value = mock_ga
 
-            result = disable_accelerator(
-                "arn:aws:globalaccelerator::123456789012:accelerator/abc123"
-            )
+            result = disable_accelerator("arn:aws:globalaccelerator::123456789012:accelerator/abc123")
 
             assert result is False
             captured = capsys.readouterr()
@@ -153,16 +131,10 @@ class TestDeleteListeners:
     def test_delete_listeners_with_endpoint_groups(self):
         """Test deleting listeners with endpoint groups."""
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT.wait"
-            ):
+            with patch("cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup._WAIT_EVENT.wait"):
                 mock_ga = MagicMock()
-                mock_ga.list_listeners.return_value = {
-                    "Listeners": [{"ListenerArn": "arn:aws:listener/123"}]
-                }
-                mock_ga.list_endpoint_groups.return_value = {
-                    "EndpointGroups": [{"EndpointGroupArn": "arn:aws:endpoint/456"}]
-                }
+                mock_ga.list_listeners.return_value = {"Listeners": [{"ListenerArn": "arn:aws:listener/123"}]}
+                mock_ga.list_endpoint_groups.return_value = {"EndpointGroups": [{"EndpointGroupArn": "arn:aws:endpoint/456"}]}
                 mock_client.return_value = mock_ga
 
                 result = delete_listeners("arn:aws:accelerator/abc")
@@ -175,9 +147,7 @@ class TestDeleteListeners:
         """Test deleting listeners without endpoint groups."""
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
-            mock_ga.list_listeners.return_value = {
-                "Listeners": [{"ListenerArn": "arn:aws:listener/123"}]
-            }
+            mock_ga.list_listeners.return_value = {"Listeners": [{"ListenerArn": "arn:aws:listener/123"}]}
             mock_ga.list_endpoint_groups.return_value = {"EndpointGroups": []}
             mock_client.return_value = mock_ga
 
@@ -190,9 +160,7 @@ class TestDeleteListeners:
         """Test error handling when deleting listeners fails."""
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
-            mock_ga.list_listeners.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "list_listeners"
-            )
+            mock_ga.list_listeners.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_listeners")
             mock_client.return_value = mock_ga
 
             result = delete_listeners("arn:aws:accelerator/abc")
@@ -214,9 +182,7 @@ class TestDeleteAccelerator:
             result = delete_accelerator("arn:aws:accelerator/abc")
 
             assert result is True
-            mock_ga.delete_accelerator.assert_called_once_with(
-                AcceleratorArn="arn:aws:accelerator/abc"
-            )
+            mock_ga.delete_accelerator.assert_called_once_with(AcceleratorArn="arn:aws:accelerator/abc")
             captured = capsys.readouterr()
             assert "deletion initiated" in captured.out
 
@@ -224,9 +190,7 @@ class TestDeleteAccelerator:
         """Test error handling when deletion fails."""
         with patch("boto3.client") as mock_client:
             mock_ga = MagicMock()
-            mock_ga.delete_accelerator.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "delete_accelerator"
-            )
+            mock_ga.delete_accelerator.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_accelerator")
             mock_client.return_value = mock_ga
 
             result = delete_accelerator("arn:aws:accelerator/abc")

@@ -120,12 +120,8 @@ class BucketSyncer:  # pylint: disable=too-few-public-methods
                     progress_tracker=tracker,
                 )
             if not interrupted:
-                _display_progress(
-                    progress_state.start_time, progress_state.files_done, progress_state.bytes_done
-                )
-                _print_sync_summary(
-                    progress_state.start_time, progress_state.files_done, progress_state.bytes_done
-                )
+                _display_progress(progress_state.start_time, progress_state.files_done, progress_state.bytes_done)
+                _print_sync_summary(progress_state.start_time, progress_state.files_done, progress_state.bytes_done)
         except ClientError as exc:
             raise RuntimeError(f"Sync failed for bucket {bucket}: {exc}") from exc
         if interrupted:

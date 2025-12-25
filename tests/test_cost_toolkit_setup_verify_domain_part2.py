@@ -38,9 +38,7 @@ class TestCheckSslCertificate:
             mock_ssl_socket.getpeercert.return_value = mock_cert
 
             mock_context = MagicMock()
-            mock_context.wrap_socket.return_value.__enter__ = MagicMock(
-                return_value=mock_ssl_socket
-            )
+            mock_context.wrap_socket.return_value.__enter__ = MagicMock(return_value=mock_ssl_socket)
             mock_context.wrap_socket.return_value.__exit__ = MagicMock(return_value=None)
 
             mock_create_ctx.return_value = mock_context
@@ -82,9 +80,7 @@ class TestCheckSslCertificate:
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.socket.create_connection")
     def test_ssl_certificate_client_error(self, mock_create_conn, capsys):
         """Test SSL certificate check with ClientError."""
-        mock_create_conn.side_effect = ClientError(
-            {"Error": {"Code": "SSLError", "Message": "SSL error"}}, "connect"
-        )
+        mock_create_conn.side_effect = ClientError({"Error": {"Code": "SSLError", "Message": "SSL error"}}, "connect")
 
         result = check_ssl_certificate("example.com")
 
@@ -121,9 +117,7 @@ class TestCanvaVerification:
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.BOTO3_AVAILABLE", True)
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._find_hosted_zone_for_domain")
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.boto3.client")
-    def test_verify_canva_verification_not_found_no_output(
-        self, mock_client, mock_find_zone, capsys
-    ):
+    def test_verify_canva_verification_not_found_no_output(self, mock_client, mock_find_zone, capsys):
         """Test Canva verification TXT record not found."""
         mock_find_zone.return_value = {"Id": "/hostedzone/Z123", "Name": "example.com."}
         mock_client.return_value.list_resource_record_sets.return_value = {"ResourceRecordSets": []}
@@ -183,9 +177,7 @@ class TestFindHostedZoneForDomain:
     def test_find_zone_not_found(self):
         """Test when hosted zone is not found."""
         mock_route53 = MagicMock()
-        mock_route53.list_hosted_zones.return_value = {
-            "HostedZones": [{"Name": "other.com.", "Id": "/hostedzone/Z456"}]
-        }
+        mock_route53.list_hosted_zones.return_value = {"HostedZones": [{"Name": "other.com.", "Id": "/hostedzone/Z456"}]}
 
         result = _find_hosted_zone_for_domain(mock_route53, "example.com")
 
@@ -229,9 +221,7 @@ class TestPrintNameservers:
     def test_print_nameservers_not_found(self, capsys):
         """Test when nameservers not found."""
         mock_route53 = MagicMock()
-        mock_route53.list_resource_record_sets.return_value = {
-            "ResourceRecordSets": [{"Type": "A", "Name": "example.com."}]
-        }
+        mock_route53.list_resource_record_sets.return_value = {"ResourceRecordSets": [{"Type": "A", "Name": "example.com."}]}
 
         _print_nameservers(mock_route53, "/hostedzone/Z123", "example.com")
 
@@ -246,9 +236,7 @@ class TestCheckRoute53Configuration:
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.boto3.client")
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._find_hosted_zone_for_domain")
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain._print_nameservers")
-    def test_route53_configuration_found(
-        self, _mock_print_ns, mock_find_zone, mock_boto_client, capsys
-    ):
+    def test_route53_configuration_found(self, _mock_print_ns, mock_find_zone, mock_boto_client, capsys):
         """Test successful Route53 configuration check."""
         mock_route53 = MagicMock()
         mock_boto_client.return_value = mock_route53
@@ -288,9 +276,7 @@ class TestCheckRoute53Configuration:
     @patch("cost_toolkit.scripts.setup.verify_iwannabenewyork_domain.boto3.client")
     def test_route53_configuration_client_error(self, mock_boto_client, capsys):
         """Test Route53 check with ClientError."""
-        mock_boto_client.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "list_hosted_zones"
-        )
+        mock_boto_client.side_effect = ClientError({"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "list_hosted_zones")
 
         result = check_route53_configuration("example.com")
 

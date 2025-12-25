@@ -13,9 +13,7 @@ from cost_toolkit.scripts.rds.fix_rds_subnet_routing import fix_rds_subnet_routi
 @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.boto3.client")
 @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.setup_aws_credentials")
 @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.create_public_subnet_group")
-def test_fix_subnet_routing_success(
-    mock_create_subnet_group, mock_setup_creds, mock_boto_client, capsys
-):
+def test_fix_subnet_routing_success(mock_create_subnet_group, mock_setup_creds, mock_boto_client, capsys):
     """Test successfully fixing subnet routing."""
     mock_rds = MagicMock()
     mock_waiter = MagicMock()
@@ -26,9 +24,7 @@ def test_fix_subnet_routing_success(
 
     mock_setup_creds.assert_called_once()
     mock_boto_client.assert_called_once_with("rds", region_name="us-east-1")
-    mock_create_subnet_group.assert_called_once_with(
-        mock_rds, "public-subnet-group", "Public subnets only for internet access"
-    )
+    mock_create_subnet_group.assert_called_once_with(mock_rds, "public-subnet-group", "Public subnets only for internet access")
 
     mock_rds.modify_db_instance.assert_called_once_with(
         DBInstanceIdentifier="simba-db-restored",
@@ -37,9 +33,7 @@ def test_fix_subnet_routing_success(
     )
 
     mock_rds.get_waiter.assert_called_once_with("db_instance_available")
-    mock_waiter.wait.assert_called_once_with(
-        DBInstanceIdentifier="simba-db-restored", WaiterConfig={"Delay": 30, "MaxAttempts": 20}
-    )
+    mock_waiter.wait.assert_called_once_with(DBInstanceIdentifier="simba-db-restored", WaiterConfig={"Delay": 30, "MaxAttempts": 20})
 
     captured = capsys.readouterr()
     assert "Fixing RDS subnet routing for internet access..." in captured.out
@@ -57,9 +51,7 @@ class TestFixRdsSubnetRoutingErrors:
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.boto3.client")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.create_public_subnet_group")
-    def test_fix_subnet_routing_modify_instance_error(
-        self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client, capsys
-    ):
+    def test_fix_subnet_routing_modify_instance_error(self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client, capsys):
         """Test handling error when modifying instance."""
         mock_rds = MagicMock()
         mock_boto_client.return_value = mock_rds
@@ -76,9 +68,7 @@ class TestFixRdsSubnetRoutingErrors:
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.boto3.client")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.create_public_subnet_group")
-    def test_fix_subnet_routing_subnet_group_creation_error(
-        self, mock_create_subnet_group, _mock_setup_creds, mock_boto_client, capsys
-    ):
+    def test_fix_subnet_routing_subnet_group_creation_error(self, mock_create_subnet_group, _mock_setup_creds, mock_boto_client, capsys):
         """Test handling error when creating subnet group."""
         mock_rds = MagicMock()
         mock_boto_client.return_value = mock_rds
@@ -95,9 +85,7 @@ class TestFixRdsSubnetRoutingErrors:
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.boto3.client")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.create_public_subnet_group")
-    def test_fix_subnet_routing_waiter_timeout(
-        self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client
-    ):
+    def test_fix_subnet_routing_waiter_timeout(self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client):
         """Test that waiter timeout exception propagates (wrapped in ClientError)."""
         mock_rds = MagicMock()
         mock_waiter = MagicMock()
@@ -117,9 +105,7 @@ class TestFixRdsSubnetRoutingConfiguration:
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.boto3.client")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.create_public_subnet_group")
-    def test_fix_subnet_routing_apply_immediately(
-        self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client
-    ):
+    def test_fix_subnet_routing_apply_immediately(self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client):
         """Test that modification is applied immediately."""
         mock_rds = MagicMock()
         mock_waiter = MagicMock()
@@ -134,9 +120,7 @@ class TestFixRdsSubnetRoutingConfiguration:
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.boto3.client")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.create_public_subnet_group")
-    def test_fix_subnet_routing_correct_instance_id(
-        self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client
-    ):
+    def test_fix_subnet_routing_correct_instance_id(self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client):
         """Test that correct instance ID is used."""
         mock_rds = MagicMock()
         mock_waiter = MagicMock()
@@ -154,9 +138,7 @@ class TestFixRdsSubnetRoutingConfiguration:
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.boto3.client")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.create_public_subnet_group")
-    def test_fix_subnet_routing_waiter_config(
-        self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client
-    ):
+    def test_fix_subnet_routing_waiter_config(self, _mock_create_subnet_group, _mock_setup_creds, mock_boto_client):
         """Test that waiter is configured correctly."""
         mock_rds = MagicMock()
         mock_waiter = MagicMock()
@@ -172,9 +154,7 @@ class TestFixRdsSubnetRoutingConfiguration:
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.boto3.client")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.fix_rds_subnet_routing.create_public_subnet_group")
-    def test_fix_subnet_routing_correct_subnet_group_name(
-        self, mock_create_subnet_group, _mock_setup_creds, mock_boto_client
-    ):
+    def test_fix_subnet_routing_correct_subnet_group_name(self, mock_create_subnet_group, _mock_setup_creds, mock_boto_client):
         """Test that correct subnet group name is used."""
         mock_rds = MagicMock()
         mock_waiter = MagicMock()
@@ -183,9 +163,7 @@ class TestFixRdsSubnetRoutingConfiguration:
 
         fix_rds_subnet_routing()
 
-        mock_create_subnet_group.assert_called_once_with(
-            mock_rds, "public-subnet-group", "Public subnets only for internet access"
-        )
+        mock_create_subnet_group.assert_called_once_with(mock_rds, "public-subnet-group", "Public subnets only for internet access")
 
         call_args = mock_rds.modify_db_instance.call_args[1]
         assert call_args["DBSubnetGroupName"] == "public-subnet-group"

@@ -31,9 +31,7 @@ def test_head_object_success(mock_create_client):
 
     result = head_object("test-bucket", "file.txt", "us-west-2")
 
-    mock_create_client.assert_called_once_with(
-        region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None)
     mock_s3.head_object.assert_called_once_with(Bucket="test-bucket", Key="file.txt")
     assert_equal(result, metadata)
 
@@ -61,9 +59,7 @@ def test_head_object_not_found(mock_create_client):
     """Test head_object raises ClientError when object not found."""
     mock_s3 = MagicMock()
     mock_create_client.return_value = mock_s3
-    mock_s3.head_object.side_effect = ClientError(
-        {"Error": {"Code": "404", "Message": "Not Found"}}, "HeadObject"
-    )
+    mock_s3.head_object.side_effect = ClientError({"Error": {"Code": "404", "Message": "Not Found"}}, "HeadObject")
 
     try:
         head_object("test-bucket", "nonexistent.txt", "us-west-2")
@@ -81,9 +77,7 @@ def test_delete_object_success(mock_print, mock_create_client):
 
     result = delete_object("test-bucket", "file.txt", "us-west-2")
 
-    mock_create_client.assert_called_once_with(
-        region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None)
     mock_s3.delete_object.assert_called_once_with(Bucket="test-bucket", Key="file.txt")
     assert_equal(result, True)
     mock_print.assert_called_once_with("✅ Deleted object: s3://test-bucket/file.txt")
@@ -118,9 +112,7 @@ def test_delete_object_failure(mock_print, mock_create_client):
     """Test delete_object returns False on ClientError."""
     mock_s3 = MagicMock()
     mock_create_client.return_value = mock_s3
-    mock_s3.delete_object.side_effect = ClientError(
-        {"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}, "DeleteObject"
-    )
+    mock_s3.delete_object.side_effect = ClientError({"Error": {"Code": "AccessDenied", "Message": "Access Denied"}}, "DeleteObject")
 
     result = delete_object("test-bucket", "file.txt", "us-west-2")
 
@@ -138,9 +130,7 @@ def test_delete_bucket_success(mock_print, mock_create_client):
 
     result = delete_bucket("test-bucket", "us-west-2")
 
-    mock_create_client.assert_called_once_with(
-        region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_create_client.assert_called_once_with(region="us-west-2", aws_access_key_id=None, aws_secret_access_key=None)
     mock_s3.delete_bucket.assert_called_once_with(Bucket="test-bucket")
     assert_equal(result, True)
     mock_print.assert_called_once_with("✅ Deleted bucket: test-bucket")

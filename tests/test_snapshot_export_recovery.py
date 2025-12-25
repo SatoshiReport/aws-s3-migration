@@ -130,9 +130,7 @@ def test_check_existing_completed_exports_bucket_not_found(s3_client, capsys):
 
 def test_check_existing_completed_exports_client_error(s3_client, capsys):
     """Test check_existing_completed_exports handles ClientError."""
-    s3_client.list_objects_v2.side_effect = ClientError(
-        {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "ListObjectsV2"
-    )
+    s3_client.list_objects_v2.side_effect = ClientError({"Error": {"Code": "AccessDenied", "Message": "Access denied"}}, "ListObjectsV2")
 
     result = check_existing_completed_exports(s3_client, "us-east-1")
 

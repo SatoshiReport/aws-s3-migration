@@ -60,9 +60,7 @@ def test_format_combined_billing_report_none_data(mock_formatting_dependencies, 
     mock_formatting_dependencies["process_cost"].assert_not_called()
 
 
-def test_format_combined_billing_report_missing_results_by_time(
-    mock_formatting_dependencies, capsys
-):
+def test_format_combined_billing_report_missing_results_by_time(mock_formatting_dependencies, capsys):
     """Test format_combined_billing_report when cost_data lacks ResultsByTime."""
     cost_data = {"SomeOtherKey": "value"}
     usage_data = {}
@@ -169,9 +167,7 @@ def test_format_combined_billing_report_with_status_message(mock_formatting_depe
     assert "STATUS: ✅ RESOLVED - All functions deleted" in captured.out
 
 
-def test_format_combined_billing_report_percentage_calculation(
-    mock_formatting_dependencies, capsys
-):
+def test_format_combined_billing_report_percentage_calculation(mock_formatting_dependencies, capsys):
     """Test format_combined_billing_report calculates service percentages correctly."""
     cost_data = {"ResultsByTime": [{}]}
     usage_data = {}
@@ -235,9 +231,7 @@ def test_format_combined_billing_report_zero_total_cost(mock_formatting_dependen
     # Should not raise division by zero error
 
 
-def test_format_combined_billing_report_service_without_status(
-    mock_formatting_dependencies, capsys
-):
+def test_format_combined_billing_report_service_without_status(mock_formatting_dependencies, capsys):
     """Test format_combined_billing_report handles service without status message."""
     cost_data = {"ResultsByTime": [{}]}
     usage_data = {}

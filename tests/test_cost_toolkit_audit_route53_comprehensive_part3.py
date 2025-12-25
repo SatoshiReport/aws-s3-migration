@@ -37,9 +37,7 @@ class TestAuditRoute53ResolverEndpoints:
 
     def test_audit_resolver_endpoints_with_endpoints(self, capsys):
         """Test auditing resolver endpoints with endpoints present."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.create_route53resolver_client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53resolver_client") as mock_client:
             mock_resolver = MagicMock()
             mock_resolver.list_resolver_endpoints.return_value = {
                 "ResolverEndpoints": [
@@ -74,9 +72,7 @@ class TestAuditRoute53ResolverEndpoints:
 
     def test_audit_resolver_endpoints_no_endpoints(self, capsys):
         """Test auditing when no resolver endpoints exist."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.create_route53resolver_client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53resolver_client") as mock_client:
             mock_resolver = MagicMock()
             mock_resolver.list_resolver_endpoints.return_value = {"ResolverEndpoints": []}
             mock_client.return_value = mock_resolver
@@ -89,13 +85,9 @@ class TestAuditRoute53ResolverEndpoints:
 
     def test_audit_resolver_endpoints_client_error(self, capsys):
         """Test error handling when auditing resolver endpoints fails."""
-        with patch(
-            "cost_toolkit.scripts.audit.aws_route53_audit.create_route53resolver_client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_route53_audit.create_route53resolver_client") as mock_client:
             mock_resolver = MagicMock()
-            mock_resolver.list_resolver_endpoints.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "list_resolver_endpoints"
-            )
+            mock_resolver.list_resolver_endpoints.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_resolver_endpoints")
             mock_client.return_value = mock_resolver
 
             endpoints = audit_route53_resolver_endpoints()

@@ -189,9 +189,7 @@ def test_find_candidates_missing_files(tmp_path):
     base_path.mkdir()
     stats: Counter = Counter()
 
-    candidates = list(
-        find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats)
-    )
+    candidates = list(find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats))
     conn.close()
 
     assert len(candidates) == 0
@@ -212,9 +210,7 @@ def test_find_candidates_with_actual_files(tmp_path):
     large_file.write_bytes(b"x" * (600 * 1024 * 1024))
 
     stats: Counter = Counter()
-    candidates = list(
-        find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats)
-    )
+    candidates = list(find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats))
     conn.close()
 
     assert len(candidates) >= 0
@@ -273,9 +269,7 @@ def test_find_candidates_skips_xz_files(tmp_path):
     xz_file.write_bytes(b"x" * (600 * 1024 * 1024))
 
     stats: Counter = Counter()
-    candidates = list(
-        find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats)
-    )
+    candidates = list(find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats))
     conn.close()
 
     # The .xz check happens AFTER suffix checks, so it should be caught

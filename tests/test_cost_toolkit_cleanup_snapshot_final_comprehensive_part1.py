@@ -153,9 +153,7 @@ class TestProcessSnapshotDeletions:
                     "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_snapshot",
                     return_value=True,
                 ):
-                    successful, failed, savings = process_snapshot_deletions(
-                        snapshots, "key", "secret"
-                    )
+                    successful, failed, savings = process_snapshot_deletions(snapshots, "key", "secret")
         assert successful == 2
         assert failed == 0
         assert savings == 7.5
@@ -173,13 +171,9 @@ class TestProcessSnapshotDeletions:
             mock_ec2 = MagicMock()
             mock_boto3.return_value = mock_ec2
             with patch("time.sleep"):
-                with patch(
-                    "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_snapshot"
-                ) as mock_delete:
+                with patch("cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_snapshot") as mock_delete:
                     mock_delete.side_effect = [True, False]
-                    successful, failed, savings = process_snapshot_deletions(
-                        snapshots, "key", "secret"
-                    )
+                    successful, failed, savings = process_snapshot_deletions(snapshots, "key", "secret")
         assert successful == 1
         assert failed == 1
         assert savings == 5.0

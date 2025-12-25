@@ -109,9 +109,7 @@ class TestEdgeCasesClusters:
         def create_rds_client(region):
             mock_rds = MagicMock()
             if region == "us-east-1":
-                mock_rds.describe_db_instances.return_value = {
-                    "DBInstances": [{"DBInstanceIdentifier": "db-east", **DB_INSTANCE_SUMMARY}]
-                }
+                mock_rds.describe_db_instances.return_value = {"DBInstances": [{"DBInstanceIdentifier": "db-east", **DB_INSTANCE_SUMMARY}]}
                 mock_rds.describe_db_clusters.return_value = {"DBClusters": []}
             else:
                 mock_rds.describe_db_instances.return_value = {"DBInstances": []}

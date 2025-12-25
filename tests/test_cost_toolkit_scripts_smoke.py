@@ -53,6 +53,4 @@ def test_cli_scripts_have_main_guard():
 
     for script_file in script_files:
         content = script_file.read_text(encoding="utf-8")
-        assert (
-            'if __name__ == "__main__"' in content
-        ), f"{script_file.name} should use 'if __name__ == \"__main__\"' guard"
+        assert 'if __name__ == "__main__"' in content, f"{script_file.name} should use 'if __name__ == \"__main__\"' guard"

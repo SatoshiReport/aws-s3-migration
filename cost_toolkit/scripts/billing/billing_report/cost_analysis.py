@@ -60,9 +60,7 @@ def get_combined_billing_data():
 def process_cost_data(cost_data: Dict[str, Any]) -> tuple[Dict[str, Dict[str, Any]], float]:
     """Process cost data and return service costs and total cost."""
     total_cost = 0.0
-    service_costs: Dict[str, Dict[str, Any]] = defaultdict(
-        lambda: {"cost": 0.0, "regions": defaultdict(float)}
-    )
+    service_costs: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"cost": 0.0, "regions": defaultdict(float)})
 
     for result in cost_data["ResultsByTime"]:
         period_start = result["TimePeriod"]["Start"]
@@ -130,6 +128,4 @@ def categorize_services(service_costs, resolved_services):
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        "This module is library-only. Run cost_toolkit.scripts.billing.billing_report.cli instead."
-    )
+    raise SystemExit("This module is library-only. Run cost_toolkit.scripts.billing.billing_report.cli instead.")

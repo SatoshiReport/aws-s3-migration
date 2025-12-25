@@ -132,16 +132,8 @@ class TestGetCurrentMonthCostsErrorHandling:
         mock_ce_client = MagicMock()
         mock_ce_client.get_cost_and_usage.return_value = {
             "ResultsByTime": [
-                {
-                    "Groups": [
-                        {"Keys": ["Amazon EC2"], "Metrics": {"BlendedCost": {"Amount": "100.00"}}}
-                    ]
-                },
-                {
-                    "Groups": [
-                        {"Keys": ["Amazon S3"], "Metrics": {"BlendedCost": {"Amount": "50.00"}}}
-                    ]
-                },
+                {"Groups": [{"Keys": ["Amazon EC2"], "Metrics": {"BlendedCost": {"Amount": "100.00"}}}]},
+                {"Groups": [{"Keys": ["Amazon S3"], "Metrics": {"BlendedCost": {"Amount": "50.00"}}}]},
             ]
         }
         with patch("boto3.client", return_value=mock_ce_client):

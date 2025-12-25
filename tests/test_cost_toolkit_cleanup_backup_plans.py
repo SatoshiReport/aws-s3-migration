@@ -26,18 +26,14 @@ class TestDeleteBackupSelection:
             "SelectionName": "test-selection",
         }
         _delete_backup_selection(mock_client, "plan-123", selection)
-        mock_client.delete_backup_selection.assert_called_once_with(
-            BackupPlanId="plan-123", SelectionId="sel-123"
-        )
+        mock_client.delete_backup_selection.assert_called_once_with(BackupPlanId="plan-123", SelectionId="sel-123")
         captured = capsys.readouterr()
         assert "Successfully removed backup selection" in captured.out
 
     def test_delete_selection_error(self, capsys):
         """Test handling errors when deleting backup selection."""
         mock_client = MagicMock()
-        mock_client.delete_backup_selection.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_backup_selection"
-        )
+        mock_client.delete_backup_selection.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_backup_selection")
         selection = {
             "SelectionId": "sel-123",
             "SelectionName": "test-selection",
@@ -68,9 +64,7 @@ class TestDeletePlanSelections:
         """Test handling plans with no backup selections."""
         mock_client = MagicMock()
         mock_client.list_backup_selections.return_value = {"BackupSelectionsList": []}
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_backup_disable._delete_backup_selection"
-        ) as mock_delete:
+        with patch("cost_toolkit.scripts.cleanup.aws_backup_disable._delete_backup_selection") as mock_delete:
             _delete_plan_selections(mock_client, "plan-123")
         mock_delete.assert_not_called()
 
@@ -95,9 +89,7 @@ class TestDeleteSingleBackupPlan:
     def test_delete_plan_error(self, capsys):
         """Test handling errors when deleting backup plan."""
         mock_client = MagicMock()
-        mock_client.delete_backup_plan.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_backup_plan"
-        )
+        mock_client.delete_backup_plan.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_backup_plan")
         plan = {
             "BackupPlanId": "plan-123",
             "BackupPlanName": "test-plan",
@@ -124,35 +116,27 @@ def test_disable_aws_backup_plans_combined(capsys):
             "cost_toolkit.scripts.cleanup.aws_backup_disable.get_backup_plans",
             return_value=plans,
         ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_backup_disable._delete_single_backup_plan"
-            ):
+            with patch("cost_toolkit.scripts.cleanup.aws_backup_disable._delete_single_backup_plan"):
                 disable_aws_backup_plans("us-east-1")
     captured = capsys.readouterr()
     assert "Found 1 AWS Backup plan(s)" in captured.out
 
     with patch("boto3.client"):
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_backup_disable.get_backup_plans", return_value=[]
-        ):
+        with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.get_backup_plans", return_value=[]):
             disable_aws_backup_plans("us-east-1")
     captured = capsys.readouterr()
     assert "No AWS Backup plans found" in captured.out
 
     with patch("boto3.client"):
         with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.get_backup_plans") as mock_get:
-            mock_get.side_effect = ClientError(
-                {"Error": {"Code": "UnrecognizedClientException"}}, "list_backup_plans"
-            )
+            mock_get.side_effect = ClientError({"Error": {"Code": "UnrecognizedClientException"}}, "list_backup_plans")
             disable_aws_backup_plans("us-east-1")
     captured = capsys.readouterr()
     assert "service not available" in captured.out
 
     with patch("boto3.client"):
         with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.get_backup_plans") as mock_get:
-            mock_get.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "list_backup_plans"
-            )
+            mock_get.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_backup_plans")
             disable_aws_backup_plans("us-east-1")
     captured = capsys.readouterr()
     assert "Error checking AWS Backup" in captured.out
@@ -199,9 +183,7 @@ def test_disable_dlm_policies_combined(capsys):
     policies = [{"PolicyId": "policy-1", "Description": "Test policy", "State": "ENABLED"}]
     with patch("boto3.client") as mock_client:
         mock_dlm = MagicMock()
-        mock_dlm.update_lifecycle_policy.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "update_lifecycle_policy"
-        )
+        mock_dlm.update_lifecycle_policy.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "update_lifecycle_policy")
         mock_client.return_value = mock_dlm
         with patch(
             "cost_toolkit.scripts.cleanup.aws_backup_disable.check_dlm_lifecycle_policies",
@@ -212,23 +194,15 @@ def test_disable_dlm_policies_combined(capsys):
     assert "Error disabling DLM policy" in captured.out
 
     with patch("boto3.client"):
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_backup_disable.check_dlm_lifecycle_policies"
-        ) as mock_check:
-            mock_check.side_effect = ClientError(
-                {"Error": {"Code": "UnrecognizedClientException"}}, "get_lifecycle_policies"
-            )
+        with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.check_dlm_lifecycle_policies") as mock_check:
+            mock_check.side_effect = ClientError({"Error": {"Code": "UnrecognizedClientException"}}, "get_lifecycle_policies")
             disable_dlm_policies("us-east-1")
     captured = capsys.readouterr()
     assert "service not available" in captured.out
 
     with patch("boto3.client"):
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_backup_disable.check_dlm_lifecycle_policies"
-        ) as mock_check:
-            mock_check.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "get_lifecycle_policies"
-            )
+        with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.check_dlm_lifecycle_policies") as mock_check:
+            mock_check.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "get_lifecycle_policies")
             disable_dlm_policies("us-east-1")
     captured = capsys.readouterr()
     assert "Error checking DLM" in captured.out

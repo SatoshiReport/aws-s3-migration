@@ -173,9 +173,7 @@ def disable_eventbridge_backup_rules(region):
 def _check_vault_recovery_points(backup_client, vault_name):
     """Check and report recovery point status for a vault."""
     try:
-        recovery_points = backup_client.list_recovery_points_by_backup_vault(
-            BackupVaultName=vault_name, MaxResults=1
-        )
+        recovery_points = backup_client.list_recovery_points_by_backup_vault(BackupVaultName=vault_name, MaxResults=1)
         recovery_points_list = recovery_points.get("RecoveryPoints", [])
         point_count = len(recovery_points_list)
         if point_count > 0:

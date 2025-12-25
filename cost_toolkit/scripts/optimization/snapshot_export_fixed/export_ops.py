@@ -16,9 +16,7 @@ def validate_export_task_exists(ec2_client, export_task_id):
     response = ec2_client.describe_export_image_tasks(ExportImageTaskIds=[export_task_id])
 
     if not response["ExportImageTasks"]:
-        raise ExportTaskDeletedException(  # noqa: TRY003
-            f"Export task {export_task_id} no longer exists - was deleted"
-        )
+        raise ExportTaskDeletedException(f"Export task {export_task_id} no longer exists - was deleted")  # noqa: TRY003
 
     return response["ExportImageTasks"][0]
 

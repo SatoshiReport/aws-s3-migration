@@ -19,9 +19,7 @@ def delete_internet_gateways(ec2_client, vpc_id):
         int: Number of Internet Gateways successfully deleted
     """
     print("Detaching and deleting Internet Gateways...")
-    igw_response = ec2_client.describe_internet_gateways(
-        Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}]
-    )
+    igw_response = ec2_client.describe_internet_gateways(Filters=[{"Name": "attachment.vpc-id", "Values": [vpc_id]}])
 
     deleted_count = 0
     internet_gateways = igw_response["InternetGateways"]
@@ -51,9 +49,7 @@ def delete_vpc_endpoints(ec2_client, vpc_id):
         int: Number of VPC Endpoints successfully deleted
     """
     print("Deleting VPC Endpoints...")
-    endpoints_response = ec2_client.describe_vpc_endpoints(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )
+    endpoints_response = ec2_client.describe_vpc_endpoints(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
 
     deleted_count = 0
     vpc_endpoints = endpoints_response["VpcEndpoints"]
@@ -80,9 +76,7 @@ def delete_nat_gateways(ec2_client, vpc_id):
         int: Number of NAT Gateways successfully deleted
     """
     print("Deleting NAT Gateways...")
-    nat_response = ec2_client.describe_nat_gateways(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )
+    nat_response = ec2_client.describe_nat_gateways(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
 
     deleted_count = 0
     nat_gateways = nat_response["NatGateways"]
@@ -110,9 +104,7 @@ def delete_security_groups(ec2_client, vpc_id, skip_default=True):
         int: Number of Security Groups successfully deleted
     """
     print("Deleting Security Groups...")
-    sg_response = ec2_client.describe_security_groups(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )
+    sg_response = ec2_client.describe_security_groups(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
 
     deleted_count = 0
     security_groups = sg_response["SecurityGroups"]
@@ -142,9 +134,7 @@ def delete_network_acls(ec2_client, vpc_id, skip_default=True):
         int: Number of Network ACLs successfully deleted
     """
     print("Deleting Network ACLs...")
-    nacl_response = ec2_client.describe_network_acls(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )
+    nacl_response = ec2_client.describe_network_acls(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
 
     deleted_count = 0
     network_acls = nacl_response["NetworkAcls"]
@@ -234,9 +224,7 @@ def delete_network_interfaces(ec2_client, vpc_id):
         int: Number of Network Interfaces successfully deleted
     """
     print("Deleting Network Interfaces...")
-    eni_response = ec2_client.describe_network_interfaces(
-        Filters=[{"Name": "vpc-id", "Values": [vpc_id]}]
-    )
+    eni_response = ec2_client.describe_network_interfaces(Filters=[{"Name": "vpc-id", "Values": [vpc_id]}])
 
     deleted_count = 0
     network_interfaces = eni_response["NetworkInterfaces"]
@@ -262,9 +250,7 @@ def _ensure_ec2_client(ec2_client: BaseClient | str | None, region_name: str | N
     return cast(BaseClient, boto3.client("ec2", region_name=region_name))
 
 
-def delete_vpc_and_dependencies(
-    vpc_id: str, region_name: str | None = None, ec2_client: BaseClient | str | None = None
-) -> bool:
+def delete_vpc_and_dependencies(vpc_id: str, region_name: str | None = None, ec2_client: BaseClient | str | None = None) -> bool:
     """
     Delete a VPC and all its dependencies in the correct order.
 

@@ -112,9 +112,7 @@ class TestPrintKeyAliases:
     def test_print_aliases_error(self, capsys):
         """Test error handling when listing aliases shows error message."""
         mock_kms = MagicMock()
-        mock_kms.list_aliases.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "list_aliases"
-        )
+        mock_kms.list_aliases.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_aliases")
 
         _print_key_aliases(mock_kms, "key-123")
 
@@ -165,9 +163,7 @@ class TestPrintKeyGrantsPart2:
     def test_print_grants_error(self, capsys):
         """Test error handling when listing grants."""
         mock_kms = MagicMock()
-        mock_kms.list_grants.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "list_grants"
-        )
+        mock_kms.list_grants.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_grants")
 
         _print_key_grants(mock_kms, "key-123")
 
@@ -178,9 +174,7 @@ class TestPrintKeyGrantsPart2:
         """Test printing only first 3 grants when many exist."""
         mock_kms = MagicMock()
         mock_kms.list_grants.return_value = {
-            "Grants": [
-                {"GranteePrincipal": f"principal-{i}", "Operations": ["Encrypt"]} for i in range(10)
-            ]
+            "Grants": [{"GranteePrincipal": f"principal-{i}", "Operations": ["Encrypt"]} for i in range(10)]
         }
 
         _print_key_grants(mock_kms, "key-123")
@@ -222,9 +216,7 @@ class TestProcessKmsKeyPart2:
     def test_process_key_access_denied(self, capsys):
         """Test processing key with access denied."""
         mock_kms = MagicMock()
-        mock_kms.describe_key.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "describe_key"
-        )
+        mock_kms.describe_key.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_key")
 
         cost, is_customer = _process_kms_key(mock_kms, "key-123")
 
@@ -236,9 +228,7 @@ class TestProcessKmsKeyPart2:
     def test_process_key_other_error(self, capsys):
         """Test processing key with other errors."""
         mock_kms = MagicMock()
-        mock_kms.describe_key.side_effect = ClientError(
-            {"Error": {"Code": "InternalError"}}, "describe_key"
-        )
+        mock_kms.describe_key.side_effect = ClientError({"Error": {"Code": "InternalError"}}, "describe_key")
 
         cost, is_customer = _process_kms_key(mock_kms, "key-123")
 

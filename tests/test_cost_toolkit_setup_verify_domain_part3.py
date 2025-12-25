@@ -115,9 +115,7 @@ class TestRunTests:
             patch(f"{mod}.check_route53_configuration"),
         ):
             mock_dns.return_value = (False, None)
-            mock_http.side_effect = ClientError(
-                {"Error": {"Code": "Error", "Message": "Error"}}, "test"
-            )
+            mock_http.side_effect = ClientError({"Error": {"Code": "Error", "Message": "Error"}}, "test")
 
             results = _run_tests("example.com")
 

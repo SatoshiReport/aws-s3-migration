@@ -230,9 +230,7 @@ def cleanup_unused_vpc_resources():
     print("🚨 Proceeding with VPC resource cleanup...")
     print("=" * 50)
 
-    successful_deletions, failed_deletions = clean_security_groups(
-        aws_access_key_id, aws_secret_access_key
-    )
+    successful_deletions, failed_deletions = clean_security_groups(aws_access_key_id, aws_secret_access_key)
 
     review_empty_vpcs()
 

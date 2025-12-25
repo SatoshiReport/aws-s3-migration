@@ -121,9 +121,7 @@ class TestGetInstanceConnectionInfoComplete:
         mock_ec2 = MagicMock()
         mock_ec2.describe_subnets.return_value = {"Subnets": [{"MapPublicIpOnLaunch": True}]}
         mock_ec2.describe_route_tables.return_value = {
-            "RouteTables": [
-                {"Routes": [{"DestinationCidrBlock": "0.0.0.0/0", "GatewayId": "igw-123"}]}
-            ]
+            "RouteTables": [{"Routes": [{"DestinationCidrBlock": "0.0.0.0/0", "GatewayId": "igw-123"}]}]
         }
 
         mock_ssm = MagicMock()
@@ -229,9 +227,7 @@ class TestGetInstanceConnectionInfoTags:
 
         _, mock_ec2, mock_ssm = build_instance_connection_mocks()
 
-        result = run_connection_info_with_clients(
-            mock_instance, mock_ec2, mock_ssm, "i-notags", "ap-south-1"
-        )
+        result = run_connection_info_with_clients(mock_instance, mock_ec2, mock_ssm, "i-notags", "ap-south-1")
 
         assert_equal(result["instance_id"], "i-notags")
         assert_equal(result["state"], "stopped")

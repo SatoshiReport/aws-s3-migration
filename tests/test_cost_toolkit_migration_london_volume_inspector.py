@@ -25,9 +25,7 @@ from cost_toolkit.scripts.migration.aws_london_volume_inspector import (
 
 def test_inspect_volumes_via_ssh_calls_credentials():
     """Test inspect_volumes_via_ssh calls aws_utils.setup_aws_credentials."""
-    with patch(
-        "cost_toolkit.scripts.migration.aws_london_volume_inspector.aws_utils.setup_aws_credentials"
-    ) as mock_setup:
+    with patch("cost_toolkit.scripts.migration.aws_london_volume_inspector.aws_utils.setup_aws_credentials") as mock_setup:
         with patch("builtins.open", create=True):
             inspect_volumes_via_ssh()
     mock_setup.assert_called_once()
@@ -320,9 +318,7 @@ class TestInspectVolumesViaSsh:
 
 def test_main_calls_inspect_volumes_via_ssh():
     """Test main function calls inspect_volumes_via_ssh."""
-    with patch(
-        "cost_toolkit.scripts.migration.aws_london_volume_inspector.inspect_volumes_via_ssh"
-    ) as mock_inspect:
+    with patch("cost_toolkit.scripts.migration.aws_london_volume_inspector.inspect_volumes_via_ssh") as mock_inspect:
         main()
     mock_inspect.assert_called_once()
 

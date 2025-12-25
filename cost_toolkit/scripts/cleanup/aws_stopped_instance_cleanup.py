@@ -15,9 +15,7 @@ from cost_toolkit.common.aws_common import (
 from cost_toolkit.scripts.aws_ec2_operations import describe_instance, terminate_instance
 
 
-def get_instance_cleanup_details(
-    region_name, instance_id, aws_access_key_id, aws_secret_access_key
-):
+def get_instance_cleanup_details(region_name, instance_id, aws_access_key_id, aws_secret_access_key):
     """
     Get detailed information about an EC2 instance for cleanup operations.
 
@@ -102,9 +100,7 @@ def _print_instance_details(details):
     print(f"   Network Interfaces: {len(details['network_interfaces'])} attached")
 
     for volume in details["volumes"]:
-        delete_behavior = (
-            "will be deleted" if volume["delete_on_termination"] else "will be preserved"
-        )
+        delete_behavior = "will be deleted" if volume["delete_on_termination"] else "will be preserved"
         print(f"      📀 {volume['volume_id']} ({volume['device_name']}) - {delete_behavior}")
 
 
@@ -116,9 +112,7 @@ def _analyze_instances(stopped_instances, aws_access_key_id, aws_secret_access_k
         instance_id = instance["instance_id"]
 
         print(f"🔍 Analyzing instance: {instance_id} ({region})")
-        details = get_instance_cleanup_details(
-            region, instance_id, aws_access_key_id, aws_secret_access_key
-        )
+        details = get_instance_cleanup_details(region, instance_id, aws_access_key_id, aws_secret_access_key)
 
         if details:
             instance_details.append({"region": region, "details": details})
@@ -162,10 +156,7 @@ def _print_termination_summary(terminated_instances, failed_terminations):
         for instance_data in terminated_instances:
             details = instance_data["details"]
             region = instance_data["region"]
-            print(
-                f"   🗑️  {details['instance_id']} ({region}) - "
-                f"{details['name']} ({details['instance_type']})"
-            )
+            print(f"   🗑️  {details['instance_id']} ({region}) - " f"{details['name']} ({details['instance_type']})")
 
     if failed_terminations:
         print("\n❌ Failed terminations:")
@@ -189,9 +180,7 @@ def main():
         print(f"🎯 Target: {len(stopped_instances)} stopped instances")
         print()
 
-        instance_details = _analyze_instances(
-            stopped_instances, aws_access_key_id, aws_secret_access_key
-        )
+        instance_details = _analyze_instances(stopped_instances, aws_access_key_id, aws_secret_access_key)
 
         if not instance_details:
             print("❌ No valid instances found to terminate")
@@ -214,9 +203,7 @@ def main():
         print("\n🚨 Proceeding with instance termination...")
         print("=" * 50)
 
-        terminated_instances, failed_terminations = _terminate_all_instances(
-            instance_details, aws_access_key_id, aws_secret_access_key
-        )
+        terminated_instances, failed_terminations = _terminate_all_instances(instance_details, aws_access_key_id, aws_secret_access_key)
 
         _print_termination_summary(terminated_instances, failed_terminations)
 

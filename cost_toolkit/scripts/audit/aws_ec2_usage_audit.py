@@ -65,10 +65,7 @@ def _print_cpu_metrics(avg_cpu, max_cpu, latest_datapoint):
         print("  Last 7 days CPU usage:")
         print(f"    Average: {avg_cpu:.1f}%")
         print(f"    Maximum: {max_cpu:.1f}%")
-        print(
-            f"    Last recorded: {latest_datapoint['Timestamp']} "
-            f"({latest_datapoint['Average']:.1f}%)"
-        )
+        print(f"    Last recorded: {latest_datapoint['Timestamp']} " f"({latest_datapoint['Average']:.1f}%)")
     else:
         print("  ⚠️  No CPU metrics available (instance may be stopped)")
 
@@ -169,9 +166,7 @@ def get_instance_details_in_region(region_name):
         cloudwatch = create_client("cloudwatch", region=region_name)
 
         instances = [
-            instance["InstanceId"]
-            for reservation in ec2.describe_instances()["Reservations"]
-            for instance in reservation["Instances"]
+            instance["InstanceId"] for reservation in ec2.describe_instances()["Reservations"] for instance in reservation["Instances"]
         ]
 
         if not instances:
@@ -186,9 +181,7 @@ def get_instance_details_in_region(region_name):
             details = get_instance_details(ec2, instance_id)
             if details is None:
                 continue
-            region_summary.append(
-                _process_instance_details(cloudwatch, details, region_name, start_time, end_time)
-            )
+            region_summary.append(_process_instance_details(cloudwatch, details, region_name, start_time, end_time))
 
     except ClientError as e:
         print(f"❌ Error auditing instances in {region_name}: {e}")

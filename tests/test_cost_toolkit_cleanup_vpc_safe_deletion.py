@@ -41,9 +41,7 @@ def test_delete_vpcs_collects_results(monkeypatch):
         calls.append((vpc_id, region))
         return vpc_id.endswith("success")
 
-    monkeypatch.setattr(
-        aws_vpc_safe_deletion, "delete_vpc_and_dependencies_with_logging", fake_delete
-    )
+    monkeypatch.setattr(aws_vpc_safe_deletion, "delete_vpc_and_dependencies_with_logging", fake_delete)
     monkeypatch.setattr(aws_vpc_safe_deletion.WAIT_EVENT, "wait", lambda *_: None)
 
     safe_vpcs = [("vpc-success", "us-east-1"), ("vpc-fail", "us-west-2")]

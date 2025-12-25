@@ -49,9 +49,7 @@ class TestListS3Exports:
         assert exports[0]["key"] == "ebs-snapshots/snap-123.vmdk"
         assert exports[0]["size"] == 1024 * 1024 * 100
         assert exports[1]["key"] == "ebs-snapshots/snap-456.raw"
-        mock_s3.list_objects_v2.assert_called_once_with(
-            Bucket="test-bucket", Prefix="ebs-snapshots/"
-        )
+        mock_s3.list_objects_v2.assert_called_once_with(Bucket="test-bucket", Prefix="ebs-snapshots/")
 
     def test_list_exports_no_contents(self, _mock_setup):
         """Test listing when bucket has no files."""
@@ -65,9 +63,7 @@ class TestListS3Exports:
     def test_list_exports_client_error(self, _mock_setup, capsys):
         """Test handling S3 client errors."""
         mock_s3 = MagicMock()
-        mock_s3.list_objects_v2.side_effect = ClientError(
-            {"Error": {"Code": "NoSuchBucket"}}, "list_objects_v2"
-        )
+        mock_s3.list_objects_v2.side_effect = ClientError({"Error": {"Code": "NoSuchBucket"}}, "list_objects_v2")
 
         with pytest.raises(S3ExportError) as exc_info:
             list_s3_exports(mock_s3, "nonexistent-bucket")
@@ -128,9 +124,7 @@ class TestImportAmiFromS3:
         """Test AMI import deleted status."""
         mock_ec2 = MagicMock()
         mock_ec2.import_image.return_value = {"ImportTaskId": "import-789"}
-        mock_ec2.describe_import_image_tasks.return_value = {
-            "ImportImageTasks": [{"ImportTaskId": "import-789", "Status": "deleted"}]
-        }
+        mock_ec2.describe_import_image_tasks.return_value = {"ImportImageTasks": [{"ImportTaskId": "import-789", "Status": "deleted"}]}
 
         with pytest.raises(AMIImportError) as exc_info:
             import_ami_from_s3(mock_ec2, "test-bucket", "exports/test.vmdk", "Test")
@@ -153,9 +147,7 @@ class TestImportAmiFromS3:
     def test_import_ami_client_error(self):
         """Test handling client errors during import."""
         mock_ec2 = MagicMock()
-        mock_ec2.import_image.side_effect = ClientError(
-            {"Error": {"Code": "InvalidParameter"}}, "import_image"
-        )
+        mock_ec2.import_image.side_effect = ClientError({"Error": {"Code": "InvalidParameter"}}, "import_image")
 
         with pytest.raises(AMIImportError) as exc_info:
             import_ami_from_s3(mock_ec2, "test-bucket", "exports/test.vmdk", "Test")
@@ -173,9 +165,7 @@ class TestCreateSnapshotFromAmi:
             "Images": [
                 {
                     "RootDeviceName": "/dev/sda1",
-                    "BlockDeviceMappings": [
-                        {"DeviceName": "/dev/sda1", "Ebs": {"SnapshotId": "snap-12345"}}
-                    ],
+                    "BlockDeviceMappings": [{"DeviceName": "/dev/sda1", "Ebs": {"SnapshotId": "snap-12345"}}],
                 }
             ]
         }
@@ -201,9 +191,7 @@ class TestCreateSnapshotFromAmi:
     def test_create_snapshot_no_root_device(self):
         """Test when AMI has no root device mapping."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_images.return_value = {
-            "Images": [{"RootDeviceName": "/dev/sda1", "BlockDeviceMappings": []}]
-        }
+        mock_ec2.describe_images.return_value = {"Images": [{"RootDeviceName": "/dev/sda1", "BlockDeviceMappings": []}]}
 
         with pytest.raises(SnapshotCreationError) as exc_info:
             create_snapshot_from_ami(mock_ec2, "ami-12345", "Test")
@@ -217,15 +205,11 @@ class TestCreateSnapshotFromAmi:
             "Images": [
                 {
                     "RootDeviceName": "/dev/sda1",
-                    "BlockDeviceMappings": [
-                        {"DeviceName": "/dev/sda1", "Ebs": {"SnapshotId": "snap-99999"}}
-                    ],
+                    "BlockDeviceMappings": [{"DeviceName": "/dev/sda1", "Ebs": {"SnapshotId": "snap-99999"}}],
                 }
             ]
         }
-        mock_ec2.create_tags.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "create_tags"
-        )
+        mock_ec2.create_tags.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "create_tags")
 
         snapshot_id = create_snapshot_from_ami(mock_ec2, "ami-12345", "Test")
 

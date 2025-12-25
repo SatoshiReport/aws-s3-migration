@@ -175,16 +175,11 @@ def _create_www_subdomain_change(domain_name, existing_records, canva_ip):
 def _apply_dns_changes(route53, zone_id, changes):
     """Apply DNS changes and wait for propagation"""
     change_batch = {
-        "Comment": (
-            f"Creating missing DNS records for Canva setup - "
-            f"{datetime.now(timezone.utc).isoformat()}"
-        ),
+        "Comment": (f"Creating missing DNS records for Canva setup - " f"{datetime.now(timezone.utc).isoformat()}"),
         "Changes": changes,
     }
 
-    response = route53.change_resource_record_sets(
-        HostedZoneId=f"/hostedzone/{zone_id}", ChangeBatch=change_batch
-    )
+    response = route53.change_resource_record_sets(HostedZoneId=f"/hostedzone/{zone_id}", ChangeBatch=change_batch)
 
     change_id = response["ChangeInfo"]["Id"]
     print(f"  ✅ DNS changes submitted (Change ID: {change_id})")
@@ -196,6 +191,4 @@ def _apply_dns_changes(route53, zone_id, changes):
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        "This module only provides helpers; run aws_route53_domain_setup.py for the CLI workflow."
-    )
+    raise SystemExit("This module only provides helpers; run aws_route53_domain_setup.py for the CLI workflow.")

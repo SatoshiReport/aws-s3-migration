@@ -276,9 +276,7 @@ def test_export_ami_to_s3_with_recovery_success():
             f"{EXPORT_HELPERS_PATH}monitor_export_with_recovery",
             return_value=(True, "test-key.vmdk"),
         ):
-            task_id, key = export_ami_to_s3_with_recovery(
-                mock_ec2, mock_s3, "ami-123", "test-bucket", "us-east-1", 50
-            )
+            task_id, key = export_ami_to_s3_with_recovery(mock_ec2, mock_s3, "ami-123", "test-bucket", "us-east-1", 50)
 
             assert_equal(task_id, "export-123")
             assert_equal(key, "test-key.vmdk")
@@ -297,9 +295,7 @@ def test_export_ami_to_s3_with_recovery_failure():
             f"{EXPORT_HELPERS_PATH}monitor_export_with_recovery",
             return_value=(False, None),
         ):
-            task_id, key = export_ami_to_s3_with_recovery(
-                mock_ec2, mock_s3, "ami-123", "test-bucket", "us-east-1", 50
-            )
+            task_id, key = export_ami_to_s3_with_recovery(mock_ec2, mock_s3, "ami-123", "test-bucket", "us-east-1", 50)
 
             assert_equal(task_id, None)
             assert_equal(key, None)

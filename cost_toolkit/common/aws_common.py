@@ -345,10 +345,7 @@ def find_resource_region(
         Region name if found, None otherwise
     """
     if resource_type not in _RESOURCE_CONFIG:
-        raise ValueError(
-            f"Unsupported resource type: {resource_type}. "
-            f"Supported types: {', '.join(_RESOURCE_CONFIG.keys())}"
-        )
+        raise ValueError(f"Unsupported resource type: {resource_type}. " f"Supported types: {', '.join(_RESOURCE_CONFIG.keys())}")
 
     search_regions = regions or get_all_aws_regions(aws_access_key_id, aws_secret_access_key)
 

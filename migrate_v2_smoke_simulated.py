@@ -69,9 +69,7 @@ class _SimulatedS3Client:
 
     def get_paginator(self, operation_name: str):
         if operation_name == "list_objects_v2":
-            return _SimulatedListObjectsPaginator(
-                self.bucket_name, list(self.object_entries.values())
-            )
+            return _SimulatedListObjectsPaginator(self.bucket_name, list(self.object_entries.values()))
         if operation_name in {"list_object_versions", "list_multipart_uploads"}:
             return _EmptyPaginator()
         raise NotImplementedError(f"Unsupported paginator: {operation_name}")
@@ -107,9 +105,7 @@ class _SimulatedS3Client:
             shutil.rmtree(self.base_path, ignore_errors=True)
         self.object_entries.clear()
 
-    def abort_multipart_upload(
-        self, *, Bucket: str, Key: str, UploadId: str
-    ):  # pylint: disable=invalid-name
+    def abort_multipart_upload(self, *, Bucket: str, Key: str, UploadId: str):  # pylint: disable=invalid-name
         if Bucket != self.bucket_name:
             raise RuntimeError(f"Unknown bucket {Bucket}")
         self.object_entries.pop(Key, None)
@@ -207,10 +203,7 @@ def _seed_simulated_bucket(ctx: _SimulatedSmokeContext) -> _SimulatedBucketStats
     files_created, dirs_created, total_bytes = materialize_sample_tree(ctx.simulated_bucket_path)
     object_entries = _build_object_entries(ctx.simulated_bucket_path)
     manifest_before = manifest_directory(ctx.simulated_bucket_path)
-    print(
-        f"Seeded 's3://{ctx.bucket_name}' with {files_created} files "
-        f"({total_bytes} bytes across {dirs_created} directories)."
-    )
+    print(f"Seeded 's3://{ctx.bucket_name}' with {files_created} files " f"({total_bytes} bytes across {dirs_created} directories).")
     return _SimulatedBucketStats(
         files_created=files_created,
         dirs_created=dirs_created,
@@ -243,9 +236,7 @@ def _build_object_entries(simulated_bucket_path: Path) -> list[dict[str, Any]]:
 
 def _install_simulated_hooks(ctx: _SimulatedSmokeContext, object_entries: list[dict[str, Any]]):
     """Monkeypatch AWS/boto plumbing to use simulated data."""
-    simulated_s3_client = _SimulatedS3Client(
-        ctx.bucket_name, object_entries, ctx.simulated_bucket_path
-    )
+    simulated_s3_client = _SimulatedS3Client(ctx.bucket_name, object_entries, ctx.simulated_bucket_path)
 
     def _fake_boto3_client(service_name, *args, **kwargs):
         if service_name == "s3":

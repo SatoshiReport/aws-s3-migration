@@ -70,9 +70,7 @@ class TestDeleteMountTargets:
     def test_delete_single_mount_target(self):
         """Test deleting single mount target."""
         mock_client = MagicMock()
-        mock_client.describe_mount_targets.return_value = {
-            "MountTargets": [{"MountTargetId": "mt-single"}]
-        }
+        mock_client.describe_mount_targets.return_value = {"MountTargets": [{"MountTargetId": "mt-single"}]}
 
         count = _delete_mount_targets(mock_client, "fs-123")
 
@@ -117,9 +115,7 @@ class TestWaitForMountTargetsDeletion:
     def test_wait_handles_error(self):
         """Test that errors during wait are handled."""
         mock_client = MagicMock()
-        mock_client.describe_mount_targets.side_effect = ClientError(
-            {"Error": {"Code": "FileSystemNotFound"}}, "describe_mount_targets"
-        )
+        mock_client.describe_mount_targets.side_effect = ClientError({"Error": {"Code": "FileSystemNotFound"}}, "describe_mount_targets")
 
         with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._WAIT_EVENT") as mock_event:
             # Should not raise exception
@@ -134,12 +130,8 @@ class TestDeleteSingleFilesystem:
         """Test deleting filesystem with mount targets."""
         mock_client = MagicMock()
 
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_efs_cleanup._delete_mount_targets", return_value=2
-        ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_efs_cleanup._wait_for_mount_targets_deletion"
-            ):
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._delete_mount_targets", return_value=2):
+            with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._wait_for_mount_targets_deletion"):
                 fs = {"FileSystemId": "fs-123"}
 
                 success, mt_count = _delete_single_filesystem(mock_client, fs)
@@ -154,12 +146,8 @@ class TestDeleteSingleFilesystem:
         """Test deleting filesystem without mount targets."""
         mock_client = MagicMock()
 
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_efs_cleanup._delete_mount_targets", return_value=0
-        ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_efs_cleanup._wait_for_mount_targets_deletion"
-            ) as mock_wait:
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._delete_mount_targets", return_value=0):
+            with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._wait_for_mount_targets_deletion") as mock_wait:
                 fs = {"FileSystemId": "fs-123"}
 
                 success, _ = _delete_single_filesystem(mock_client, fs)
@@ -171,13 +159,9 @@ class TestDeleteSingleFilesystem:
     def test_delete_filesystem_error(self, capsys):
         """Test error when deleting filesystem."""
         mock_client = MagicMock()
-        mock_client.delete_file_system.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_file_system"
-        )
+        mock_client.delete_file_system.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_file_system")
 
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_efs_cleanup._delete_mount_targets", return_value=0
-        ):
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._delete_mount_targets", return_value=0):
             fs = {"FileSystemId": "fs-123"}
 
             success, mt_count = _delete_single_filesystem(mock_client, fs)
@@ -256,9 +240,7 @@ class TestDeleteEfsResources:
 
     def test_delete_resources_multiple_regions(self, capsys):
         """Test deleting resources across multiple regions."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(2, 4)
-        ):
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(2, 4)):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_efs_cleanup.get_all_aws_regions",
                 return_value=["us-east-1", "us-east-2"],
@@ -273,9 +255,7 @@ class TestDeleteEfsResources:
 
     def test_delete_resources_no_resources(self, capsys):
         """Test when no resources found."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(0, 0)
-        ):
+        with patch("cost_toolkit.scripts.cleanup.aws_efs_cleanup._process_region", return_value=(0, 0)):
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_efs_cleanup.get_all_aws_regions",
                 return_value=["us-east-1", "us-east-2"],

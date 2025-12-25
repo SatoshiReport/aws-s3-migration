@@ -19,10 +19,7 @@ class SharedGuardMissingError(ImportError):
     """Raised when the shared unused_module_guard.py file cannot be located."""
 
     def __init__(self, path: Path) -> None:
-        super().__init__(
-            f"Shared unused_module_guard not found at {path}. "
-            "Clone ci_shared or set CI_SHARED_ROOT."
-        )
+        super().__init__(f"Shared unused_module_guard not found at {path}. " "Clone ci_shared or set CI_SHARED_ROOT.")
 
 
 class SharedGuardSpecError(ImportError):
@@ -51,9 +48,7 @@ class GuardModule(Protocol):
 
     SUSPICIOUS_PATTERNS: tuple[str, ...]
 
-    def find_unused_modules(  # pragma: no cover - type hints only
-        self, root, exclude_patterns=None
-    ):
+    def find_unused_modules(self, root, exclude_patterns=None):  # pragma: no cover - type hints only
         """Return unused module metadata."""
         raise NotImplementedError
 
@@ -100,9 +95,7 @@ def _load_config() -> tuple[list[str], list[str], list[str]]:
     try:
         raw = _CONFIG_FILE.read_text()
     except OSError as exc:
-        print(
-            f"⚠️  Unable to read unused_module_guard config {_CONFIG_FILE}: {exc}", file=sys.stderr
-        )
+        print(f"⚠️  Unable to read unused_module_guard config {_CONFIG_FILE}: {exc}", file=sys.stderr)
         return [], [], []
 
     try:
@@ -138,15 +131,12 @@ def _update_suspicious_patterns(guard: GuardModule, allowed_patterns: Sequence[s
     suspicious_patterns = getattr(guard, "SUSPICIOUS_PATTERNS", None)
     if suspicious_patterns is None:
         print(
-            "⚠️  Shared unused_module_guard missing SUSPICIOUS_PATTERNS; "
-            "allowed_patterns override skipped.",
+            "⚠️  Shared unused_module_guard missing SUSPICIOUS_PATTERNS; " "allowed_patterns override skipped.",
             file=sys.stderr,
         )
         guard.SUSPICIOUS_PATTERNS = tuple()
         return
-    guard.SUSPICIOUS_PATTERNS = tuple(
-        pattern for pattern in suspicious_patterns if pattern not in allowed_patterns
-    )
+    guard.SUSPICIOUS_PATTERNS = tuple(pattern for pattern in suspicious_patterns if pattern not in allowed_patterns)
 
 
 def _wrap_find_unused(guard: GuardModule, extra_excludes: Sequence[str]) -> None:
@@ -165,12 +155,8 @@ def _wrap_find_unused(guard: GuardModule, extra_excludes: Sequence[str]) -> None
     guard.find_unused_modules = find_unused_with_config  # type: ignore[assignment]
 
 
-def _wrap_duplicate_detection(
-    guard: GuardModule, extra_excludes: Sequence[str], duplicate_excludes: Sequence[str]
-) -> None:
-    combined_duplicate_excludes = list(
-        dict.fromkeys([p for p in [*extra_excludes, *duplicate_excludes, "tests/"] if p])
-    )
+def _wrap_duplicate_detection(guard: GuardModule, extra_excludes: Sequence[str], duplicate_excludes: Sequence[str]) -> None:
+    combined_duplicate_excludes = list(dict.fromkeys([p for p in [*extra_excludes, *duplicate_excludes, "tests/"] if p]))
     if not combined_duplicate_excludes:
         return
     original_find_duplicates = getattr(guard, "find_suspicious_duplicates", None)
@@ -180,9 +166,7 @@ def _wrap_duplicate_detection(
     def find_duplicates_with_config(root):
         results = original_find_duplicates(root)
         return [
-            (file_path, reason)
-            for file_path, reason in results
-            if not _matches_duplicate_exclude(file_path, combined_duplicate_excludes)
+            (file_path, reason) for file_path, reason in results if not _matches_duplicate_exclude(file_path, combined_duplicate_excludes)
         ]
 
     # type: ignore[assignment]

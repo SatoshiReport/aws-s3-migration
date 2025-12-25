@@ -48,9 +48,7 @@ def _setup_paths(args: argparse.Namespace) -> tuple[Path, Path, os.stat_result] 
     else:
         db_path = db_path.resolve()
 
-    db_path = handle_state_db_reset(
-        base_path, db_path, args.reset_state_db, args.yes, reseed_state_db_from_local_drive
-    )
+    db_path = handle_state_db_reset(base_path, db_path, args.reset_state_db, args.yes, reseed_state_db_from_local_drive)
 
     if not db_path.exists():
         logging.error("SQLite database %s does not exist.", db_path)

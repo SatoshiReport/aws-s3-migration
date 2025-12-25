@@ -40,9 +40,7 @@ def test_display_regional_breakdown_multiple_regions_sorted(capsys):
     output_lines = captured.out.split("\n")
 
     # Find the region lines (after the header and separator)
-    region_lines = [
-        line for line in output_lines if line and "$" in line and ("us-" in line or "eu-" in line)
-    ]
+    region_lines = [line for line in output_lines if line and "$" in line and ("us-" in line or "eu-" in line)]
 
     # Verify sorting by cost (highest first)
     assert len(region_lines) == 3

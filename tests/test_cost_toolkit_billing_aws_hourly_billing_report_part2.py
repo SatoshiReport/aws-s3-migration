@@ -93,11 +93,7 @@ class TestFormatHourlyBillingReport:
                 }
             ]
         }
-        daily_data = {
-            "ResultsByTime": [
-                {"Groups": [{"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "10.00"}}}]}
-            ]
-        }
+        daily_data = {"ResultsByTime": [{"Groups": [{"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "10.00"}}}]}]}
 
         format_hourly_billing_report(hourly_data, daily_data)
 
@@ -142,11 +138,7 @@ class TestFormatHourlyBillingReport:
                 }
             ]
         }
-        daily_data = {
-            "ResultsByTime": [
-                {"Groups": [{"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "10.00"}}}]}
-            ]
-        }
+        daily_data = {"ResultsByTime": [{"Groups": [{"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "10.00"}}}]}]}
 
         format_hourly_billing_report(hourly_data, daily_data)
 

@@ -103,9 +103,7 @@ def main() -> None:
     buckets = sorted(set(args.buckets)) if args.buckets else []
     db_path = Path(args.db_path).expanduser()
 
-    db_path = handle_state_db_reset(
-        base_path, db_path, args.reset_state_db, args.yes, reseed_state_db_from_local_drive
-    )
+    db_path = handle_state_db_reset(base_path, db_path, args.reset_state_db, args.yes, reseed_state_db_from_local_drive)
 
     if not db_path.exists():
         raise SystemExit(f"State DB not found at {db_path}. Run migrate_v2 first.")
@@ -151,9 +149,7 @@ def main() -> None:
     )
 
     if args.compress:
-        print_compression_summary(
-            compressed_files, total_original_space, total_compressed_space, compression_failures
-        )
+        print_compression_summary(compressed_files, total_original_space, total_compressed_space, compression_failures)
 
 
 if __name__ == "__main__":

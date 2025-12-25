@@ -22,9 +22,7 @@ from tests.conftest_test_values import TEST_LARGE_VOLUME_SIZE_GIB
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.get_volume_tags")
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.find_volume_region")
 @patch("boto3.client")
-def test_create_volume_snapshot_success_with_tags(
-    mock_boto_client, mock_find_region, mock_get_tags
-):
+def test_create_volume_snapshot_success_with_tags(mock_boto_client, mock_find_region, mock_get_tags):
     """Test create_volume_snapshot successful snapshot creation with tags."""
     mock_find_region.return_value = "us-west-2"
 
@@ -73,9 +71,7 @@ def test_create_volume_snapshot_success_with_tags(
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.get_volume_tags")
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.find_volume_region")
 @patch("boto3.client")
-def test_create_volume_snapshot_success_custom_description(
-    mock_boto_client, mock_find_region, mock_get_tags
-):
+def test_create_volume_snapshot_success_custom_description(mock_boto_client, mock_find_region, mock_get_tags):
     """Test create_volume_snapshot with custom description."""
     mock_find_region.return_value = "us-east-1"
 
@@ -104,9 +100,7 @@ def test_create_volume_snapshot_success_custom_description(
     result = create_volume_snapshot("vol-custom123", description=custom_desc)
 
     assert_equal(result["description"], custom_desc)
-    mock_ec2.create_snapshot.assert_called_once_with(
-        VolumeId="vol-custom123", Description=custom_desc
-    )
+    mock_ec2.create_snapshot.assert_called_once_with(VolumeId="vol-custom123", Description=custom_desc)
 
 
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.get_volume_tags")
@@ -151,9 +145,7 @@ def test_create_volume_snapshot_success_no_tags(mock_boto_client, mock_find_regi
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.get_volume_tags")
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.find_volume_region")
 @patch("boto3.client")
-def test_create_volume_snapshot_success_unnamed_volume(
-    mock_boto_client, mock_find_region, mock_get_tags
-):
+def test_create_volume_snapshot_success_unnamed_volume(mock_boto_client, mock_find_region, mock_get_tags):
     """Test create_volume_snapshot with volume that has tags but no Name tag."""
     mock_find_region.return_value = "ap-southeast-1"
 
@@ -227,9 +219,7 @@ def test_create_volume_snapshot_retrieval_error_client_error(mock_boto_client, m
 
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.find_volume_region")
 @patch("boto3.client")
-def test_create_volume_snapshot_retrieval_error_generic_exception(
-    mock_boto_client, mock_find_region
-):
+def test_create_volume_snapshot_retrieval_error_generic_exception(mock_boto_client, mock_find_region):
     """Test create_volume_snapshot raises VolumeRetrievalError on generic exception."""
     mock_find_region.return_value = "us-east-1"
 
@@ -247,9 +237,7 @@ def test_create_volume_snapshot_retrieval_error_generic_exception(
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.get_volume_tags")
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.find_volume_region")
 @patch("boto3.client")
-def test_create_volume_snapshot_creation_error_on_create_snapshot(
-    mock_boto_client, mock_find_region, mock_get_tags
-):
+def test_create_volume_snapshot_creation_error_on_create_snapshot(mock_boto_client, mock_find_region, mock_get_tags):
     """Test create_volume_snapshot raises SnapshotCreationError when snapshot creation fails."""
     mock_find_region.return_value = "us-west-2"
 
@@ -284,9 +272,7 @@ def test_create_volume_snapshot_creation_error_on_create_snapshot(
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.get_volume_tags")
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.find_volume_region")
 @patch("boto3.client")
-def test_create_volume_snapshot_creation_error_on_create_tags(
-    mock_boto_client, mock_find_region, mock_get_tags
-):
+def test_create_volume_snapshot_creation_error_on_create_tags(mock_boto_client, mock_find_region, mock_get_tags):
     """Test create_volume_snapshot raises SnapshotCreationError when tagging fails."""
     mock_find_region.return_value = "us-west-2"
 
@@ -368,9 +354,7 @@ def test_create_volume_snapshot_large_volume(mock_boto_client, mock_find_region,
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.get_volume_tags")
 @patch("cost_toolkit.scripts.management.ebs_manager.snapshot.find_volume_region")
 @patch("boto3.client")
-def test_create_volume_snapshot_special_characters_in_tags(
-    mock_boto_client, mock_find_region, mock_get_tags
-):
+def test_create_volume_snapshot_special_characters_in_tags(mock_boto_client, mock_find_region, mock_get_tags):
     """Test create_volume_snapshot with special characters in volume tags."""
     mock_find_region.return_value = "us-west-2"
 

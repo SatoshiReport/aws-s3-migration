@@ -53,9 +53,7 @@ def test_process_single_bucket_success(capsys):
                     "cost_toolkit.scripts.audit.s3_audit.cli.generate_optimization_recommendations",
                     return_value=recommendations,
                 ):
-                    result = _process_single_bucket(
-                        "test-bucket", "us-east-1", storage_class_summary
-                    )
+                    result = _process_single_bucket("test-bucket", "us-east-1", storage_class_summary)
 
     analysis, obj_count, size, cost, recs = result
 
@@ -109,9 +107,7 @@ def test_process_single_bucket_no_recommendations():
                     "cost_toolkit.scripts.audit.s3_audit.cli.generate_optimization_recommendations",
                     return_value=[],
                 ):
-                    result = _process_single_bucket(
-                        "test-bucket", "us-east-1", storage_class_summary
-                    )
+                    result = _process_single_bucket("test-bucket", "us-east-1", storage_class_summary)
 
     analysis, obj_count, size, cost, recs = result
 
@@ -160,9 +156,7 @@ def test_process_single_bucket_multiple_storage_classes():
                     "cost_toolkit.scripts.audit.s3_audit.cli.generate_optimization_recommendations",
                     return_value=[],
                 ):
-                    result = _process_single_bucket(
-                        "test-bucket", "us-west-2", storage_class_summary
-                    )
+                    result = _process_single_bucket("test-bucket", "us-west-2", storage_class_summary)
 
     _, obj_count, size, cost, recs = result
 
@@ -250,9 +244,7 @@ def test_process_single_bucket_accumulates_recommendations():
                     "cost_toolkit.scripts.audit.s3_audit.cli.generate_optimization_recommendations",
                     return_value=recommendations,
                 ):
-                    result = _process_single_bucket(
-                        "test-bucket", "us-east-1", storage_class_summary
-                    )
+                    result = _process_single_bucket("test-bucket", "us-east-1", storage_class_summary)
 
     _, obj_count, size, cost, recs = result
 

@@ -107,9 +107,7 @@ class TestCheckBucketContents:
     def test_check_bucket_handles_error(self, capsys):
         """Test error handling when listing bucket fails."""
         mock_s3 = MagicMock()
-        mock_s3.list_objects_v2.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "list_objects_v2"
-        )
+        mock_s3.list_objects_v2.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_objects_v2")
 
         _check_bucket_contents(mock_s3, "test-bucket")
 
@@ -145,9 +143,7 @@ class TestCheckMigrationLog:
         _check_migration_log(mock_s3, "test-bucket")
 
         captured = capsys.readouterr()
-        output_lines = [
-            line for line in captured.out.split("\n") if line.strip().startswith("Line")
-        ]
+        output_lines = [line for line in captured.out.split("\n") if line.strip().startswith("Line")]
         assert len(output_lines) <= 20
 
     def test_check_log_not_found(self, capsys):
@@ -165,9 +161,7 @@ class TestCheckMigrationLog:
         """Test error handling for log retrieval."""
         mock_s3 = MagicMock()
         mock_s3.exceptions.NoSuchKey = type("NoSuchKey", (Exception,), {})
-        mock_s3.get_object.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "get_object"
-        )
+        mock_s3.get_object.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "get_object")
 
         _check_migration_log(mock_s3, "test-bucket")
 
@@ -221,9 +215,7 @@ class TestMonitorMigration:
         """Test successful migration monitoring."""
         with patch("boto3.client") as mock_client:
             mock_s3 = MagicMock()
-            mock_s3.list_objects_v2.return_value = {
-                "Contents": [{"Key": "home/file.txt", "Size": 1024}]
-            }
+            mock_s3.list_objects_v2.return_value = {"Contents": [{"Key": "home/file.txt", "Size": 1024}]}
             mock_response = MagicMock()
             mock_response.read.return_value = b"Migration log"
             mock_s3.get_object.return_value = {"Body": mock_response}
@@ -238,12 +230,8 @@ class TestMonitorMigration:
     def test_monitor_migration_handles_error(self, capsys):
         """Test error handling during migration monitoring."""
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents"
-            ) as mock_check:
-                mock_check.side_effect = ClientError(
-                    {"Error": {"Code": "ServiceError"}}, "list_objects_v2"
-                )
+            with patch("cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents") as mock_check:
+                mock_check.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_objects_v2")
                 mock_s3 = MagicMock()
                 mock_client.return_value = mock_s3
 
@@ -266,16 +254,9 @@ class TestMonitorMigration:
     def test_monitor_calls_all_checks(self):
         """Test monitor calls all check functions."""
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents"
-            ) as mock_bucket:
-                with patch(
-                    "cost_toolkit.scripts.migration.aws_migration_monitor._check_migration_log"
-                ) as mock_log:
-                    with patch(
-                        "cost_toolkit.scripts.migration.aws_migration_monitor."
-                        "_print_cost_summary"
-                    ) as mock_summary:
+            with patch("cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents") as mock_bucket:
+                with patch("cost_toolkit.scripts.migration.aws_migration_monitor._check_migration_log") as mock_log:
+                    with patch("cost_toolkit.scripts.migration.aws_migration_monitor." "_print_cost_summary") as mock_summary:
                         mock_s3 = MagicMock()
                         mock_client.return_value = mock_s3
 
@@ -288,8 +269,6 @@ class TestMonitorMigration:
 
 def test_main_calls_monitor_migration():
     """Test main function calls monitor_migration."""
-    with patch(
-        "cost_toolkit.scripts.migration.aws_migration_monitor.monitor_migration"
-    ) as mock_mon:
+    with patch("cost_toolkit.scripts.migration.aws_migration_monitor.monitor_migration") as mock_mon:
         main()
     mock_mon.assert_called_once()

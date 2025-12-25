@@ -96,9 +96,7 @@ class TestAuditRegionDatabasesBasic:
         """Test auditing region with Aurora clusters."""
         mock_rds = MagicMock()
         mock_rds.describe_db_instances.return_value = {"DBInstances": []}
-        mock_rds.describe_db_clusters.return_value = {
-            "DBClusters": [{**AURORA_POSTGRES_CLUSTER, "DBClusterIdentifier": "aurora-1"}]
-        }
+        mock_rds.describe_db_clusters.return_value = {"DBClusters": [{**AURORA_POSTGRES_CLUSTER, "DBClusterIdentifier": "aurora-1"}]}
 
         with patch("boto3.client", return_value=mock_rds):
             instances, clusters, cost = _audit_region_databases("eu-west-1")
@@ -151,9 +149,7 @@ class TestAuditRegionDatabasesInstances:
     def test_audit_region_with_both(self, capsys):
         """Test auditing region with both instances and clusters."""
         mock_rds = MagicMock()
-        mock_rds.describe_db_instances.return_value = {
-            "DBInstances": [{"DBInstanceIdentifier": "standalone-db", **DB_INSTANCE_SUMMARY}]
-        }
+        mock_rds.describe_db_instances.return_value = {"DBInstances": [{"DBInstanceIdentifier": "standalone-db", **DB_INSTANCE_SUMMARY}]}
         mock_rds.describe_db_clusters.return_value = {"DBClusters": [AURORA_MYSQL_CLUSTER]}
 
         with patch("boto3.client", return_value=mock_rds):
@@ -174,18 +170,14 @@ class TestAuditRdsDatabasesBasic:
     def test_audit_rds_databases_no_resources(self, capsys):
         """Test auditing with no RDS resources."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_regions.return_value = {
-            "Regions": [{"RegionName": "us-east-1"}, {"RegionName": "us-west-2"}]
-        }
+        mock_ec2.describe_regions.return_value = {"Regions": [{"RegionName": "us-east-1"}, {"RegionName": "us-west-2"}]}
 
         mock_rds = MagicMock()
         mock_rds.describe_db_instances.return_value = {"DBInstances": []}
         mock_rds.describe_db_clusters.return_value = {"DBClusters": []}
 
         with patch("boto3.client") as mock_client:
-            mock_client.side_effect = lambda service, **kwargs: (
-                mock_ec2 if service == "ec2" else mock_rds
-            )
+            mock_client.side_effect = lambda service, **kwargs: (mock_ec2 if service == "ec2" else mock_rds)
             audit_rds_databases()
 
         captured = capsys.readouterr()
@@ -212,9 +204,7 @@ class TestAuditRdsDatabasesBasic:
         mock_rds.describe_db_clusters.return_value = {"DBClusters": []}
 
         with patch("boto3.client") as mock_client:
-            mock_client.side_effect = lambda service, **kwargs: (
-                mock_ec2 if service == "ec2" else mock_rds
-            )
+            mock_client.side_effect = lambda service, **kwargs: (mock_ec2 if service == "ec2" else mock_rds)
             audit_rds_databases()
 
         captured = capsys.readouterr()
@@ -228,22 +218,16 @@ class TestAuditRdsDatabasesMultiRegion:  # pylint: disable=too-few-public-method
     def test_audit_rds_databases_with_resources(self, capsys):
         """Test auditing with multiple RDS resources across regions."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_regions.return_value = {
-            "Regions": [{"RegionName": "us-east-1"}, {"RegionName": "eu-west-2"}]
-        }
+        mock_ec2.describe_regions.return_value = {"Regions": [{"RegionName": "us-east-1"}, {"RegionName": "eu-west-2"}]}
 
         def create_rds_client(region):
             mock_rds = MagicMock()
             if region == "us-east-1":
-                mock_rds.describe_db_instances.return_value = {
-                    "DBInstances": [{"DBInstanceIdentifier": "prod-db", **DB_INSTANCE_SUMMARY}]
-                }
+                mock_rds.describe_db_instances.return_value = {"DBInstances": [{"DBInstanceIdentifier": "prod-db", **DB_INSTANCE_SUMMARY}]}
                 mock_rds.describe_db_clusters.return_value = {"DBClusters": []}
             else:
                 mock_rds.describe_db_instances.return_value = {"DBInstances": []}
-                mock_rds.describe_db_clusters.return_value = {
-                    "DBClusters": [AURORA_POSTGRES_CLUSTER]
-                }
+                mock_rds.describe_db_clusters.return_value = {"DBClusters": [AURORA_POSTGRES_CLUSTER]}
             return mock_rds
 
         run_audit_with_mock_clients(mock_ec2, create_rds_client)
@@ -276,9 +260,7 @@ class TestMain:
         mock_rds.describe_db_clusters.return_value = {"DBClusters": []}
 
         with patch("boto3.client") as mock_client:
-            mock_client.side_effect = lambda service, **kwargs: (
-                mock_ec2 if service == "ec2" else mock_rds
-            )
+            mock_client.side_effect = lambda service, **kwargs: (mock_ec2 if service == "ec2" else mock_rds)
             main()
 
         captured = capsys.readouterr()

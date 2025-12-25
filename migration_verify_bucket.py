@@ -51,9 +51,7 @@ class BucketVerifier:  # pylint: disable=too-few-public-methods
         self.inventory_checker.check_inventory(expected_keys, local_keys)
         print(f"  ✓ All {expected_files:,} files present (no missing or extra files)")
         print()
-        verify_results = self.checksum_verifier.verify_files(
-            local_files, expected_file_map, expected_files, expected_size
-        )
+        verify_results = self.checksum_verifier.verify_files(local_files, expected_file_map, expected_files, expected_size)
         verified_count = verify_results["verified_count"]
         size_verified = verify_results["size_verified"]
         checksum_verified = verify_results["checksum_verified"]

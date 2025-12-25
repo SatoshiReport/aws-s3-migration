@@ -262,9 +262,7 @@ def _monitor_migration_progress(ssm, instance_id, command_id):
 
     while elapsed_time < max_wait_time:
         try:
-            command_status = ssm.get_command_invocation(
-                CommandId=command_id, InstanceId=instance_id
-            )
+            command_status = ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
 
             status = command_status["Status"]
             print(f"Status: {status} (elapsed: {elapsed_time//60}m {elapsed_time%60}s)")

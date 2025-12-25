@@ -41,9 +41,7 @@ def test_create_s3_bucket_if_not_exists_creates_bucket(_mock_print, mock_create)
 
     assert result is True
     mock_create.assert_called_once_with(mock_s3, "test-bucket", "us-west-2")
-    mock_s3.put_bucket_versioning.assert_called_once_with(
-        Bucket="test-bucket", VersioningConfiguration={"Status": "Enabled"}
-    )
+    mock_s3.put_bucket_versioning.assert_called_once_with(Bucket="test-bucket", VersioningConfiguration={"Status": "Enabled"})
 
 
 @patch("cost_toolkit.scripts.optimization.snapshot_export_common.create_s3_bucket_with_region")
@@ -53,9 +51,7 @@ def test_create_s3_bucket_if_not_exists_no_versioning(_mock_print, mock_create):
     mock_s3 = MagicMock()
     mock_s3.head_bucket.side_effect = ClientError({"Error": {"Code": "NotFound"}}, "HeadBucket")
 
-    result = create_s3_bucket_if_not_exists(
-        mock_s3, "test-bucket", "us-west-2", enable_versioning=False
-    )
+    result = create_s3_bucket_if_not_exists(mock_s3, "test-bucket", "us-west-2", enable_versioning=False)
 
     assert result is True
     mock_create.assert_called_once()
@@ -68,9 +64,7 @@ def test_create_s3_bucket_if_not_exists_creation_fails(_mock_print, mock_create)
     """Test bucket creation failure."""
     mock_s3 = MagicMock()
     mock_s3.head_bucket.side_effect = ClientError({"Error": {"Code": "NotFound"}}, "HeadBucket")
-    mock_create.side_effect = ClientError(
-        {"Error": {"Code": "BucketAlreadyExists"}}, "CreateBucket"
-    )
+    mock_create.side_effect = ClientError({"Error": {"Code": "BucketAlreadyExists"}}, "CreateBucket")
 
     result = create_s3_bucket_if_not_exists(mock_s3, "test-bucket", "us-west-2")
 
@@ -86,18 +80,14 @@ def test_setup_s3_bucket_versioning_success(_mock_print):
     result = setup_s3_bucket_versioning(mock_s3, "test-bucket")
 
     assert result is True
-    mock_s3.put_bucket_versioning.assert_called_once_with(
-        Bucket="test-bucket", VersioningConfiguration={"Status": "Enabled"}
-    )
+    mock_s3.put_bucket_versioning.assert_called_once_with(Bucket="test-bucket", VersioningConfiguration={"Status": "Enabled"})
 
 
 @patch("builtins.print")
 def test_setup_s3_bucket_versioning_failure(_mock_print):
     """Test versioning setup failure."""
     mock_s3 = MagicMock()
-    mock_s3.put_bucket_versioning.side_effect = ClientError(
-        {"Error": {"Code": "AccessDenied"}}, "PutBucketVersioning"
-    )
+    mock_s3.put_bucket_versioning.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "PutBucketVersioning")
 
     result = setup_s3_bucket_versioning(mock_s3, "test-bucket")
 
@@ -270,9 +260,7 @@ def test_start_ami_export_task_with_snapshot_id(_mock_print):
     mock_ec2 = MagicMock()
     mock_ec2.export_image.return_value = {"ExportImageTaskId": "export-12345"}
 
-    task_id, _ = start_ami_export_task(
-        mock_ec2, "ami-12345678", "test-bucket", snapshot_id="snap-12345678"
-    )
+    task_id, _ = start_ami_export_task(mock_ec2, "ami-12345678", "test-bucket", snapshot_id="snap-12345678")
 
     assert task_id == "export-12345"
     call_kwargs = mock_ec2.export_image.call_args[1]

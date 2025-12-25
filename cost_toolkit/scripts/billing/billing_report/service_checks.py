@@ -85,15 +85,12 @@ def _check_lightsail_databases_in_region(lightsail_client):
     return stopped_count, total_count
 
 
-def _format_lightsail_status(
-    total_resources, stopped_resources, stopped_instances, stopped_databases
-):
+def _format_lightsail_status(total_resources, stopped_resources, stopped_instances, stopped_databases):
     """Format status message for Lightsail resources."""
     if total_resources > 0 and stopped_resources == total_resources:
         return (
             True,
-            f"✅ RESOLVED - All Lightsail resources stopped "
-            f"({stopped_instances} instances, {stopped_databases} databases)",
+            f"✅ RESOLVED - All Lightsail resources stopped " f"({stopped_instances} instances, {stopped_databases} databases)",
         )
     if stopped_resources > 0:
         return (
@@ -143,9 +140,7 @@ def check_lightsail_status():
     total_resources = total_instances + total_databases
     stopped_resources = stopped_instances + stopped_databases
 
-    return _format_lightsail_status(
-        total_resources, stopped_resources, stopped_instances, stopped_databases
-    )
+    return _format_lightsail_status(total_resources, stopped_resources, stopped_instances, stopped_databases)
 
 
 def _check_cloudwatch_canaries_in_region(synthetics_client):
@@ -242,6 +237,4 @@ def check_cloudwatch_status():
     if len(failed_regions) == len(regions):
         raise ServiceCheckError(f"Failed to check CloudWatch in all regions: {failed_regions}")
 
-    return _format_cloudwatch_status(
-        total_canaries, stopped_canaries, total_alarms, disabled_alarms
-    )
+    return _format_cloudwatch_status(total_canaries, stopped_canaries, total_alarms, disabled_alarms)

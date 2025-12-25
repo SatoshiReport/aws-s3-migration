@@ -112,17 +112,13 @@ class TestSetupAwsCredentials:
 
     def test_setup_aws_credentials_with_env_path(self):
         """Test setup_aws_credentials with custom env path."""
-        with patch(
-            "cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=True
-        ) as mock_load:
+        with patch("cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=True) as mock_load:
             setup_aws_credentials(env_path="/custom/.env")
             mock_load.assert_called_once_with(env_path="/custom/.env")
 
     def test_setup_aws_credentials_with_none_env_path(self):
         """Test setup_aws_credentials with None env path."""
-        with patch(
-            "cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=True
-        ) as mock_load:
+        with patch("cost_toolkit.common.credential_utils.setup_aws_credentials", return_value=True) as mock_load:
             setup_aws_credentials(env_path=None)
             mock_load.assert_called_once_with(env_path=None)
 
@@ -191,9 +187,7 @@ class TestGetInstanceInfoBasicRetrieval:
 
             assert_equal(result["InstanceId"], "i-1234567890abcdef0")
             assert_equal(result["InstanceType"], "t2.micro")
-            mock_ec2_client.describe_instances.assert_called_once_with(
-                InstanceIds=["i-1234567890abcdef0"]
-            )
+            mock_ec2_client.describe_instances.assert_called_once_with(InstanceIds=["i-1234567890abcdef0"])
 
     def test_get_instance_info_multiple_calls(self):
         """Test get_instance_info with multiple sequential calls."""

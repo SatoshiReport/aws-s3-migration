@@ -47,9 +47,7 @@ def build_directory_index_from_db(  # pylint: disable=too-many-locals
     conn.row_factory = sqlite3.Row
     try:
         try:
-            total_files = conn.execute(
-                "SELECT COUNT(*) FROM files WHERE key NOT LIKE '%/'"
-            ).fetchone()[0]
+            total_files = conn.execute("SELECT COUNT(*) FROM files WHERE key NOT LIKE '%/'").fetchone()[0]
         except sqlite3.OperationalError as exc:
             raise FilesTableReadError(db_path) from exc
         progress = ProgressPrinter(total_files, progress_label)
@@ -80,9 +78,7 @@ def build_directory_index_from_db(  # pylint: disable=too-many-locals
             raise
         finally:
             elapsed = time.time() - start_time
-            progress.finish(
-                f"{progress_label} processed {processed:,}/{total_files:,} files in {elapsed:.1f}s"
-            )
+            progress.finish(f"{progress_label} processed {processed:,}/{total_files:,} files in {elapsed:.1f}s")
     finally:
         conn.close()
     index.finalize()
@@ -90,17 +86,11 @@ def build_directory_index_from_db(  # pylint: disable=too-many-locals
     return index, fingerprint
 
 
-def apply_thresholds(
-    clusters: Sequence[DuplicateCluster], min_files: int, min_bytes: int
-) -> List[DuplicateCluster]:
+def apply_thresholds(clusters: Sequence[DuplicateCluster], min_files: int, min_bytes: int) -> List[DuplicateCluster]:
     """Filter clusters down to nodes meeting file and size thresholds."""
     filtered: List[DuplicateCluster] = []
     for cluster in clusters:
-        nodes = [
-            node
-            for node in cluster.nodes
-            if node.total_files > min_files and node.total_size >= min_bytes
-        ]
+        nodes = [node for node in cluster.nodes if node.total_files > min_files and node.total_size >= min_bytes]
         if len(nodes) >= MIN_DUPLICATE_NODES:
             filtered.append(DuplicateCluster(cluster.signature, nodes))
     return filtered
@@ -151,10 +141,7 @@ def render_report_rows(cluster_rows: List[ClusterRow], base_path: Path) -> str:
         nodes = sort_node_rows(cluster["nodes"])
         for node in nodes:
             path_tuple = tuple(node["path"])
-            buffer.write(
-                f"  - {format_bytes(node['total_size']):>12}  "
-                f"{path_on_disk(base_path, path_tuple)}\n"
-            )
+            buffer.write(f"  - {format_bytes(node['total_size']):>12}  " f"{path_on_disk(base_path, path_tuple)}\n")
         buffer.write("\n")
     return buffer.getvalue()
 
@@ -172,9 +159,7 @@ def path_on_disk(base_path: Path, node_path: PathTuple) -> Path:
     return base_path.joinpath(*node_path)
 
 
-def recompute_clusters_for_deletion(
-    index: DirectoryIndex, min_files: int, min_bytes: int
-) -> List[ClusterRow]:
+def recompute_clusters_for_deletion(index: DirectoryIndex, min_files: int, min_bytes: int) -> List[ClusterRow]:
     """Recompute duplicate clusters when cached data lacks structured rows."""
     clusters = find_exact_duplicates(index)
     clusters = apply_thresholds(clusters, min_files, min_bytes)

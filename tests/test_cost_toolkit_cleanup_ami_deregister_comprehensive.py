@@ -35,9 +35,7 @@ class TestDeregisterAmi:
     def test_deregister_ami_error(self, capsys):
         """Test error when deregistering AMI."""
         mock_client = MagicMock()
-        mock_client.deregister_image.side_effect = ClientError(
-            {"Error": {"Code": "InvalidAMIID.NotFound"}}, "deregister_image"
-        )
+        mock_client.deregister_image.side_effect = ClientError({"Error": {"Code": "InvalidAMIID.NotFound"}}, "deregister_image")
 
         result = deregister_ami(mock_client, "ami-notfound", "us-east-1")
 
@@ -254,8 +252,7 @@ class TestBulkDeregisterUnusedAmis:
         ):
             with patch("builtins.input", return_value="DEREGISTER ALL AMIS"):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk."
-                    "process_ami_deregistrations",
+                    "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk." "process_ami_deregistrations",
                     return_value=(5, 0, 50.0),
                 ):
                     bulk_deregister_unused_amis()
@@ -270,9 +267,7 @@ class TestMain:
 
     def test_main_success(self):
         """Test main function successful execution."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.bulk_deregister_unused_amis"
-        ):
+        with patch("cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.bulk_deregister_unused_amis"):
             main()
 
     def test_main_client_error(self, capsys):

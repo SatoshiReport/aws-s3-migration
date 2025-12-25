@@ -145,9 +145,7 @@ def test_get_volume_details_combined(capsys):
 
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
-        mock_ec2.describe_volumes.side_effect = ClientError(
-            {"Error": {"Code": "InvalidVolume.NotFound"}}, "describe_volumes"
-        )
+        mock_ec2.describe_volumes.side_effect = ClientError({"Error": {"Code": "InvalidVolume.NotFound"}}, "describe_volumes")
         mock_client.return_value = mock_ec2
         result = get_volume_details("vol-notfound", "us-east-1")
         assert result is None
@@ -186,9 +184,7 @@ class TestCheckAndPrintVolumes:
                 }
             ]
         }
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details"
-        ) as mock_get:
+        with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details") as mock_get:
             mock_get.return_value = {
                 "volume_id": "vol-123",
                 "name": "root",
@@ -210,9 +206,7 @@ class TestCheckAndPrintVolumes:
                 }
             ]
         }
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details"
-        ) as mock_get:
+        with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details") as mock_get:
             mock_get.return_value = {
                 "volume_id": "vol-456",
                 "name": "data",

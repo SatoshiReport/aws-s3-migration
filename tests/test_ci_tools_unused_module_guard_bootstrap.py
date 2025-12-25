@@ -38,9 +38,7 @@ def main():
 
     # Create config file
     config_file = tmp_path / "config.json"
-    config_file.write_text(
-        json.dumps({"exclude_patterns": ["tests/"], "suspicious_allow_patterns": ["_v2"]})
-    )
+    config_file.write_text(json.dumps({"exclude_patterns": ["tests/"], "suspicious_allow_patterns": ["_v2"]}))
 
     # Load isolated module
     guard_module = load_shim_module(isolate=True)

@@ -23,10 +23,7 @@ def print_export_summary(snapshots_to_export, total_savings):
     print(f"🎯 Target: {len(snapshots_to_export)} snapshots ({total_size_gb} GB total)")
     print(f"💰 Current monthly cost: ${total_savings['ebs_cost']:.2f}")
     print(f"💰 Future monthly cost: ${total_savings['s3_cost']:.2f}")
-    print(
-        f"💰 Monthly savings: ${total_savings['monthly_savings']:.2f} "
-        f"({total_savings['savings_percentage']:.1f}%)"
-    )
+    print(f"💰 Monthly savings: ${total_savings['monthly_savings']:.2f} " f"({total_savings['savings_percentage']:.1f}%)")
     print(f"💰 Annual savings: ${total_savings['annual_savings']:.2f}")
     print()
 
@@ -79,6 +76,4 @@ SAMPLE_SNAPSHOTS = [
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        "This module is library-only. Import cost_toolkit.scripts.snapshot_export_common instead."
-    )
+    raise SystemExit("This module is library-only. Import cost_toolkit.scripts.snapshot_export_common instead.")

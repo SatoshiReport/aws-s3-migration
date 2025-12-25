@@ -26,9 +26,7 @@ def mock_region_client_success(mock_create_client):
 def mock_region_client_error(mock_create_client, code: str = "AccessDenied"):
     """Configure the EC2 client mock to raise a ClientError for describe_regions."""
     mock_ec2 = MagicMock()
-    mock_ec2.describe_regions.side_effect = ClientError(
-        {"Error": {"Code": code}}, "describe_regions"
-    )
+    mock_ec2.describe_regions.side_effect = ClientError({"Error": {"Code": code}}, "describe_regions")
     mock_create_client.return_value = mock_ec2
     return mock_ec2
 

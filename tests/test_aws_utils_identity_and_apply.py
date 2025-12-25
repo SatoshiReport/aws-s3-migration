@@ -19,9 +19,7 @@ def test_get_aws_identity_fetches_identity_details():
     fake_sts.get_caller_identity.return_value = {"Account": "123456789012"}
 
     fake_iam = mock.Mock()
-    fake_iam.get_user.return_value = {
-        "User": {"UserName": "tester", "Arn": "arn:aws:iam::123:user/tester"}
-    }
+    fake_iam.get_user.return_value = {"User": {"UserName": "tester", "Arn": "arn:aws:iam::123:user/tester"}}
 
     with mock.patch("aws_utils.get_boto3_clients", return_value=(fake_s3, fake_sts, fake_iam)):
         identity = aws_utils.get_aws_identity()
@@ -40,9 +38,7 @@ def test_get_aws_identity_calls_correct_apis():
     fake_sts.get_caller_identity.return_value = {"Account": "111111111111"}
 
     fake_iam = mock.Mock()
-    fake_iam.get_user.return_value = {
-        "User": {"UserName": "myuser", "Arn": "arn:aws:iam::111111111111:user/myuser"}
-    }
+    fake_iam.get_user.return_value = {"User": {"UserName": "myuser", "Arn": "arn:aws:iam::111111111111:user/myuser"}}
 
     with mock.patch("aws_utils.get_boto3_clients", return_value=(fake_s3, fake_sts, fake_iam)):
         aws_utils.get_aws_identity()
@@ -58,9 +54,7 @@ def test_get_aws_identity_returns_dict():
     fake_sts.get_caller_identity.return_value = {"Account": "123456789012"}
 
     fake_iam = mock.Mock()
-    fake_iam.get_user.return_value = {
-        "User": {"UserName": "user", "Arn": "arn:aws:iam::123456789012:user/user"}
-    }
+    fake_iam.get_user.return_value = {"User": {"UserName": "user", "Arn": "arn:aws:iam::123456789012:user/user"}}
 
     with mock.patch("aws_utils.get_boto3_clients", return_value=(fake_s3, fake_sts, fake_iam)):
         result = aws_utils.get_aws_identity()

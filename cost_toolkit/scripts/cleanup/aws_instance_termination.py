@@ -99,9 +99,7 @@ def _check_and_print_volumes(instance_info, region):
 def _disable_termination_protection(ec2_client, instance_id):
     """Disable termination protection if enabled."""
     try:
-        ec2_client.modify_instance_attribute(
-            InstanceId=instance_id, DisableApiTermination={"Value": False}
-        )
+        ec2_client.modify_instance_attribute(InstanceId=instance_id, DisableApiTermination={"Value": False})
         print("🔓 Disabled termination protection")
     except ClientError as e:
         print(f"ℹ️  Termination protection check: {str(e)}")

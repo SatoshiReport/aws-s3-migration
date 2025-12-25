@@ -67,9 +67,7 @@ def test_check_dlm_lifecycle_policies_success():
     """Test check_dlm_lifecycle_policies with successful response."""
     with patch("boto3.client") as mock_client:
         mock_dlm = MagicMock()
-        mock_dlm.get_lifecycle_policies.return_value = {
-            "Policies": [{"PolicyId": "policy-1"}, {"PolicyId": "policy-2"}]
-        }
+        mock_dlm.get_lifecycle_policies.return_value = {"Policies": [{"PolicyId": "policy-1"}, {"PolicyId": "policy-2"}]}
         mock_client.return_value = mock_dlm
 
         result = check_dlm_lifecycle_policies("us-east-1")
@@ -130,9 +128,7 @@ def test_check_aws_backup_plans_success():
     """Test check_aws_backup_plans with successful response."""
     with patch("boto3.client") as mock_client:
         mock_backup = MagicMock()
-        mock_backup.list_backup_plans.return_value = {
-            "BackupPlansList": [{"BackupPlanId": "plan-1"}, {"BackupPlanId": "plan-2"}]
-        }
+        mock_backup.list_backup_plans.return_value = {"BackupPlansList": [{"BackupPlanId": "plan-1"}, {"BackupPlanId": "plan-2"}]}
         mock_client.return_value = mock_backup
 
         result = check_aws_backup_plans("us-east-1")

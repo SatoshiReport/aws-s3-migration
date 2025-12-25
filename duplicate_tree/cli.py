@@ -48,10 +48,7 @@ def _add_module_specific_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--delete",
         action="store_true",
-        help=(
-            "After reporting duplicates, delete every directory except the first entry "
-            "in each cluster (requires confirmation)."
-        ),
+        help=("After reporting duplicates, delete every directory except the first entry " "in each cluster (requires confirmation)."),
     )
 
 
@@ -59,10 +56,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
     """Parse CLI arguments controlling database path, base path, and tolerance."""
     # pylint: disable=no-member  # Attributes imported from config_local at runtime
     parser = create_migration_cli_parser(
-        description=(
-            "Detect exact duplicate directory trees on the external drive "
-            "using migrate_v2's SQLite metadata."
-        ),
+        description=("Detect exact duplicate directory trees on the external drive " "using migrate_v2's SQLite metadata."),
         db_path_default=config_module.STATE_DB_PATH,
         base_path_default=config_module.LOCAL_BASE_PATH,
         add_custom_args=_add_module_specific_args,
@@ -77,9 +71,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     base_path = Path(args.base_path).expanduser()
     db_path = Path(args.db_path).expanduser()
 
-    db_path = handle_state_db_reset(
-        base_path, db_path, args.reset_state_db, args.yes, reseed_state_db_from_local_drive
-    )
+    db_path = handle_state_db_reset(base_path, db_path, args.reset_state_db, args.yes, reseed_state_db_from_local_drive)
 
     if not db_path.exists():
         print(f"State DB not found at {db_path}. Run migrate_v2 first.", file=sys.stderr)
@@ -112,10 +104,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.delete:
         if cluster_rows is None:
-            print(
-                "Cached report lacks structured duplicate data. "
-                "Recomputing duplicates to prepare deletion plan..."
-            )
+            print("Cached report lacks structured duplicate data. " "Recomputing duplicates to prepare deletion plan...")
             cluster_rows = recompute_clusters_for_deletion(index, min_files, min_bytes)
         delete_duplicate_directories(cluster_rows or [], base_path)
 

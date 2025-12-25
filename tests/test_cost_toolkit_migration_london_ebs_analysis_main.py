@@ -53,17 +53,11 @@ def test_analyze_running_instance(capsys):
 def test_analyze_stopped_instance(capsys):
     """Test analyzing a stopped instance."""
     with (
-        patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_analysis.aws_utils.setup_aws_credentials"
-        ),
-        patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_analysis.boto3.client"
-        ) as mock_boto_client,
+        patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis.aws_utils.setup_aws_credentials"),
+        patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis.boto3.client") as mock_boto_client,
         patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis._print_volume_details"),
         patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis._check_unattached_volume"),
-        patch(
-            "cost_toolkit.scripts.migration.aws_london_ebs_analysis._start_stopped_instance"
-        ) as mock_start_instance,
+        patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis._start_stopped_instance") as mock_start_instance,
         patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis._analyze_snapshots"),
         patch("cost_toolkit.scripts.migration.aws_london_ebs_analysis._print_recommendations"),
     ):

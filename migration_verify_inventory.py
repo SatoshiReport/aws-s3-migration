@@ -57,9 +57,7 @@ def _scan_local_directory(base_path: Path, bucket: str, expected_files: int) -> 
     return local_files
 
 
-def _partition_inventory(
-    expected_keys: Set[str], local_keys: Set[str]
-) -> Tuple[Set[str], Set[str], int]:
+def _partition_inventory(expected_keys: Set[str], local_keys: Set[str]) -> Tuple[Set[str], Set[str], int]:
     missing_files = expected_keys - local_keys
     extra_files_raw = local_keys - expected_keys
     extra_files = {key for key in extra_files_raw if not should_ignore_key(key)}

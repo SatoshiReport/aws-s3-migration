@@ -61,9 +61,7 @@ class TestPhasePersistence:
         phase_mgr.set_phase(Phase.SYNCING)
 
         with db_conn.get_connection() as conn:
-            row = conn.execute(
-                "SELECT value FROM migration_metadata WHERE key = 'current_phase'"
-            ).fetchone()
+            row = conn.execute("SELECT value FROM migration_metadata WHERE key = 'current_phase'").fetchone()
 
         assert row["value"] == Phase.SYNCING.value
 
@@ -111,9 +109,7 @@ def test_full_migration_workflow(migration_state):
         "2024-01-01T00:00:00Z",
     )
 
-    migration_state.save_bucket_status(
-        "test-bucket", 2, 3000, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True
-    )
+    migration_state.save_bucket_status("test-bucket", 2, 3000, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True)
 
     assert migration_state.get_current_phase() == Phase.SCANNING
 
@@ -147,9 +143,7 @@ def test_glacier_restore_workflow(migration_state):
 
 def test_phase_progression(migration_state):
     """Test progressing through migration phases"""
-    migration_state.save_bucket_status(
-        "test-bucket", 2, 3000, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True
-    )
+    migration_state.save_bucket_status("test-bucket", 2, 3000, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True)
 
     migration_state.set_current_phase(Phase.GLACIER_WAIT)
     assert migration_state.get_current_phase() == Phase.GLACIER_WAIT
@@ -178,13 +172,9 @@ def test_phase_progression(migration_state):
 
 def test_multiple_buckets_independentstates(migration_state):
     """Test that multiple buckets maintain independent states"""
-    migration_state.add_file(
-        "bucket-a", "file1.txt", 1000, "abc1", "STANDARD", "2024-01-01T00:00:00Z"
-    )
+    migration_state.add_file("bucket-a", "file1.txt", 1000, "abc1", "STANDARD", "2024-01-01T00:00:00Z")
 
-    migration_state.add_file(
-        "bucket-b", "file2.txt", 2000, "def1", "STANDARD", "2024-01-01T00:00:00Z"
-    )
+    migration_state.add_file("bucket-b", "file2.txt", 2000, "def1", "STANDARD", "2024-01-01T00:00:00Z")
 
     migration_state.save_bucket_status("bucket-a", 1, 1000, {"STANDARD": 1}, scan_complete=True)
     migration_state.save_bucket_status("bucket-b", 1, 2000, {"STANDARD": 1}, scan_complete=True)
@@ -198,15 +188,9 @@ def test_multiple_buckets_independentstates(migration_state):
 
 def test_get_scan_summary_integration(migration_state):
     """Test getting scan summary through integrated managers"""
-    migration_state.add_file(
-        "bucket-a", "file1.txt", 1000, "abc1", "STANDARD", "2024-01-01T00:00:00Z"
-    )
-    migration_state.add_file(
-        "bucket-a", "file2.txt", 2000, "abc2", "GLACIER", "2024-01-01T00:00:00Z"
-    )
-    migration_state.add_file(
-        "bucket-b", "file3.txt", 3000, "def1", "STANDARD", "2024-01-01T00:00:00Z"
-    )
+    migration_state.add_file("bucket-a", "file1.txt", 1000, "abc1", "STANDARD", "2024-01-01T00:00:00Z")
+    migration_state.add_file("bucket-a", "file2.txt", 2000, "abc2", "GLACIER", "2024-01-01T00:00:00Z")
+    migration_state.add_file("bucket-b", "file3.txt", 3000, "def1", "STANDARD", "2024-01-01T00:00:00Z")
 
     migration_state.save_bucket_status("bucket-a", 2, 3000, {"STANDARD": 1, "GLACIER": 1}, True)
     migration_state.save_bucket_status("bucket-b", 1, 3000, {"STANDARD": 1}, True)

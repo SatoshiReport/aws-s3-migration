@@ -143,9 +143,7 @@ def test_terminate_instance_success(mock_create_client, mock_print):
     mock_ec2 = MagicMock()
     mock_create_client.return_value = mock_ec2
     mock_ec2.terminate_instances.return_value = {
-        "TerminatingInstances": [
-            {"CurrentState": {"Name": "shutting-down"}, "PreviousState": {"Name": "running"}}
-        ]
+        "TerminatingInstances": [{"CurrentState": {"Name": "shutting-down"}, "PreviousState": {"Name": "running"}}]
     }
 
     result = terminate_instance("us-east-1", "i-1234567890abcdef0")
@@ -168,9 +166,7 @@ def test_terminate_instance_with_credentials(mock_create_client, mock_print):
     mock_ec2 = MagicMock()
     mock_create_client.return_value = mock_ec2
     mock_ec2.terminate_instances.return_value = {
-        "TerminatingInstances": [
-            {"CurrentState": {"Name": "shutting-down"}, "PreviousState": {"Name": "stopped"}}
-        ]
+        "TerminatingInstances": [{"CurrentState": {"Name": "shutting-down"}, "PreviousState": {"Name": "stopped"}}]
     }
 
     result = terminate_instance(

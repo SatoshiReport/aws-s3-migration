@@ -32,8 +32,7 @@ class TestProcessSingleAccelerator:
                 return_value=True,
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup."
-                    "delete_accelerator",
+                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup." "delete_accelerator",
                     return_value=True,
                 ):
                     success, cost = process_single_accelerator(accelerator)
@@ -99,8 +98,7 @@ class TestProcessSingleAccelerator:
                 return_value=True,
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup."
-                    "delete_accelerator",
+                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup." "delete_accelerator",
                     return_value=True,
                 ):
                     _, _ = process_single_accelerator(accelerator)
@@ -156,9 +154,7 @@ class TestMain:
     def test_main_no_accelerators(self, capsys):
         """Test main when no accelerators found."""
         with patch("builtins.input", return_value="DELETE"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.setup_aws_credentials"
-            ):
+            with patch("cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.setup_aws_credentials"):
                 with patch(
                     "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.list_accelerators",
                     return_value=[],
@@ -178,16 +174,13 @@ class TestMain:
         }
 
         with patch("builtins.input", return_value="DELETE"):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.setup_aws_credentials"
-            ):
+            with patch("cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.setup_aws_credentials"):
                 with patch(
                     "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.list_accelerators",
                     return_value=[accelerator],
                 ):
                     with patch(
-                        "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup."
-                        "process_single_accelerator",
+                        "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup." "process_single_accelerator",
                         return_value=(True, 18.0),
                     ):
                         main()

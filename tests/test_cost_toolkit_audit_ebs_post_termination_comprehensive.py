@@ -177,9 +177,7 @@ class TestGetEbsVolumesByRegion:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_client.return_value = mock_ec2
-            mock_ec2.describe_volumes.side_effect = ClientError(
-                {"Error": {"Code": "UnauthorizedOperation"}}, "describe_volumes"
-            )
+            mock_ec2.describe_volumes.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "describe_volumes")
 
             result = get_ebs_volumes_by_region("us-east-1")
 

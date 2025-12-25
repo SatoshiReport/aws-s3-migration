@@ -73,9 +73,7 @@ class TestGetSnapshotDetails:
         """Test error when retrieving snapshot details."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_snapshots.side_effect = ClientError(
-                {"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots"
-            )
+            mock_ec2.describe_snapshots.side_effect = ClientError({"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots")
             mock_client.return_value = mock_ec2
 
             with pytest.raises(ClientError):
@@ -117,9 +115,7 @@ class TestDeleteSnapshotSafely:
     def test_delete_snapshot_success(self, capsys):
         """Test successful snapshot deletion."""
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details"
-            ) as mock_get:
+            with patch("cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details") as mock_get:
                 mock_ec2 = MagicMock()
                 mock_client.return_value = mock_ec2
 
@@ -142,13 +138,9 @@ class TestDeleteSnapshotSafely:
     def test_delete_snapshot_error(self, capsys):
         """Test error during snapshot deletion."""
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details"
-            ) as mock_get:
+            with patch("cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details") as mock_get:
                 mock_ec2 = MagicMock()
-                mock_ec2.delete_snapshot.side_effect = ClientError(
-                    {"Error": {"Code": "ServiceError"}}, "delete_snapshot"
-                )
+                mock_ec2.delete_snapshot.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_snapshot")
                 mock_client.return_value = mock_ec2
 
                 mock_get.return_value = {
@@ -168,15 +160,11 @@ class TestDeleteSnapshotSafely:
     def test_delete_snapshot_details_failure(self, capsys):
         """Test failure when snapshot details cannot be retrieved."""
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details"
-            ) as mock_get:
+            with patch("cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details") as mock_get:
                 mock_ec2 = MagicMock()
                 mock_client.return_value = mock_ec2
 
-                mock_get.side_effect = ClientError(
-                    {"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots"
-                )
+                mock_get.side_effect = ClientError({"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots")
 
                 result = delete_snapshot_safely("snap-123", "us-east-1")
 
@@ -235,9 +223,7 @@ class TestProcessBulkDeletions:
             "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.find_resource_region",
             return_value="us-east-1",
         ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details"
-            ) as mock_get:
+            with patch("cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details") as mock_get:
                 with patch(
                     "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.delete_snapshot_safely",
                     return_value=True,
@@ -274,9 +260,7 @@ class TestProcessBulkDeletions:
             "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.find_resource_region",
             return_value="us-east-1",
         ):
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details"
-            ) as mock_get:
+            with patch("cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.get_snapshot_details") as mock_get:
                 with patch(
                     "cost_toolkit.scripts.cleanup.aws_snapshot_bulk_delete.delete_snapshot_safely",
                     side_effect=[True, False, True],

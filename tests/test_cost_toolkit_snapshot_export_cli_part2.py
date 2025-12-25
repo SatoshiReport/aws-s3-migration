@@ -41,9 +41,7 @@ def test_export_single_snapshot_to_s3_cleanup_failure_prints_warning(  # pylint:
     mock_setup_bucket.return_value = "test-bucket"
     mock_create_ami.return_value = "ami-123"
     mock_export_ami.side_effect = ExportTaskDeletedException("Export was deleted")
-    mock_cleanup_ami.side_effect = ClientError(
-        {"Error": {"Code": "InvalidAMIID.NotFound"}}, "DeregisterImage"
-    )
+    mock_cleanup_ami.side_effect = ClientError({"Error": {"Code": "InvalidAMIID.NotFound"}}, "DeregisterImage")
 
     snapshot_info = {
         "snapshot_id": "snap-789",
@@ -55,10 +53,7 @@ def test_export_single_snapshot_to_s3_cleanup_failure_prints_warning(  # pylint:
     with pytest.raises(ExportTaskDeletedException):
         export_single_snapshot_to_s3(snapshot_info, "access_key", "secret_key")
 
-    warning_printed = any(
-        "⚠️" in str(call_args) and "ami-123" in str(call_args)
-        for call_args in mock_print.call_args_list
-    )
+    warning_printed = any("⚠️" in str(call_args) and "ami-123" in str(call_args) for call_args in mock_print.call_args_list)
     assert warning_printed, "Expected warning message about AMI cleanup failure"
 
 
@@ -82,12 +77,8 @@ def test_export_single_snapshot_to_s3_client_error_cleanup_failure(  # pylint: d
     mock_setup_clients.return_value = (mock_ec2, mock_s3)
     mock_setup_bucket.return_value = "test-bucket"
     mock_create_ami.return_value = "ami-cleanup-fail"
-    mock_export_ami.side_effect = ClientError(
-        {"Error": {"Code": "ServiceUnavailable"}}, "ExportImage"
-    )
-    mock_cleanup_ami.side_effect = ClientError(
-        {"Error": {"Code": "RequestLimitExceeded"}}, "DeregisterImage"
-    )
+    mock_export_ami.side_effect = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "ExportImage")
+    mock_cleanup_ami.side_effect = ClientError({"Error": {"Code": "RequestLimitExceeded"}}, "DeregisterImage")
 
     snapshot_info = {
         "snapshot_id": "snap-cleanup-test",
@@ -99,10 +90,7 @@ def test_export_single_snapshot_to_s3_client_error_cleanup_failure(  # pylint: d
     with pytest.raises(ClientError):
         export_single_snapshot_to_s3(snapshot_info, "access_key", "secret_key")
 
-    warning_printed = any(
-        "⚠️" in str(call_args) and "ami-cleanup-fail" in str(call_args)
-        for call_args in mock_print.call_args_list
-    )
+    warning_printed = any("⚠️" in str(call_args) and "ami-cleanup-fail" in str(call_args) for call_args in mock_print.call_args_list)
     assert warning_printed, "Expected warning message about AMI cleanup failure"
 
 
@@ -150,9 +138,7 @@ def test_print_final_summary_fixed_with_results(mock_print, mock_print_results):
     _print_final_summary_fixed(2, export_results, snapshots)
 
     mock_print_results.assert_called_once_with(export_results)
-    delete_commands_printed = any(
-        "delete-snapshot" in str(call_args) for call_args in mock_print.call_args_list
-    )
+    delete_commands_printed = any("delete-snapshot" in str(call_args) for call_args in mock_print.call_args_list)
     assert delete_commands_printed, "Expected delete-snapshot commands to be printed"
 
 
@@ -234,14 +220,10 @@ def test_export_snapshots_to_s3_fixed_success(
 @patch("cost_toolkit.common.credential_utils.setup_aws_credentials")
 @patch("builtins.input", return_value="NO")
 @patch("builtins.print")
-def test_export_snapshots_to_s3_fixed_cancelled(
-    _mock_print, _mock_input, mock_load_creds, mock_get_snapshots
-):
+def test_export_snapshots_to_s3_fixed_cancelled(_mock_print, _mock_input, mock_load_creds, mock_get_snapshots):
     """Test export_snapshots_to_s3_fixed when user cancels."""
     mock_load_creds.return_value = ("access_key", "secret_key")
-    mock_get_snapshots.return_value = [
-        {"snapshot_id": "snap-1", "region": "us-east-1", "size_gb": 50, "description": "Test 1"}
-    ]
+    mock_get_snapshots.return_value = [{"snapshot_id": "snap-1", "region": "us-east-1", "size_gb": 50, "description": "Test 1"}]
 
     with pytest.raises(ValueError, match="Operation cancelled by user"):
         export_snapshots_to_s3_fixed()

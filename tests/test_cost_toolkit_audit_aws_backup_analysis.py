@@ -131,9 +131,7 @@ class TestAnalyzeRecentSnapshots:
         """Test error when analyzing snapshots."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_snapshots.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_snapshots"
-            )
+            mock_ec2.describe_snapshots.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_snapshots")
             mock_client.return_value = mock_ec2
             analyze_recent_snapshots("us-east-1")
         captured = capsys.readouterr()
@@ -156,9 +154,7 @@ class TestCheckAwsBackupPlans:
             mock_backup = MagicMock()
             mock_backup.list_backup_jobs.return_value = {"BackupJobs": []}
             mock_client.return_value = mock_backup
-            with patch(
-                "cost_toolkit.scripts.audit.aws_backup_audit.get_backup_plans", return_value=plans
-            ):
+            with patch("cost_toolkit.scripts.audit.aws_backup_audit.get_backup_plans", return_value=plans):
                 with patch("cost_toolkit.scripts.audit.aws_backup_audit._display_backup_plan"):
                     check_aws_backup_plans("us-east-1")
         captured = capsys.readouterr()
@@ -170,9 +166,7 @@ class TestCheckAwsBackupPlans:
             mock_backup = MagicMock()
             mock_client.return_value = mock_backup
             with patch("cost_toolkit.scripts.audit.aws_backup_audit.get_backup_plans") as mock_get:
-                mock_get.side_effect = ClientError(
-                    {"Error": {"Code": "UnrecognizedClientException"}}, "list_backup_plans"
-                )
+                mock_get.side_effect = ClientError({"Error": {"Code": "UnrecognizedClientException"}}, "list_backup_plans")
                 check_aws_backup_plans("us-east-1")
 
     def test_check_plans_other_error(self, capsys):
@@ -181,9 +175,7 @@ class TestCheckAwsBackupPlans:
             mock_backup = MagicMock()
             mock_client.return_value = mock_backup
             with patch("cost_toolkit.scripts.audit.aws_backup_audit.get_backup_plans") as mock_get:
-                mock_get.side_effect = ClientError(
-                    {"Error": {"Code": "ServiceError"}}, "list_backup_plans"
-                )
+                mock_get.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_backup_plans")
                 check_aws_backup_plans("us-east-1")
         captured = capsys.readouterr()
         assert "Error checking AWS Backup" in captured.out
@@ -209,9 +201,7 @@ class TestCheckAwsBackupPlans:
                 ]
             }
             mock_client.return_value = mock_backup
-            with patch(
-                "cost_toolkit.scripts.audit.aws_backup_audit.get_backup_plans", return_value=plans
-            ):
+            with patch("cost_toolkit.scripts.audit.aws_backup_audit.get_backup_plans", return_value=plans):
                 with patch("cost_toolkit.scripts.audit.aws_backup_audit._display_backup_plan"):
                     check_aws_backup_plans("us-east-1")
         captured = capsys.readouterr()
@@ -260,9 +250,7 @@ class TestCheckDataLifecycleManager:
         policies = [{"PolicyId": "policy-1", "State": "ENABLED"}]
 
         with patch("boto3.client") as mock_client:
-            mock_client.side_effect = ClientError(
-                {"Error": {"Code": "UnrecognizedClientException"}}, "dlm"
-            )
+            mock_client.side_effect = ClientError({"Error": {"Code": "UnrecognizedClientException"}}, "dlm")
 
             with patch(
                 "cost_toolkit.scripts.audit.aws_backup_audit.check_dlm_lifecycle_policies",
@@ -354,15 +342,9 @@ class TestMain:
         regions = ["eu-west-2", "us-east-2", "us-east-1"]
         with patch("cost_toolkit.scripts.audit.aws_backup_audit.setup_aws_credentials"):
             with patch("cost_toolkit.scripts.audit.aws_backup_audit.check_aws_backup_plans"):
-                with patch(
-                    "cost_toolkit.scripts.audit.aws_backup_audit.check_data_lifecycle_manager"
-                ):
-                    with patch(
-                        "cost_toolkit.scripts.audit.aws_backup_audit.check_scheduled_events"
-                    ):
-                        with patch(
-                            "cost_toolkit.scripts.audit.aws_backup_audit.analyze_recent_snapshots"
-                        ):
+                with patch("cost_toolkit.scripts.audit.aws_backup_audit.check_data_lifecycle_manager"):
+                    with patch("cost_toolkit.scripts.audit.aws_backup_audit.check_scheduled_events"):
+                        with patch("cost_toolkit.scripts.audit.aws_backup_audit.analyze_recent_snapshots"):
                             with patch(
                                 "cost_toolkit.scripts.audit.aws_backup_audit.get_all_aws_regions",
                                 return_value=regions,
@@ -382,15 +364,9 @@ class TestMain:
                 "cost_toolkit.scripts.audit.aws_backup_audit.check_aws_backup_plans",
                 side_effect=ClientError({"Error": {"Code": "AccessDenied"}}, "operation"),
             ):
-                with patch(
-                    "cost_toolkit.scripts.audit.aws_backup_audit.check_data_lifecycle_manager"
-                ):
-                    with patch(
-                        "cost_toolkit.scripts.audit.aws_backup_audit.check_scheduled_events"
-                    ):
-                        with patch(
-                            "cost_toolkit.scripts.audit.aws_backup_audit.analyze_recent_snapshots"
-                        ):
+                with patch("cost_toolkit.scripts.audit.aws_backup_audit.check_data_lifecycle_manager"):
+                    with patch("cost_toolkit.scripts.audit.aws_backup_audit.check_scheduled_events"):
+                        with patch("cost_toolkit.scripts.audit.aws_backup_audit.analyze_recent_snapshots"):
                             with patch(
                                 "cost_toolkit.scripts.audit.aws_backup_audit.get_all_aws_regions",
                                 return_value=["eu-west-2", "us-east-2", "us-east-1"],

@@ -207,9 +207,7 @@ def test_load_or_scan_candidates_from_db(mock_args, mock_db_info):
         "cleanup_temp_artifacts.db_loader._try_load_from_cache",
         return_value=(Path("/cache/test.json"), False, None),
     ):
-        with patch(
-            "cleanup_temp_artifacts.db_loader.scan_candidates_from_db", return_value=[candidate]
-        ):
+        with patch("cleanup_temp_artifacts.db_loader.scan_candidates_from_db", return_value=[candidate]):
             cache_path, cache_used, candidates = _load_or_scan_candidates(
                 conn,
                 cache_config=cache_config,
@@ -274,9 +272,7 @@ def test_perform_scan_operations_with_cache(mock_args, tmp_path):
     mock_stat.st_mtime_ns = 123456789
 
     category = mock_args.categories[0]
-    cached_candidate = Candidate(
-        path=Path("/tmp/cached"), category=category, size_bytes=2048, mtime=54321
-    )
+    cached_candidate = Candidate(path=Path("/tmp/cached"), category=category, size_bytes=2048, mtime=54321)
 
     # Use _try_load_from_cache to properly mock the cache loading
     with patch(

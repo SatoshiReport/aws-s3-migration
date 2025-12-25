@@ -45,20 +45,13 @@ class BucketNotEmptyError(RuntimeError):
     """Raised when S3 bucket cleanup leaves residual objects."""
 
     def __init__(self) -> None:
-        super().__init__(
-            (
-                "Bucket still contains objects after delete pass. "
-                "Re-run deletion once remaining versions are cleared."
-            )
-        )
+        super().__init__(("Bucket still contains objects after delete pass. " "Re-run deletion once remaining versions are cleared."))
 
 
 def should_ignore_key(key: str) -> bool:
     """Return True when the key points at a known system file."""
     file_name = key.split("/")[-1]
-    return any(
-        file_name == pattern or file_name.endswith(pattern) for pattern in IGNORED_FILE_PATTERNS
-    )
+    return any(file_name == pattern or file_name.endswith(pattern) for pattern in IGNORED_FILE_PATTERNS)
 
 
 def check_verification_errors(verification_errors: Sequence[str]) -> None:

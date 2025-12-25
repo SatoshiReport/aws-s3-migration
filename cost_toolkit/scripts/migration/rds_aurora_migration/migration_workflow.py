@@ -51,9 +51,7 @@ def print_migration_results(original_instance, endpoint_info, original_cost, new
     print("=" * 80)
 
     print("\n📊 MIGRATION SUMMARY:")
-    print(
-        f"Original RDS Instance: {original_instance['identifier']} ({original_instance['region']})"
-    )
+    print(f"Original RDS Instance: {original_instance['identifier']} ({original_instance['region']})")
     print(f"New Aurora Cluster: {endpoint_info['cluster_identifier']}")
     print(f"Engine Migration: {original_instance['engine']} → {endpoint_info['engine']}")
     print(f"Cost Reduction: ${original_cost:.2f}/month → ${new_cost:.2f}/month")
@@ -71,10 +69,7 @@ def print_migration_results(original_instance, endpoint_info, original_cost, new
     print("2. Test your application thoroughly with the new Aurora cluster")
     print("3. Monitor Aurora Serverless v2 scaling and performance")
     print("4. Once satisfied, delete the original RDS instance to stop charges:")
-    print(
-        f"   aws rds delete-db-instance --db-instance-identifier "
-        f"{original_instance['identifier']} --skip-final-snapshot"
-    )
+    print(f"   aws rds delete-db-instance --db-instance-identifier " f"{original_instance['identifier']} --skip-final-snapshot")
 
     print("\n⚠️  IMPORTANT NOTES:")
     print("• The original RDS instance is still running and incurring charges")

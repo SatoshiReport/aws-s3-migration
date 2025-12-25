@@ -62,9 +62,7 @@ def write_reports(
     if csv_path:
         csv_path.parent.mkdir(parents=True, exist_ok=True)
         with csv_path.open("w", newline="") as handle:
-            writer = csv.DictWriter(
-                handle, fieldnames=["path", "category", "size_bytes", "size_human", "mtime"]
-            )
+            writer = csv.DictWriter(handle, fieldnames=["path", "category", "size_bytes", "size_human", "mtime"])
             writer.writeheader()
             writer.writerows(rows)
 
@@ -109,20 +107,12 @@ def print_candidates_report(
     base_path: Path,
 ) -> None:
     """Print candidate list and summary."""
-    print(
-        f"Identified {len(candidates)} candidate(s) (showing {len(acted_upon)}) under {base_path}:"
-    )
+    print(f"Identified {len(candidates)} candidate(s) (showing {len(acted_upon)}) under {base_path}:")
     for candidate in acted_upon:
         size_str = format_bytes(candidate.size_bytes, decimal_places=1, binary_units=False)
-        print(
-            f"- [{candidate.category.name}] {candidate.path} "
-            f"(mtime {candidate.iso_mtime}, size {size_str})"
-        )
+        print(f"- [{candidate.category.name}] {candidate.path} " f"(mtime {candidate.iso_mtime}, size {size_str})")
 
     summary = summarise(candidates)
     print("\nPer-category totals:")
     for name, count, size in summary:
-        print(
-            f"  {name:20} count={count:6d} "
-            f"size={format_bytes(size, decimal_places=1, binary_units=False)}"
-        )
+        print(f"  {name:20} count={count:6d} " f"size={format_bytes(size, decimal_places=1, binary_units=False)}")

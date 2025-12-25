@@ -90,9 +90,7 @@ class BucketMigrator:  # pylint: disable=too-few-public-methods
         else:
             print("→ Step 1/3: Already synced ✓")
             print()
-        needs_verification = (
-            not bucket_info["verify_complete"] or bucket_info["verified_file_count"] is None
-        )
+        needs_verification = not bucket_info["verify_complete"] or bucket_info["verified_file_count"] is None
         if needs_verification:
             self.state.set_current_phase(Phase.VERIFYING)
             if bucket_info["verify_complete"]:
@@ -285,11 +283,7 @@ class BucketMigrationOrchestrator:  # pylint: disable=too-few-public-methods
 
     def print_completion_status(self, all_buckets):
         """Print completion or paused status"""
-        still_incomplete = [
-            b
-            for b in all_buckets
-            if b not in self.state.get_completed_buckets_for_phase("delete_complete")
-        ]
+        still_incomplete = [b for b in all_buckets if b not in self.state.get_completed_buckets_for_phase("delete_complete")]
         if not still_incomplete:
             print("=" * 70)
             print("✓ PHASE 4 COMPLETE: All Buckets Migrated")
@@ -300,9 +294,7 @@ class BucketMigrationOrchestrator:  # pylint: disable=too-few-public-methods
             print("=" * 70)
             print("MIGRATION PAUSED")
             print("=" * 70)
-            print(
-                f"Completed: {len(all_buckets) - len(still_incomplete)}/{len(all_buckets)} buckets"
-            )
+            print(f"Completed: {len(all_buckets) - len(still_incomplete)}/{len(all_buckets)} buckets")
             print(f"Remaining: {len(still_incomplete)} buckets")
             print()
             print("Run 'python migrate_v2.py' to continue.")

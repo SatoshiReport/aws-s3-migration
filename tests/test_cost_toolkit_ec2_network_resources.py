@@ -68,9 +68,7 @@ def test_describe_addresses_with_credentials(mock_create_client):
     mock_create_client.return_value = mock_ec2
     mock_ec2.describe_addresses.return_value = {"Addresses": []}
 
-    describe_addresses(
-        "ap-south-1", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    describe_addresses("ap-south-1", aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
     mock_create_client.assert_called_once_with(
         region="ap-south-1",
@@ -148,9 +146,7 @@ def test_describe_network_interfaces_with_credentials(mock_create_client):
     mock_create_client.return_value = mock_ec2
     mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": []}
 
-    describe_network_interfaces(
-        "ca-central-1", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    describe_network_interfaces("ca-central-1", aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
     mock_create_client.assert_called_once_with(
         region="ca-central-1",

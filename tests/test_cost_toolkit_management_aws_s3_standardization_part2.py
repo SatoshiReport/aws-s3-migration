@@ -146,9 +146,7 @@ class TestStandardizeS3BucketsErrors:
         capsys,
     ):
         """Test handling AWS API error."""
-        mock_list_buckets.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "list_buckets"
-        )
+        mock_list_buckets.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_buckets")
 
         standardize_s3_buckets()
 
@@ -245,9 +243,7 @@ class TestMain:
 @patch("cost_toolkit.scripts.management.aws_s3_standardization.ensure_bucket_private")
 @patch("cost_toolkit.scripts.management.aws_s3_standardization.remove_lifecycle_policy")
 @patch("cost_toolkit.scripts.management.aws_s3_standardization.move_objects_to_standard_storage")
-def test_process_single_bucket(
-    mock_move_objects, mock_remove_lifecycle, mock_ensure_private, capsys
-):
+def test_process_single_bucket(mock_move_objects, mock_remove_lifecycle, mock_ensure_private, capsys):
     """Test processing a single bucket through all steps."""
     mock_ensure_private.return_value = True
     mock_remove_lifecycle.return_value = True

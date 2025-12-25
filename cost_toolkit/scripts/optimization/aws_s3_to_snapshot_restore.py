@@ -76,9 +76,7 @@ def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
             ],
         )
     except ClientError as e:
-        raise AMIImportError(
-            f"Failed to start AMI import from s3://{s3_bucket}/{s3_key}: {e}"
-        ) from e
+        raise AMIImportError(f"Failed to start AMI import from s3://{s3_bucket}/{s3_key}: {e}") from e
 
     import_task_id = response["ImportTaskId"]
     print(f"   ✅ Started import task: {import_task_id}")
@@ -89,9 +87,7 @@ def import_ami_from_s3(ec2_client, s3_bucket, s3_key, description):
         try:
             status_response = ec2_client.describe_import_image_tasks(ImportTaskIds=[import_task_id])
         except ClientError as e:
-            raise AMIImportError(
-                f"Failed to check import status for task {import_task_id}: {e}"
-            ) from e
+            raise AMIImportError(f"Failed to check import status for task {import_task_id}: {e}") from e
 
         if not status_response["ImportImageTasks"]:
             raise AMIImportError(f"Import task {import_task_id} not found")
@@ -194,9 +190,7 @@ def _select_exports(exports):
         print(f"   {i}. {export['key']} ({size_mb:.1f} MB, {export['last_modified']})")
 
     print()
-    selection = input(
-        "Enter the number of the export to restore (or 'all' for all exports): "
-    ).strip()
+    selection = input("Enter the number of the export to restore (or 'all' for all exports): ").strip()
 
     if selection.lower() == "all":
         return exports

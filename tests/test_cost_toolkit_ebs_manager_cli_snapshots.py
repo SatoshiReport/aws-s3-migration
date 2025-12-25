@@ -197,9 +197,7 @@ def test_handle_snapshot_command_single_volume(mock_create_snapshots, mock_print
 @patch("cost_toolkit.scripts.management.ebs_manager.cli.print_snapshot_summary")
 @patch("cost_toolkit.scripts.management.ebs_manager.cli.create_multiple_snapshots")
 @patch("sys.argv", ["script.py", "snapshot", "vol-111", "vol-222", "vol-333"])
-def test_handle_snapshot_command_multiple_volumes(
-    mock_create_snapshots, mock_print_summary, capsys
-):
+def test_handle_snapshot_command_multiple_volumes(mock_create_snapshots, mock_print_summary, capsys):
     """Test handle_snapshot_command with multiple volumes."""
     snapshots = [
         {"snapshot_id": "snap-111", "volume_size": 50},
@@ -217,9 +215,7 @@ def test_handle_snapshot_command_multiple_volumes(
 @patch("cost_toolkit.scripts.management.ebs_manager.cli.print_snapshot_summary")
 @patch("cost_toolkit.scripts.management.ebs_manager.cli.create_multiple_snapshots")
 @patch("sys.argv", ["script.py", "snapshot", "vol-fail"])
-def test_handle_snapshot_command_no_snapshots_created(
-    mock_create_snapshots, mock_print_summary, capsys
-):
+def test_handle_snapshot_command_no_snapshots_created(mock_create_snapshots, mock_print_summary, capsys):
     """Test handle_snapshot_command when no snapshots are created."""
     mock_create_snapshots.return_value = []
 
@@ -285,9 +281,7 @@ def test_main_snapshot_command(mock_setup_creds, mock_handle_snapshot):
 @patch("sys.argv", ["script.py", "DELETE", "vol-123"])
 def test_main_delete_command_uppercase(mock_setup_creds):
     """Test main function handles DELETE command (case-insensitive)."""
-    with patch(
-        "cost_toolkit.scripts.management.ebs_manager.cli.handle_delete_command"
-    ) as mock_handle:
+    with patch("cost_toolkit.scripts.management.ebs_manager.cli.handle_delete_command") as mock_handle:
         mock_handle.side_effect = SystemExit(0)
 
         with pytest.raises(SystemExit):
@@ -301,9 +295,7 @@ def test_main_delete_command_uppercase(mock_setup_creds):
 @patch("sys.argv", ["script.py", "INFO", "vol-123"])
 def test_main_info_command_uppercase(mock_setup_creds):
     """Test main function handles INFO command (case-insensitive)."""
-    with patch(
-        "cost_toolkit.scripts.management.ebs_manager.cli.handle_info_command"
-    ) as mock_handle:
+    with patch("cost_toolkit.scripts.management.ebs_manager.cli.handle_info_command") as mock_handle:
         main()
 
         mock_setup_creds.assert_called_once()
@@ -314,9 +306,7 @@ def test_main_info_command_uppercase(mock_setup_creds):
 @patch("sys.argv", ["script.py", "SnApShOt", "vol-123"])
 def test_main_snapshot_command_mixed_case(mock_setup_creds):
     """Test main function handles SNAPSHOT command (case-insensitive)."""
-    with patch(
-        "cost_toolkit.scripts.management.ebs_manager.cli.handle_snapshot_command"
-    ) as mock_handle:
+    with patch("cost_toolkit.scripts.management.ebs_manager.cli.handle_snapshot_command") as mock_handle:
         main()
 
         mock_setup_creds.assert_called_once()

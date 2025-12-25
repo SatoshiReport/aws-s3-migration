@@ -33,9 +33,7 @@ def test_delete_security_group_handles_client_error(mock_client_factory):
     result = delete_security_group(region="us-west-1", group_id="sg-err")
 
     assert result is False
-    mock_client_factory.assert_called_once_with(
-        region="us-west-1", aws_access_key_id=None, aws_secret_access_key=None
-    )
+    mock_client_factory.assert_called_once_with(region="us-west-1", aws_access_key_id=None, aws_secret_access_key=None)
 
 
 def test_delete_security_group_requires_group_id():

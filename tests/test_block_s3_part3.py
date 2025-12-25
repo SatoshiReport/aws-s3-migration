@@ -16,9 +16,7 @@ import block_s3
 from tests.assertions import assert_equal
 
 
-def test_main_with_bucket_names_and_all_flag_prefers_all(
-    setup_test_env, mock_block_s3_context, capsys
-):
+def test_main_with_bucket_names_and_all_flag_prefers_all(setup_test_env, mock_block_s3_context, capsys):
     """Test that --all flag takes precedence over specific bucket names"""
     _ = setup_test_env  # Used for test isolation
     all_buckets = ["bucket-from-all-flag"]

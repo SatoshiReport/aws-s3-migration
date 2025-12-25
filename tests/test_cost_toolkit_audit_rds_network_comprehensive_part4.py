@@ -230,12 +230,8 @@ class TestPrintCleanupRecommendations:
 def test_main_function_main_execution(capsys):
     """Test main function execution."""
     with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_creds:
-        with patch(
-            "cost_toolkit.scripts.audit.aws_rds_network_interface_audit.get_all_regions"
-        ) as mock_regions:
-            with patch(
-                "cost_toolkit.scripts.audit.aws_rds_network_interface_audit._scan_region_resources"
-            ) as mock_scan:
+        with patch("cost_toolkit.scripts.audit.aws_rds_network_interface_audit.get_all_regions") as mock_regions:
+            with patch("cost_toolkit.scripts.audit.aws_rds_network_interface_audit._scan_region_resources") as mock_scan:
                 mock_creds.return_value = ("test-key", "test-secret")
                 mock_regions.return_value = ["us-east-1"]
                 mock_scan.return_value = (
@@ -261,13 +257,9 @@ def test_main_function_main_execution(capsys):
 def test_main_client_error_main_error(capsys):
     """Test main function with client error."""
     with patch("cost_toolkit.common.credential_utils.setup_aws_credentials") as mock_creds:
-        with patch(
-            "cost_toolkit.scripts.audit.aws_rds_network_interface_audit.get_all_regions"
-        ) as mock_regions:
+        with patch("cost_toolkit.scripts.audit.aws_rds_network_interface_audit.get_all_regions") as mock_regions:
             mock_creds.return_value = ("test-key", "test-secret")
-            mock_regions.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_regions"
-            )
+            mock_regions.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_regions")
 
             try:
                 main()

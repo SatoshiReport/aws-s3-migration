@@ -243,14 +243,8 @@ class TestPrintCleanupRecommendations:
         assert "RECOMMENDATIONS:" in captured.out
         assert "Release unused Elastic IPs to eliminate charges" in captured.out
         assert "Commands to release unassociated Elastic IPs:" in captured.out
-        assert (
-            "aws ec2 release-address --allocation-id eipalloc-123 --region us-east-1"
-            in captured.out
-        )
-        assert (
-            "aws ec2 release-address --allocation-id eipalloc-456 --region us-east-1"
-            in captured.out
-        )
+        assert "aws ec2 release-address --allocation-id eipalloc-123 --region us-east-1" in captured.out
+        assert "aws ec2 release-address --allocation-id eipalloc-456 --region us-east-1" in captured.out
         assert "Total potential monthly savings: $7.30" in captured.out
         assert "Total potential annual savings: $87.60" in captured.out
 
@@ -275,14 +269,8 @@ class TestPrintCleanupRecommendations:
         _print_cleanup_recommendations(regions_with_eips, total_monthly_cost)
 
         captured = capsys.readouterr()
-        assert (
-            "aws ec2 release-address --allocation-id eipalloc-111 --region us-east-1"
-            in captured.out
-        )
-        assert (
-            "aws ec2 release-address --allocation-id eipalloc-222 --region us-west-2"
-            in captured.out
-        )
+        assert "aws ec2 release-address --allocation-id eipalloc-111 --region us-east-1" in captured.out
+        assert "aws ec2 release-address --allocation-id eipalloc-222 --region us-west-2" in captured.out
         assert "eu-west-1" not in captured.out
 
     def test_print_cleanup_recommendations_cost_formatting(self, capsys):

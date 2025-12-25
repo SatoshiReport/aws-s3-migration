@@ -21,10 +21,7 @@ def _build_attachment_info(attachments):
     device = attachment.get("Device", "Unknown")
     state = attachment.get("State", "Unknown")
     delete_on_termination = attachment.get("DeleteOnTermination", False)
-    return (
-        f"{instance_id} ({device}) - State: {state}, "
-        f"DeleteOnTermination: {delete_on_termination}"
-    )
+    return f"{instance_id} ({device}) - State: {state}, " f"DeleteOnTermination: {delete_on_termination}"
 
 
 def _build_volume_detail(volume):
@@ -109,10 +106,7 @@ def check_terminated_instances_volumes():
 
         status_icon = "🔴" if is_orphaned else "✅"
         print(f"{status_icon} {volume['VolumeId']} - {volume['Name']}")
-        print(
-            f"    Size: {volume['Size']}GB | State: {volume['State']} | "
-            f"Cost: ${volume['MonthlyCost']:.2f}/month"
-        )
+        print(f"    Size: {volume['Size']}GB | State: {volume['State']} | " f"Cost: ${volume['MonthlyCost']:.2f}/month")
         print(f"    Attachment: {volume['Attachment']}")
         print()
 

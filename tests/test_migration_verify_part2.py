@@ -144,9 +144,7 @@ def test_verify_multipart_file_with_hyphen_in_etag(tmp_path):
     file1.write_bytes(b"multipart content")
 
     local_files = {"file1.txt": file1}
-    expected_file_map = {
-        "file1.txt": {"size": 17, "etag": "abc123-2"}
-    }  # Hyphen indicates multipart
+    expected_file_map = {"file1.txt": {"size": 17, "etag": "abc123-2"}}  # Hyphen indicates multipart
     stats = {
         "verified_count": 0,
         "size_verified": 0,

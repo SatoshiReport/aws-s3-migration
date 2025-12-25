@@ -35,9 +35,7 @@ def test_stop_instance_success(mock_print, mock_wait_for_state):
 def test_stop_instance_client_error(mock_print):
     """Test stopping instance with client error."""
     mock_ec2 = MagicMock()
-    mock_ec2.stop_instances.side_effect = ClientError(
-        {"Error": {"Code": "InstanceNotFound"}}, "StopInstances"
-    )
+    mock_ec2.stop_instances.side_effect = ClientError({"Error": {"Code": "InstanceNotFound"}}, "StopInstances")
 
     with pytest.raises(ClientError):
         _stop_instance(mock_ec2)
@@ -51,9 +49,7 @@ def test_stop_instance_client_error(mock_print):
 def test_stop_instance_waiter_error(mock_wait_for_state, _mock_print):
     """Test stopping instance when waiter fails."""
     mock_ec2 = MagicMock()
-    mock_wait_for_state.side_effect = ClientError(
-        {"Error": {"Code": "WaiterError"}}, "WaitUntilInstanceStopped"
-    )
+    mock_wait_for_state.side_effect = ClientError({"Error": {"Code": "WaiterError"}}, "WaitUntilInstanceStopped")
 
     with pytest.raises(ClientError):
         _stop_instance(mock_ec2)
@@ -109,12 +105,8 @@ def test_print_final_recommendations(mock_print):
 
 
 # Tests for final_analysis_summary
-@patch(
-    "cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_final_recommendations"
-)
-@patch(
-    "cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_duplicate_assessment"
-)
+@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_final_recommendations")
+@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_duplicate_assessment")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_metadata_findings")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.boto3")
@@ -134,12 +126,8 @@ def test_final_analysis_summary(_mock_print, mock_boto3, mock_stop, *print_mocks
     mock_recommendations.assert_called_once()
 
 
-@patch(
-    "cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_final_recommendations"
-)
-@patch(
-    "cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_duplicate_assessment"
-)
+@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_final_recommendations")
+@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_duplicate_assessment")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_metadata_findings")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.boto3")
@@ -172,12 +160,8 @@ def test_main(mock_analysis):
 
 
 # Integration-style tests
-@patch(
-    "cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_final_recommendations"
-)
-@patch(
-    "cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_duplicate_assessment"
-)
+@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_final_recommendations")
+@patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_duplicate_assessment")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._print_metadata_findings")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_analysis_summary.boto3")

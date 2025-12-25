@@ -81,9 +81,7 @@ def test_check_current_hosted_zones_with_zones(mock_boto_client, capsys):
 
 
 @patch("cost_toolkit.scripts.audit.aws_route53_domain_ownership.boto3.client")
-def test_check_current_hosted_zones_missing_config(
-    mock_boto_client, capsys
-):  # pylint: disable=unused-argument
+def test_check_current_hosted_zones_missing_config(mock_boto_client, capsys):  # pylint: disable=unused-argument
     """Test check_current_hosted_zones handles missing Config field."""
     mock_client = MagicMock()
     mock_boto_client.return_value = mock_client

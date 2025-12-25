@@ -40,11 +40,7 @@ def _match_generic_dot_cache(path: Path, is_dir: bool) -> bool:
 
 
 def _match_vscode_remote(path: Path, is_dir: bool) -> bool:
-    return (
-        is_dir
-        and ".vscode-server" in path.parts
-        and path.name in {"node_modules", "extensions", "server"}
-    )
+    return is_dir and ".vscode-server" in path.parts and path.name in {"node_modules", "extensions", "server"}
 
 
 def _match_go_module_cache(path: Path, is_dir: bool) -> bool:
@@ -66,9 +62,7 @@ def _match_maven_cache(path: Path, is_dir: bool) -> bool:
 def _match_npm_cache(path: Path, is_dir: bool) -> bool:
     if not is_dir:
         return False
-    return (path.name == "_cacache" and path.parent.name == ".npm") or (
-        path.name == "cache" and path.parent.name == ".yarn"
-    )
+    return (path.name == "_cacache" and path.parent.name == ".npm") or (path.name == "cache" and path.parent.name == ".yarn")
 
 
 def _create_category_list() -> list[Category]:

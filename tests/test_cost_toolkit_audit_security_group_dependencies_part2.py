@@ -44,9 +44,7 @@ class TestCollectRdsDeps:
         with patch("boto3.client") as mock_client_factory:
             mock_rds_client = MagicMock()
             mock_client_factory.return_value = mock_rds_client
-            mock_rds_client.describe_db_instances.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_db_instances"
-            )
+            mock_rds_client.describe_db_instances.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_db_instances")
 
             result = _collect_rds_deps("sg-123", "us-east-1", "key", "secret")
 
@@ -65,9 +63,7 @@ class TestCollectRdsDeps:
                         "DBInstanceIdentifier": "db-456",
                         "DBInstanceStatus": "available",
                         "Engine": "mysql",
-                        "VpcSecurityGroups": [
-                            {"VpcSecurityGroupId": "sg-other", "Status": "active"}
-                        ],
+                        "VpcSecurityGroups": [{"VpcSecurityGroupId": "sg-other", "Status": "active"}],
                     }
                 ]
             }

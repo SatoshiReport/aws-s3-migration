@@ -28,15 +28,9 @@ class TestCheckSecurityGroupDependencies:
             patch(
                 "cost_toolkit.scripts.audit.aws_security_group_dependencies._collect_network_interface_deps"  # pylint: disable=line-too-long
             ) as mock_eni,
-            patch(
-                "cost_toolkit.scripts.audit.aws_security_group_dependencies._collect_instance_deps"
-            ) as mock_instances,
-            patch(
-                "cost_toolkit.scripts.audit.aws_security_group_dependencies._collect_sg_rule_refs"
-            ) as mock_sg_rules,
-            patch(
-                "cost_toolkit.scripts.audit.aws_security_group_dependencies._collect_rds_deps"
-            ) as mock_rds,
+            patch("cost_toolkit.scripts.audit.aws_security_group_dependencies._collect_instance_deps") as mock_instances,
+            patch("cost_toolkit.scripts.audit.aws_security_group_dependencies._collect_sg_rule_refs") as mock_sg_rules,
+            patch("cost_toolkit.scripts.audit.aws_security_group_dependencies._collect_rds_deps") as mock_rds,
         ):
             mock_ec2_client = MagicMock()
             mock_eni.return_value = [{"interface_id": "eni-123"}]
@@ -44,9 +38,7 @@ class TestCheckSecurityGroupDependencies:
             mock_sg_rules.return_value = [{"referencing_sg": "sg-other"}]
             mock_rds.return_value = [{"db_instance_id": "db-123"}]
 
-            result = check_security_group_dependencies(
-                mock_ec2_client, "sg-test", "us-east-1", "key", "secret"
-            )
+            result = check_security_group_dependencies(mock_ec2_client, "sg-test", "us-east-1", "key", "secret")
 
             assert len(result["network_interfaces"]) == 1
             assert len(result["instances"]) == 1
@@ -59,13 +51,9 @@ class TestCheckSecurityGroupDependencies:
             "cost_toolkit.scripts.audit.aws_security_group_dependencies._collect_network_interface_deps"  # pylint: disable=line-too-long
         ) as mock_eni:
             mock_ec2_client = MagicMock()
-            mock_eni.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_network_interfaces"
-            )
+            mock_eni.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_network_interfaces")
 
-            result = check_security_group_dependencies(
-                mock_ec2_client, "sg-test", "us-east-1", "key", "secret"
-            )
+            result = check_security_group_dependencies(mock_ec2_client, "sg-test", "us-east-1", "key", "secret")
 
             assert not result["network_interfaces"]
             captured = capsys.readouterr()
@@ -175,9 +163,7 @@ class TestPrintDependencyDetails:
 
         # Mock the print functions to avoid full output
         with (
-            patch(
-                "cost_toolkit.scripts.audit.aws_security_group_dependencies._print_network_interfaces"  # pylint: disable=line-too-long
-            ),
+            patch("cost_toolkit.scripts.audit.aws_security_group_dependencies._print_network_interfaces"),  # pylint: disable=line-too-long
             patch("cost_toolkit.scripts.audit.aws_security_group_dependencies._print_instances"),
         ):
             _print_dependency_details(dependencies)
@@ -192,9 +178,7 @@ class TestPrintDependencyDetails:
         }
 
         with (
-            patch(
-                "cost_toolkit.scripts.audit.aws_security_group_dependencies._print_rds_instances"  # pylint: disable=line-too-long
-            ),
+            patch("cost_toolkit.scripts.audit.aws_security_group_dependencies._print_rds_instances"),  # pylint: disable=line-too-long
             patch(
                 "cost_toolkit.scripts.audit.aws_security_group_dependencies._print_security_group_rules"  # pylint: disable=line-too-long
             ),
@@ -227,9 +211,7 @@ class TestAuditSecurityGroupDependencies:
             patch(
                 "cost_toolkit.scripts.audit.aws_security_group_dependencies.check_security_group_dependencies"  # pylint: disable=line-too-long
             ) as mock_check,
-            patch(
-                "cost_toolkit.scripts.audit.aws_security_group_dependencies._print_dependency_details"  # pylint: disable=line-too-long
-            ),
+            patch("cost_toolkit.scripts.audit.aws_security_group_dependencies._print_dependency_details"),  # pylint: disable=line-too-long
         ):
             mock_creds.return_value = ("key", "secret")
             mock_boto_client.return_value = MagicMock()
@@ -254,9 +236,7 @@ class TestAuditSecurityGroupDependencies:
             patch(
                 "cost_toolkit.scripts.audit.aws_security_group_dependencies.check_security_group_dependencies"  # pylint: disable=line-too-long
             ) as mock_check,
-            patch(
-                "cost_toolkit.scripts.audit.aws_security_group_dependencies._print_dependency_details"  # pylint: disable=line-too-long
-            ),
+            patch("cost_toolkit.scripts.audit.aws_security_group_dependencies._print_dependency_details"),  # pylint: disable=line-too-long
         ):
             mock_creds.return_value = ("key", "secret")
             mock_boto_client.return_value = MagicMock()
@@ -291,9 +271,7 @@ class TestMain:
             ) as mock_audit,
             pytest.raises(SystemExit) as exc_info,
         ):
-            mock_audit.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_security_groups"
-            )
+            mock_audit.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_security_groups")
             main()
 
         assert exc_info.value.code == 1

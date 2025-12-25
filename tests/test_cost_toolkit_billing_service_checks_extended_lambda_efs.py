@@ -73,9 +73,7 @@ class TestCheckLambdaStatus:
         """Test Lambda status raises ServiceCheckError with region access errors."""
         with patch("boto3.client") as mock_client:
             mock_lambda = MagicMock()
-            error = botocore.exceptions.ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "list_functions"
-            )
+            error = botocore.exceptions.ClientError({"Error": {"Code": "AccessDenied"}}, "list_functions")
             mock_lambda.list_functions.side_effect = error
             mock_client.return_value = mock_lambda
             with pytest.raises(ServiceCheckError) as exc_info:
@@ -100,9 +98,7 @@ class TestCheckLambdaStatus:
             def list_functions_with_error():
                 call_count[0] += 1
                 if call_count[0] == 1:
-                    raise botocore.exceptions.ClientError(
-                        {"Error": {"Code": "AccessDenied"}}, "list_functions"
-                    )
+                    raise botocore.exceptions.ClientError({"Error": {"Code": "AccessDenied"}}, "list_functions")
                 return {"Functions": [{"FunctionName": "func1"}]}
 
             mock_lambda.list_functions.side_effect = list_functions_with_error
@@ -166,9 +162,7 @@ class TestCheckEFSStatusSuccess:
         """Test EFS status with single file system."""
         with patch("boto3.client") as mock_client:
             mock_efs = MagicMock()
-            mock_efs.describe_file_systems.return_value = {
-                "FileSystems": [{"FileSystemId": "fs-only"}]
-            }
+            mock_efs.describe_file_systems.return_value = {"FileSystems": [{"FileSystemId": "fs-only"}]}
             mock_client.return_value = mock_efs
             is_resolved, message = check_efs_status()
             assert is_resolved is False
@@ -184,9 +178,7 @@ class TestCheckEFSStatusErrors:
         """Test EFS status raises ServiceCheckError with region access errors."""
         with patch("boto3.client") as mock_client:
             mock_efs = MagicMock()
-            error = botocore.exceptions.ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_file_systems"
-            )
+            error = botocore.exceptions.ClientError({"Error": {"Code": "AccessDenied"}}, "describe_file_systems")
             mock_efs.describe_file_systems.side_effect = error
             mock_client.return_value = mock_efs
             with pytest.raises(ServiceCheckError) as exc_info:
@@ -211,9 +203,7 @@ class TestCheckEFSStatusErrors:
             def describe_with_error():
                 call_count[0] += 1
                 if call_count[0] == 1:
-                    raise botocore.exceptions.ClientError(
-                        {"Error": {"Code": "AccessDenied"}}, "describe_file_systems"
-                    )
+                    raise botocore.exceptions.ClientError({"Error": {"Code": "AccessDenied"}}, "describe_file_systems")
                 return {"FileSystems": [{"FileSystemId": "fs-123"}]}
 
             mock_efs.describe_file_systems.side_effect = describe_with_error

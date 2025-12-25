@@ -286,6 +286,4 @@ def get_bucket_tagging(
 
 
 if __name__ == "__main__":  # pragma: no cover - script entry point
-    raise SystemExit(
-        "This module exposes helpers; run cost_toolkit scripts that import it instead."
-    )
+    raise SystemExit("This module exposes helpers; run cost_toolkit scripts that import it instead.")

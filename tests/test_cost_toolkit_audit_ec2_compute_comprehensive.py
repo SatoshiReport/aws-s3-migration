@@ -246,8 +246,7 @@ class TestAnalyzeEc2Instances:
             mock_client.return_value = mock_ec2
 
             with patch(
-                "cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit."
-                "get_instance_hourly_cost",
+                "cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit." "get_instance_hourly_cost",
                 return_value=0.0104,
             ):
                 instances = analyze_ec2_instances_in_region("us-east-1")
@@ -274,9 +273,7 @@ class TestAnalyzeEc2Instances:
         """Test error handling when analyzing instances."""
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
-            mock_ec2.describe_instances.side_effect = ClientError(
-                {"Error": {"Code": "UnauthorizedOperation"}}, "describe_instances"
-            )
+            mock_ec2.describe_instances.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "describe_instances")
             mock_client.return_value = mock_ec2
 
             instances = analyze_ec2_instances_in_region("eu-west-1")

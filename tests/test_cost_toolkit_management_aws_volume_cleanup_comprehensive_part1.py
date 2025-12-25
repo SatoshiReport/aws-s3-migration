@@ -28,9 +28,7 @@ class TestTagVolumeWithName:
         result = tag_volume_with_name("vol-123456", "test-volume", "us-east-1")
 
         assert result is True
-        mock_ec2_client.create_tags.assert_called_once_with(
-            Resources=["vol-123456"], Tags=[{"Key": "Name", "Value": "test-volume"}]
-        )
+        mock_ec2_client.create_tags.assert_called_once_with(Resources=["vol-123456"], Tags=[{"Key": "Name", "Value": "test-volume"}])
         captured = capsys.readouterr()
         assert "Successfully tagged volume" in captured.out
         assert "vol-123456" in captured.out
@@ -41,9 +39,7 @@ class TestTagVolumeWithName:
         """Test error tagging a volume."""
         mock_ec2_client = MagicMock()
         mock_boto3_client.return_value = mock_ec2_client
-        mock_ec2_client.create_tags.side_effect = ClientError(
-            {"Error": {"Code": "InvalidVolume.NotFound"}}, "create_tags"
-        )
+        mock_ec2_client.create_tags.side_effect = ClientError({"Error": {"Code": "InvalidVolume.NotFound"}}, "create_tags")
 
         result = tag_volume_with_name("vol-invalid", "test-volume", "us-east-1")
 
@@ -98,9 +94,7 @@ class TestDeleteSnapshot:
         """Test error deleting a snapshot."""
         mock_ec2_client = MagicMock()
         mock_boto3_client.return_value = mock_ec2_client
-        mock_ec2_client.describe_snapshots.side_effect = ClientError(
-            {"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots"
-        )
+        mock_ec2_client.describe_snapshots.side_effect = ClientError({"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots")
 
         result = delete_snapshot("snap-invalid", "us-east-1")
 
@@ -152,9 +146,7 @@ class TestGetBucketRegion:
     def test_get_bucket_region_us_east_1(self, capsys):
         """Test getting bucket region for us-east-1."""
         # Mock get_bucket_location to return us-east-1
-        with patch(
-            "cost_toolkit.scripts.aws_s3_operations.get_bucket_location"
-        ) as mock_get_location:
+        with patch("cost_toolkit.scripts.aws_s3_operations.get_bucket_location") as mock_get_location:
             mock_get_location.return_value = "us-east-1"
 
             result = get_bucket_region("test-bucket")
@@ -166,9 +158,7 @@ class TestGetBucketRegion:
     def test_get_bucket_region_other_region(self, capsys):
         """Test getting bucket region for non-us-east-1."""
         # Mock get_bucket_location to return us-west-2
-        with patch(
-            "cost_toolkit.scripts.aws_s3_operations.get_bucket_location"
-        ) as mock_get_location:
+        with patch("cost_toolkit.scripts.aws_s3_operations.get_bucket_location") as mock_get_location:
             mock_get_location.return_value = "us-west-2"
 
             result = get_bucket_region("test-bucket")
@@ -183,9 +173,7 @@ class TestGetBucketRegion:
         with patch("cost_toolkit.scripts.aws_s3_operations.create_s3_client") as mock_create:
             mock_client = MagicMock()
             mock_create.return_value = mock_client
-            mock_client.get_bucket_location.side_effect = ClientError(
-                {"Error": {"Code": "NoSuchBucket"}}, "get_bucket_location"
-            )
+            mock_client.get_bucket_location.side_effect = ClientError({"Error": {"Code": "NoSuchBucket"}}, "get_bucket_location")
 
             with pytest.raises(ClientError):
                 get_bucket_region("non-existent")
@@ -255,9 +243,7 @@ class TestGetBucketSizeMetrics:
         mock_cloudwatch = MagicMock()
         mock_boto3_client.return_value = mock_cloudwatch
 
-        mock_cloudwatch.get_metric_statistics.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "get_metric_statistics"
-        )
+        mock_cloudwatch.get_metric_statistics.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "get_metric_statistics")
 
         get_bucket_size_metrics("bucket", "us-east-1")
 

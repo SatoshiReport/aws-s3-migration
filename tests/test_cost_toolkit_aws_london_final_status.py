@@ -37,9 +37,7 @@ def test_stop_instance_success(_mock_print, mock_wait_for_state):
 def test_stop_instance_client_error(_mock_print):
     """Test stopping instance with client error."""
     mock_ec2 = MagicMock()
-    mock_ec2.stop_instances.side_effect = ClientError(
-        {"Error": {"Code": "InstanceNotFound"}}, "StopInstances"
-    )
+    mock_ec2.stop_instances.side_effect = ClientError({"Error": {"Code": "InstanceNotFound"}}, "StopInstances")
 
     with pytest.raises(ClientError):
         _stop_instance(mock_ec2, "i-invalid")
@@ -261,9 +259,7 @@ def test_list_remaining_volumes_empty(_mock_print):
 def test_list_remaining_volumes_client_error(_mock_print):
     """Test listing remaining volumes with client error."""
     mock_ec2 = MagicMock()
-    mock_ec2.describe_volumes.side_effect = ClientError(
-        {"Error": {"Code": "UnauthorizedOperation"}}, "DescribeVolumes"
-    )
+    mock_ec2.describe_volumes.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "DescribeVolumes")
 
     _list_remaining_volumes(mock_ec2)
 
@@ -345,9 +341,7 @@ def test_show_final_london_status(_mock_print, mock_boto3, mock_stop, mock_list,
 @patch("cost_toolkit.scripts.migration.aws_london_final_status._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_status.boto3")
 @patch("builtins.print")
-def test_show_final_london_status_stop_error(
-    _mock_print, mock_boto3, mock_stop, _mock_list, _mock_summary
-):
+def test_show_final_london_status_stop_error(_mock_print, mock_boto3, mock_stop, _mock_list, _mock_summary):
     """Test showing final London status when stop fails."""
     mock_ec2 = MagicMock()
     mock_boto3.client.return_value = mock_ec2
@@ -373,9 +367,7 @@ def test_main(mock_show):
 @patch("cost_toolkit.scripts.migration.aws_london_final_status._stop_instance")
 @patch("cost_toolkit.scripts.migration.aws_london_final_status.boto3")
 @patch("builtins.print")
-def test_show_final_london_status_complete_workflow(
-    _mock_print, mock_boto3, mock_stop, mock_list, mock_summary
-):
+def test_show_final_london_status_complete_workflow(_mock_print, mock_boto3, mock_stop, mock_list, mock_summary):
     """Test complete final status workflow."""
     mock_ec2 = MagicMock()
     mock_boto3.client.return_value = mock_ec2

@@ -68,9 +68,7 @@ class TestMainPublicConnectivity:
         assert "SUMMARY" in captured.out
         assert "Instance has no public connectivity" in captured.out
         assert "Use AWS Systems Manager Session Manager for access" in captured.out
-        assert (
-            "aws ssm start-session --target i-00c39b1ba0eba3e2d --region us-east-2" in captured.out
-        )
+        assert "aws ssm start-session --target i-00c39b1ba0eba3e2d --region us-east-2" in captured.out
 
     def test_main_with_public_dns_only(self, capsys):
         """Test main function with public DNS but no IP."""
@@ -232,9 +230,7 @@ class TestGetInstanceConnectionInfoSecurityGroups:
 
         _, mock_ec2, mock_ssm = build_instance_connection_mocks()
 
-        run_connection_info_with_clients(
-            mock_instance, mock_ec2, mock_ssm, "i-multisg", "us-east-1"
-        )
+        run_connection_info_with_clients(mock_instance, mock_ec2, mock_ssm, "i-multisg", "us-east-1")
 
         captured = capsys.readouterr()
         assert "sg-1 (web)" in captured.out

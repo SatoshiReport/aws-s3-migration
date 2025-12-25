@@ -153,9 +153,7 @@ def seed_real_bucket(ctx: RealSmokeContext) -> RealSmokeStats:
     print("Step 1/3: Creating sample data directly in S3...")
     _create_bucket(ctx.s3, ctx.bucket_name, ctx.region)
     ctx.bucket_created = True
-    manifest_expected, files_created, dirs_created, total_bytes = create_sample_objects_in_s3(
-        ctx.s3, ctx.bucket_name
-    )
+    manifest_expected, files_created, dirs_created, total_bytes = create_sample_objects_in_s3(ctx.s3, ctx.bucket_name)
     print(f"  Uploaded {files_created} files to s3://{ctx.bucket_name}")
     buckets_response = ctx.s3.list_buckets()
     buckets_list = []

@@ -34,9 +34,7 @@ def test_main_displays_bucket_count_single_bucket(mock_aws_info_context):
 
 def test_main_displays_bucket_count_multiple_buckets(mock_aws_info_context):
     """Test that main() displays correct bucket count with multiple buckets."""
-    with mock_aws_info_context.with_buckets(
-        ["bucket-1", "bucket-2", "bucket-3", "bucket-4", "bucket-5"]
-    ):
+    with mock_aws_info_context.with_buckets(["bucket-1", "bucket-2", "bucket-3", "bucket-4", "bucket-5"]):
         aws_info.main()
 
         # Verify bucket count header shows (5)
@@ -68,9 +66,7 @@ def test_main_displays_bucket_names_multiple(mock_aws_info_context):
 
 def test_main_displays_buckets_with_special_characters(mock_aws_info_context):
     """Test that main() displays bucket names with special characters correctly."""
-    with mock_aws_info_context.with_buckets(
-        ["my-prod-bucket-2024", "data.archive.backup", "test-backup-001"]
-    ):
+    with mock_aws_info_context.with_buckets(["my-prod-bucket-2024", "data.archive.backup", "test-backup-001"]):
         aws_info.main()
 
         # Verify all bucket names are printed correctly
@@ -106,16 +102,11 @@ def test_main_handles_many_buckets(mock_aws_info_context):
 
 def test_main_with_long_bucket_names(mock_aws_info_context):
     """Test that main() displays long bucket names correctly."""
-    with mock_aws_info_context.with_buckets(
-        ["very-long-bucket-name-with-many-characters-2024-prod-backup"]
-    ):
+    with mock_aws_info_context.with_buckets(["very-long-bucket-name-with-many-characters-2024-prod-backup"]):
         aws_info.main()
 
         call_args = [str(call) for call in mock_aws_info_context.print_mock.call_args_list]
-        assert any(
-            "very-long-bucket-name-with-many-characters-2024-prod-backup" in str(call)
-            for call in call_args
-        )
+        assert any("very-long-bucket-name-with-many-characters-2024-prod-backup" in str(call) for call in call_args)
 
 
 def test_main_with_numbered_bucket_names(mock_aws_info_context):

@@ -94,9 +94,7 @@ class TestListS3Buckets:
         mock_s3_client = MagicMock()
         mock_boto3_client.return_value = mock_s3_client
 
-        mock_s3_client.list_buckets.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "list_buckets"
-        )
+        mock_s3_client.list_buckets.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_buckets")
 
         result = list_s3_buckets()
 

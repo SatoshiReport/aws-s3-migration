@@ -39,9 +39,7 @@ def test_setup_aws_clients(mock_create_clients):
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.setup_s3_bucket_versioning")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.create_s3_bucket_new")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.create_s3_bucket_if_not_exists")
-@patch(
-    "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.check_existing_completed_exports"
-)
+@patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.check_existing_completed_exports")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.datetime")
 @patch("builtins.print")
 def test_setup_s3_bucket_for_export_existing_bucket(
@@ -62,20 +60,14 @@ def test_setup_s3_bucket_for_export_existing_bucket(
 
     assert_equal(bucket_name, "ebs-snapshot-archive-us-west-2-20250114")
     mock_check_exports.assert_called_once_with(mock_s3, "us-west-2")
-    mock_create_if_not_exists.assert_called_once_with(
-        mock_s3, "ebs-snapshot-archive-us-west-2-20250114", "us-west-2"
-    )
-    mock_setup_versioning.assert_called_once_with(
-        mock_s3, "ebs-snapshot-archive-us-west-2-20250114"
-    )
+    mock_create_if_not_exists.assert_called_once_with(mock_s3, "ebs-snapshot-archive-us-west-2-20250114", "us-west-2")
+    mock_setup_versioning.assert_called_once_with(mock_s3, "ebs-snapshot-archive-us-west-2-20250114")
 
 
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.setup_s3_bucket_versioning")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.create_s3_bucket_new")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.create_s3_bucket_if_not_exists")
-@patch(
-    "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.check_existing_completed_exports"
-)
+@patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.check_existing_completed_exports")
 @patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.datetime")
 @patch("builtins.print")
 def test_setup_s3_bucket_for_export_creates_new_bucket(
@@ -96,9 +88,7 @@ def test_setup_s3_bucket_for_export_creates_new_bucket(
     bucket_name = _setup_s3_bucket_for_export(mock_s3, "eu-west-1")
 
     assert_equal(bucket_name, "ebs-snapshot-archive-eu-west-1-20250114")
-    mock_create_new.assert_called_once_with(
-        mock_s3, "ebs-snapshot-archive-eu-west-1-20250114", "eu-west-1"
-    )
+    mock_create_new.assert_called_once_with(mock_s3, "ebs-snapshot-archive-eu-west-1-20250114", "eu-west-1")
     mock_setup_versioning.assert_called_once()
 
 
@@ -295,39 +285,16 @@ def test_export_single_snapshot_to_s3_client_error_cleans_up_ami(
 def test_export_single_snapshot_to_s3_integration():
     """Integration test for export_single_snapshot_to_s3."""
     with (
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.datetime"
-        ) as mock_datetime,
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.create_ec2_and_s3_clients"
-        ) as mock_create_clients,
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli"
-            ".check_existing_completed_exports"
-        ) as mock_check_exports,
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli"
-            ".create_s3_bucket_if_not_exists"
-        ) as mock_create_if_exists,
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.setup_s3_bucket_versioning"
-        ) as mock_setup_versioning,
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.create_ami_from_snapshot"
-        ) as mock_create_ami,
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli"
-            ".export_ami_to_s3_with_recovery"
-        ) as mock_export_ami,
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.verify_s3_export_final"
-        ) as mock_verify_s3,
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.calculate_cost_savings"
-        ) as mock_calculate_savings,
-        patch(
-            "cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.cleanup_temporary_ami"
-        ) as mock_cleanup,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.datetime") as mock_datetime,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.create_ec2_and_s3_clients") as mock_create_clients,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli" ".check_existing_completed_exports") as mock_check_exports,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli" ".create_s3_bucket_if_not_exists") as mock_create_if_exists,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.setup_s3_bucket_versioning") as mock_setup_versioning,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.create_ami_from_snapshot") as mock_create_ami,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli" ".export_ami_to_s3_with_recovery") as mock_export_ami,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.verify_s3_export_final") as mock_verify_s3,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.calculate_cost_savings") as mock_calculate_savings,
+        patch("cost_toolkit.scripts.optimization.snapshot_export_fixed.cli.cleanup_temporary_ami") as mock_cleanup,
         patch("builtins.print"),
     ):
         mock_datetime.now.return_value.strftime.return_value = "20250114"
@@ -366,9 +333,7 @@ def test_export_single_snapshot_to_s3_integration():
         assert_equal(result["success"], True)
 
         mock_create_clients.assert_called_once_with("us-east-1", "test_key", "test_secret")
-        mock_create_ami.assert_called_once_with(
-            mock_ec2, "snap-integration", "Integration test snapshot"
-        )
+        mock_create_ami.assert_called_once_with(mock_ec2, "snap-integration", "Integration test snapshot")
         mock_export_ami.assert_called_once()
         mock_verify_s3.assert_called_once()
         mock_cleanup.assert_called_once_with(mock_ec2, "ami-integration-test", "us-east-1")

@@ -56,9 +56,7 @@ class TestAuditRegionKmsKeysPart2:
         with patch("boto3.client") as mock_client:
             mock_kms = MagicMock()
             mock_client.return_value = mock_kms
-            mock_kms.list_keys.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "list_keys"
-            )
+            mock_kms.list_keys.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_keys")
 
             region_keys, region_cost = _audit_region_kms_keys("eu-west-1")
 
@@ -72,9 +70,7 @@ class TestAuditRegionKmsKeysPart2:
         with patch("boto3.client") as mock_client:
             mock_kms = MagicMock()
             mock_client.return_value = mock_kms
-            mock_kms.list_keys.side_effect = ClientError(
-                {"Error": {"Code": "Region not available"}}, "list_keys"
-            )
+            mock_kms.list_keys.side_effect = ClientError({"Error": {"Code": "Region not available"}}, "list_keys")
 
             region_keys, region_cost = _audit_region_kms_keys("ap-south-1")
 
@@ -202,9 +198,7 @@ class TestCheckVpnResources:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_client.return_value = mock_ec2
-            mock_ec2.describe_vpn_connections.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_vpn_connections"
-            )
+            mock_ec2.describe_vpn_connections.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_vpn_connections")
 
             _check_vpn_resources("us-east-1")
 
@@ -254,9 +248,7 @@ class TestAuditKmsKeys:
 
             mock_client.side_effect = client_factory
 
-            mock_ec2.describe_regions.return_value = {
-                "Regions": [{"RegionName": "us-east-1"}, {"RegionName": "eu-west-2"}]
-            }
+            mock_ec2.describe_regions.return_value = {"Regions": [{"RegionName": "us-east-1"}, {"RegionName": "eu-west-2"}]}
             mock_kms.list_keys.return_value = {"Keys": []}
             mock_ec2.describe_vpn_connections.return_value = {"VpnConnections": []}
             mock_ec2.describe_customer_gateways.return_value = {"CustomerGateways": []}

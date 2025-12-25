@@ -99,8 +99,7 @@ def check_route53_status():
         )
     return (
         False,
-        f"❌ ACTIVE - {len(existing_target_zones)} target zones still exist: "
-        f"{', '.join(existing_target_zones)}",
+        f"❌ ACTIVE - {len(existing_target_zones)} target zones still exist: " f"{', '.join(existing_target_zones)}",
     )
 
 
@@ -119,15 +118,9 @@ def _check_kms_key_status(kms_client, key_id):
 def _format_kms_status(pending_deletion_count, pending_deletion_target):
     """Format status message for KMS keys."""
     if pending_deletion_count >= pending_deletion_target:
-        return True, (
-            "✅ RESOLVED - All "
-            f"{pending_deletion_target} KMS keys scheduled for deletion (saves $4/month)"
-        )
+        return True, ("✅ RESOLVED - All " f"{pending_deletion_target} KMS keys scheduled for deletion (saves $4/month)")
     if pending_deletion_count > 0:
-        return False, (
-            f"⚠️ PARTIAL - {pending_deletion_count}/{pending_deletion_target} "
-            "KMS keys scheduled for deletion"
-        )
+        return False, (f"⚠️ PARTIAL - {pending_deletion_count}/{pending_deletion_target} " "KMS keys scheduled for deletion")
     return False, "❌ ACTIVE - KMS keys still active"
 
 
@@ -193,8 +186,7 @@ def check_vpc_status():
     if total_elastic_ips <= 1:
         return (
             False,
-            f"📝 NOTED - {total_elastic_ips} Elastic IP locked by AWS "
-            "(requires Support contact)",
+            f"📝 NOTED - {total_elastic_ips} Elastic IP locked by AWS " "(requires Support contact)",
         )
 
     return False, f"🔴 UNRESOLVED - {total_elastic_ips} Elastic IPs still allocated"
@@ -230,14 +222,10 @@ def get_resolved_services_status():
 
     resolved_services["AMAZONWORKMAIL"] = "📝 NOTED - Service recognized, no optimization planned"
     resolved_services["TAX"] = "📝 NOTED - Service recognized, no optimization planned"
-    resolved_services["AMAZON RELATIONAL DATABASE SERVICE"] = (
-        "📝 NOTED - Aurora deleted, MariaDB stopped (can restart when needed)"
-    )
+    resolved_services["AMAZON RELATIONAL DATABASE SERVICE"] = "📝 NOTED - Aurora deleted, MariaDB stopped (can restart when needed)"
 
     return resolved_services
 
 
 if __name__ == "__main__":
-    raise SystemExit(
-        "This module is library-only. Run cost_toolkit.scripts.billing.billing_report.cli instead."
-    )
+    raise SystemExit("This module is library-only. Run cost_toolkit.scripts.billing.billing_report.cli instead.")

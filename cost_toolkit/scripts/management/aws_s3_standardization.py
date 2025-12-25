@@ -34,9 +34,7 @@ def ensure_bucket_private(bucket_name, region):
             "RestrictPublicBuckets": True,
         }
 
-        s3_client.put_public_access_block(
-            Bucket=bucket_name, PublicAccessBlockConfiguration=public_access_block_config
-        )
+        s3_client.put_public_access_block(Bucket=bucket_name, PublicAccessBlockConfiguration=public_access_block_config)
 
         # Remove any public bucket policy
         try:
@@ -135,10 +133,7 @@ def move_objects_to_standard_storage(bucket_name, region):
             total_processed += processed
             total_converted += converted
 
-        print(
-            f"✅ Processed {total_processed} objects, "
-            f"converted {total_converted} to Standard storage in: {bucket_name}"
-        )
+        print(f"✅ Processed {total_processed} objects, " f"converted {total_converted} to Standard storage in: {bucket_name}")
 
     except ClientError as e:
         print(f"❌ Error converting objects in bucket {bucket_name}: {e}")

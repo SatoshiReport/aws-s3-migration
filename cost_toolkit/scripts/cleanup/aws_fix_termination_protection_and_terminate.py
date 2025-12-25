@@ -101,9 +101,7 @@ def main():
         instance_id = protected_instance["instance_id"]
 
         # Step 1: Disable termination protection
-        protection_disabled = disable_termination_protection(
-            region, instance_id, aws_access_key_id, aws_secret_access_key
-        )
+        protection_disabled = disable_termination_protection(region, instance_id, aws_access_key_id, aws_secret_access_key)
 
         if not protection_disabled:
             print("❌ Failed to disable termination protection - cannot proceed with termination")
@@ -112,9 +110,7 @@ def main():
         print()
 
         # Step 2: Terminate the instance
-        termination_success = terminate_instance(
-            region, instance_id, aws_access_key_id, aws_secret_access_key
-        )
+        termination_success = terminate_instance(region, instance_id, aws_access_key_id, aws_secret_access_key)
 
         # Summary
         print_operation_summary(protection_disabled, termination_success, instance_id)

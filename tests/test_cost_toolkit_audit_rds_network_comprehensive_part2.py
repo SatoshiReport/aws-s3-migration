@@ -71,9 +71,7 @@ class TestAuditRdsInstancesInRegion:
         """Test error handling when auditing fails."""
         with patch("boto3.client") as mock_client:
             mock_rds = MagicMock()
-            mock_rds.describe_db_instances.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_db_instances"
-            )
+            mock_rds.describe_db_instances.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_db_instances")
             mock_client.return_value = mock_rds
 
             result = audit_rds_instances_in_region("eu-west-1", "test-key", "test-secret")

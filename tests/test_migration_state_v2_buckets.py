@@ -58,9 +58,7 @@ def test_migration_state_v2_mark_bucket_sync_complete(tmp_path: Path):
     state.mark_bucket_sync_complete("bucket1")
 
     with state.db_conn.get_connection() as conn:
-        cursor = conn.execute(
-            "SELECT sync_complete FROM bucket_status WHERE bucket = ?", ("bucket1",)
-        )
+        cursor = conn.execute("SELECT sync_complete FROM bucket_status WHERE bucket = ?", ("bucket1",))
         row = cursor.fetchone()
         assert row["sync_complete"] == 1
 
@@ -145,9 +143,7 @@ class TestBucketInfoRetrieval:
         db_path = tmp_path / "test.db"
         state = MigrationStateV2(str(db_path))
 
-        state.save_bucket_status(
-            DEFAULT_BUCKET, INFO_FILE_COUNT, INFO_TOTAL_SIZE, INFO_STORAGE, scan_complete=True
-        )
+        state.save_bucket_status(DEFAULT_BUCKET, INFO_FILE_COUNT, INFO_TOTAL_SIZE, INFO_STORAGE, scan_complete=True)
 
         info = state.get_bucket_info(DEFAULT_BUCKET)
 
@@ -177,9 +173,7 @@ def test_migration_state_v2_get_scan_summary(tmp_path: Path):
     state.add_file("b1", "k2", SMALL_TOTAL_SIZE, "e2", "GLACIER", "2025-10-31T00:00:00Z")
     state.add_file("b2", "k3", SMALL_TOTAL_SIZE, "e3", "STANDARD", "2025-10-31T00:00:00Z")
 
-    state.save_bucket_status(
-        "b1", 2, 2 * SMALL_TOTAL_SIZE, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True
-    )
+    state.save_bucket_status("b1", 2, 2 * SMALL_TOTAL_SIZE, {"STANDARD": 1, "GLACIER": 1}, scan_complete=True)
     state.save_bucket_status("b2", 1, SMALL_TOTAL_SIZE, {"STANDARD": 1}, scan_complete=True)
     state.save_bucket_status(
         "b3",

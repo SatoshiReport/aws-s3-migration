@@ -209,9 +209,7 @@ class TestAuditElasticIpsInRegion:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_client.return_value = mock_ec2
-            mock_ec2.describe_addresses.side_effect = ClientError(
-                {"Error": {"Code": "UnauthorizedOperation"}}, "describe_addresses"
-            )
+            mock_ec2.describe_addresses.side_effect = ClientError({"Error": {"Code": "UnauthorizedOperation"}}, "describe_addresses")
 
             result = audit_elastic_ips_in_region("us-east-1")
 
@@ -224,9 +222,7 @@ class TestAuditElasticIpsInRegion:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_client.return_value = mock_ec2
-            mock_ec2.describe_addresses.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_addresses"
-            )
+            mock_ec2.describe_addresses.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_addresses")
 
             result = audit_elastic_ips_in_region("us-east-1")
 

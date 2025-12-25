@@ -64,9 +64,7 @@ class TestCheckVpcRdsInstances:
         with patch("boto3.client") as mock_boto3:
             mock_rds = MagicMock()
             mock_boto3.return_value = mock_rds
-            mock_rds.describe_db_instances.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_db_instances"
-            )
+            mock_rds.describe_db_instances.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_db_instances")
 
             analysis = {"can_delete": True, "blocking_resources": []}
             _check_vpc_rds_instances("us-east-1", "vpc-123", analysis)
@@ -132,12 +130,8 @@ class TestAnalyzeVpcDependencies:
             mock_ec2.describe_vpc_endpoints.return_value = {"VpcEndpoints": []}
 
             with (
-                patch(
-                    "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._check_vpc_load_balancers"  # pylint: disable=line-too-long
-                ),
-                patch(
-                    "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._check_vpc_rds_instances"  # pylint: disable=line-too-long
-                ),
+                patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._check_vpc_load_balancers"),  # pylint: disable=line-too-long
+                patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._check_vpc_rds_instances"),  # pylint: disable=line-too-long
             ):
                 result = analyze_vpc_dependencies("us-east-1")
 
@@ -153,9 +147,7 @@ class TestAnalyzeVpcDependencies:
         with patch("boto3.client") as mock_boto3:
             mock_ec2 = MagicMock()
             mock_boto3.return_value = mock_ec2
-            mock_ec2.describe_vpcs.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_vpcs"
-            )
+            mock_ec2.describe_vpcs.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_vpcs")
 
             result = analyze_vpc_dependencies("us-east-1")
 
@@ -306,15 +298,9 @@ class TestMain:
             patch(
                 "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.remove_detached_internet_gateway"  # pylint: disable=line-too-long
             ) as mock_remove,
-            patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.analyze_vpc_dependencies"
-            ) as mock_analyze,
-            patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._categorize_vpcs"
-            ) as mock_categorize,
-            patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._print_vpc_recommendations"
-            ),
+            patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.analyze_vpc_dependencies") as mock_analyze,
+            patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._categorize_vpcs") as mock_categorize,
+            patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._print_vpc_recommendations"),
         ):
             mock_release.return_value = True
             mock_remove.return_value = True
@@ -339,15 +325,9 @@ class TestMain:
             patch(
                 "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.remove_detached_internet_gateway"  # pylint: disable=line-too-long
             ) as mock_remove,
-            patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.analyze_vpc_dependencies"
-            ) as mock_analyze,
-            patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._categorize_vpcs"
-            ) as mock_categorize,
-            patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._print_vpc_recommendations"
-            ),
+            patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.analyze_vpc_dependencies") as mock_analyze,
+            patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._categorize_vpcs") as mock_categorize,
+            patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._print_vpc_recommendations"),
         ):
             mock_release.return_value = False
             mock_remove.return_value = False
@@ -368,15 +348,9 @@ class TestMain:
             patch(
                 "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.remove_detached_internet_gateway"  # pylint: disable=line-too-long
             ),
-            patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.analyze_vpc_dependencies"
-            ) as mock_analyze,
-            patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._categorize_vpcs"
-            ) as mock_categorize,
-            patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._print_vpc_recommendations"
-            ),
+            patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup.analyze_vpc_dependencies") as mock_analyze,
+            patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._categorize_vpcs") as mock_categorize,
+            patch("cost_toolkit.scripts.cleanup.aws_vpc_immediate_cleanup._print_vpc_recommendations"),
         ):
             mock_analyze.return_value = {}
             # Return some non-deletable VPCs
@@ -385,6 +359,4 @@ class TestMain:
             main()
 
             captured = capsys.readouterr()
-            assert (
-                "VPCs have blocking resources" in captured.out or "blocking" in captured.out.lower()
-            )
+            assert "VPCs have blocking resources" in captured.out or "blocking" in captured.out.lower()

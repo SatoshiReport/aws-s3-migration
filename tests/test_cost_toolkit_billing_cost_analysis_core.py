@@ -61,9 +61,7 @@ class TestGetCombinedBillingDataSuccess:
 
     @patch("cost_toolkit.scripts.billing.billing_report.cost_analysis.boto3.client")
     @patch("cost_toolkit.scripts.billing.billing_report.cost_analysis.get_date_range")
-    def test_get_combined_billing_data_success(
-        self, mock_get_date_range, mock_boto3_client, capsys
-    ):
+    def test_get_combined_billing_data_success(self, mock_get_date_range, mock_boto3_client, capsys):
         """Test successful retrieval of billing data."""
         mock_get_date_range.return_value = ("2025-11-01", "2025-11-15")
 
@@ -106,9 +104,7 @@ class TestGetCombinedBillingDataErrors:
 
     @patch("cost_toolkit.scripts.billing.billing_report.cost_analysis.boto3.client")
     @patch("cost_toolkit.scripts.billing.billing_report.cost_analysis.get_date_range")
-    def test_get_combined_billing_data_client_error(
-        self, mock_get_date_range, mock_boto3_client, capsys
-    ):
+    def test_get_combined_billing_data_client_error(self, mock_get_date_range, mock_boto3_client, capsys):
         """Test handling of ClientError during billing data retrieval."""
         mock_get_date_range.return_value = ("2025-11-01", "2025-11-15")
 
@@ -116,9 +112,7 @@ class TestGetCombinedBillingDataErrors:
         mock_boto3_client.return_value = mock_ce_client
 
         error_response = {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}
-        mock_ce_client.get_cost_and_usage.side_effect = ClientError(
-            error_response, "GetCostAndUsage"
-        )
+        mock_ce_client.get_cost_and_usage.side_effect = ClientError(error_response, "GetCostAndUsage")
 
         cost_result, usage_result = get_combined_billing_data()
 
@@ -134,9 +128,7 @@ class TestGetCombinedBillingDataApiCalls:
 
     @patch("cost_toolkit.scripts.billing.billing_report.cost_analysis.boto3.client")
     @patch("cost_toolkit.scripts.billing.billing_report.cost_analysis.get_date_range")
-    def test_get_combined_billing_data_correct_api_calls(
-        self, mock_get_date_range, mock_boto3_client
-    ):
+    def test_get_combined_billing_data_correct_api_calls(self, mock_get_date_range, mock_boto3_client):
         """Test that API calls are made with correct parameters."""
         mock_get_date_range.return_value = ("2025-11-01", "2025-11-15")
 

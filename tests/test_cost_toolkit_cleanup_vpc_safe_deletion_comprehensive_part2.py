@@ -50,9 +50,7 @@ class TestDeleteVpcAndDependencies:
             mock_ec2.describe_network_acls.return_value = {"NetworkAcls": []}
             mock_ec2.describe_route_tables.return_value = {"RouteTables": []}
             mock_ec2.describe_subnets.return_value = {"Subnets": []}
-            mock_ec2.delete_vpc.side_effect = ClientError(
-                {"Error": {"Code": "DependencyViolation"}}, "delete_vpc"
-            )
+            mock_ec2.delete_vpc.side_effect = ClientError({"Error": {"Code": "DependencyViolation"}}, "delete_vpc")
 
             delete_vpc_and_dependencies("vpc-123", "us-east-1")
 
@@ -63,9 +61,7 @@ class TestDeleteVpcAndDependencies:
     def test_delete_vpc_with_client_error(self, capsys):
         """Test deletion with client error."""
         with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.boto3.client") as mock_boto3:
-            mock_boto3.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "create_client"
-            )
+            mock_boto3.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "create_client")
 
             delete_vpc_and_dependencies("vpc-123", "us-east-1")
             captured = capsys.readouterr()
@@ -90,9 +86,7 @@ class TestDeleteVpcs:
         """Test deleting all VPCs successfully."""
         safe_vpcs = [("vpc-1", "us-east-1"), ("vpc-2", "us-west-2")]
 
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpc_and_dependencies"
-        ) as mock_delete:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpc_and_dependencies") as mock_delete:
             with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.WAIT_EVENT.wait"):
                 mock_delete.return_value = True
 
@@ -107,9 +101,7 @@ class TestDeleteVpcs:
         """Test deleting VPCs with some failures."""
         safe_vpcs = [("vpc-1", "us-east-1"), ("vpc-2", "us-west-2")]
 
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpc_and_dependencies"
-        ) as mock_delete:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpc_and_dependencies") as mock_delete:
             with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.WAIT_EVENT.wait"):
                 mock_delete.side_effect = [True, False]
 
@@ -167,12 +159,8 @@ class TestMain:
 
     def test_main_execution(self, capsys):
         """Test main function execution."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.get_safe_vpcs"
-        ) as mock_get_vpcs:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpcs"
-            ) as mock_delete:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.get_safe_vpcs") as mock_get_vpcs:
+            with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpcs") as mock_delete:
                 mock_get_vpcs.return_value = [("vpc-1", "us-east-1")]
                 mock_delete.return_value = [("vpc-1", "us-east-1", True)]
 
@@ -184,12 +172,8 @@ class TestMain:
 
     def test_main_calls_delete_vpcs(self):
         """Test that main calls _delete_vpcs."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.get_safe_vpcs"
-        ) as mock_get_vpcs:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpcs"
-            ) as mock_delete:
+        with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.get_safe_vpcs") as mock_get_vpcs:
+            with patch("cost_toolkit.scripts.cleanup.aws_vpc_safe_deletion.delete_vpcs") as mock_delete:
                 mock_get_vpcs.return_value = [("vpc-1", "us-east-1")]
                 mock_delete.return_value = []
 

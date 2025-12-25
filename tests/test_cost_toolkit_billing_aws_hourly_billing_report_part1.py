@@ -37,9 +37,7 @@ class TestGetHourlyBillingData:
                             "Start": "2025-11-13T00:00:00Z",
                             "End": "2025-11-13T01:00:00Z",
                         },
-                        "Groups": [
-                            {"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "0.50"}}}
-                        ],
+                        "Groups": [{"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "0.50"}}}],
                     }
                 ]
             }
@@ -47,9 +45,7 @@ class TestGetHourlyBillingData:
                 "ResultsByTime": [
                     {
                         "TimePeriod": {"Start": "2025-11-13", "End": "2025-11-14"},
-                        "Groups": [
-                            {"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "10.00"}}}
-                        ],
+                        "Groups": [{"Keys": ["EC2"], "Metrics": {"BlendedCost": {"Amount": "10.00"}}}],
                     }
                 ]
             }
@@ -75,9 +71,7 @@ class TestGetHourlyBillingData:
     ):
         """Test hourly billing data retrieval with error."""
         mock_get_date_range.return_value = ("2025-11-13", "2025-11-14")
-        mock_get_hourly.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "get_cost_and_usage"
-        )
+        mock_get_hourly.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "get_cost_and_usage")
 
         hourly_data, daily_data = get_hourly_billing_data()
 
@@ -335,10 +329,7 @@ class TestDisplayHourlyTrends:
 
     def test_display_hourly_trends_top_five_only(self, capsys):
         """Test displaying only top 5 services."""
-        hourly_service_costs = {
-            f"Service{i}": [{"hour": datetime(2025, 11, 13, 10, 0, 0), "cost": 1.00}]
-            for i in range(10)
-        }
+        hourly_service_costs = {f"Service{i}": [{"hour": datetime(2025, 11, 13, 10, 0, 0), "cost": 1.00}] for i in range(10)}
         daily_service_costs = {f"Service{i}": float(10 - i) for i in range(10)}
 
         _display_hourly_trends(hourly_service_costs, daily_service_costs)

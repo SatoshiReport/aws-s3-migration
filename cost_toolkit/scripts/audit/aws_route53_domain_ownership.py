@@ -81,11 +81,7 @@ def check_route53_registered_domains():
             print("✅ No domains registered through Route 53")
             return []
 
-        domain_details = [
-            detail
-            for domain in domains
-            if (detail := _process_single_domain(route53domains, domain)) is not None
-        ]
+        domain_details = [detail for domain in domains if (detail := _process_single_domain(route53domains, domain)) is not None]
         total_annual_cost = sum(d["annual_cost"] for d in domain_details)
 
         print("📊 Domain Registration Summary:")

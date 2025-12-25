@@ -176,9 +176,7 @@ def test_glacier_restorer_handles_non_restore_error():
     """Test that non-RestoreAlreadyInProgress errors propagate"""
     mock_s3 = mock.Mock()
     mock_state = mock.Mock(spec=MigrationStateV2)
-    mock_state.get_glacier_files_needing_restore.return_value = [
-        {"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}
-    ]
+    mock_state.get_glacier_files_needing_restore.return_value = [{"bucket": "test-bucket", "key": "file.txt", "storage_class": "GLACIER"}]
     error = ClientError(
         {"Error": {"Code": "NoSuchBucket", "Message": "Bucket does not exist"}},
         "RestoreObject",
@@ -197,9 +195,7 @@ def test_glacier_waiter_raises_on_head_object_error():
     mock_state = mock.Mock(spec=MigrationStateV2)
     # Use side_effect to return files on first call
     mock_state.get_files_restoring.return_value = [{"bucket": "test-bucket", "key": "file.txt"}]
-    mock_s3.head_object.side_effect = ClientError(
-        {"Error": {"Code": "NoSuchKey", "Message": "Not found"}}, "HeadObject"
-    )
+    mock_s3.head_object.side_effect = ClientError({"Error": {"Code": "NoSuchKey", "Message": "Not found"}}, "HeadObject")
 
     waiter = GlacierWaiter(mock_s3, mock_state)
 

@@ -16,9 +16,7 @@ from .constants import create_public_subnet_group
 def _create_migration_snapshot(rds, snapshot_id):
     """Create a snapshot for migration purposes"""
     try:
-        rds.create_db_snapshot(
-            DBSnapshotIdentifier=snapshot_id, DBInstanceIdentifier="simba-db-restored"
-        )
+        rds.create_db_snapshot(DBSnapshotIdentifier=snapshot_id, DBInstanceIdentifier="simba-db-restored")
         print(f"✅ Snapshot creation initiated: {snapshot_id}")
 
         # Wait for snapshot to complete

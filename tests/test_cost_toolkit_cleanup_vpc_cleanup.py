@@ -130,9 +130,7 @@ class TestReleaseElasticIpsDisassociateErrors:
                 ]
             }
 
-            mock_ec2.disassociate_address.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "disassociate_address"
-            )
+            mock_ec2.disassociate_address.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "disassociate_address")
 
             savings = release_elastic_ips_in_region("us-east-1")
 
@@ -159,9 +157,7 @@ class TestReleaseElasticIpsDisassociateErrors:
                 {"Error": {"Code": "InvalidAssociationID.NotFound"}},
                 "disassociate_address",
             )
-            mock_ec2.release_address.side_effect = ClientError(
-                {"Error": {"Code": "InUse"}}, "release_address"
-            )
+            mock_ec2.release_address.side_effect = ClientError({"Error": {"Code": "InUse"}}, "release_address")
 
             savings = release_elastic_ips_in_region("us-east-1")
 
@@ -187,9 +183,7 @@ class TestReleaseElasticIpsReleaseErrors:
                 ]
             }
 
-            mock_ec2.release_address.side_effect = ClientError(
-                {"Error": {"Code": "InUse"}}, "release_address"
-            )
+            mock_ec2.release_address.side_effect = ClientError({"Error": {"Code": "InUse"}}, "release_address")
 
             savings = release_elastic_ips_in_region("us-east-1")
 
@@ -235,9 +229,7 @@ def test_release_elastic_ips_describe_addresses_error(capsys):
     with patch("boto3.client") as mock_client:
         mock_ec2 = MagicMock()
         mock_client.return_value = mock_ec2
-        mock_ec2.describe_addresses.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "describe_addresses"
-        )
+        mock_ec2.describe_addresses.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_addresses")
 
         savings = release_elastic_ips_in_region("us-east-1")
 

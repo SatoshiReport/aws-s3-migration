@@ -25,12 +25,8 @@ class TestCreateMigrationSnapshot:
 
         _create_migration_snapshot(mock_rds, "test-snapshot")
 
-        mock_rds.create_db_snapshot.assert_called_once_with(
-            DBSnapshotIdentifier="test-snapshot", DBInstanceIdentifier="simba-db-restored"
-        )
-        mock_waiter.wait.assert_called_once_with(
-            DBSnapshotIdentifier="test-snapshot", WaiterConfig={"Delay": 30, "MaxAttempts": 20}
-        )
+        mock_rds.create_db_snapshot.assert_called_once_with(DBSnapshotIdentifier="test-snapshot", DBInstanceIdentifier="simba-db-restored")
+        mock_waiter.wait.assert_called_once_with(DBSnapshotIdentifier="test-snapshot", WaiterConfig={"Delay": 30, "MaxAttempts": 20})
 
         captured = capsys.readouterr()
         assert "Snapshot creation initiated: test-snapshot" in captured.out
@@ -100,9 +96,7 @@ class TestRestoreInstanceToPublicSubnet:
         mock_waiter = MagicMock()
         mock_rds.get_waiter.return_value = mock_waiter
 
-        _restore_instance_to_public_subnet(
-            mock_rds, "test-snapshot", "test-instance", "test-subnet-group"
-        )
+        _restore_instance_to_public_subnet(mock_rds, "test-snapshot", "test-instance", "test-subnet-group")
 
         mock_rds.restore_db_instance_from_db_snapshot.assert_called_once_with(
             DBInstanceIdentifier="test-instance",
@@ -113,9 +107,7 @@ class TestRestoreInstanceToPublicSubnet:
             VpcSecurityGroupIds=["sg-265aa043"],
         )
 
-        mock_waiter.wait.assert_called_once_with(
-            DBInstanceIdentifier="test-instance", WaiterConfig={"Delay": 30, "MaxAttempts": 20}
-        )
+        mock_waiter.wait.assert_called_once_with(DBInstanceIdentifier="test-instance", WaiterConfig={"Delay": 30, "MaxAttempts": 20})
 
         captured = capsys.readouterr()
         assert "Restoring to new instance in public subnets: test-instance" in captured.out
@@ -170,9 +162,7 @@ class TestFixDefaultSubnetGroup:
             mock_setup_creds.assert_called_once()
             mock_boto_client.assert_called_once_with("rds", region_name="us-east-1")
             mock_create_subnet_group.assert_called_once_with(mock_rds, "public-rds-subnets")
-            mock_create_snapshot.assert_called_once_with(
-                mock_rds, "simba-db-public-migration-snapshot"
-            )
+            mock_create_snapshot.assert_called_once_with(mock_rds, "simba-db-public-migration-snapshot")
             mock_restore.assert_called_once_with(
                 mock_rds,
                 "simba-db-public-migration-snapshot",
@@ -208,9 +198,7 @@ class TestFixDefaultSubnetGroup:
     @patch("cost_toolkit.scripts.rds.fix_default_subnet_group.boto3.client")
     @patch("cost_toolkit.scripts.rds.fix_default_subnet_group.setup_aws_credentials")
     @patch("cost_toolkit.scripts.rds.fix_default_subnet_group.create_public_subnet_group")
-    def test_fix_subnet_group_subnet_creation_error(
-        self, mock_create_subnet_group, _mock_setup_creds, mock_boto_client, capsys
-    ):
+    def test_fix_subnet_group_subnet_creation_error(self, mock_create_subnet_group, _mock_setup_creds, mock_boto_client, capsys):
         """Test handling subnet group creation error."""
         mock_rds = MagicMock()
         mock_boto_client.return_value = mock_rds

@@ -148,9 +148,7 @@ class TestAuditNetworkInterfacesInRegionConfig:
         mock_ec2_client = MagicMock()
         mock_ec2_client.describe_network_interfaces.return_value = {"NetworkInterfaces": []}
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_audit.boto3.client"
-        ) as mock_boto3:
+        with patch("cost_toolkit.scripts.audit.aws_network_interface_audit.boto3.client") as mock_boto3:
             mock_boto3.return_value = mock_ec2_client
             audit_network_interfaces_in_region("eu-central-1", "my-access-key", "my-secret-key")
 

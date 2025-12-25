@@ -221,9 +221,7 @@ class TestMainOutputMessages:
         captured = capsys.readouterr()
         assert "Completed applying policies to 1 bucket(s)" in captured.out
 
-    def test_main_shows_completion_message_for_multiple_buckets(
-        self, tmp_path, monkeypatch, capsys
-    ):
+    def test_main_shows_completion_message_for_multiple_buckets(self, tmp_path, monkeypatch, capsys):
         """Test that completion message shows correct bucket count"""
         monkeypatch.chdir(tmp_path)
         policies_dir = tmp_path / "policies"

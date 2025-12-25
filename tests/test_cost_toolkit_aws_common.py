@@ -63,12 +63,8 @@ def test_create_ec2_and_s3_clients(mock_create_ec2, mock_create_s3):
 
     assert_equal(ec2, mock_ec2_client)
     assert_equal(s3, mock_s3_client)
-    mock_create_ec2.assert_called_once_with(
-        region="us-west-2", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
-    mock_create_s3.assert_called_once_with(
-        region="us-west-2", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    mock_create_ec2.assert_called_once_with(region="us-west-2", aws_access_key_id="test_key", aws_secret_access_key="test_secret")
+    mock_create_s3.assert_called_once_with(region="us-west-2", aws_access_key_id="test_key", aws_secret_access_key="test_secret")
 
 
 @patch("builtins.print")
@@ -78,16 +74,12 @@ def test_terminate_instance(mock_create_ec2, _mock_print):
     mock_ec2 = MagicMock()
     mock_create_ec2.return_value = mock_ec2
     mock_ec2.terminate_instances.return_value = {
-        "TerminatingInstances": [
-            {"CurrentState": {"Name": "shutting-down"}, "PreviousState": {"Name": "running"}}
-        ]
+        "TerminatingInstances": [{"CurrentState": {"Name": "shutting-down"}, "PreviousState": {"Name": "running"}}]
     }
 
     result = terminate_instance("us-east-1", "i-1234567890abcdef0", "test_key", "test_secret")
 
-    mock_create_ec2.assert_called_once_with(
-        region="us-east-1", aws_access_key_id="test_key", aws_secret_access_key="test_secret"
-    )
+    mock_create_ec2.assert_called_once_with(region="us-east-1", aws_access_key_id="test_key", aws_secret_access_key="test_secret")
     mock_ec2.terminate_instances.assert_called_once_with(InstanceIds=["i-1234567890abcdef0"])
     assert result is True
 
@@ -95,9 +87,7 @@ def test_terminate_instance(mock_create_ec2, _mock_print):
 def test_get_instance_name_with_name_tag():
     """Test get_instance_name returns Name tag value."""
     mock_ec2 = MagicMock()
-    mock_ec2.describe_instances.return_value = {
-        "Reservations": [{"Instances": [{"Tags": [{"Key": "Name", "Value": "test-instance"}]}]}]
-    }
+    mock_ec2.describe_instances.return_value = {"Reservations": [{"Instances": [{"Tags": [{"Key": "Name", "Value": "test-instance"}]}]}]}
 
     result = get_instance_name(mock_ec2, "i-1234567890abcdef0")
 
@@ -108,9 +98,7 @@ def test_get_instance_name_with_name_tag():
 def test_get_instance_name_without_name_tag():
     """Test get_instance_name returns None when Name tag missing."""
     mock_ec2 = MagicMock()
-    mock_ec2.describe_instances.return_value = {
-        "Reservations": [{"Instances": [{"Tags": [{"Key": "Env", "Value": "prod"}]}]}]
-    }
+    mock_ec2.describe_instances.return_value = {"Reservations": [{"Instances": [{"Tags": [{"Key": "Env", "Value": "prod"}]}]}]}
 
     result = get_instance_name(mock_ec2, "i-1234567890abcdef0")
 

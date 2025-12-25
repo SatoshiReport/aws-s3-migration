@@ -154,9 +154,7 @@ class MissingSizeError(RuntimeError):
     """Raised when a candidate has no size information."""
 
 
-def _filter_candidates_by_size(
-    candidates: dict[Path, Candidate], min_size_bytes: int | None
-) -> list[Candidate]:
+def _filter_candidates_by_size(candidates: dict[Path, Candidate], min_size_bytes: int | None) -> list[Candidate]:
     """Filter candidates by minimum size requirement.
 
     Raises:

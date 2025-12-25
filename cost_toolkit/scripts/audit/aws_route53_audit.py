@@ -150,9 +150,7 @@ def audit_route53_health_checks():
                 path = hc_config.get("ResourcePath", "")
                 print(f"  Target: {hc_type.lower()}://{fqdn}:{port}{path}")
 
-            health_check_details.append(
-                {"id": hc_id, "type": hc_type, "monthly_cost": monthly_cost}
-            )
+            health_check_details.append({"id": hc_id, "type": hc_type, "monthly_cost": monthly_cost})
             print()
 
         print("📊 Health Checks Summary:")
@@ -242,10 +240,7 @@ def _print_cost_breakdown(
 
     print(f"Hosted Zones: ${total_hosted_zone_cost:.2f}/month ({len(hosted_zones)} zones)")
     print(f"Health Checks: ${total_health_check_cost:.2f}/month ({len(health_checks)} checks)")
-    print(
-        f"Resolver Endpoints: ${total_resolver_cost:.2f}/month "
-        f"({len(resolver_endpoints)} endpoints)"
-    )
+    print(f"Resolver Endpoints: ${total_resolver_cost:.2f}/month " f"({len(resolver_endpoints)} endpoints)")
     print(f"Total Estimated: ${total_estimated_cost:.2f}/month")
     print("Your Reported Cost: $1.57")
 
@@ -266,10 +261,7 @@ def _print_optimization_opportunities(hosted_zones, health_checks, resolver_endp
             if zone["record_count"] <= DEFAULT_DNS_RECORD_COUNT:
                 print(f"    🗑️  {zone['zone_name']} - appears unused (only default records)")
             else:
-                print(
-                    f"    ✅ {zone['zone_name']} - has {zone['record_count']} records "
-                    "(likely in use)"
-                )
+                print(f"    ✅ {zone['zone_name']} - has {zone['record_count']} records " "(likely in use)")
 
     if health_checks:
         print(f"  Health Checks ({len(health_checks)} checks):")
@@ -288,10 +280,7 @@ def _print_cost_explanation(hosted_zones, health_checks):
     if len(hosted_zones) == EXPECTED_HOSTED_ZONE_COUNT_1:
         print("  3 hosted zones × $0.50 = $1.50/month")
         print("  Plus DNS queries and other small charges = ~$1.57")
-    elif (
-        len(hosted_zones) == EXPECTED_HOSTED_ZONE_COUNT_2
-        and len(health_checks) == EXPECTED_HEALTH_CHECK_COUNT
-    ):
+    elif len(hosted_zones) == EXPECTED_HOSTED_ZONE_COUNT_2 and len(health_checks) == EXPECTED_HEALTH_CHECK_COUNT:
         print("  2 hosted zones × $0.50 + 2 health checks × $0.50 = $2.00/month")
         print("  Partial month billing could explain $1.57")
     else:

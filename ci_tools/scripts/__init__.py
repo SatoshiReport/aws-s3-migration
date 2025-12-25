@@ -16,8 +16,7 @@ __path__ = extend_path(__path__, __name__)  # type: ignore[name-defined]
 _CI_SHARED_ROOT_ENV = os.environ.get("CI_SHARED_ROOT")
 if not _CI_SHARED_ROOT_ENV:
     raise CISharedRootNotConfiguredError(
-        "CI_SHARED_ROOT environment variable is required. "
-        "Set it to the path of your ci_shared repository clone."
+        "CI_SHARED_ROOT environment variable is required. " "Set it to the path of your ci_shared repository clone."
     )
 
 _shared_root = Path(_CI_SHARED_ROOT_ENV)

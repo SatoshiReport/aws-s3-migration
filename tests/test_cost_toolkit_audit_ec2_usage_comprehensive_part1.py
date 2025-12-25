@@ -59,9 +59,7 @@ class TestCalculateCpuMetrics:
     def test_calculate_cpu_metrics_error(self, capsys):
         """Test CPU metrics with error."""
         mock_cloudwatch = MagicMock()
-        mock_cloudwatch.get_metric_statistics.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "get_metric_statistics"
-        )
+        mock_cloudwatch.get_metric_statistics.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "get_metric_statistics")
 
         avg_cpu, max_cpu, latest = _calculate_cpu_metrics(mock_cloudwatch, "i-123")
 
@@ -170,9 +168,7 @@ class TestGetNetworkMetrics:
     def test_get_network_metrics_error(self, capsys):
         """Test network metrics with error."""
         mock_cloudwatch = MagicMock()
-        mock_cloudwatch.get_metric_statistics.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "get_metric_statistics"
-        )
+        mock_cloudwatch.get_metric_statistics.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "get_metric_statistics")
         start_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end_time = datetime(2024, 1, 8, tzinfo=timezone.utc)
 
@@ -238,9 +234,7 @@ class TestProcessInstanceDetails:
         start_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end_time = datetime(2024, 1, 8, tzinfo=timezone.utc)
 
-        result = _process_instance_details(
-            mock_cloudwatch, instance, "us-east-1", start_time, end_time
-        )
+        result = _process_instance_details(mock_cloudwatch, instance, "us-east-1", start_time, end_time)
 
         assert result["instance_id"] == "i-123"
         assert result["name"] == "test-instance"
@@ -266,9 +260,7 @@ class TestProcessInstanceDetails:
         start_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
         end_time = datetime(2024, 1, 8, tzinfo=timezone.utc)
 
-        result = _process_instance_details(
-            mock_cloudwatch, instance, "us-east-1", start_time, end_time
-        )
+        result = _process_instance_details(mock_cloudwatch, instance, "us-east-1", start_time, end_time)
 
         assert result["state"] == "stopped"
         assert result["estimated_monthly_cost"] == 0

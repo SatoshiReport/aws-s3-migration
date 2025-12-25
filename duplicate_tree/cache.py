@@ -95,9 +95,7 @@ def load_cached_report(
                 "total_files": str(row["total_files"]),
             }
         except json.JSONDecodeError:
-            print(
-                f"⚠️  Cached report has corrupted JSON payload. Generated at: {row['generated_at']}"
-            )
+            print(f"⚠️  Cached report has corrupted JSON payload. Generated at: {row['generated_at']}")
             return {
                 "generated_at": row["generated_at"],
                 "rows": [],

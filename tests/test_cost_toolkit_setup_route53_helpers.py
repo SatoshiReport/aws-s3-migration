@@ -42,9 +42,7 @@ class TestFindHostedZone:
     def test_find_zone_not_found(self):
         """Test when hosted zone is not found."""
         mock_route53 = MagicMock()
-        mock_route53.list_hosted_zones.return_value = {
-            "HostedZones": [{"Name": "other.com.", "Id": "/hostedzone/Z456"}]
-        }
+        mock_route53.list_hosted_zones.return_value = {"HostedZones": [{"Name": "other.com.", "Id": "/hostedzone/Z456"}]}
 
         with pytest.raises(HostedZoneNotFoundError) as exc_info:
             _find_hosted_zone(mock_route53, "example.com")
@@ -86,9 +84,7 @@ class TestGetNameserverRecords:
     def test_get_nameservers_not_found(self):
         """Test when nameserver records not found."""
         mock_route53 = MagicMock()
-        mock_route53.list_resource_record_sets.return_value = {
-            "ResourceRecordSets": [{"Type": "A", "Name": "example.com."}]
-        }
+        mock_route53.list_resource_record_sets.return_value = {"ResourceRecordSets": [{"Type": "A", "Name": "example.com."}]}
 
         with pytest.raises(NSRecordsNotFoundError) as exc_info:
             _get_nameserver_records(mock_route53, "/hostedzone/Z123", "example.com")

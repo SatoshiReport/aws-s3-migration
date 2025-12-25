@@ -23,18 +23,14 @@ class TestDisableTerminationProtection:
         """Test successful disabling of termination protection."""
         mock_client = MagicMock()
         _disable_termination_protection(mock_client, "i-123")
-        mock_client.modify_instance_attribute.assert_called_once_with(
-            InstanceId="i-123", DisableApiTermination={"Value": False}
-        )
+        mock_client.modify_instance_attribute.assert_called_once_with(InstanceId="i-123", DisableApiTermination={"Value": False})
         captured = capsys.readouterr()
         assert "Disabled termination protection" in captured.out
 
     def test_disable_protection_error(self, capsys):
         """Test error handling when disabling termination protection."""
         mock_client = MagicMock()
-        mock_client.modify_instance_attribute.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "modify_instance_attribute"
-        )
+        mock_client.modify_instance_attribute.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "modify_instance_attribute")
         _disable_termination_protection(mock_client, "i-123")
         captured = capsys.readouterr()
         assert "Termination protection check" in captured.out
@@ -62,9 +58,7 @@ def test_delete_manual_volumes_combined(capsys):
     """Test manual volume deletion in various scenarios."""
 
     mock_client = MagicMock()
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details"
-    ) as mock_get:
+    with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details") as mock_get:
         mock_get.return_value = {
             "volume_id": "vol-123",
             "name": "data-volume",
@@ -76,12 +70,8 @@ def test_delete_manual_volumes_combined(capsys):
         assert "deletion initiated" in captured.out
 
     mock_client = MagicMock()
-    mock_client.delete_volume.side_effect = ClientError(
-        {"Error": {"Code": "InvalidVolume.NotFound"}}, "delete_volume"
-    )
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details"
-    ) as mock_get:
+    mock_client.delete_volume.side_effect = ClientError({"Error": {"Code": "InvalidVolume.NotFound"}}, "delete_volume")
+    with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details") as mock_get:
         mock_get.return_value = {
             "volume_id": "vol-123",
             "name": "data-volume",
@@ -101,9 +91,7 @@ class TestExtractHelpers:
 
     def test_extract_instance_name_with_name_tag(self):
         """Test extracting instance name when Name tag exists."""
-        instance = {
-            "Tags": [{"Key": "Name", "Value": "MyInstance"}, {"Key": "Env", "Value": "prod"}]
-        }
+        instance = {"Tags": [{"Key": "Name", "Value": "MyInstance"}, {"Key": "Env", "Value": "prod"}]}
         name = extract_tag_value(instance, "Name")
         assert name == "MyInstance"
 
@@ -153,9 +141,7 @@ class TestCheckAndPrintVolumes:
             ]
         }
 
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details"
-        ) as mock_get:
+        with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details") as mock_get:
             mock_get.return_value = {
                 "volume_id": "vol-123",
                 "name": "DataVolume",
@@ -182,9 +168,7 @@ class TestCheckAndPrintVolumes:
             ]
         }
 
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details"
-        ) as mock_get:
+        with patch("cost_toolkit.scripts.cleanup.aws_instance_termination.get_volume_details") as mock_get:
             mock_get.return_value = {
                 "volume_id": "vol-456",
                 "name": "RootVolume",

@@ -62,9 +62,7 @@ def test_delete_lambda_functions_handles_delete_error(capsys):
         with patch("boto3.client") as mock_client:
             mock_lambda = MagicMock()
             mock_lambda.list_functions.return_value = {"Functions": [{"FunctionName": "test"}]}
-            mock_lambda.delete_function.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "delete_function"
-            )
+            mock_lambda.delete_function.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_function")
             mock_client.return_value = mock_lambda
             delete_lambda_functions()
     captured = capsys.readouterr()
@@ -76,9 +74,7 @@ def test_delete_lambda_functions_handles_listing_error(capsys):
     with patch("cost_toolkit.scripts.cleanup.aws_lambda_cleanup.aws_utils.setup_aws_credentials"):
         with patch("boto3.client") as mock_client:
             mock_lambda = MagicMock()
-            mock_lambda.list_functions.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "list_functions"
-            )
+            mock_lambda.list_functions.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_functions")
             mock_client.return_value = mock_lambda
             delete_lambda_functions()
     captured = capsys.readouterr()

@@ -31,15 +31,9 @@ def _extract_instance_info(instance, region):
         "multi_az": instance["MultiAZ"],
         "publicly_accessible": instance["PubliclyAccessible"],
         "vpc_security_groups": [sg["VpcSecurityGroupId"] for sg in vpc_security_groups],
-        "db_subnet_group": (
-            db_subnet_group["DBSubnetGroupName"]
-            if db_subnet_group and "DBSubnetGroupName" in db_subnet_group
-            else None
-        ),
+        "db_subnet_group": (db_subnet_group["DBSubnetGroupName"] if db_subnet_group and "DBSubnetGroupName" in db_subnet_group else None),
         "parameter_group": (
-            db_param_groups[0]["DBParameterGroupName"]
-            if db_param_groups and "DBParameterGroupName" in db_param_groups[0]
-            else None
+            db_param_groups[0]["DBParameterGroupName"] if db_param_groups and "DBParameterGroupName" in db_param_groups[0] else None
         ),
         "backup_retention": instance.get("BackupRetentionPeriod", 0),
         "preferred_backup_window": instance.get("PreferredBackupWindow"),
@@ -57,9 +51,7 @@ def _print_instance_info(instance_info):
     print(f"   Engine: {instance_info['engine']} {instance_info['engine_version']}")
     print(f"   Class: {instance_info['instance_class']}")
     print(f"   Status: {instance_info['status']}")
-    print(
-        f"   Storage: {instance_info['allocated_storage']} GB " f"({instance_info['storage_type']})"
-    )
+    print(f"   Storage: {instance_info['allocated_storage']} GB " f"({instance_info['storage_type']})")
 
 
 def discover_rds_instances():
@@ -111,14 +103,10 @@ def validate_migration_compatibility(instance_info):
 
     source_engine = instance_info["engine"].lower()
     if source_engine not in compatible_engines:
-        compatibility_issues.append(
-            f"Engine '{instance_info['engine']}' is not compatible with Aurora Serverless v2"
-        )
+        compatibility_issues.append(f"Engine '{instance_info['engine']}' is not compatible with Aurora Serverless v2")
 
     if instance_info["status"] != "available":
-        compatibility_issues.append(
-            f"Instance status is '{instance_info['status']}', must be 'available' for migration"
-        )
+        compatibility_issues.append(f"Instance status is '{instance_info['status']}', must be 'available' for migration")
 
     if instance_info["allocated_storage"] < 1:
         compatibility_issues.append("Storage size too small for Aurora migration")
@@ -142,9 +130,7 @@ def create_rds_snapshot(rds_client, instance_identifier, _region):
     print(f"\n📸 Creating snapshot: {snapshot_identifier}")
 
     try:
-        rds_client.create_db_snapshot(
-            DBSnapshotIdentifier=snapshot_identifier, DBInstanceIdentifier=instance_identifier
-        )
+        rds_client.create_db_snapshot(DBSnapshotIdentifier=snapshot_identifier, DBInstanceIdentifier=instance_identifier)
 
         print(f"✅ Snapshot creation initiated: {snapshot_identifier}")
 
@@ -172,11 +158,7 @@ def _build_cluster_params(instance_info, target_engine, cluster_identifier):
             "MaxCapacity": 4.0,
         },
         "DeletionProtection": False,
-        "EnableCloudwatchLogsExports": (
-            ["postgresql"]
-            if target_engine == "aurora-postgresql"
-            else ["error", "general", "slowquery"]
-        ),
+        "EnableCloudwatchLogsExports": (["postgresql"] if target_engine == "aurora-postgresql" else ["error", "general", "slowquery"]),
         "BackupRetentionPeriod": max(instance_info["backup_retention"], 1),
         "StorageEncrypted": instance_info["storage_encrypted"],
     }
@@ -214,9 +196,7 @@ def _get_cluster_endpoint_info(rds_client, cluster_identifier):
     }
 
 
-def create_aurora_serverless_cluster(
-    rds_client, instance_info, target_engine, _snapshot_identifier
-):
+def create_aurora_serverless_cluster(rds_client, instance_info, target_engine, _snapshot_identifier):
     """Create Aurora Serverless v2 cluster from RDS snapshot"""
     cluster_identifier = f"{instance_info['identifier']}-aurora-serverless"
 

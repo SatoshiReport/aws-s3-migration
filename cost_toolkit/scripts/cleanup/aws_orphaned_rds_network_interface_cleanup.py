@@ -53,9 +53,7 @@ def delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_
             print(f"   Description: {interface['description']}")
 
             # Verify it's still orphaned before deletion
-            eni = ec2.describe_network_interfaces(NetworkInterfaceIds=[interface_id])[
-                "NetworkInterfaces"
-            ][0]
+            eni = ec2.describe_network_interfaces(NetworkInterfaceIds=[interface_id])["NetworkInterfaces"][0]
 
             # Check if it has any attachments
             attachment = eni.get("Attachment", {})
@@ -121,9 +119,7 @@ def main():
         print("=" * 60)
 
         # Delete orphaned interfaces
-        deleted_interfaces, failed_deletions = delete_orphaned_rds_network_interfaces(
-            aws_access_key_id, aws_secret_access_key
-        )
+        deleted_interfaces, failed_deletions = delete_orphaned_rds_network_interfaces(aws_access_key_id, aws_secret_access_key)
 
         # Summary
         print("=" * 60)
@@ -136,10 +132,7 @@ def main():
         if deleted_interfaces:
             print("✅ Successfully deleted interfaces:")
             for interface in deleted_interfaces:
-                print(
-                    f"   🗑️  {interface['interface_id']} ({interface['region']}) - "
-                    f"{interface['public_ip']}"
-                )
+                print(f"   🗑️  {interface['interface_id']} ({interface['region']}) - " f"{interface['public_ip']}")
 
         if failed_deletions:
             print("\n❌ Failed deletions:")

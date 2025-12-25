@@ -65,9 +65,7 @@ class TestGetAmiDetails:
     def test_get_ami_details_error(self):
         """Test error when retrieving AMI details."""
         mock_client = MagicMock()
-        mock_client.describe_images.side_effect = ClientError(
-            {"Error": {"Code": "InvalidAMIID.NotFound"}}, "describe_images"
-        )
+        mock_client.describe_images.side_effect = ClientError({"Error": {"Code": "InvalidAMIID.NotFound"}}, "describe_images")
 
         result = get_ami_details(mock_client, "ami-notfound")
 
@@ -116,9 +114,7 @@ class TestCheckAmiUsage:
     def test_check_usage_error(self, capsys):
         """Test error when checking AMI usage."""
         mock_client = MagicMock()
-        mock_client.describe_instances.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "describe_instances"
-        )
+        mock_client.describe_instances.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_instances")
 
         instances = check_ami_usage(mock_client, "ami-123")
 
@@ -236,9 +232,7 @@ class TestAnalyzeSnapshotCost:
     def test_analyze_cost_used_ami(self, capsys):
         """Test analyzing cost for AMI in use."""
         mock_client = MagicMock()
-        mock_client.describe_snapshots.return_value = {
-            "Snapshots": [{"SnapshotId": "snap-123", "VolumeSize": 200}]
-        }
+        mock_client.describe_snapshots.return_value = {"Snapshots": [{"SnapshotId": "snap-123", "VolumeSize": 200}]}
 
         instances = [{"instance_id": "i-123"}]
         cost = _analyze_snapshot_cost(mock_client, "snap-123", instances)
@@ -250,9 +244,7 @@ class TestAnalyzeSnapshotCost:
     def test_analyze_cost_error(self, capsys):
         """Test error when analyzing cost."""
         mock_client = MagicMock()
-        mock_client.describe_snapshots.side_effect = ClientError(
-            {"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots"
-        )
+        mock_client.describe_snapshots.side_effect = ClientError({"Error": {"Code": "InvalidSnapshot.NotFound"}}, "describe_snapshots")
 
         cost = _analyze_snapshot_cost(mock_client, "snap-notfound", [])
 

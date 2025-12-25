@@ -64,17 +64,13 @@ class TestProcessExportRestore:
         mock_ec2 = MagicMock()
         mock_ec2.import_image.return_value = {"ImportTaskId": "import-123"}
         mock_ec2.describe_import_image_tasks.return_value = {
-            "ImportImageTasks": [
-                {"ImportTaskId": "import-123", "Status": "completed", "ImageId": "ami-111"}
-            ]
+            "ImportImageTasks": [{"ImportTaskId": "import-123", "Status": "completed", "ImageId": "ami-111"}]
         }
         mock_ec2.describe_images.return_value = {
             "Images": [
                 {
                     "RootDeviceName": "/dev/sda1",
-                    "BlockDeviceMappings": [
-                        {"DeviceName": "/dev/sda1", "Ebs": {"SnapshotId": "snap-222"}}
-                    ],
+                    "BlockDeviceMappings": [{"DeviceName": "/dev/sda1", "Ebs": {"SnapshotId": "snap-222"}}],
                 }
             ]
         }
@@ -91,9 +87,7 @@ class TestProcessExportRestore:
         """Test restore when import fails."""
         mock_ec2 = MagicMock()
         mock_ec2.import_image.return_value = {"ImportTaskId": "import-fail"}
-        mock_ec2.describe_import_image_tasks.return_value = {
-            "ImportImageTasks": [{"ImportTaskId": "import-fail", "Status": "failed"}]
-        }
+        mock_ec2.describe_import_image_tasks.return_value = {"ImportImageTasks": [{"ImportTaskId": "import-fail", "Status": "failed"}]}
 
         export = {"key": "exports/bad.vmdk", "size": 1024}
         result = _process_export_restore(mock_ec2, "test-bucket", export)
@@ -229,9 +223,7 @@ class TestGetAndValidateExports:
     @patch("cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore._select_exports")
     def test_get_and_validate_exports_success(self, mock_select, mock_list):
         """Test successful export validation."""
-        mock_list.return_value = [
-            {"key": "snap1.vmdk", "size": 1024, "last_modified": datetime.now()}
-        ]
+        mock_list.return_value = [{"key": "snap1.vmdk", "size": 1024, "last_modified": datetime.now()}]
         mock_select.return_value = [{"key": "snap1.vmdk"}]
 
         mock_s3 = MagicMock()
@@ -254,9 +246,7 @@ class TestGetAndValidateExports:
     @patch("cost_toolkit.scripts.optimization.aws_s3_to_snapshot_restore._select_exports")
     def test_get_and_validate_exports_invalid_selection(self, mock_select, mock_list):
         """Test with invalid selection - now raises exception."""
-        mock_list.return_value = [
-            {"key": "snap1.vmdk", "size": 1024, "last_modified": datetime.now()}
-        ]
+        mock_list.return_value = [{"key": "snap1.vmdk", "size": 1024, "last_modified": datetime.now()}]
         # Mock _select_exports to raise ValueError (simulating invalid input)
         mock_select.side_effect = ValueError("Invalid selection 'foo': not a number")
 

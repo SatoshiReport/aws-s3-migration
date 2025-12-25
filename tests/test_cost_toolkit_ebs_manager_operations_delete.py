@@ -35,9 +35,7 @@ def test_delete_ebs_volume_describe_error(mock_boto_client, mock_find_region, ca
 
     mock_ec2 = MagicMock()
     mock_ec2.exceptions.ClientError = ClientError
-    mock_ec2.describe_volumes.side_effect = ClientError(
-        {"Error": {"Code": "AccessDenied", "Message": "Not authorized"}}, "DescribeVolumes"
-    )
+    mock_ec2.describe_volumes.side_effect = ClientError({"Error": {"Code": "AccessDenied", "Message": "Not authorized"}}, "DescribeVolumes")
     mock_boto_client.return_value = mock_ec2
 
     result = delete_ebs_volume("vol-123")
@@ -194,9 +192,7 @@ def test_delete_ebs_volume_deletion_error(mock_boto_client, mock_find_region, ca
             }
         ]
     }
-    mock_ec2.delete_volume.side_effect = ClientError(
-        {"Error": {"Code": "VolumeInUse", "Message": "Volume is in use"}}, "DeleteVolume"
-    )
+    mock_ec2.delete_volume.side_effect = ClientError({"Error": {"Code": "VolumeInUse", "Message": "Volume is in use"}}, "DeleteVolume")
     mock_boto_client.return_value = mock_ec2
 
     result = delete_ebs_volume("vol-123", force=True)

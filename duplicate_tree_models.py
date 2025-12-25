@@ -21,12 +21,7 @@ class FilesTableReadError(RuntimeError):
     """Raised when the SQLite files table cannot be read."""
 
     def __init__(self, db_path: str) -> None:
-        super().__init__(
-            (
-                f"Unable to read files table from {db_path!r}. "
-                "Ensure migrate_v2 has initialized the database."
-            )
-        )
+        super().__init__((f"Unable to read files table from {db_path!r}. " "Ensure migrate_v2 has initialized the database."))
 
 
 @dataclass
@@ -73,11 +68,7 @@ class ProgressPrinter:  # pylint: disable=too-few-public-methods
     def update(self, processed: int, force: bool = False):
         """Render the progress bar when enough time has elapsed."""
         now = time.time()
-        if (
-            not force
-            and processed < self.total
-            and (now - self._last_update) < PROGRESS_MIN_INTERVAL
-        ):
+        if not force and processed < self.total and (now - self._last_update) < PROGRESS_MIN_INTERVAL:
             return
         self._last_update = now
         percent = (processed / self.total * 100.0) if self.total else 0.0

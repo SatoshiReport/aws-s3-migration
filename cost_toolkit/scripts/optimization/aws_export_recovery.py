@@ -92,9 +92,7 @@ def _process_stuck_export(task, s3_client):
 
 def check_active_exports(region, aws_access_key_id, aws_secret_access_key):
     """Check all active export tasks in a region"""
-    ec2_client, s3_client = create_ec2_and_s3_clients(
-        region, aws_access_key_id, aws_secret_access_key
-    )
+    ec2_client, s3_client = create_ec2_and_s3_clients(region, aws_access_key_id, aws_secret_access_key)
 
     print(f"\n🔍 Checking active exports in {region}...")
 

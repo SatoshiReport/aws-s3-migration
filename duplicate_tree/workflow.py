@@ -50,11 +50,7 @@ def load_cached_duplicates(
     if not cached_report:
         return None
 
-    print(
-        "Using cached duplicate analysis from "
-        f"{cached_report['generated_at']} "
-        f"({int(cached_report['total_files']):,} files)."
-    )
+    print("Using cached duplicate analysis from " f"{cached_report['generated_at']} " f"({int(cached_report['total_files']):,} files).")
     if "rows" in cached_report:
         cluster_rows: Optional[List[ClusterRow]] = cached_report["rows"]
         report_text = render_report_rows(cluster_rows, context.base_path)

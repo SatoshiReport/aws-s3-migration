@@ -134,9 +134,7 @@ class TestUpdateDomainNameserversAtRegistrar:
         mock_route53domains = MagicMock()
         mock_boto_client.return_value = mock_route53domains
 
-        error = ClientError(
-            {"Error": {"Code": "ServiceError", "Message": "Service error"}}, "get_domain_detail"
-        )
+        error = ClientError({"Error": {"Code": "ServiceError", "Message": "Service error"}}, "get_domain_detail")
         mock_route53domains.get_domain_detail.side_effect = error
 
         nameservers = ["ns-1.awsdns-01.com"]
@@ -154,9 +152,7 @@ class TestVerifyCanvaDnsSetup:
     @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.boto3.client")
     @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup._check_dns_records")
     @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup._print_dns_status")
-    def test_verify_dns_all_records_present(
-        self, mock_print_status, mock_check_records, mock_boto_client
-    ):
+    def test_verify_dns_all_records_present(self, mock_print_status, mock_check_records, mock_boto_client):
         """Test verification when all DNS records present."""
         mock_route53 = MagicMock()
         mock_boto_client.return_value = mock_route53
@@ -182,9 +178,7 @@ class TestVerifyCanvaDnsSetup:
     @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.boto3.client")
     @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup._check_dns_records")
     @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup._print_dns_status")
-    def test_verify_dns_missing_records(
-        self, mock_print_status, mock_check_records, mock_boto_client
-    ):
+    def test_verify_dns_missing_records(self, mock_print_status, mock_check_records, mock_boto_client):
         """Test verification when some DNS records missing."""
         mock_route53 = MagicMock()
         mock_boto_client.return_value = mock_route53
@@ -277,9 +271,7 @@ class TestCreateMissingDnsRecords:
     @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup.boto3.client")
     @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup._build_existing_records_map")
     @patch("cost_toolkit.scripts.setup.aws_route53_domain_setup._create_root_domain_change")
-    def test_create_missing_records_no_canva_ip(
-        self, mock_root_change, mock_build_map, mock_boto_client
-    ):
+    def test_create_missing_records_no_canva_ip(self, mock_root_change, mock_build_map, mock_boto_client):
         """Test creating records when Canva IP needed but not provided."""
         mock_route53 = MagicMock()
         mock_boto_client.return_value = mock_route53

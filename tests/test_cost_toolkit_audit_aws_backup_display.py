@@ -107,9 +107,7 @@ class TestDisplayBackupPlan:
     def test_display_plan_error(self, capsys):
         """Test error when displaying backup plan."""
         mock_client = MagicMock()
-        mock_client.get_backup_plan.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "get_backup_plan"
-        )
+        mock_client.get_backup_plan.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "get_backup_plan")
 
         plan = {
             "BackupPlanId": "plan-123",
@@ -203,9 +201,7 @@ class TestDisplayBackupJobs:
     def test_display_jobs_error(self, capsys):
         """Test error when listing backup jobs."""
         mock_client = MagicMock()
-        mock_client.list_backup_jobs.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "list_backup_jobs"
-        )
+        mock_client.list_backup_jobs.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_backup_jobs")
 
         _display_backup_jobs(mock_client, "us-east-1")
 
@@ -242,9 +238,7 @@ class TestDisplayPolicySchedules:
     def test_display_schedules_error(self, capsys):
         """Test error when getting policy schedules."""
         mock_client = MagicMock()
-        mock_client.get_lifecycle_policy.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "get_lifecycle_policy"
-        )
+        mock_client.get_lifecycle_policy.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "get_lifecycle_policy")
 
         _display_policy_schedules(mock_client, "policy-123")
 
@@ -298,9 +292,7 @@ class TestDisplayRuleDetails:
     def test_display_rule_targets_error(self, capsys):
         """Test error when getting rule targets."""
         mock_client = MagicMock()
-        mock_client.list_targets_by_rule.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "list_targets_by_rule"
-        )
+        mock_client.list_targets_by_rule.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_targets_by_rule")
 
         rule = {
             "Name": "test-rule",

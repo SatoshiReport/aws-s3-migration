@@ -24,9 +24,7 @@ def _print_instance_info(instance, instance_id):
 def _check_user_data(ec2, instance_id):
     """Check and print user data status."""
     try:
-        user_data_response = ec2.describe_instance_attribute(
-            InstanceId=instance_id, Attribute="userData"
-        )
+        user_data_response = ec2.describe_instance_attribute(InstanceId=instance_id, Attribute="userData")
 
         if "UserData" in user_data_response and "Value" in user_data_response["UserData"]:
             user_data_b64 = user_data_response["UserData"]["Value"]

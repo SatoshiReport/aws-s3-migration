@@ -234,9 +234,7 @@ def cleanup_circular_security_groups():
             regions[region] = []
         regions[region].append(sg)
 
-    total_rules_removed, total_groups_deleted = _process_regions(
-        regions, aws_access_key_id, aws_secret_access_key
-    )
+    total_rules_removed, total_groups_deleted = _process_regions(regions, aws_access_key_id, aws_secret_access_key)
 
     _print_final_summary(total_rules_removed, total_groups_deleted, len(circular_security_groups))
 

@@ -186,10 +186,7 @@ class TestAuditElasticIpsInRegionErrors:
 
     def test_audit_region_multiple_unassociated_cost_accumulation(self):
         """Test cost accumulation with multiple unassociated EIPs."""
-        addresses = [
-            {"AllocationId": f"eipalloc-{i}", "PublicIp": f"1.2.3.{i}", "Domain": "vpc"}
-            for i in range(5)
-        ]
+        addresses = [{"AllocationId": f"eipalloc-{i}", "PublicIp": f"1.2.3.{i}", "Domain": "vpc"} for i in range(5)]
 
         with patch(
             "cost_toolkit.scripts.audit.aws_elastic_ip_audit.describe_addresses",

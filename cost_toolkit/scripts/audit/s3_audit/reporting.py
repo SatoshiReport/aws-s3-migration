@@ -20,10 +20,7 @@ def _print_bucket_storage_classes(storage_classes):
     for storage_class, data in storage_classes.items():
         class_cost = calculate_monthly_cost(data["size_bytes"], storage_class)
         size_str = format_bytes(data["size_bytes"], binary_units=False)
-        print(
-            f"    {storage_class}: {data['count']:,} objects, "
-            f"{size_str}, ${class_cost:.2f}/month"
-        )
+        print(f"    {storage_class}: {data['count']:,} objects, " f"{size_str}, ${class_cost:.2f}/month")
 
 
 def _print_bucket_age_info(bucket_analysis):
@@ -87,9 +84,7 @@ def print_storage_class_breakdown(storage_class_summary, total_size_bytes):
 
     print("📊 Storage Class Breakdown:")
     print("-" * 40)
-    for storage_class, data in sorted(
-        storage_class_summary.items(), key=lambda x: x[1]["cost"], reverse=True
-    ):
+    for storage_class, data in sorted(storage_class_summary.items(), key=lambda x: x[1]["cost"], reverse=True):
         percentage = (data["size_bytes"] / total_size_bytes * 100) if total_size_bytes > 0 else 0
         print(f"  {storage_class}:")
         print(f"    Objects: {data['count']:,}")
@@ -127,15 +122,10 @@ def _collect_cleanup_candidates(all_bucket_analyses):
     """Collect cleanup candidates from bucket analyses"""
     cleanup_candidates = []
     for analysis in all_bucket_analyses:
-        very_old_objects = [
-            obj for obj in analysis["old_objects"] if obj["age_days"] > DAYS_THRESHOLD_VERY_OLD
-        ]
+        very_old_objects = [obj for obj in analysis["old_objects"] if obj["age_days"] > DAYS_THRESHOLD_VERY_OLD]
         if very_old_objects:
             cleanup_size = sum(obj["size_bytes"] for obj in very_old_objects)
-            cleanup_cost = sum(
-                calculate_monthly_cost(obj["size_bytes"], obj["storage_class"])
-                for obj in very_old_objects
-            )
+            cleanup_cost = sum(calculate_monthly_cost(obj["size_bytes"], obj["storage_class"]) for obj in very_old_objects)
             cleanup_candidates.append(
                 {
                     "bucket": analysis["bucket_name"],

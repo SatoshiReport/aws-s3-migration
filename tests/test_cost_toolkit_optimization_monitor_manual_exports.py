@@ -138,9 +138,7 @@ class TestCheckExportStatusEdgeCases:
         """Test handling errors when checking export status."""
         mock_ec2 = MagicMock()
         mock_boto_client.return_value = mock_ec2
-        mock_ec2.describe_export_image_tasks.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "describe_export_image_tasks"
-        )
+        mock_ec2.describe_export_image_tasks.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_export_image_tasks")
 
         tasks = check_export_status("us-east-1")
 
@@ -222,9 +220,7 @@ class TestCheckS3Files:
             pass
 
         mock_s3.exceptions.NoSuchBucket = NoSuchBucket
-        mock_s3.list_objects_v2.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "list_objects_v2"
-        )
+        mock_s3.list_objects_v2.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "list_objects_v2")
 
         files = check_s3_files("us-east-1")
 

@@ -77,9 +77,7 @@ class TestCollectUsedSgsFromInstances:
     def test_collect_from_instances_without_sgs(self):
         """Test collecting from instances without SGs."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_instances.return_value = {
-            "Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]
-        }
+        mock_ec2.describe_instances.return_value = {"Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]}
 
         result = _collect_used_sgs_from_instances(mock_ec2)
 
@@ -153,9 +151,7 @@ class TestCollectUsedSgsFromRds:
         with patch("boto3.client") as mock_boto3:
             mock_rds = MagicMock()
             mock_boto3.return_value = mock_rds
-            mock_rds.describe_db_instances.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_db_instances"
-            )
+            mock_rds.describe_db_instances.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_db_instances")
 
             result = _collect_used_sgs_from_rds("us-east-1")
 
@@ -199,9 +195,7 @@ class TestCollectUsedSgsFromElb:
         with patch("boto3.client") as mock_boto3:
             mock_elbv2 = MagicMock()
             mock_boto3.return_value = mock_elbv2
-            mock_elbv2.describe_load_balancers.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_load_balancers"
-            )
+            mock_elbv2.describe_load_balancers.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_load_balancers")
 
             result = _collect_used_sgs_from_elb("us-east-1")
 
@@ -311,9 +305,7 @@ class TestCollectUsedSubnetsFromEnis:
     def test_collect_from_enis(self):
         """Test collecting subnets from ENIs."""
         mock_ec2 = MagicMock()
-        mock_ec2.describe_network_interfaces.return_value = {
-            "NetworkInterfaces": [{"SubnetId": "subnet-a"}, {"SubnetId": "subnet-b"}]
-        }
+        mock_ec2.describe_network_interfaces.return_value = {"NetworkInterfaces": [{"SubnetId": "subnet-a"}, {"SubnetId": "subnet-b"}]}
 
         result = _collect_used_subnets_from_enis(mock_ec2)
 

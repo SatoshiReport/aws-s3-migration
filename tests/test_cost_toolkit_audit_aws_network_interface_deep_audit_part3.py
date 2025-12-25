@@ -48,9 +48,7 @@ class TestInvestigateNetworkInterfaceTerminatedAndStopped:  # gitleaks:allow
             ]
         }
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client") as mock_client:
             mock_client.return_value = mock_ec2
             result = investigate_network_interface(
                 "us-east-1",
@@ -63,9 +61,7 @@ class TestInvestigateNetworkInterfaceTerminatedAndStopped:  # gitleaks:allow
         captured = capsys.readouterr()
         assert "Deep Analysis: eni-orphaned" in captured.out
 
-    def test_investigate_interface_stopped_instance(
-        self, capsys
-    ):  # pylint: disable=unused-argument
+    def test_investigate_interface_stopped_instance(self, capsys):  # pylint: disable=unused-argument
         """Test investigating interface attached to stopped instance."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_network_interfaces.return_value = {
@@ -97,9 +93,7 @@ class TestInvestigateNetworkInterfaceTerminatedAndStopped:  # gitleaks:allow
             ]
         }
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client") as mock_client:
             mock_client.return_value = mock_ec2
             result = investigate_network_interface(
                 "us-west-2",
@@ -129,9 +123,7 @@ class TestInvestigateNetworkInterfaceNatGateway:  # pylint: disable=too-few-publ
             ]
         }
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client") as mock_client:
             mock_client.return_value = mock_ec2
             result = investigate_network_interface(
                 "eu-west-1",
@@ -156,9 +148,7 @@ class TestInvestigateNetworkInterfaceErrors:  # pylint: disable=too-few-public-m
             "DescribeNetworkInterfaces",
         )
 
-        with patch(
-            "cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client"
-        ) as mock_client:
+        with patch("cost_toolkit.scripts.audit.aws_network_interface_deep_audit.boto3.client") as mock_client:
             mock_client.return_value = mock_ec2
             result = investigate_network_interface(
                 "us-east-1",

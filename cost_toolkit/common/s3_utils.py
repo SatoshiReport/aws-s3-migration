@@ -9,9 +9,7 @@ import logging
 from cost_toolkit.scripts import aws_s3_operations
 
 
-def get_bucket_location(
-    bucket_name: str, aws_access_key_id: str | None = None, aws_secret_access_key: str | None = None
-):
+def get_bucket_location(bucket_name: str, aws_access_key_id: str | None = None, aws_secret_access_key: str | None = None):
     """Proxy to the shared get_bucket_location for easier patching."""
     if aws_access_key_id is None and aws_secret_access_key is None:
         return aws_s3_operations.get_bucket_location(bucket_name)
@@ -69,7 +67,5 @@ def create_s3_bucket_with_region(s3_client, bucket_name, region):
     if region == "us-east-1":
         s3_client.create_bucket(Bucket=bucket_name)
     else:
-        s3_client.create_bucket(
-            Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region}
-        )
+        s3_client.create_bucket(Bucket=bucket_name, CreateBucketConfiguration={"LocationConstraint": region})
     logging.info("   ✅ Created S3 bucket: %s", bucket_name)

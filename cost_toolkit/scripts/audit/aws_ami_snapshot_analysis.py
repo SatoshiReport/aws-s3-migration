@@ -124,10 +124,7 @@ def _analyze_snapshot_cost(ec2_client, snapshot_id, instances):
             print(f"   💰 Monthly cost: ${monthly_cost:.2f}")
 
             if not instances:
-                print(
-                    f"   💡 RECOMMENDATION: This AMI appears unused - "
-                    f"consider deregistering to save ${monthly_cost:.2f}/month"
-                )
+                print(f"   💡 RECOMMENDATION: This AMI appears unused - " f"consider deregistering to save ${monthly_cost:.2f}/month")
             else:
                 print("   ⚠️  CAUTION: AMI is in use - verify instances before deregistering")
             return monthly_cost
@@ -189,19 +186,14 @@ def analyze_snapshot_ami_relationships():
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=aws_secret_access_key,
         )
-        monthly_cost = _analyze_single_snapshot(
-            ec2_client, snapshot_id, info["ami"], info["region"]
-        )
+        monthly_cost = _analyze_single_snapshot(ec2_client, snapshot_id, info["ami"], info["region"])
         total_potential_savings += monthly_cost
 
     print("=" * 80)
     print("🎯 SUMMARY")
     print("=" * 80)
     print(f"Total snapshots analyzed: {len(snapshot_ami_mapping)}")
-    print(
-        f"Total potential monthly savings if all AMIs were deregistered: "
-        f"${total_potential_savings:.2f}"
-    )
+    print(f"Total potential monthly savings if all AMIs were deregistered: " f"${total_potential_savings:.2f}")
     print(f"Total potential annual savings: ${total_potential_savings * 12:.2f}")
     print()
     print("💡 NEXT STEPS:")

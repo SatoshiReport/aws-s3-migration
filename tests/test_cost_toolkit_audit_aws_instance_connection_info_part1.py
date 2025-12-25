@@ -243,9 +243,7 @@ class TestCheckSubnetConfiguration:
         mock_ec2 = MagicMock()
         mock_ec2.describe_subnets.return_value = {"Subnets": [{"MapPublicIpOnLaunch": True}]}
         mock_ec2.describe_route_tables.return_value = {
-            "RouteTables": [
-                {"Routes": [{"DestinationCidrBlock": "0.0.0.0/0", "GatewayId": "igw-123"}]}
-            ]
+            "RouteTables": [{"Routes": [{"DestinationCidrBlock": "0.0.0.0/0", "GatewayId": "igw-123"}]}]
         }
 
         result = _check_subnet_configuration(mock_ec2, "subnet-abc123")
@@ -260,9 +258,7 @@ class TestCheckSubnetConfiguration:
         """Test _check_subnet_configuration without internet route."""
         mock_ec2 = MagicMock()
         mock_ec2.describe_subnets.return_value = {"Subnets": [{"MapPublicIpOnLaunch": False}]}
-        mock_ec2.describe_route_tables.return_value = {
-            "RouteTables": [{"Routes": [{"DestinationCidrBlock": "10.0.0.0/16"}]}]
-        }
+        mock_ec2.describe_route_tables.return_value = {"RouteTables": [{"Routes": [{"DestinationCidrBlock": "10.0.0.0/16"}]}]}
 
         result = _check_subnet_configuration(mock_ec2, "subnet-xyz789")
 
@@ -315,9 +311,7 @@ class TestPrintConnectionOptions:
 
     def test_print_connection_options_dns_no_ip(self, capsys):
         """Test _print_connection_options with DNS but no IP."""
-        _print_connection_options(
-            "i-test456", "us-west-2", None, "ec2-test.compute-1.amazonaws.com"
-        )
+        _print_connection_options("i-test456", "us-west-2", None, "ec2-test.compute-1.amazonaws.com")
 
         captured = capsys.readouterr()
         assert "Public DNS available but no public IP:" in captured.out

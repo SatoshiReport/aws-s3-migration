@@ -66,19 +66,12 @@ def _handle_task_deletion_recovery(s3_client, bucket_name, s3_key, snapshot_size
     print("   🔍 Checking if S3 file was completed before task deletion...")
 
     try:
-        s3_result = check_s3_file_completion(
-            s3_client, bucket_name, s3_key, snapshot_size_gb, fast_check=True
-        )
-        print(
-            "   ✅ S3 file found and validated! "
-            "Export completed successfully despite task deletion"
-        )
+        s3_result = check_s3_file_completion(s3_client, bucket_name, s3_key, snapshot_size_gb, fast_check=True)
+        print("   ✅ S3 file found and validated! " "Export completed successfully despite task deletion")
         print(f"   📏 Final file size: {s3_result['size_gb']:.2f} GB")
     except (BotoCoreError, ClientError, constants.S3FileValidationException, Exception) as s3_error:
         print("   ❌ Cannot retrieve export results - task no longer exists")
-        raise ExportTaskDeletedException(  # noqa: TRY003
-            f"Export task deleted and no valid S3 file found: {s3_error}"
-        ) from s3_error
+        raise ExportTaskDeletedException(f"Export task deleted and no valid S3 file found: {s3_error}") from s3_error  # noqa: TRY003
     return True, s3_key
 
 
@@ -96,9 +89,7 @@ def _check_terminal_state_fixed(task, status, elapsed_hours):
 
     if status == "failed":
         error_msg = task.get("StatusMessage") or "Unknown error"
-        raise ExportTaskFailedException(  # noqa: TRY003
-            f"AWS export failed after {elapsed_hours:.1f} hours: {error_msg}"
-        )
+        raise ExportTaskFailedException(f"AWS export failed after {elapsed_hours:.1f} hours: {error_msg}")  # noqa: TRY003
 
     if status == "deleted":
         return True, "deleted"
@@ -111,9 +102,7 @@ def _print_export_status(status, progress, status_msg, elapsed_hours):
     print_export_status(status, progress, status_msg, elapsed_hours)
 
 
-def _track_progress_change(
-    state: MonitoringState, current_progress: int, current_time: float
-) -> None:
+def _track_progress_change(state: MonitoringState, current_progress: int, current_time: float) -> None:
     """Track and log progress changes."""
     if current_progress != state.last_progress_value:
         print(f"   📈 Progress updated to {current_progress}%")
@@ -124,15 +113,10 @@ def _track_progress_change(
 def _handle_api_errors(state: MonitoringState, exception: ClientError) -> None:
     """Handle API errors with retry logic."""
     state.consecutive_api_errors += 1
-    print(
-        f"   ❌ API error {state.consecutive_api_errors}/"
-        f"{constants.MAX_CONSECUTIVE_API_ERRORS}: {exception}"
-    )
+    print(f"   ❌ API error {state.consecutive_api_errors}/" f"{constants.MAX_CONSECUTIVE_API_ERRORS}: {exception}")
 
     if state.consecutive_api_errors >= constants.MAX_CONSECUTIVE_API_ERRORS:
-        raise ExportAPIException(  # noqa: TRY003
-            f"Too many consecutive API errors ({state.consecutive_api_errors}) - failing fast"
-        )
+        raise ExportAPIException(f"Too many consecutive API errors ({state.consecutive_api_errors}) - failing fast")  # noqa: TRY003
 
 
 def _fetch_and_reset_errors(ec2_client, export_task_id, state):
@@ -156,9 +140,7 @@ def _process_task_status(task, state, export_context):
     current_progress = int(task_progress) if task_progress != "N/A" else 0
     _track_progress_change(state, current_progress, export_context.current_time)
 
-    is_terminal, terminal_type = _check_terminal_state_fixed(
-        task, task["Status"], export_context.elapsed_hours
-    )
+    is_terminal, terminal_type = _check_terminal_state_fixed(task, task["Status"], export_context.elapsed_hours)
     if is_terminal:
         if terminal_type == "completed":
             return False, (True, export_context.s3_info.s3_key)
@@ -174,9 +156,7 @@ def _process_task_status(task, state, export_context):
     return True, None
 
 
-def monitor_export_with_recovery(
-    ec2_client, s3_client, export_task_id, s3_key, *, bucket_name, snapshot_size_gb
-):
+def monitor_export_with_recovery(ec2_client, s3_client, export_task_id, s3_key, *, bucket_name, snapshot_size_gb):
     """Monitor export progress with recovery mechanisms."""
     current_time = time.time()
     state = MonitoringState(start_time=current_time, last_progress_change_time=current_time)
@@ -187,16 +167,13 @@ def monitor_export_with_recovery(
 
         if elapsed_hours >= constants.EXPORT_MAX_DURATION_HOURS:
             raise ExportTaskStuckException(  # noqa: TRY003
-                f"Export exceeded maximum duration of "
-                f"{constants.EXPORT_MAX_DURATION_HOURS} hours - aborting"
+                f"Export exceeded maximum duration of " f"{constants.EXPORT_MAX_DURATION_HOURS} hours - aborting"
             )
 
         try:
             task = _fetch_and_reset_errors(ec2_client, export_task_id, state)
         except ExportTaskDeletedException:
-            return _handle_task_deletion_recovery(
-                s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours
-            )
+            return _handle_task_deletion_recovery(s3_client, bucket_name, s3_key, snapshot_size_gb, elapsed_hours)
         except ClientError as e:
             _handle_api_errors(state, e)
             _WAIT_EVENT.wait(constants.EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
@@ -221,9 +198,7 @@ def monitor_export_with_recovery(
         _WAIT_EVENT.wait(EXPORT_STATUS_CHECK_INTERVAL_SECONDS)
 
 
-def export_ami_to_s3_with_recovery(
-    ec2_client, s3_client, ami_id, bucket_name, _region, snapshot_size_gb
-):
+def export_ami_to_s3_with_recovery(ec2_client, s3_client, ami_id, bucket_name, _region, snapshot_size_gb):
     """
     Export AMI to S3 with proper error handling and recovery - fail fast on unrecoverable errors
     """

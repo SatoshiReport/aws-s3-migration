@@ -36,9 +36,7 @@ class TestUpdateLogGroupRetention:
             "storedBytes": 1048576,
         }
         _update_log_group_retention(mock_client, log_group)
-        mock_client.put_retention_policy.assert_called_once_with(
-            logGroupName="/aws/lambda/test", retentionInDays=1
-        )
+        mock_client.put_retention_policy.assert_called_once_with(logGroupName="/aws/lambda/test", retentionInDays=1)
         captured = capsys.readouterr()
         assert "Setting retention to 1 day" in captured.out
 
@@ -69,9 +67,7 @@ class TestUpdateLogGroupRetention:
     def test_update_retention_error(self, capsys):
         """Test error when updating retention."""
         mock_client = MagicMock()
-        mock_client.put_retention_policy.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "put_retention_policy"
-        )
+        mock_client.put_retention_policy.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "put_retention_policy")
         log_group = {
             "logGroupName": "/aws/lambda/test",
             "retentionInDays": "Never expire",
@@ -104,9 +100,7 @@ class TestReduceRetentionInRegion:
                 ]
             }
             mock_client.return_value = mock_logs
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._update_log_group_retention"
-            ):
+            with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._update_log_group_retention"):
                 _reduce_retention_in_region("us-east-1")
 
     def test_reduce_retention_no_log_groups(self, capsys):
@@ -122,12 +116,8 @@ class TestReduceRetentionInRegion:
 
 def test_reduce_log_retention_reduce_retention_multiple_regions(capsys):
     """Test reducing retention across regions."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
-    ):
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._reduce_retention_in_region"
-        ):
+    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"):
+        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._reduce_retention_in_region"):
             reduce_log_retention()
     captured = capsys.readouterr()
     assert "Checking CloudWatch log groups" in captured.out
@@ -135,15 +125,9 @@ def test_reduce_log_retention_reduce_retention_multiple_regions(capsys):
 
 def test_reduce_log_retention_with_client_error(capsys):
     """Test reducing log retention with ClientError."""
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"
-    ):
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._reduce_retention_in_region"
-        ) as mock_reduce:
-            mock_reduce.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "describe_log_groups"
-            )
+    with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup.aws_utils.setup_aws_credentials"):
+        with patch("cost_toolkit.scripts.cleanup.aws_cloudwatch_cleanup._reduce_retention_in_region") as mock_reduce:
+            mock_reduce.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "describe_log_groups")
             reduce_log_retention()
     captured = capsys.readouterr()
     assert "Error accessing CloudWatch Logs" in captured.out

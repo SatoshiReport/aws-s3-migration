@@ -67,9 +67,7 @@ class TestDisableEventbridgeBackupRules:
         rules = [{"Name": "snapshot-rule", "Description": "Snapshots", "State": "ENABLED"}]
         with patch("boto3.client") as mock_client:
             mock_events = MagicMock()
-            mock_events.disable_rule.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "disable_rule"
-            )
+            mock_events.disable_rule.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "disable_rule")
             mock_client.return_value = mock_events
             with patch(
                 "cost_toolkit.scripts.cleanup.aws_backup_disable.check_eventbridge_scheduled_rules",
@@ -79,12 +77,8 @@ class TestDisableEventbridgeBackupRules:
         captured = capsys.readouterr()
         assert "Error disabling EventBridge rule" in captured.out
         with patch("boto3.client") as mock_client:
-            with patch(
-                "cost_toolkit.scripts.cleanup.aws_backup_disable.check_eventbridge_scheduled_rules"
-            ) as mock_check:
-                mock_check.side_effect = ClientError(
-                    {"Error": {"Code": "ServiceError"}}, "list_rules"
-                )
+            with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.check_eventbridge_scheduled_rules") as mock_check:
+                mock_check.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_rules")
                 disable_eventbridge_backup_rules("us-east-1")
         captured = capsys.readouterr()
         assert "Error checking EventBridge rules" in captured.out
@@ -170,9 +164,7 @@ class TestCheckBackupVaultPolicies:
         assert "Error checking vault contents" in captured.out
         with patch("boto3.client") as mock_client:
             mock_backup = MagicMock()
-            mock_backup.list_backup_vaults.side_effect = ClientError(
-                {"Error": {"Code": "ServiceError"}}, "list_backup_vaults"
-            )
+            mock_backup.list_backup_vaults.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "list_backup_vaults")
             mock_client.return_value = mock_backup
             check_backup_vault_policies("us-east-1")
         captured = capsys.readouterr()
@@ -184,14 +176,8 @@ def test_main_main_function(capsys):
     with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.setup_aws_credentials"):
         with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.disable_aws_backup_plans"):
             with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.disable_dlm_policies"):
-                with patch(
-                    "cost_toolkit.scripts.cleanup.aws_backup_disable."
-                    "disable_eventbridge_backup_rules"
-                ):
-                    with patch(
-                        "cost_toolkit.scripts.cleanup.aws_backup_disable."
-                        "check_backup_vault_policies"
-                    ):
+                with patch("cost_toolkit.scripts.cleanup.aws_backup_disable." "disable_eventbridge_backup_rules"):
+                    with patch("cost_toolkit.scripts.cleanup.aws_backup_disable." "check_backup_vault_policies"):
                         main()
     captured = capsys.readouterr()
     assert "AWS Automated Backup Disable Script" in captured.out

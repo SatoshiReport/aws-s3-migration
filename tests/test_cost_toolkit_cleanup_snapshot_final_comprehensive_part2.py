@@ -19,9 +19,7 @@ class TestProcessSnapshotDeletionsConfiguration:
 
     def test_process_creates_clients_with_credentials(self):
         """Test that process creates EC2 clients with correct credentials."""
-        snapshots = [
-            {"snapshot_id": "snap-1", "region": "us-east-1", "size_gb": 10, "description": "1"}
-        ]
+        snapshots = [{"snapshot_id": "snap-1", "region": "us-east-1", "size_gb": 10, "description": "1"}]
         with patch("boto3.client") as mock_boto3:
             mock_ec2 = MagicMock()
             mock_boto3.return_value = mock_ec2
@@ -160,18 +158,14 @@ class TestMain:
 
     def test_main_success(self):
         """Test successful main execution."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_freed_snapshots"
-        ) as mock_delete:
+        with patch("cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_freed_snapshots") as mock_delete:
             main()
 
             mock_delete.assert_called_once()
 
     def test_main_with_client_error(self, capsys):
         """Test main with client error."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_freed_snapshots"
-        ) as mock_delete:
+        with patch("cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_freed_snapshots") as mock_delete:
             mock_delete.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "operation")
 
             with patch("sys.exit") as mock_exit:
@@ -183,9 +177,7 @@ class TestMain:
 
     def test_main_without_error(self):
         """Test main completes without error when no exception."""
-        with patch(
-            "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_freed_snapshots"
-        ):
+        with patch("cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_freed_snapshots"):
             with patch("sys.exit") as mock_exit:
                 main()
 
@@ -247,14 +239,10 @@ class TestIntegrationScenarios:
             mock_ec2 = MagicMock()
             mock_boto3.return_value = mock_ec2
             with patch("time.sleep"):
-                with patch(
-                    "cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_snapshot"
-                ) as mock_delete:
+                with patch("cost_toolkit.scripts.cleanup.aws_snapshot_cleanup_final.delete_snapshot") as mock_delete:
                     mock_delete.side_effect = [True, False, True]
 
-                    successful, failed, savings = process_snapshot_deletions(
-                        snapshots, "key", "secret"
-                    )
+                    successful, failed, savings = process_snapshot_deletions(snapshots, "key", "secret")
 
         assert successful == 2
         assert failed == 1

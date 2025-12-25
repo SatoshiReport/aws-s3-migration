@@ -43,9 +43,7 @@ def test_main_function():
     assert_main_invokes_explore()
 
 
-def test_explore_aurora_database_connection_failed(
-    capsys, mock_psycopg2
-):  # pylint: disable=redefined-outer-name
+def test_explore_aurora_database_connection_failed(capsys, mock_psycopg2):  # pylint: disable=redefined-outer-name
     """Test explore_aurora_database handles connection failure."""
 
     run_basic_aurora_exploration(
@@ -58,9 +56,7 @@ def test_explore_aurora_database_connection_failed(
     assert "Connection failed" in captured.out
 
 
-def test_explore_aurora_database_successful_connection_empty(
-    capsys, mock_psycopg2
-):  # pylint: disable=redefined-outer-name
+def test_explore_aurora_database_successful_connection_empty(capsys, mock_psycopg2):  # pylint: disable=redefined-outer-name
     """Test explore_aurora_database with successful connection but no tables."""
     run_basic_aurora_exploration(
         mock_psycopg2,
@@ -95,13 +91,9 @@ def test_explore_aurora_database_successful_with_data(capsys, mock_psycopg2):
                 {"AURORA_PORT": "5432", "AURORA_PASSWORD": "dummy_password"},
                 clear=True,
             ):
-                with patch(
-                    "cost_toolkit.scripts.rds.explore_aurora_data.list_tables"
-                ) as mock_list_tables:
+                with patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_list_tables:
                     mock_list_tables.return_value = mock_tables
-                    with patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-                    ) as mock_analyze:
+                    with patch("cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables") as mock_analyze:
                         mock_analyze.return_value = 1500  # Non-zero rows
                         explore_aurora_database()
 
@@ -131,28 +123,14 @@ def test_explore_aurora_database_calls_all_inspection_functions(mock_psycopg2):
                 clear=True,
             ):
                 with (
-                    patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.print_database_version_info"
-                    ) as mock_version,
-                    patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.list_databases"
-                    ) as mock_dbs,
-                    patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.list_schemas"
-                    ) as mock_schemas,
-                    patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.list_tables"
-                    ) as mock_tables,
+                    patch("cost_toolkit.scripts.rds.explore_aurora_data.print_database_version_info") as mock_version,
+                    patch("cost_toolkit.scripts.rds.explore_aurora_data.list_databases") as mock_dbs,
+                    patch("cost_toolkit.scripts.rds.explore_aurora_data.list_schemas") as mock_schemas,
+                    patch("cost_toolkit.scripts.rds.explore_aurora_data.list_tables") as mock_tables,
                     patch("cost_toolkit.scripts.rds.explore_aurora_data.list_views") as mock_views,
-                    patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables"
-                    ) as mock_analyze,
-                    patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.get_database_size"
-                    ) as mock_size,
-                    patch(
-                        "cost_toolkit.scripts.rds.explore_aurora_data.list_functions"
-                    ) as mock_funcs,
+                    patch("cost_toolkit.scripts.rds.explore_aurora_data.analyze_tables") as mock_analyze,
+                    patch("cost_toolkit.scripts.rds.explore_aurora_data.get_database_size") as mock_size,
+                    patch("cost_toolkit.scripts.rds.explore_aurora_data.list_functions") as mock_funcs,
                 ):
                     mock_tables.return_value = []
                     mock_analyze.return_value = 0

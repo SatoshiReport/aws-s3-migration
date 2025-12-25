@@ -88,9 +88,7 @@ def test_find_candidates_with_directory_instead_of_file(tmp_path):
     (bucket_dir / "directory_item").mkdir()
 
     stats: Counter = Counter()
-    candidates = list(
-        find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats)
-    )
+    candidates = list(find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats))
     conn.close()
 
     assert stats["skipped_non_file"] > 0
@@ -128,9 +126,7 @@ def test_find_candidates_file_shrunk_below_threshold(tmp_path):
     (bucket_dir / "shrunk.txt").write_bytes(b"small content")
 
     stats: Counter = Counter()
-    candidates = list(
-        find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats)
-    )
+    candidates = list(find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats))
     conn.close()
 
     assert stats["skipped_now_below_threshold"] > 0
@@ -167,9 +163,7 @@ def test_find_candidates_xz_suffix_uppercase(tmp_path):
     xz_file.write_bytes(b"x" * (600 * 1024 * 1024))
 
     stats: Counter = Counter()
-    candidates = list(
-        find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats)
-    )
+    candidates = list(find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats))
     conn.close()
 
     # File should be filtered out (either by .xz suffix check or compressed check)
@@ -207,9 +201,7 @@ def test_find_candidates_with_video_extension(tmp_path):
     (bucket_dir / "movie.mov").write_bytes(b"x" * (700 * 1024 * 1024))
 
     stats: Counter = Counter()
-    candidates = list(
-        find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats)
-    )
+    candidates = list(find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats))
     conn.close()
 
     assert stats["skipped_video"] > 0
@@ -245,9 +237,7 @@ def test_find_candidates_with_numeric_extension(tmp_path):
     (bucket_dir / "file.log.1").write_bytes(b"x" * (600 * 1024 * 1024))
 
     stats: Counter = Counter()
-    candidates = list(
-        find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats)
-    )
+    candidates = list(find_candidates(conn, base_path, min_size=500 * 1024 * 1024, buckets=[], stats=stats))
     conn.close()
 
     assert stats["skipped_numeric_extension"] > 0

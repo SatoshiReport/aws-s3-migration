@@ -118,12 +118,8 @@ def _display_policy_schedules(dlm_client, policy_id):
         policy_details = dlm_client.get_lifecycle_policy(PolicyId=policy_id)
         policy_detail = policy_details["Policy"]
 
-        policy_details_section = _require_field(
-            policy_detail, "PolicyDetails", "Lifecycle policy details"
-        )
-        schedules = _require_field(
-            policy_details_section, "Schedules", "Lifecycle policy schedules"
-        )
+        policy_details_section = _require_field(policy_detail, "PolicyDetails", "Lifecycle policy details")
+        schedules = _require_field(policy_details_section, "Schedules", "Lifecycle policy schedules")
         for schedule in schedules:
             _display_single_schedule(schedule)
     except ClientError as e:
@@ -265,9 +261,7 @@ def analyze_recent_snapshots(region):
         snapshots = _require_field(snapshots_response, "Snapshots", "Snapshots response")
 
         now = datetime.now(timezone.utc)
-        recent_snapshots = [
-            s for s in snapshots if (now - s["StartTime"]).days <= SNAPSHOT_ANALYSIS_DAYS
-        ]
+        recent_snapshots = [s for s in snapshots if (now - s["StartTime"]).days <= SNAPSHOT_ANALYSIS_DAYS]
 
         if recent_snapshots:
             print(f"📸 Recent Snapshots Analysis in {region} (Last {SNAPSHOT_ANALYSIS_DAYS} days):")

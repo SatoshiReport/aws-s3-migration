@@ -10,16 +10,12 @@ from ci_tools.scripts import policy_context
 
 # The local policy_context is a shim that loads from ci_shared,
 # so we need to load it directly to test the shim code itself
-_LOCAL_POLICY_CONTEXT_PATH = (
-    Path(__file__).parent.parent / "ci_tools" / "scripts" / "policy_context.py"
-)
+_LOCAL_POLICY_CONTEXT_PATH = Path(__file__).parent.parent / "ci_tools" / "scripts" / "policy_context.py"
 
 
 def _load_local_shim():
     """Load the local policy_context.py shim directly for testing."""
-    spec = importlib.util.spec_from_file_location(
-        "_local_policy_context_shim", _LOCAL_POLICY_CONTEXT_PATH
-    )
+    spec = importlib.util.spec_from_file_location("_local_policy_context_shim", _LOCAL_POLICY_CONTEXT_PATH)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Could not load {_LOCAL_POLICY_CONTEXT_PATH}")
     module = importlib.util.module_from_spec(spec)
@@ -70,9 +66,7 @@ def test_policy_context_re_exports_from_shared():
     # The module should have re-exported symbols from the shared context
     # Verify common attributes exist
     module_dict = {
-        name: value
-        for name, value in policy_context.__dict__.items()
-        if not name.startswith("_") or name in ("ROOT", "SCAN_DIRECTORIES")
+        name: value for name, value in policy_context.__dict__.items() if not name.startswith("_") or name in ("ROOT", "SCAN_DIRECTORIES")
     }
 
     # Should have at least the expected attributes
@@ -297,9 +291,7 @@ def test_protocol_type_checking():
 def test_module_dict_iteration_and_exports():
     """Test module-level code that iterates over shared context dict."""
     # This tests the for loop at lines 80-83 that re-exports symbols
-    module_globals = {
-        name: value for name, value in policy_context.__dict__.items() if not name.startswith("__")
-    }
+    module_globals = {name: value for name, value in policy_context.__dict__.items() if not name.startswith("__")}
 
     # Should have ROOT and SCAN_DIRECTORIES
     assert "ROOT" in module_globals

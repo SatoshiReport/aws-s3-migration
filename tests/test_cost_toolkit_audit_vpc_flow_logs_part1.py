@@ -95,9 +95,7 @@ class TestCheckLogGroupSize:
     def test_check_log_group_size_client_error(self, capsys):
         """Test error handling when API call fails."""
         mock_logs_client = MagicMock()
-        mock_logs_client.describe_log_groups.side_effect = ClientError(
-            {"Error": {"Code": "AccessDenied"}}, "describe_log_groups"
-        )
+        mock_logs_client.describe_log_groups.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_log_groups")
 
         cost = _check_log_group_size(mock_logs_client, "/aws/vpc/flowlogs")
 
@@ -202,9 +200,7 @@ class TestAuditFlowLogsAdvanced:
         with patch("boto3.client") as mock_client:
             mock_ec2 = MagicMock()
             mock_client.return_value = mock_ec2
-            mock_ec2.describe_flow_logs.side_effect = ClientError(
-                {"Error": {"Code": "AccessDenied"}}, "describe_flow_logs"
-            )
+            mock_ec2.describe_flow_logs.side_effect = ClientError({"Error": {"Code": "AccessDenied"}}, "describe_flow_logs")
 
             result = audit_flow_logs_in_region("us-east-1")
 

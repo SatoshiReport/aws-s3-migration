@@ -20,9 +20,7 @@ def fix_rds_subnet_routing():
     try:
         # Create a new DB subnet group with only public subnets
         subnet_group_name = "public-subnet-group"
-        create_public_subnet_group(
-            rds, subnet_group_name, "Public subnets only for internet access"
-        )
+        create_public_subnet_group(rds, subnet_group_name, "Public subnets only for internet access")
 
         # Modify the RDS instance to use the new subnet group
         print("🔄 Moving RDS instance to public subnet group...")

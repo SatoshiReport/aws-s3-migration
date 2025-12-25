@@ -39,9 +39,7 @@ def find_resource_region(
     aws_secret_access_key: Optional[str] = None,
 ) -> Optional[str]:
     """Delegates to canonical implementation in aws_common."""
-    return find_resource_region_canonical(
-        resource_type, resource_id, regions, aws_access_key_id, aws_secret_access_key
-    )
+    return find_resource_region_canonical(resource_type, resource_id, regions, aws_access_key_id, aws_secret_access_key)
 
 
 def get_common_regions() -> list[str]:
@@ -112,11 +110,7 @@ def delete_snapshot(
         client.delete_snapshot(SnapshotId=snapshot_id)
         print(f"   ✅ Successfully deleted {snapshot_id}")
     except ClientError as e:
-        error_code = (
-            e.response["Error"]["Code"]
-            if hasattr(e, "response") and "Code" in e.response["Error"]
-            else None
-        )
+        error_code = e.response["Error"]["Code"] if hasattr(e, "response") and "Code" in e.response["Error"] else None
         if error_code == "InvalidSnapshot.NotFound":
             print(f"   ℹ️  Snapshot {snapshot_id} not found in {region}")
             return False

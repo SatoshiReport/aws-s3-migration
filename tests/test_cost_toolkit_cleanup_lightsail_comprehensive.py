@@ -43,16 +43,12 @@ class TestDeleteInstance:
 
         assert deleted == 1
         assert cost == 5.0
-        mock_client.delete_instance.assert_called_once_with(
-            instanceName="test-instance", forceDeleteAddOns=True
-        )
+        mock_client.delete_instance.assert_called_once_with(instanceName="test-instance", forceDeleteAddOns=True)
 
     def test_delete_instance_error(self):
         """Test instance deletion with error."""
         mock_client = MagicMock()
-        mock_client.delete_instance.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_instance"
-        )
+        mock_client.delete_instance.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_instance")
         instance = {
             "name": "test-instance",
             "state": {"name": "running"},
@@ -105,16 +101,12 @@ class TestDeleteDatabase:
 
         assert deleted == 1
         assert cost == 15.0
-        mock_client.delete_relational_database.assert_called_once_with(
-            relationalDatabaseName="test-db", skipFinalSnapshot=True
-        )
+        mock_client.delete_relational_database.assert_called_once_with(relationalDatabaseName="test-db", skipFinalSnapshot=True)
 
     def test_delete_database_error(self):
         """Test database deletion with error."""
         mock_client = MagicMock()
-        mock_client.delete_relational_database.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "delete_relational_database"
-        )
+        mock_client.delete_relational_database.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "delete_relational_database")
         database = {
             "name": "test-db",
             "state": "available",
@@ -168,9 +160,7 @@ class TestProcessRegion:
         """Test processing region where Lightsail is not available."""
         with patch("boto3.client") as mock_client:
             mock_ls = MagicMock()
-            mock_ls.get_instances.side_effect = ClientError(
-                {"Error": {"Code": "InvalidAction"}}, "get_instances"
-            )
+            mock_ls.get_instances.side_effect = ClientError({"Error": {"Code": "InvalidAction"}}, "get_instances")
             mock_client.return_value = mock_ls
 
             instances, databases, savings = _process_region("us-east-1")
@@ -215,9 +205,7 @@ def test_delete_lightsail_instances_delete_lightsail_instances_success(capsys):
                 "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup._process_region",
                 return_value=(2, 1, 30.0),
             ):
-                with patch(
-                    "cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.record_cleanup_action"
-                ):
+                with patch("cost_toolkit.scripts.cleanup.aws_lightsail_cleanup.record_cleanup_action"):
                     delete_lightsail_instances()
 
     captured = capsys.readouterr()
@@ -306,9 +294,7 @@ class TestRecordCleanupAction:
 
     def test_record_cleanup_action_error_handling(self, capsys):
         """Test error handling during cleanup action recording."""
-        with patch(
-            "builtins.open", side_effect=ClientError({"Error": {"Code": "AccessDenied"}}, "open")
-        ):
+        with patch("builtins.open", side_effect=ClientError({"Error": {"Code": "AccessDenied"}}, "open")):
             record_cleanup_action("lightsail", 1, 10.0)
 
         captured = capsys.readouterr()

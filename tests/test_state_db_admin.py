@@ -17,9 +17,7 @@ def test_reseed_state_db_populates_files(tmp_path):
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text("hello world")
 
-    db_file, file_count, total_bytes = reseed_state_db_from_local_drive(
-        base_path, tmp_path / "state.db"
-    )
+    db_file, file_count, total_bytes = reseed_state_db_from_local_drive(base_path, tmp_path / "state.db")
 
     assert db_file.exists()
     assert file_count == 1

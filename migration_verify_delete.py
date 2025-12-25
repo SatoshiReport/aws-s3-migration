@@ -158,10 +158,7 @@ def _delete_page_objects(s3, bucket: str, objects_to_delete: List[dict]) -> List
     if errors:
         print("\n  Encountered delete errors:")
         for error in errors:
-            print(
-                f"    Key={error['Key']} VersionId={error['VersionId']} "
-                f"Code={error['Code']} Message={error['Message']}"
-            )
+            print(f"    Key={error['Key']} VersionId={error['VersionId']} " f"Code={error['Code']} Message={error['Message']}")
     return errors
 
 

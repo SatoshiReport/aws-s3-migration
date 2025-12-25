@@ -89,11 +89,7 @@ def _stop_database(lightsail_client, database):
     """Stop a single Lightsail database."""
     db_name = database["name"]
     db_state = database["state"]
-    bundle_id = (
-        database.get("relationalDatabaseBundleId")
-        if "relationalDatabaseBundleId" in database
-        else None
-    )
+    bundle_id = database.get("relationalDatabaseBundleId") if "relationalDatabaseBundleId" in database else None
 
     print(f"🗄️  Found database: {db_name}")
     print(f"   State: {db_state}")

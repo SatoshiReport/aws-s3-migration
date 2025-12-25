@@ -68,9 +68,7 @@ class TestCreateS3Bucket:
 
         _create_s3_bucket(mock_s3, "test-bucket")
 
-        mock_s3.create_bucket.assert_called_once_with(
-            Bucket="test-bucket", CreateBucketConfiguration={"LocationConstraint": "eu-west-2"}
-        )
+        mock_s3.create_bucket.assert_called_once_with(Bucket="test-bucket", CreateBucketConfiguration={"LocationConstraint": "eu-west-2"})
         captured = capsys.readouterr()
         assert "CREATING S3 BUCKET" in captured.out
         assert "test-bucket" in captured.out
@@ -80,9 +78,7 @@ class TestCreateS3Bucket:
     def test_create_bucket_already_exists(self, capsys):
         """Test when bucket already exists."""
         mock_s3 = MagicMock()
-        mock_s3.create_bucket.side_effect = ClientError(
-            {"Error": {"Code": "BucketAlreadyExists"}}, "create_bucket"
-        )
+        mock_s3.create_bucket.side_effect = ClientError({"Error": {"Code": "BucketAlreadyExists"}}, "create_bucket")
 
         _create_s3_bucket(mock_s3, "existing-bucket")
 
@@ -92,9 +88,7 @@ class TestCreateS3Bucket:
     def test_create_bucket_other_error(self):
         """Test handling of other errors during bucket creation."""
         mock_s3 = MagicMock()
-        mock_s3.create_bucket.side_effect = ClientError(
-            {"Error": {"Code": "ServiceError"}}, "create_bucket"
-        )
+        mock_s3.create_bucket.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "create_bucket")
 
         with pytest.raises(ClientError):
             _create_s3_bucket(mock_s3, "test-bucket")
@@ -274,9 +268,7 @@ class TestCreateS3BucketAndMigrate:
 
     def test_create_and_migrate_success(self, capsys):
         """Test successful bucket creation and script generation."""
-        with patch(
-            "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"
-        ):
+        with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"):
             with patch("boto3.client") as mock_client:
                 with patch("builtins.open", create=True):
                     with patch("os.chmod"):
@@ -292,14 +284,10 @@ class TestCreateS3BucketAndMigrate:
 
     def test_create_and_migrate_handles_error(self, capsys):
         """Test error handling during setup."""
-        with patch(
-            "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"
-        ):
+        with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"):
             with patch("boto3.client") as mock_client:
                 mock_s3 = MagicMock()
-                mock_s3.create_bucket.side_effect = ClientError(
-                    {"Error": {"Code": "ServiceError"}}, "create_bucket"
-                )
+                mock_s3.create_bucket.side_effect = ClientError({"Error": {"Code": "ServiceError"}}, "create_bucket")
                 mock_client.return_value = mock_s3
 
                 create_s3_bucket_and_migrate()
@@ -309,9 +297,7 @@ class TestCreateS3BucketAndMigrate:
 
     def test_create_and_migrate_uses_correct_region(self):
         """Test correct AWS region is used."""
-        with patch(
-            "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"
-        ):
+        with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"):
             with patch("boto3.client") as mock_client:
                 with patch("builtins.open", create=True):
                     with patch("os.chmod"):
@@ -331,28 +317,14 @@ class TestCreateS3BucketAndMigrate:
 
     def test_create_and_migrate_calls_all_functions(self):
         """Test all helper functions are called."""
-        with patch(
-            "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"
-        ):
+        with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.aws_utils.setup_aws_credentials"):
             with patch("boto3.client") as mock_client:
                 with (
-                    patch(
-                        "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._print_setup_header"
-                    ) as mock_header,
-                    patch(
-                        "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._create_s3_bucket"
-                    ) as mock_bucket,
-                    patch(
-                        "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration."
-                        "_display_volume_info"
-                    ) as mock_volume,
-                    patch(
-                        "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration."
-                        "_write_migration_script"
-                    ) as mock_write,
-                    patch(
-                        "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._print_next_steps"
-                    ) as mock_steps,
+                    patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._print_setup_header") as mock_header,
+                    patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._create_s3_bucket") as mock_bucket,
+                    patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration." "_display_volume_info") as mock_volume,
+                    patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration." "_write_migration_script") as mock_write,
+                    patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._print_next_steps") as mock_steps,
                 ):
                     mock_s3 = MagicMock()
                     mock_ec2 = MagicMock()
@@ -369,9 +341,7 @@ class TestCreateS3BucketAndMigrate:
 
 def test_main_calls_create_s3_bucket_and_migrate():
     """Test main function calls create_s3_bucket_and_migrate."""
-    with patch(
-        "cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.create_s3_bucket_and_migrate"
-    ) as mock_create:
+    with patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration.create_s3_bucket_and_migrate") as mock_create:
         main()
     mock_create.assert_called_once()
 

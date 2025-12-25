@@ -34,9 +34,7 @@ class BucketStatus:  # pylint: disable=too-many-instance-attributes,too-few-publ
         self.bucket = row["bucket"]
         self.file_count = row["file_count"]
         self.total_size = row["total_size"]
-        self.storage_classes = (
-            json.loads(row["storage_class_counts"]) if row["storage_class_counts"] else {}
-        )
+        self.storage_classes = json.loads(row["storage_class_counts"]) if row["storage_class_counts"] else {}
         self.scan_complete = bool(row["scan_complete"])
         self.sync_complete = bool(row["sync_complete"])
         self.verify_complete = bool(row["verify_complete"])
@@ -202,9 +200,7 @@ class _BucketOperationsMixin:
         scan_complete: bool = False,
     ):  # pylint: disable=too-many-arguments,too-many-positional-arguments
         """Persist bucket scan counts and totals."""
-        return self.buckets.save_bucket_status(
-            bucket, file_count, total_size, storage_classes, scan_complete
-        )
+        return self.buckets.save_bucket_status(bucket, file_count, total_size, storage_classes, scan_complete)
 
     def mark_bucket_sync_complete(self, bucket: str):
         """Flag that bucket sync finished."""

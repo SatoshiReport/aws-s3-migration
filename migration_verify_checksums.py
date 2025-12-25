@@ -73,9 +73,7 @@ def verify_singlepart_file(s3_key: str, file_path: Path, expected_etag: str, sta
     try:
         computed_etag, is_match = compute_etag(file_path, expected_etag)
         if not is_match:
-            stats["verification_errors"].append(
-                f"{s3_key}: checksum mismatch (expected {expected_etag}, got {computed_etag})"
-            )
+            stats["verification_errors"].append(f"{s3_key}: checksum mismatch (expected {expected_etag}, got {computed_etag})")
             return
         stats["checksum_verified"] += 1
         stats["verified_count"] += 1
@@ -83,9 +81,7 @@ def verify_singlepart_file(s3_key: str, file_path: Path, expected_etag: str, sta
         stats["verification_errors"].append(f"{s3_key}: checksum computation failed: {exc}")
 
 
-def verify_single_file(
-    s3_key: str, local_files: Dict, expected_file_map: Dict, stats: Dict
-) -> None:
+def verify_single_file(s3_key: str, local_files: Dict, expected_file_map: Dict, stats: Dict) -> None:
     """Verify size and checksum for a single file."""
     file_path = local_files[s3_key]
     expected_meta = expected_file_map[s3_key]
