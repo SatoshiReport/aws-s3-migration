@@ -104,7 +104,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
     if args.delete:
         if cluster_rows is None:
-            print("Cached report lacks structured duplicate data. " "Recomputing duplicates to prepare deletion plan...")
+            print("Cached report lacks structured duplicate data. Recomputing duplicates to prepare deletion plan...")
             cluster_rows = recompute_clusters_for_deletion(index, min_files, min_bytes)
         delete_duplicate_directories(cluster_rows or [], base_path)
 

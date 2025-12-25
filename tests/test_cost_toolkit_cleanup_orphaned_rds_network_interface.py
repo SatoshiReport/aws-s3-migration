@@ -161,7 +161,7 @@ class TestMain:
     def test_main_user_cancels(self, capsys):
         """Test main when user cancels operation."""
         with patch("builtins.input", return_value="NO"):
-            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup." "setup_aws_credentials") as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup.setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key_id", "secret_key")
                 main()
                 captured = capsys.readouterr()
@@ -170,7 +170,7 @@ class TestMain:
     def test_main_success(self, capsys):
         """Test successful main execution."""
         with patch("builtins.input", return_value="DELETE ORPHANED RDS INTERFACES"):
-            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup." "setup_aws_credentials") as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup.setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key_id", "secret_key")
                 with patch("boto3.client") as mock_client:
                     mock_ec2 = MagicMock()
@@ -186,7 +186,7 @@ class TestMain:
     def test_main_partial_success(self, capsys):
         """Test main with partial success."""
         with patch("builtins.input", return_value="DELETE ORPHANED RDS INTERFACES"):
-            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup." "setup_aws_credentials") as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup.setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key_id", "secret_key")
                 with patch("boto3.client") as mock_client:
                     mock_ec2 = MagicMock()
@@ -222,7 +222,7 @@ class TestMain:
     def test_main_critical_error(self, capsys):
         """Test main with critical error during execution."""
         with patch("builtins.input", return_value="DELETE ORPHANED RDS INTERFACES"):
-            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup." "setup_aws_credentials") as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_orphaned_rds_network_interface_cleanup.setup_aws_credentials") as mock_load:
                 error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "setup_aws_credentials")
                 mock_load.side_effect = error
                 with pytest.raises(ClientError):

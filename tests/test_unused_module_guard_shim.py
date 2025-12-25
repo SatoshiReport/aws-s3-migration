@@ -190,7 +190,7 @@ def main():
             original_content = config_file.read_text()
 
         config_file.write_text(
-            '{"suspicious_allow_patterns": ["_v2"], ' '"duplicate_exclude_patterns": ["excluded_file.py"]}',
+            '{"suspicious_allow_patterns": ["_v2"], "duplicate_exclude_patterns": ["excluded_file.py"]}',
             encoding="utf-8",
         )
 

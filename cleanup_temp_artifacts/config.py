@@ -52,7 +52,7 @@ def determine_default_base_path() -> Path:
 
     if not candidates:
         raise ConfigurationError(
-            "No valid base path found. Set LOCAL_BASE_PATH in config.py or " "CLEANUP_TEMP_ROOT/CLEANUP_ROOT environment variable."
+            "No valid base path found. Set LOCAL_BASE_PATH in config.py or CLEANUP_TEMP_ROOT/CLEANUP_ROOT environment variable."
         )
 
     for candidate in dict.fromkeys(candidates):
@@ -60,7 +60,7 @@ def determine_default_base_path() -> Path:
             return candidate
 
     raise ConfigurationError(
-        "No valid base path found. Set LOCAL_BASE_PATH in config.py or " "CLEANUP_TEMP_ROOT/CLEANUP_ROOT environment variable."
+        "No valid base path found. Set LOCAL_BASE_PATH in config.py or CLEANUP_TEMP_ROOT/CLEANUP_ROOT environment variable."
     )
 
 

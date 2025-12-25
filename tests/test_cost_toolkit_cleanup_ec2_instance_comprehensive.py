@@ -222,7 +222,7 @@ class TestGetInstanceDetailedInfo:
                 ]
             }
             mock_client.side_effect = [mock_ec2, mock_cw]
-            with patch("cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup." "_get_last_activity_from_metrics"):
+            with patch("cost_toolkit.scripts.cleanup.aws_ec2_instance_cleanup._get_last_activity_from_metrics"):
                 result = get_instance_detailed_info("i-123", "us-east-1")
         assert result is not None
         assert result["instance_id"] == "i-123"

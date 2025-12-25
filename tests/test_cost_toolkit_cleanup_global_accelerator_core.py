@@ -102,7 +102,7 @@ class TestDisableAccelerator:
                 mock_client.return_value = mock_ga
 
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup." "MAX_ACCELERATOR_WAIT_SECONDS",
+                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.MAX_ACCELERATOR_WAIT_SECONDS",
                     1,
                 ):
                     result = disable_accelerator("arn:aws:globalaccelerator::123456789012:accelerator/abc123")

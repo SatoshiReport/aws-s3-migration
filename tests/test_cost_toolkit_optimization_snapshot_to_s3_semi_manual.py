@@ -111,9 +111,9 @@ class TestCreateAmiFromSnapshot:
 class TestPrepareSnapshotForExport:
     """Test snapshot preparation for export."""
 
-    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual." "create_ec2_and_s3_clients")
-    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual." "create_s3_bucket_if_not_exists")
-    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual." "create_ami_from_snapshot")
+    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual.create_ec2_and_s3_clients")
+    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual.create_s3_bucket_if_not_exists")
+    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual.create_ami_from_snapshot")
     def test_prepare_snapshot_success(self, mock_create_ami, mock_create_bucket, mock_clients):
         """Test successful snapshot preparation."""
         mock_ec2 = MagicMock()
@@ -138,9 +138,9 @@ class TestPrepareSnapshotForExport:
         assert "bucket_name" in result
         assert "monthly_savings" in result
 
-    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual." "create_ec2_and_s3_clients")
-    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual." "create_s3_bucket_if_not_exists")
-    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual." "create_ami_from_snapshot")
+    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual.create_ec2_and_s3_clients")
+    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual.create_s3_bucket_if_not_exists")
+    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual.create_ami_from_snapshot")
     def test_prepare_snapshot_calculates_savings(self, mock_create_ami, mock_create_bucket, mock_clients):
         """Test that savings are calculated correctly."""
         mock_ec2 = MagicMock()
@@ -284,7 +284,7 @@ def test_get_target_snapshots():
 class TestPrepareAllSnapshots:
     """Test preparing all snapshots."""
 
-    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual." "prepare_snapshot_for_export")
+    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual.prepare_snapshot_for_export")
     def test_prepare_all_success(self, mock_prepare):
         """Test preparing all snapshots successfully."""
         mock_prepare.side_effect = [
@@ -303,7 +303,7 @@ class TestPrepareAllSnapshots:
         assert result[0]["snapshot_id"] == "snap-1"
         assert result[1]["snapshot_id"] == "snap-2"
 
-    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual." "prepare_snapshot_for_export")
+    @patch("cost_toolkit.scripts.optimization.aws_snapshot_to_s3_semi_manual.prepare_snapshot_for_export")
     def test_prepare_all_with_failure(self, mock_prepare, capsys):
         """Test preparing snapshots with failure."""
         mock_prepare.side_effect = RuntimeError("Preparation failed")

@@ -154,11 +154,9 @@ def test_remove_cross_references_remove_references(capsys):
         {"group_id": "sg-1", "name": "test-sg-1"},
         {"group_id": "sg-2", "name": "test-sg-2"},
     ]
-    with patch(
-        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "get_security_group_rules_referencing_group"
-    ) as mock_get:
+    with patch("cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.get_security_group_rules_referencing_group") as mock_get:
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "remove_security_group_rule",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.remove_security_group_rule",
             return_value=True,
         ):
             mock_get.return_value = [
@@ -186,7 +184,7 @@ class TestDeleteSecurityGroups:
             {"group_id": "sg-2", "name": "test-sg-2"},
         ]
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "delete_security_group",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.delete_security_group",
             return_value=True,
         ):
             count = _delete_security_groups(mock_client, sgs)
@@ -202,7 +200,7 @@ class TestDeleteSecurityGroups:
             {"group_id": "sg-2", "name": "test-sg-2"},
         ]
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "delete_security_group",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.delete_security_group",
             side_effect=[True, False],
         ):
             count = _delete_security_groups(mock_client, sgs)
@@ -217,11 +215,11 @@ def test_process_regions_process_multiple_regions():
     }
     with patch("boto3.client"):
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "_remove_cross_references",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._remove_cross_references",
             return_value=2,
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "_delete_security_groups",
+                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._delete_security_groups",
                 return_value=2,
             ):
                 rules_removed, groups_deleted = _process_regions(regions, "key", "secret")
@@ -255,11 +253,11 @@ class TestCleanupCircularSecurityGroups:
     def test_cleanup_with_user_cancellation(self, capsys):
         """Test when user cancels operation."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "setup_aws_credentials",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "_get_circular_security_groups",
+                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._get_circular_security_groups",
                 return_value=[],
             ):
                 with patch("builtins.input", return_value="NO"):
@@ -274,19 +272,19 @@ class TestCleanupCircularSecurityGroups:
             {"group_id": "sg-2", "name": "sg-2", "region": "us-east-1"},
         ]
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "setup_aws_credentials",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "_get_circular_security_groups",
+                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._get_circular_security_groups",
                 return_value=mock_groups,
             ):
                 with patch("builtins.input", return_value="RESOLVE CIRCULAR DEPENDENCIES"):
                     with patch(
-                        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "_process_regions",
+                        "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._process_regions",
                         return_value=(5, 2),
                     ):
-                        with patch("cost_toolkit.scripts.cleanup." "aws_security_group_circular_cleanup._print_final_summary"):
+                        with patch("cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._print_final_summary"):
                             cleanup_circular_security_groups()
         captured = capsys.readouterr()
         assert "Proceeding with circular dependency resolution" in captured.out
@@ -300,16 +298,16 @@ class TestCleanupCircularSecurityGroups:
             {"group_id": "sg-3", "name": "sg-3", "region": "us-east-1"},
         ]
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "setup_aws_credentials",
+            "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup.setup_aws_credentials",
             return_value=("key", "secret"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "_get_circular_security_groups",
+                "cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._get_circular_security_groups",
                 return_value=mock_groups,
             ):
                 with patch("builtins.input", return_value="RESOLVE CIRCULAR DEPENDENCIES"):
-                    with patch("cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup." "_process_regions") as mock_process:
-                        with patch("cost_toolkit.scripts.cleanup." "aws_security_group_circular_cleanup._print_final_summary"):
+                    with patch("cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._process_regions") as mock_process:
+                        with patch("cost_toolkit.scripts.cleanup.aws_security_group_circular_cleanup._print_final_summary"):
                             mock_process.return_value = (0, 0)
                             cleanup_circular_security_groups()
                             # Verify regions were grouped correctly

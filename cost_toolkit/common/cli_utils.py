@@ -110,7 +110,7 @@ def confirm_action(message, skip_prompt=False, exact_match=None):
         response = input(message).strip()
     except EOFError as exc:
         raise ConfirmationNotReceivedError(
-            "Confirmation required but running in non-interactive mode. " "Use --yes flag to skip confirmation."
+            "Confirmation required but running in non-interactive mode. Use --yes flag to skip confirmation."
         ) from exc
 
     if exact_match is not None:

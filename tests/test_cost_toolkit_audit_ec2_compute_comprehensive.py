@@ -246,7 +246,7 @@ class TestAnalyzeEc2Instances:
             mock_client.return_value = mock_ec2
 
             with patch(
-                "cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit." "get_instance_hourly_cost",
+                "cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit.get_instance_hourly_cost",
                 return_value=0.0104,
             ):
                 instances = analyze_ec2_instances_in_region("us-east-1")

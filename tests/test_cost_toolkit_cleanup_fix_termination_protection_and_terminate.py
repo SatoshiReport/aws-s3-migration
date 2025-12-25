@@ -197,7 +197,7 @@ class TestMainUserCancelsAndSuccess:
     def test_main_user_cancels(self, capsys):
         """Test main when user cancels operation."""
         with patch("builtins.input", return_value="NO"):
-            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate." "setup_aws_credentials") as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate.setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key", "secret")
                 main()
                 captured = capsys.readouterr()
@@ -206,7 +206,7 @@ class TestMainUserCancelsAndSuccess:
     def test_main_success(self, capsys):
         """Test successful main execution."""
         with patch("builtins.input", return_value="DISABLE PROTECTION AND TERMINATE"):
-            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate." "setup_aws_credentials") as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate.setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key", "secret")
                 with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create:
                     mock_ec2 = MagicMock()
@@ -231,7 +231,7 @@ class TestMainFailures:
     def test_main_protection_disable_fails(self, capsys):
         """Test main when disabling protection fails."""
         with patch("builtins.input", return_value="DISABLE PROTECTION AND TERMINATE"):
-            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate." "setup_aws_credentials") as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate.setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key", "secret")
                 with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create:
                     mock_ec2 = MagicMock()
@@ -246,7 +246,7 @@ class TestMainFailures:
     def test_main_termination_fails(self, capsys):
         """Test main when termination fails."""
         with patch("builtins.input", return_value="DISABLE PROTECTION AND TERMINATE"):
-            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate." "setup_aws_credentials") as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate.setup_aws_credentials") as mock_load:
                 mock_load.return_value = ("key", "secret")
                 with patch("cost_toolkit.scripts.aws_ec2_operations.create_ec2_client") as mock_create:
                     mock_ec2 = MagicMock()
@@ -261,7 +261,7 @@ class TestMainFailures:
     def test_main_critical_error(self, capsys):
         """Test main with critical error."""
         with patch("builtins.input", return_value="DISABLE PROTECTION AND TERMINATE"):
-            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate." "setup_aws_credentials") as mock_load:
+            with patch("cost_toolkit.scripts.cleanup.aws_fix_termination_protection_and_terminate.setup_aws_credentials") as mock_load:
                 error = ClientError({"Error": {"Code": "ServiceUnavailable"}}, "client")
                 mock_load.side_effect = error
                 with pytest.raises(ClientError):

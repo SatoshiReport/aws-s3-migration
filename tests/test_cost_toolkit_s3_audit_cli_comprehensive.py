@@ -166,15 +166,15 @@ def test_audit_s3_comprehensive_with_recommendations():
                     mock_overall,
                 ):
                     with patch(
-                        ("cost_toolkit.scripts.audit.s3_audit.cli" ".print_storage_class_breakdown"),
+                        "cost_toolkit.scripts.audit.s3_audit.cli.print_storage_class_breakdown",
                         mock_storage,
                     ):
                         with patch(
-                            ("cost_toolkit.scripts.audit.s3_audit.cli" ".print_optimization_recommendations"),
+                            "cost_toolkit.scripts.audit.s3_audit.cli.print_optimization_recommendations",
                             mock_optim,
                         ):
                             with patch(
-                                ("cost_toolkit.scripts.audit.s3_audit.cli" ".print_cleanup_opportunities"),
+                                "cost_toolkit.scripts.audit.s3_audit.cli.print_cleanup_opportunities",
                                 mock_cleanup,
                             ):
                                 audit_s3_comprehensive()

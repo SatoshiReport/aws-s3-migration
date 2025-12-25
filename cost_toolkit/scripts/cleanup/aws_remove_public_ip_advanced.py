@@ -202,7 +202,7 @@ def main():
 
     instance_id, region_name, using_default = basic_remove.parse_args()  # Reuse standard CLI
     if using_default:
-        print("⚠️  Using defaults from config/public_ip_defaults.json; " "provide --instance-id/--region to override.")
+        print("⚠️  Using defaults from config/public_ip_defaults.json; provide --instance-id/--region to override.")
 
     aws_utils.setup_aws_credentials()
 

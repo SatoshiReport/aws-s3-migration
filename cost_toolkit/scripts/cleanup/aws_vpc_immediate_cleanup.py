@@ -52,7 +52,7 @@ def release_public_ip_from_instance(instance_id, region_name):
 
         # For auto-assigned IPs, we need to modify the instance
         # This requires stopping and starting the instance
-        print("⚠️  To remove auto-assigned public IP, " "the instance needs to be stopped and reconfigured")
+        print("⚠️  To remove auto-assigned public IP, the instance needs to be stopped and reconfigured")
         print("This will cause downtime. Proceed? (This script will not auto-proceed)")
     except ClientError as e:
         print(f"❌ Error releasing public IP: {e}")
@@ -272,7 +272,7 @@ def _print_vpc_recommendations(deletable_vpcs, non_deletable_vpcs):
     print("\n💡 NEXT STEPS:")
     if deletable_vpcs:
         print(f"  1. You can safely delete {len(deletable_vpcs)} VPCs")
-        print("  2. This will also remove their associated subnets, " "route tables, and security groups")
+        print("  2. This will also remove their associated subnets, route tables, and security groups")
         print("  3. Internet Gateways will be detached and can then be deleted")
 
 

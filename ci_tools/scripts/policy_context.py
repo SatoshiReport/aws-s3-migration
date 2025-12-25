@@ -43,7 +43,7 @@ def _load_ci_shared_root() -> Path:  # pragma: no cover - exercised in shim test
     return _REPO_ROOT
 
 
-_DEFAULT_SHARED_ROOT = Path.home() / "ci_shared"
+_DEFAULT_SHARED_ROOT = Path.home() / "projects" / "ci_shared"
 _ENV_SHARED_ROOT = _load_ci_shared_root()
 
 

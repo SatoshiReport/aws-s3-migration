@@ -183,7 +183,7 @@ def test_load_shared_guard_default_location(tmp_path: Path, monkeypatch: pytest.
     guard_module = load_shim_module(isolate=True)
 
     # Should look in home directory
-    expected_path = fake_home / "ci_shared" / "ci_tools" / "scripts" / "unused_module_guard.py"
+    expected_path = fake_home / "projects" / "ci_shared" / "ci_tools" / "scripts" / "unused_module_guard.py"
 
     with pytest.raises(guard_module.SharedGuardMissingError) as exc_info:
         guard_module._load_shared_guard()

@@ -229,7 +229,7 @@ class TestMain:
     def test_main_simple_method_success(self, capsys):
         """Test main when simple method succeeds."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "simple_stop_start_without_public_ip",
+            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced.simple_stop_start_without_public_ip",
             return_value=True,
         ):
             main()
@@ -239,11 +239,11 @@ class TestMain:
     def test_main_simple_fails_advanced_succeeds(self, capsys):
         """Test main when simple fails but advanced succeeds."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "simple_stop_start_without_public_ip",
+            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced.simple_stop_start_without_public_ip",
             return_value=False,
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "remove_public_ip_by_network_interface_replacement",
+                "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced.remove_public_ip_by_network_interface_replacement",
                 return_value=True,
             ):
                 main()
@@ -254,11 +254,11 @@ class TestMain:
     def test_main_both_methods_fail(self, capsys):
         """Test main when both methods fail."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "simple_stop_start_without_public_ip",
+            "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced.simple_stop_start_without_public_ip",
             return_value=False,
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced." "remove_public_ip_by_network_interface_replacement",
+                "cost_toolkit.scripts.cleanup.aws_remove_public_ip_advanced.remove_public_ip_by_network_interface_replacement",
                 return_value=False,
             ):
                 main()

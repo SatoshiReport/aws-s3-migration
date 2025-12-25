@@ -252,7 +252,7 @@ class TestBulkDeregisterUnusedAmis:
         ):
             with patch("builtins.input", return_value="DEREGISTER ALL AMIS"):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk." "process_ami_deregistrations",
+                    "cost_toolkit.scripts.cleanup.aws_ami_deregister_bulk.process_ami_deregistrations",
                     return_value=(5, 0, 50.0),
                 ):
                     bulk_deregister_unused_amis()

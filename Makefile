@@ -1,6 +1,6 @@
 .PHONY: format lint type check
 
-CI_SHARED_ROOT ?= $(HOME)/ci_shared
+CI_SHARED_ROOT ?= $(HOME)/projects/ci_shared
 # This repo uses a flat structure (source at root, not in src/)
 SHARED_SOURCE_ROOT := .
 export PYTHONPATH := $(SHARED_SOURCE_ROOT):$(CI_SHARED_ROOT)$(if $(PYTHONPATH),:$(PYTHONPATH))

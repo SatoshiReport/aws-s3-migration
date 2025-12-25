@@ -45,7 +45,7 @@ class BucketNotEmptyError(RuntimeError):
     """Raised when S3 bucket cleanup leaves residual objects."""
 
     def __init__(self) -> None:
-        super().__init__(("Bucket still contains objects after delete pass. " "Re-run deletion once remaining versions are cleared."))
+        super().__init__("Bucket still contains objects after delete pass. Re-run deletion once remaining versions are cleared.")
 
 
 def should_ignore_key(key: str) -> bool:

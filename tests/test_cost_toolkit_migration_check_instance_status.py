@@ -302,10 +302,10 @@ class TestCheckInstanceStatusErrors:
         """Test all check functions are called."""
         with patch("boto3.client") as mock_client:
             with (
-                patch("cost_toolkit.scripts.migration.aws_check_instance_status." "_print_instance_info") as mock_info,
+                patch("cost_toolkit.scripts.migration.aws_check_instance_status._print_instance_info") as mock_info,
                 patch("cost_toolkit.scripts.migration.aws_check_instance_status._check_user_data") as mock_user,
                 patch("cost_toolkit.scripts.migration.aws_check_instance_status._check_system_logs") as mock_logs,
-                patch("cost_toolkit.scripts.migration.aws_check_instance_status." "_print_troubleshooting") as mock_trouble,
+                patch("cost_toolkit.scripts.migration.aws_check_instance_status._print_troubleshooting") as mock_trouble,
             ):
                 mock_ec2 = MagicMock()
                 mock_ec2.describe_instances.return_value = {"Reservations": [{"Instances": [{"State": {"Name": "running"}}]}]}

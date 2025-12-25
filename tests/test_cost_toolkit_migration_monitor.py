@@ -256,7 +256,7 @@ class TestMonitorMigration:
         with patch("boto3.client") as mock_client:
             with patch("cost_toolkit.scripts.migration.aws_migration_monitor._check_bucket_contents") as mock_bucket:
                 with patch("cost_toolkit.scripts.migration.aws_migration_monitor._check_migration_log") as mock_log:
-                    with patch("cost_toolkit.scripts.migration.aws_migration_monitor." "_print_cost_summary") as mock_summary:
+                    with patch("cost_toolkit.scripts.migration.aws_migration_monitor._print_cost_summary") as mock_summary:
                         mock_s3 = MagicMock()
                         mock_client.return_value = mock_s3
 

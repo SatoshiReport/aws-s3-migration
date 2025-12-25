@@ -24,7 +24,7 @@ def print_usage() -> None:
     print("Usage:")
     print("  Delete volume:     python aws_ebs_volume_manager.py delete <volume-id>")
     print("  Get volume info:   python aws_ebs_volume_manager.py info <volume-id> [volume-id2] ...")
-    print("  Create snapshot:   python aws_ebs_volume_manager.py snapshot " "<volume-id> [volume-id2] ...")
+    print("  Create snapshot:   python aws_ebs_volume_manager.py snapshot <volume-id> [volume-id2] ...")
     print("  Force delete:      python aws_ebs_volume_manager.py delete <volume-id> --force")
     print()
     print("Examples:")

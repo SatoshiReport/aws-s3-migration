@@ -189,4 +189,4 @@ def print_export_status(status, progress, status_msg, elapsed_hours):
 
 
 if __name__ == "__main__":
-    raise SystemExit("This module is library-only. " "Import functions from cost_toolkit.scripts.optimization.snapshot_export_common.")
+    raise SystemExit("This module is library-only. Import functions from cost_toolkit.scripts.optimization.snapshot_export_common.")

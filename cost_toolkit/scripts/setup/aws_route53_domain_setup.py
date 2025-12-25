@@ -81,7 +81,7 @@ def update_domain_nameservers_at_registrar(domain_name, nameservers):
                 print("     New nameservers:")
                 for ns in nameservers:
                     print(f"       - {ns}")
-                print("  💡 Log into your domain registrar (GoDaddy, Namecheap, etc.) " "and update the nameservers")
+                print("  💡 Log into your domain registrar (GoDaddy, Namecheap, etc.) and update the nameservers")
                 return False
             raise
         return True  # noqa: TRY300

@@ -172,7 +172,7 @@ class S3MigrationV2:  # pylint: disable=too-many-instance-attributes
         print()
         if shutil.which("aws") is None:
             print("✗ AWS CLI not found on PATH. Install AWS CLI v2 and retry.")
-            print("Download: https://docs.aws.amazon.com/cli/latest/userguide/" "getting-started-install.html")
+            print("Download: https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html")
             sys.exit(1)
         self.drive_checker.check_available()
         current_phase = self.state.get_current_phase()

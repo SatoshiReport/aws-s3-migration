@@ -67,7 +67,7 @@ def _handle_task_deletion_recovery(s3_client, bucket_name, s3_key, snapshot_size
 
     try:
         s3_result = check_s3_file_completion(s3_client, bucket_name, s3_key, snapshot_size_gb, fast_check=True)
-        print("   ✅ S3 file found and validated! " "Export completed successfully despite task deletion")
+        print("   ✅ S3 file found and validated! Export completed successfully despite task deletion")
         print(f"   📏 Final file size: {s3_result['size_gb']:.2f} GB")
     except (BotoCoreError, ClientError, constants.S3FileValidationException, Exception) as s3_error:
         print("   ❌ Cannot retrieve export results - task no longer exists")

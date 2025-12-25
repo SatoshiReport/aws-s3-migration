@@ -176,8 +176,8 @@ def test_main_main_function(capsys):
     with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.setup_aws_credentials"):
         with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.disable_aws_backup_plans"):
             with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.disable_dlm_policies"):
-                with patch("cost_toolkit.scripts.cleanup.aws_backup_disable." "disable_eventbridge_backup_rules"):
-                    with patch("cost_toolkit.scripts.cleanup.aws_backup_disable." "check_backup_vault_policies"):
+                with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.disable_eventbridge_backup_rules"):
+                    with patch("cost_toolkit.scripts.cleanup.aws_backup_disable.check_backup_vault_policies"):
                         main()
     captured = capsys.readouterr()
     assert "AWS Automated Backup Disable Script" in captured.out

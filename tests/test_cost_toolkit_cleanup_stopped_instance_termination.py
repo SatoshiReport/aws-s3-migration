@@ -28,20 +28,20 @@ class TestMainSuccessful:
         }
 
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "load_credentials_from_env",
+            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.load_credentials_from_env",
             return_value=("access_key", "secret_key"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "_get_stopped_instances",
+                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._get_stopped_instances",
                 return_value=[{"region": "us-east-1", "instance_id": "i-123", "type": "t2.micro"}],
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "get_instance_cleanup_details",
+                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.get_instance_cleanup_details",
                     return_value=mock_instance_details,
                 ):
-                    with patch("cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "_print_instance_details"):
+                    with patch("cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._print_instance_details"):
                         with patch(
-                            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "terminate_instance",
+                            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.terminate_instance",
                             return_value=True,
                         ):
                             main()
@@ -68,18 +68,18 @@ class TestMainSuccessful:
         }
 
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "load_credentials_from_env",
+            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.load_credentials_from_env",
             return_value=("access_key", "secret_key"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "_get_stopped_instances",
+                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._get_stopped_instances",
                 return_value=[{"region": "us-east-1", "instance_id": "i-123", "type": "t2.micro"}],
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "get_instance_cleanup_details",
+                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.get_instance_cleanup_details",
                     return_value=mock_instance_details,
                 ):
-                    with patch("cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "_print_instance_details"):
+                    with patch("cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._print_instance_details"):
                         main()
 
         captured = capsys.readouterr()
@@ -92,15 +92,15 @@ class TestMainEdgeCases:
     def test_main_no_valid_instances(self, capsys):
         """Test main function when no valid instances found."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "load_credentials_from_env",
+            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.load_credentials_from_env",
             return_value=("access_key", "secret_key"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "_get_stopped_instances",
+                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._get_stopped_instances",
                 return_value=[{"region": "us-east-1", "instance_id": "i-123", "type": "t2.micro"}],
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "get_instance_cleanup_details",
+                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.get_instance_cleanup_details",
                     return_value=None,
                 ):
                     main()
@@ -144,23 +144,23 @@ class TestMainPartialResults:
         }
 
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "load_credentials_from_env",
+            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.load_credentials_from_env",
             return_value=("access_key", "secret_key"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "_get_stopped_instances",
+                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._get_stopped_instances",
                 return_value=[
                     {"region": "us-east-1", "instance_id": "i-1", "type": "t2.micro"},
                     {"region": "us-east-2", "instance_id": "i-2", "type": "t2.small"},
                 ],
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "get_instance_cleanup_details",
+                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.get_instance_cleanup_details",
                     return_value=mock_instance_details,
                 ):
-                    with patch("cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "_print_instance_details"):
+                    with patch("cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._print_instance_details"):
                         with patch(
-                            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "terminate_instance",
+                            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.terminate_instance",
                             side_effect=[True, False],
                         ):
                             main()
@@ -185,20 +185,20 @@ class TestMainPartialResults:
         }
 
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "load_credentials_from_env",
+            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.load_credentials_from_env",
             return_value=("access_key", "secret_key"),
         ):
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "_get_stopped_instances",
+                "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._get_stopped_instances",
                 return_value=[{"region": "us-east-1", "instance_id": "i-123", "type": "t2.micro"}],
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "get_instance_cleanup_details",
+                    "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.get_instance_cleanup_details",
                     return_value=mock_instance_details,
                 ):
-                    with patch("cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "_print_instance_details"):
+                    with patch("cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup._print_instance_details"):
                         with patch(
-                            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup." "terminate_instance",
+                            "cost_toolkit.scripts.cleanup.aws_stopped_instance_cleanup.terminate_instance",
                             return_value=False,
                         ):
                             main()

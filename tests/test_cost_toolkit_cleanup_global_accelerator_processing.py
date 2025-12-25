@@ -32,7 +32,7 @@ class TestProcessSingleAccelerator:
                 return_value=True,
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup." "delete_accelerator",
+                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.delete_accelerator",
                     return_value=True,
                 ):
                     success, cost = process_single_accelerator(accelerator)
@@ -98,7 +98,7 @@ class TestProcessSingleAccelerator:
                 return_value=True,
             ):
                 with patch(
-                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup." "delete_accelerator",
+                    "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.delete_accelerator",
                     return_value=True,
                 ):
                     _, _ = process_single_accelerator(accelerator)
@@ -180,7 +180,7 @@ class TestMain:
                     return_value=[accelerator],
                 ):
                     with patch(
-                        "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup." "process_single_accelerator",
+                        "cost_toolkit.scripts.cleanup.aws_global_accelerator_cleanup.process_single_accelerator",
                         return_value=(True, 18.0),
                     ):
                         main()

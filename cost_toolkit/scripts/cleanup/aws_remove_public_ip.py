@@ -197,8 +197,8 @@ def _resolve_default_target(
     if instance_id and region_name:
         return instance_id, region_name
     if testing:
-        raise ValueError("Test mode requires explicit instance_id and region_name via args, " "environment variables, or config file")
-    raise SystemExit("Populate default_instance_id/default_region in config/public_ip_defaults.json " "or provide --instance-id/--region.")
+        raise ValueError("Test mode requires explicit instance_id and region_name via args, environment variables, or config file")
+    raise SystemExit("Populate default_instance_id/default_region in config/public_ip_defaults.json or provide --instance-id/--region.")
 
 
 def _resolve_target(

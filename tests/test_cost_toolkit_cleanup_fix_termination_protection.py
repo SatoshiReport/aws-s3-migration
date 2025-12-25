@@ -112,7 +112,7 @@ class TestMain:
     def test_main_success(self, capsys):
         """Test successful main execution."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection.disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = True
             main()
@@ -127,7 +127,7 @@ class TestMain:
     def test_main_failure(self, capsys):
         """Test main execution with failure."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection.disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = False
             main()
@@ -139,7 +139,7 @@ class TestMain:
     def test_main_hardcoded_values(self):
         """Test that main uses correct hardcoded instance ID and region."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection.disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = True
             main()
@@ -148,7 +148,7 @@ class TestMain:
     def test_main_prints_header(self, capsys):
         """Test that main prints proper header."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection.disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = True
             main()
@@ -159,7 +159,7 @@ class TestMain:
     def test_main_displays_savings(self, capsys):
         """Test that main displays cost savings information."""
         with patch(
-            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection." "disable_termination_protection_and_terminate"
+            "cost_toolkit.scripts.cleanup.aws_fix_termination_protection.disable_termination_protection_and_terminate"
         ) as mock_disable:
             mock_disable.return_value = True
             main()

@@ -46,14 +46,14 @@ def _add_ec2_recommendations(recommendations, service, cost, percentage):
     """Add EC2-specific recommendations."""
     recommendations.append(f"💡 {service}: ${cost:.2f}/month ({percentage:.1f}%)")
     recommendations.append("   📋 Consider Reserved or Savings Plans for predictable compute usage")
-    recommendations.append("   🔧 Action: Analyze utilization metrics and match steady workloads " "with discounted capacity")
+    recommendations.append("   🔧 Action: Analyze utilization metrics and match steady workloads with discounted capacity")
 
 
 def _add_database_recommendations(recommendations, service, cost, percentage):
     """Add RDS/database-specific recommendations."""
     recommendations.append(f"💡 {service}: ${cost:.2f}/month ({percentage:.1f}%)")
-    recommendations.append("   📋 Review DB instance sizing, storage type, and idle clusters; " "Aurora Serverless may fit bursty usage")
-    recommendations.append("   🔧 Action: Monitor CPU/memory and storage metrics, " "then right-size or pause unused databases")
+    recommendations.append("   📋 Review DB instance sizing, storage type, and idle clusters; Aurora Serverless may fit bursty usage")
+    recommendations.append("   🔧 Action: Monitor CPU/memory and storage metrics, then right-size or pause unused databases")
 
 
 def _add_lightsail_recommendations(recommendations, service, cost, percentage, completed_cleanups):
@@ -64,7 +64,7 @@ def _add_lightsail_recommendations(recommendations, service, cost, percentage, c
         recommendations.append("   🔧 Status: No action needed unless new resources appear")
     else:
         recommendations.append(f"💡 {service}: ${cost:.2f}/month ({percentage:.1f}%)")
-        recommendations.append("   📋 Lightsail resources detected - remove instances, databases, " "or static IPs to stop charges")
+        recommendations.append("   📋 Lightsail resources detected - remove instances, databases, or static IPs to stop charges")
         recommendations.append("   🔧 Action: Run python cost_toolkit/scripts/cleanup/aws_lightsail_cleanup.py")
 
 

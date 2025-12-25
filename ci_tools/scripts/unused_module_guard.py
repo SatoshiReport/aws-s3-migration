@@ -68,7 +68,7 @@ class CISharedRootNotConfiguredError(RuntimeError):
 def _load_shared_guard() -> GuardModule:
     """Load the canonical unused_module_guard implementation."""
     ci_shared_root_env = os.environ.get("CI_SHARED_ROOT")
-    shared_root = Path(ci_shared_root_env) if ci_shared_root_env else Path.home() / "ci_shared"
+    shared_root = Path(ci_shared_root_env) if ci_shared_root_env else Path.home() / "projects" / "ci_shared"
 
     shared_guard = shared_root / "ci_tools" / "scripts" / "unused_module_guard.py"
     if not shared_guard.exists():
@@ -131,7 +131,7 @@ def _update_suspicious_patterns(guard: GuardModule, allowed_patterns: Sequence[s
     suspicious_patterns = getattr(guard, "SUSPICIOUS_PATTERNS", None)
     if suspicious_patterns is None:
         print(
-            "⚠️  Shared unused_module_guard missing SUSPICIOUS_PATTERNS; " "allowed_patterns override skipped.",
+            "⚠️  Shared unused_module_guard missing SUSPICIOUS_PATTERNS; allowed_patterns override skipped.",
             file=sys.stderr,
         )
         guard.SUSPICIOUS_PATTERNS = tuple()

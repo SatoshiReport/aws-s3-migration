@@ -40,7 +40,7 @@ def test_print_optimization_recommendations_print_recommendations(capsys):
 def test_collect_regional_data_collect_data():
     """Test collecting regional data."""
     with patch("cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit.analyze_ec2_instances_in_region") as mock_instances:
-        with patch("cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit." "analyze_ebs_volumes_in_region") as mock_volumes:
+        with patch("cost_toolkit.scripts.audit.aws_ec2_compute_detailed_audit.analyze_ebs_volumes_in_region") as mock_volumes:
             mock_instances.return_value = [
                 {"state": "running", "monthly_cost": 10.0},
                 {"state": "stopped", "monthly_cost": 0.0},

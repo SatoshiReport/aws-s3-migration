@@ -101,7 +101,7 @@ def explore_aurora_database():
         print(exc)
         return False
     if not password:
-        print("❌ Aurora credentials not configured. " "Set AURORA_PASSWORD (and optionally AURORA_HOST/AURORA_DATABASE/AURORA_USERNAME).")
+        print("❌ Aurora credentials not configured. Set AURORA_PASSWORD (and optionally AURORA_HOST/AURORA_DATABASE/AURORA_USERNAME).")
         return False
 
     print("🔍 Connecting to Aurora Serverless v2 cluster...")

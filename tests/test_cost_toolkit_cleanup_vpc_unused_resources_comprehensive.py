@@ -75,7 +75,7 @@ class TestCleanSecurityGroups:
             mock_client = MagicMock()
             mock_boto_client.return_value = mock_client
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources." "delete_security_group",
+                "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources.delete_security_group",
                 return_value=True,
             ):
                 successful, failed = clean_security_groups("key", "secret")
@@ -89,7 +89,7 @@ class TestCleanSecurityGroups:
             mock_boto_client.return_value = mock_client
             # First 5 succeed, next 5 fail
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources." "delete_security_group",
+                "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources.delete_security_group",
                 side_effect=[True] * 5 + [False] * 5,
             ):
                 successful, failed = clean_security_groups("key", "secret")
@@ -102,7 +102,7 @@ class TestCleanSecurityGroups:
             mock_client = MagicMock()
             mock_boto_client.return_value = mock_client
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources." "delete_security_group",
+                "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources.delete_security_group",
                 return_value=False,
             ):
                 successful, failed = clean_security_groups("key", "secret")
@@ -115,7 +115,7 @@ class TestCleanSecurityGroups:
             mock_client = MagicMock()
             mock_boto_client.return_value = mock_client
             with patch(
-                "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources." "delete_security_group",
+                "cost_toolkit.scripts.cleanup.aws_vpc_cleanup_unused_resources.delete_security_group",
                 return_value=True,
             ):
                 clean_security_groups("test_key", "test_secret")

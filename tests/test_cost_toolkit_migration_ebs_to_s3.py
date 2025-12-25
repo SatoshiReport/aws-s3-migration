@@ -322,8 +322,8 @@ class TestCreateS3BucketAndMigrate:
                 with (
                     patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._print_setup_header") as mock_header,
                     patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._create_s3_bucket") as mock_bucket,
-                    patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration." "_display_volume_info") as mock_volume,
-                    patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration." "_write_migration_script") as mock_write,
+                    patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._display_volume_info") as mock_volume,
+                    patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._write_migration_script") as mock_write,
                     patch("cost_toolkit.scripts.migration.aws_ebs_to_s3_migration._print_next_steps") as mock_steps,
                 ):
                     mock_s3 = MagicMock()
