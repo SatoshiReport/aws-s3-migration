@@ -8,7 +8,7 @@ SHARED_SCRIPT="${CI_SHARED_ROOT}/ci_tools/scripts/ci.sh"
 
 if [[ ! -x "${SHARED_SCRIPT}" ]]; then
   echo "Shared CI runner not found at ${SHARED_SCRIPT}." >&2
-  echo "Set CI_SHARED_ROOT or clone ci_shared to ${HOME}/projects/ci_shared." >&2
+  echo "Set CI_SHARED_ROOT or clone ci_shared to ${HOME}/ci_shared." >&2
   exit 1
 fi
 

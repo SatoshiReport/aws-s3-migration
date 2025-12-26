@@ -1,7 +1,7 @@
 """Proxy package that redirects all ``ci_tools`` imports to the shared checkout.
 
 Consuming repositories should *not* maintain their own copies of the guard
-scripts. Instead, they depend on this shim to locate ``~/projects/ci_shared`` (or an
+scripts. Instead, they depend on this shim to locate ``~/ci_shared`` (or an
 override specified via ``CI_SHARED_ROOT``) and execute the canonical package
 from there.
 """
@@ -32,14 +32,17 @@ def _resolve_shared_root() -> Path:
     env_override = os.environ.get("CI_SHARED_ROOT")
     if env_override:
         return Path(env_override).expanduser().resolve()
-    return (Path.home() / "projects" / "ci_shared").resolve()
+    return (Path.home() / "ci_shared").resolve()
 
 
 def _load_shared_package(shared_ci_tools: Path) -> ModuleType:
     """Load ci_tools from the canonical shared checkout."""
     shared_init = shared_ci_tools / "__init__.py"
     if not shared_init.exists():
-        msg = f"Shared ci_tools package missing at {shared_init}. " "Clone ci_shared and/or set CI_SHARED_ROOT."
+        msg = (
+            f"Shared ci_tools package missing at {shared_init}. "
+            "Clone ci_shared and/or set CI_SHARED_ROOT."
+        )
         raise SharedPackageMissingError(msg)
 
     spec = importlib.util.spec_from_file_location("ci_tools", shared_init)
@@ -55,10 +58,21 @@ def _load_shared_package(shared_ci_tools: Path) -> ModuleType:
 
 def _bootstrap_shared_ci_tools() -> None:
     """Replace this shim module with the shared ci_tools implementation."""
+    # Detect if we're already in the canonical ci_shared location to avoid infinite recursion
+    current_file = Path(__file__).resolve()
     shared_root = _resolve_shared_root()
     shared_ci_tools = shared_root / "ci_tools"
+    shared_init = shared_ci_tools / "__init__.py"
+
+    if current_file == shared_init.resolve():
+        # Already running from the canonical location; no redirection needed
+        return
+
     if not shared_ci_tools.exists():
-        msg = f"Shared ci_tools directory not found at {shared_ci_tools}. " "Ensure ci_shared is cloned locally or set CI_SHARED_ROOT."
+        msg = (
+            f"Shared ci_tools directory not found at {shared_ci_tools}. "
+            "Ensure ci_shared is cloned locally or set CI_SHARED_ROOT."
+        )
         raise SharedDirectoryNotFoundError(msg)
 
     shared_path = shared_ci_tools.as_posix()
