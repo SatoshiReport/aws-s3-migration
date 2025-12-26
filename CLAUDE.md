@@ -1,6 +1,6 @@
 # AWS: Claude Guide
 
-Same rules as AGENTS.md, automation tone. This repo hosts S3 migration/policy tooling at the root, docs in `docs/`, tests in `tests/`, and shared CI assets in `ci_shared.mk` + `shared-tool-config.toml`.
+S3 management toolkit. Four-phase resumable migration (scan → restore → sync → verify), bucket policy hardening, duplicate detection, cost analysis. Source at root, shared CI assets in `ci_tools/`, configs in `ci_shared.mk` + `shared-tool-config.toml`, tests in `tests/`, docs in `docs/`.
 
 ## Quick Commands
 - Run CI/automation with `make check` or `python -m ci_tools.ci --model gpt-5-codex` (delegates to `ci_tools/scripts/ci.sh` through `ci_shared.mk`).
