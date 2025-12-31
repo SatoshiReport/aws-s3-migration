@@ -8,7 +8,7 @@ S3 management toolkit. Four-phase resumable migration (scan → restore → sync
 - Formatting/type/lint: `make format`, `make type`, `make lint`, `make test`. Prefer dry-run CLIs (`python migrate_v2.py status`, `python block_s3.py --all`, `python apply_block.py --all --dry-run`) when exercising workflows.
 
 ## Code Hygiene
-- Avoid adding fallbacks, duplicate code, backward-compatibility risks, fail-fast gaps, or dead code; if you see existing issues, call them out and fix them.
+- Avoid adding fallbacks, duplicate code, or backward-compatibility shims (backward compatibility is not required); call out and fix fail-fast gaps or dead code when encountered.
 - Prefer config JSON files over new environment variables; only add ENV when required and document it.
 
 ## Duplicate Code Rule
